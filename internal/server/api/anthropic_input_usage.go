@@ -15,11 +15,12 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
-var inputUsageTokenizer struct {
-	sync.Mutex
-
-	codec tokenizer.Codec
-}
+// Count only reads the codec vocabulary and uses regexp2's concurrent-safe
+// matching API. Never call Decode on this shared codec: it lazily mutates the
+// reverse vocabulary. Initialization is the only operation we serialize.
+var inputUsageTokenizer = sync.OnceValues(func() (tokenizer.Codec, error) {
+	return tokenizer.Get(tokenizer.O200kBase)
+})
 
 // estimateAnthropicInput counts textual evidence, not transport/control fields or
 // encoded media. This is a display estimate, not provider usage or billing data.
@@ -102,17 +103,11 @@ func estimateAnthropicInput(body []byte) (int64, error) {
 	if len(parts) == 0 {
 		return 0, nil
 	}
-	// Keep tokenizer access serialized: requests never share mutable stream state.
-	inputUsageTokenizer.Lock()
-	defer inputUsageTokenizer.Unlock()
-	if inputUsageTokenizer.codec == nil {
-		codec, err := tokenizer.Get(tokenizer.O200kBase)
-		if err != nil {
-			return 0, err
-		}
-		inputUsageTokenizer.codec = codec
+	codec, err := inputUsageTokenizer()
+	if err != nil {
+		return 0, err
 	}
-	count, err := inputUsageTokenizer.codec.Count(strings.Join(parts, "\n"))
+	count, err := codec.Count(strings.Join(parts, "\n"))
 	return int64(count), err
 }
 

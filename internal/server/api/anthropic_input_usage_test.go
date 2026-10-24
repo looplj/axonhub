@@ -122,3 +122,22 @@ func TestAnthropicInputUsageSkipsOtherProtocols(t *testing.T) {
 	source := streams.SliceStream([]*httpclient.StreamEvent{})
 	require.Same(t, source, wrapAnthropicInputUsage(source, &httpclient.Request{Path: "/v1/responses"}, nil))
 }
+
+func TestEstimateAnthropicInputConcurrent(t *testing.T) {
+	t.Parallel()
+	body, err := json.Marshal(map[string]any{"messages": []map[string]string{{"role": "user", "content": strings.Repeat("Concurrent counting: Debian 日本語 1234567. ", 200)}}})
+	require.NoError(t, err)
+	want, err := estimateAnthropicInput(body)
+	require.NoError(t, err)
+	require.Positive(t, want)
+	for range 16 {
+		t.Run("count", func(t *testing.T) {
+			t.Parallel()
+			for range 5 {
+				got, err := estimateAnthropicInput(body)
+				require.NoError(t, err)
+				require.Equal(t, want, got)
+			}
+		})
+	}
+}
