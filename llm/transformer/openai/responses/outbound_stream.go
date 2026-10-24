@@ -295,6 +295,10 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			s.state.pendingReasoningEncryptedContent[item.ID] = shared.EncodeOpenAIEncryptedContent(item.EncryptedContent)
 			return nil
 
+		case "web_search_call":
+			appendResponseWebSearchCallMetadata(s.state.transformerMetadata, *item)
+			resp.TransformerMetadata = map[string]any{responsesWebSearchCallsTransformerMetadataKey: s.state.transformerMetadata[responsesWebSearchCallsTransformerMetadataKey]}
+
 		case "function_call":
 			// Initialize tool call tracking
 			toolCallIdx := len(s.state.toolCalls)
@@ -615,7 +619,8 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 		if streamEvent.Item.Type == "web_search_call" {
 			appendResponseWebSearchCallMetadata(s.state.transformerMetadata, *streamEvent.Item)
-			return nil // Intentionally skip this event
+			resp.TransformerMetadata = map[string]any{responsesWebSearchCallsTransformerMetadataKey: s.state.transformerMetadata[responsesWebSearchCallsTransformerMetadataKey]}
+			break
 		}
 		if streamEvent.Item.Type == "reasoning" {
 			if streamEvent.Item.ID == "" {
@@ -683,6 +688,14 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if streamEvent.Response != nil {
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 			resp.PreviousResponseID = s.state.previousResponseID
+		}
+		if streamEvent.Response != nil {
+			for _, item := range streamEvent.Response.Output {
+				if item.Type == "web_search_call" {
+					appendResponseWebSearchCallMetadata(s.state.transformerMetadata, item)
+					s.state.transformerMetadataEmitted = false
+				}
+			}
 		}
 		if len(s.state.transformerMetadata) > 0 && !s.state.transformerMetadataEmitted {
 			resp.TransformerMetadata = s.state.transformerMetadata
