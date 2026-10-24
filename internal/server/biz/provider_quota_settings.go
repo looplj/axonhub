@@ -66,6 +66,16 @@ func SupportedProviderQuotaTypes() []string {
 	return result
 }
 
+// IsSupportedProviderQuotaType reports whether providerType is a quota
+// collection type the server still supports. A false answer also covers
+// retired types persisted in legacy rows (e.g. 'wafer'); callers that render
+// stored rows (not user input) should treat those as "no status" rather than
+// an error.
+func IsSupportedProviderQuotaType(providerType string) bool {
+	_, ok := supportedProviderQuotaTypeSet[providerType]
+	return ok
+}
+
 func (s *SystemService) ProviderQuotaCollectionSettings(ctx context.Context) (*ProviderQuotaCollectionSettings, error) {
 	value, err := s.getSystemValue(ctx, SystemKeyProviderQuotaCollectionSettings)
 	if err != nil {
