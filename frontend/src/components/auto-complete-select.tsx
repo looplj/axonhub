@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type InputHTMLAttributes } from 'react';
+import { useEffect, useMemo, useRef, useState, type InputHTMLAttributes } from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -53,6 +53,10 @@ export function AutoCompleteSelect<T extends string>({
   const setSearchValue = onSearchValueChange ?? setInternalSearchValue;
   const isServerSearch = !!onSearchValueChange;
 
+  // Retained { value, label } for the current selection so the label can be restored on blur
+  // even after the value no longer resolves in the (server-filtered) `items` page.
+  const retainedLabelRef = useRef<{ value: T; label: string } | null>(null);
+
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     onOpenChange?.(nextOpen);
@@ -80,13 +84,18 @@ export function AutoCompleteSelect<T extends string>({
 
   const onInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     // Strict mode: on blur, revert input text to the selected label
-    // unless focus moves within the list. When a value is selected but its label
-    // is not (yet) resolvable in `items` (e.g. server-searched options), leave the
-    // text as-is so the resolved label is never clobbered to the placeholder.
+    // unless focus moves within the list. The label comes from the current
+    // `items` page, falling back to the label retained when the selection was
+    // made (server-searched options may no longer be in the filtered page).
     if (!e.relatedTarget?.hasAttribute('cmdk-list')) {
       const label = labels[selectedValue];
-      if (!selectedValue || label !== undefined) {
-        setSearchValue(label ?? '');
+      if (label !== undefined) {
+        retainedLabelRef.current = { value: selectedValue, label };
+        setSearchValue(label);
+      } else if (selectedValue && retainedLabelRef.current?.value === selectedValue) {
+        setSearchValue(retainedLabelRef.current.label);
+      } else {
+        setSearchValue('');
       }
     }
   };
@@ -95,6 +104,7 @@ export function AutoCompleteSelect<T extends string>({
     // Only accept values from list
     const exists = items.some((it) => it.value === inputValue);
     if (!exists) return;
+    retainedLabelRef.current = { value: inputValue as T, label: labels[inputValue] ?? '' };
     onSelectedValueChange(inputValue as T);
     setSearchValue(labels[inputValue] ?? '');
     handleOpenChange(false);
@@ -108,6 +118,9 @@ export function AutoCompleteSelect<T extends string>({
     if (open) return;
     const label = labels[selectedValue];
     if (!selectedValue || label !== undefined) {
+      if (selectedValue && label !== undefined) {
+        retainedLabelRef.current = { value: selectedValue, label };
+      }
       setSearchValue(label ?? '');
     }
   }, [labels, open, selectedValue]);
