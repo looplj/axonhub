@@ -318,21 +318,9 @@ func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(ctx context.C
 		validChannelIDs = append(validChannelIDs, chID)
 	}
 
-	channelNames := make(map[int]string)
-	if len(validChannelIDs) > 0 {
-		queriedChannels, err := r.client.Channel.Query().
-			Where(channel.IDIn(validChannelIDs...)).
-			Select(channel.FieldID, channel.FieldName).
-			All(ctx)
-		if err != nil {
-			log.Error(ctx, "failed to query channel names for performance stats",
-				log.Any("channelIDs", validChannelIDs),
-				log.Cause(err))
-		} else {
-			for _, ch := range queriedChannels {
-				channelNames[ch.ID] = ch.Name
-			}
-		}
+	channelNames, err := r.fetchChannelNames(ctx, validChannelIDs)
+	if err != nil {
+		return nil, err
 	}
 
 	response := make([]*ChannelPerformanceStat, 0)
