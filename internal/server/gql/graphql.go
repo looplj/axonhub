@@ -105,7 +105,7 @@ type GraphqlHandler struct {
 // error for an OOM kill. Raising it further needs a streaming Restore, not a
 // bigger constant.
 //
-// Restores that approach this cap also take longer than the default 30s
+// Restores that approach this cap may take longer than the default 30s
 // server.request_timeout, which /admin and therefore this endpoint run under;
 // raise AXONHUB_SERVER_REQUEST_TIMEOUT (or the config file value) before
 // uploading one.
