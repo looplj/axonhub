@@ -96,14 +96,20 @@ type GraphqlHandler struct {
 // MiB (2026-10-05: a 108 MiB production backup was rejected with "failed to
 // parse multipart form, request body too large").
 //
-// The transport spools the body to disk, but Restore still decodes the whole
-// backup into memory-backed structures, so this is a memory budget as much as
-// a transport guard: it has to leave headroom under the container limit the
-// deployment ships with (1 GiB in docker-compose and the default Helm values).
-// A cap near that limit would trade the clean "request body too large" error
-// for an OOM kill. Raising it further needs a streaming Restore, not a bigger
-// constant.
-const maxBackupUploadSize = 256 << 20 // 256 MiB
+// It bounds the input, not memory safety. Restore decodes the whole backup into
+// memory-backed structures and then writes it back, and the measured peak is
+// 6-7x the file size (decoding alone is already 3-3.7x, which the upload reader
+// does not remove). 128 MiB is the size that still keeps a restore inside the
+// 1 GiB container limit docker-compose and the default Helm values ship with;
+// a cap equal to that limit would only trade the clean "request body too large"
+// error for an OOM kill. Raising it further needs a streaming Restore, not a
+// bigger constant.
+//
+// Restores that approach this cap also take longer than the default 30s
+// server.request_timeout, which /admin and therefore this endpoint run under;
+// raise AXONHUB_SERVER_REQUEST_TIMEOUT (or the config file value) before
+// uploading one.
+const maxBackupUploadSize = 128 << 20 // 128 MiB
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv := handler.New(
