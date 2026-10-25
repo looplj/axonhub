@@ -175,10 +175,10 @@ func (svc *ChannelProbeService) computeAllChannelProbeStats(
 		channelIDFilter = fmt.Sprintf("AND se.channel_id IN (%s)", strings.Join(placeholders, ","))
 	}
 
+	// The bundled SQLite driver is far newer than 3.25, so window functions are
+	// available. ROW_NUMBER avoids the correlated MAX(id) scan that made these
+	// aggregates roughly three times slower on SQLite.
 	queryMode := qb.ThroughputModeRowNumber
-	if !useDollarPlaceholders {
-		queryMode = qb.ThroughputModeMaxID
-	}
 
 	query := qb.BuildProbeStatsQuery(useDollarPlaceholders, channelIDFilter, queryMode)
 

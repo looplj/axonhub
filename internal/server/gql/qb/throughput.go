@@ -113,7 +113,7 @@ WITH successful_execs AS (
         metrics_latency_ms,
         metrics_first_token_latency_ms,
         stream,
-        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
+        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC, id DESC) as rn
     FROM request_executions
     WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= ` + placeholder + `
 )

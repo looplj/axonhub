@@ -616,3 +616,9 @@ func TestAllowedQueryConfigs(t *testing.T) {
 	assert.Contains(t, modelConfig.JoinClause, "models m ON", "should join models table")
 	assert.Contains(t, modelConfig.GroupBy, "model_id", "should group by model_id")
 }
+
+func TestBuildThroughputQuery_RowNumberTieBreaker(t *testing.T) {
+	query := BuildThroughputQuery(false, ThroughputQueryByChannel, 20, ThroughputModeRowNumber)
+	assert.Contains(t, query, "ORDER BY created_at DESC, id DESC",
+		"ties on created_at must resolve the same way as the MAX(id) fallback")
+}

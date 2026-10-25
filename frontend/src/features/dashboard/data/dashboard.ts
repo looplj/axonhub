@@ -3,6 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { useSelectedProjectId } from '@/stores/projectStore';
 
+// Dashboard queries poll on these intervals. Keep staleTime in step with the
+// interval so remounting a collapsed section (or returning focus to the tab)
+// does not re-run the same expensive aggregates before their data is due.
+const DASHBOARD_STATS_REFETCH_MS = 30_000;
+const DASHBOARD_AGGREGATE_REFETCH_MS = 60_000;
+const DASHBOARD_SLOW_REFETCH_MS = 5 * 60_000;
+
 // Schema definitions
 export const requestStatsSchema = z.object({
   requestsToday: z.number(),
@@ -351,15 +358,13 @@ export function useUsageStatsByUser(timeWindow?: string) {
     queryKey: ['usageStatsByUser', timeWindow, selectedProjectId],
     queryFn: async () => {
       const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const data = await graphqlRequest<{ usageStatsByUser: UsageStatsByUser[] }>(
-        USAGE_STATS_BY_USER_QUERY,
-        { timeWindow },
-        headers
-      );
+      const data = await graphqlRequest<{ usageStatsByUser: UsageStatsByUser[] }>(USAGE_STATS_BY_USER_QUERY, { timeWindow }, headers);
       return data.usageStatsByUser.map((item) => usageStatsByUserSchema.parse(item));
     },
     enabled: !!selectedProjectId,
-    refetchInterval: 60000,
+    refetchInterval: DASHBOARD_AGGREGATE_REFETCH_MS,
+    staleTime: DASHBOARD_AGGREGATE_REFETCH_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -420,7 +425,9 @@ export function useDashboardStats() {
       const data = await graphqlRequest<{ dashboardOverview: DashboardStats }>(DASHBOARD_STATS_QUERY);
       return dashboardStatsSchema.parse(data.dashboardOverview);
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: DASHBOARD_STATS_REFETCH_MS,
+    staleTime: DASHBOARD_STATS_REFETCH_MS,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -428,13 +435,12 @@ export function useRequestsByChannel(timeWindow?: string) {
   return useQuery({
     queryKey: ['requestStatsByChannel', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ requestStatsByChannel: RequestsByChannel[] }>(
-        REQUESTS_BY_CHANNEL_QUERY,
-        { timeWindow }
-      );
+      const data = await graphqlRequest<{ requestStatsByChannel: RequestsByChannel[] }>(REQUESTS_BY_CHANNEL_QUERY, { timeWindow });
       return data.requestStatsByChannel.map((item) => requestsByChannelSchema.parse(item));
     },
-    refetchInterval: 60000,
+    refetchInterval: DASHBOARD_AGGREGATE_REFETCH_MS,
+    staleTime: DASHBOARD_AGGREGATE_REFETCH_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -443,13 +449,12 @@ export function useRequestsByModel(timeWindow?: string) {
   return useQuery({
     queryKey: ['requestStatsByModel', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ requestStatsByModel: RequestsByModel[] }>(
-        REQUESTS_BY_MODEL_QUERY,
-        { timeWindow }
-      );
+      const data = await graphqlRequest<{ requestStatsByModel: RequestsByModel[] }>(REQUESTS_BY_MODEL_QUERY, { timeWindow });
       return data.requestStatsByModel.map((item) => requestsByModelSchema.parse(item));
     },
-    refetchInterval: 60000,
+    refetchInterval: DASHBOARD_AGGREGATE_REFETCH_MS,
+    staleTime: DASHBOARD_AGGREGATE_REFETCH_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -458,13 +463,12 @@ export function useRequestsByAPIKey(timeWindow?: string) {
   return useQuery({
     queryKey: ['requestStatsByAPIKey', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ requestStatsByAPIKey: RequestsByAPIKey[] }>(
-        REQUESTS_BY_API_KEY_QUERY,
-        { timeWindow }
-      );
+      const data = await graphqlRequest<{ requestStatsByAPIKey: RequestsByAPIKey[] }>(REQUESTS_BY_API_KEY_QUERY, { timeWindow });
       return data.requestStatsByAPIKey.map((item) => requestsByAPIKeySchema.parse(item));
     },
-    refetchInterval: 60000,
+    refetchInterval: DASHBOARD_AGGREGATE_REFETCH_MS,
+    staleTime: DASHBOARD_AGGREGATE_REFETCH_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -473,13 +477,12 @@ export function useTokensByAPIKey(timeWindow?: string) {
   return useQuery({
     queryKey: ['tokenStatsByAPIKey', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ tokenStatsByAPIKey: TokensByAPIKey[] }>(
-        TOKENS_BY_API_KEY_QUERY,
-        { timeWindow }
-      );
+      const data = await graphqlRequest<{ tokenStatsByAPIKey: TokensByAPIKey[] }>(TOKENS_BY_API_KEY_QUERY, { timeWindow });
       return data.tokenStatsByAPIKey.map((item) => tokensByAPIKeySchema.parse(item));
     },
-    refetchInterval: 60000,
+    refetchInterval: DASHBOARD_AGGREGATE_REFETCH_MS,
+    staleTime: DASHBOARD_AGGREGATE_REFETCH_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -488,13 +491,12 @@ export function useTokensByChannel(timeWindow?: string) {
   return useQuery({
     queryKey: ['tokenStatsByChannel', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ tokenStatsByChannel: TokensByChannel[] }>(
-        TOKENS_BY_CHANNEL_QUERY,
-        { timeWindow }
-      );
+      const data = await graphqlRequest<{ tokenStatsByChannel: TokensByChannel[] }>(TOKENS_BY_CHANNEL_QUERY, { timeWindow });
       return data.tokenStatsByChannel.map((item) => tokensByChannelSchema.parse(item));
     },
-    refetchInterval: 60000,
+    refetchInterval: DASHBOARD_AGGREGATE_REFETCH_MS,
+    staleTime: DASHBOARD_AGGREGATE_REFETCH_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -503,13 +505,12 @@ export function useTokensByModel(timeWindow?: string) {
   return useQuery({
     queryKey: ['tokenStatsByModel', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ tokenStatsByModel: TokensByModel[] }>(
-        TOKENS_BY_MODEL_QUERY,
-        { timeWindow }
-      );
+      const data = await graphqlRequest<{ tokenStatsByModel: TokensByModel[] }>(TOKENS_BY_MODEL_QUERY, { timeWindow });
       return data.tokenStatsByModel.map((item) => tokensByModelSchema.parse(item));
     },
-    refetchInterval: 60000,
+    refetchInterval: DASHBOARD_AGGREGATE_REFETCH_MS,
+    staleTime: DASHBOARD_AGGREGATE_REFETCH_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -518,13 +519,12 @@ export function useCostByChannel(timeWindow?: string) {
   return useQuery({
     queryKey: ['costStatsByChannel', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ costStatsByChannel: CostByChannel[] }>(
-        COST_BY_CHANNEL_QUERY,
-        { timeWindow }
-      );
+      const data = await graphqlRequest<{ costStatsByChannel: CostByChannel[] }>(COST_BY_CHANNEL_QUERY, { timeWindow });
       return data.costStatsByChannel.map((item) => costByChannelSchema.parse(item));
     },
-    refetchInterval: 60000,
+    refetchInterval: DASHBOARD_AGGREGATE_REFETCH_MS,
+    staleTime: DASHBOARD_AGGREGATE_REFETCH_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -533,13 +533,12 @@ export function useCostByModel(timeWindow?: string) {
   return useQuery({
     queryKey: ['costStatsByModel', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ costStatsByModel: CostByModel[] }>(
-        COST_BY_MODEL_QUERY,
-        { timeWindow }
-      );
+      const data = await graphqlRequest<{ costStatsByModel: CostByModel[] }>(COST_BY_MODEL_QUERY, { timeWindow });
       return data.costStatsByModel.map((item) => costByModelSchema.parse(item));
     },
-    refetchInterval: 60000,
+    refetchInterval: DASHBOARD_AGGREGATE_REFETCH_MS,
+    staleTime: DASHBOARD_AGGREGATE_REFETCH_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -548,13 +547,12 @@ export function useCostByAPIKey(timeWindow?: string) {
   return useQuery({
     queryKey: ['costStatsByAPIKey', timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ costStatsByAPIKey: CostByAPIKey[] }>(
-        COST_BY_API_KEY_QUERY,
-        { timeWindow }
-      );
+      const data = await graphqlRequest<{ costStatsByAPIKey: CostByAPIKey[] }>(COST_BY_API_KEY_QUERY, { timeWindow });
       return data.costStatsByAPIKey.map((item) => costByAPIKeySchema.parse(item));
     },
-    refetchInterval: 60000,
+    refetchInterval: DASHBOARD_AGGREGATE_REFETCH_MS,
+    staleTime: DASHBOARD_AGGREGATE_REFETCH_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -566,7 +564,9 @@ export function useDailyRequestStats() {
       const data = await graphqlRequest<{ dailyRequestStats: DailyRequestStats[] }>(DAILY_REQUEST_STATS_QUERY);
       return data.dailyRequestStats.map((item) => dailyRequestStatsSchema.parse(item));
     },
-    refetchInterval: 300000, // Refetch every 5 minutes
+    refetchInterval: DASHBOARD_SLOW_REFETCH_MS,
+    staleTime: DASHBOARD_SLOW_REFETCH_MS,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -577,7 +577,9 @@ export function useHourlyRequestStats(date?: string) {
       const data = await graphqlRequest<{ hourlyRequestStats: HourlyRequestStats[] }>(HOURLY_REQUEST_STATS_QUERY, { date });
       return data.hourlyRequestStats.map((item) => hourlyRequestStatsSchema.parse(item));
     },
-    refetchInterval: 300000,
+    refetchInterval: DASHBOARD_SLOW_REFETCH_MS,
+    staleTime: DASHBOARD_SLOW_REFETCH_MS,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -588,7 +590,9 @@ export function useTopProjects() {
       const data = await graphqlRequest<{ topRequestsProjects: TopProjects[] }>(TOP_PROJECTS_QUERY);
       return data.topRequestsProjects.map((item) => topProjectsSchema.parse(item));
     },
-    refetchInterval: 300000,
+    refetchInterval: DASHBOARD_SLOW_REFETCH_MS,
+    staleTime: DASHBOARD_SLOW_REFETCH_MS,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -599,7 +603,9 @@ export function useTokenStats() {
       const data = await graphqlRequest<{ tokenStats: TokenStats }>(TOKEN_STATS_AGGR_QUERY);
       return tokenStatsSchema.parse(data.tokenStats);
     },
-    refetchInterval: 300000, // Refetch every 5 minutes
+    refetchInterval: DASHBOARD_SLOW_REFETCH_MS,
+    staleTime: DASHBOARD_SLOW_REFETCH_MS,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -607,13 +613,15 @@ export function useChannelSuccessRates(limit?: number, timeWindow?: string) {
   return useQuery({
     queryKey: ['channelSuccessRates', limit, timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ channelSuccessRates: ChannelSuccessRate[] }>(
-        CHANNEL_SUCCESS_RATES_QUERY,
-        { ...(timeWindow != null && { timeWindow }), ...(limit != null && { limit }) }
-      );
+      const data = await graphqlRequest<{ channelSuccessRates: ChannelSuccessRate[] }>(CHANNEL_SUCCESS_RATES_QUERY, {
+        ...(timeWindow != null && { timeWindow }),
+        ...(limit != null && { limit }),
+      });
       return data.channelSuccessRates.map((item) => channelSuccessRateSchema.parse(item));
     },
-    refetchInterval: 300000,
+    refetchInterval: DASHBOARD_SLOW_REFETCH_MS,
+    staleTime: DASHBOARD_SLOW_REFETCH_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -625,7 +633,9 @@ export function useModelPerformanceStats() {
       const data = await graphqlRequest<{ modelPerformanceStats: ModelPerformanceStat[] }>(MODEL_PERFORMANCE_STATS_QUERY);
       return data.modelPerformanceStats.map((item) => modelPerformanceStatSchema.parse(item));
     },
-    refetchInterval: 300000, // Refetch every 5 minutes
+    refetchInterval: DASHBOARD_SLOW_REFETCH_MS,
+    staleTime: DASHBOARD_SLOW_REFETCH_MS,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -636,6 +646,8 @@ export function useChannelPerformanceStats() {
       const data = await graphqlRequest<{ channelPerformanceStats: ChannelPerformanceStat[] }>(CHANNEL_PERFORMANCE_STATS_QUERY);
       return data.channelPerformanceStats.map((item) => channelPerformanceStatSchema.parse(item));
     },
-    refetchInterval: 300000, // Refetch every 5 minutes
+    refetchInterval: DASHBOARD_SLOW_REFETCH_MS,
+    staleTime: DASHBOARD_SLOW_REFETCH_MS,
+    refetchOnWindowFocus: false,
   });
 }
