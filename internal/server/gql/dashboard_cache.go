@@ -3,12 +3,14 @@ package gql
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"sync"
 	"time"
 
 	"golang.org/x/sync/singleflight"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -104,6 +106,14 @@ func computeDashboardCache[T any](
 ) (value any, err error) {
 	defer func() {
 		if rec := recover(); rec != nil {
+			// compute runs in the singleflight goroutine, outside the request's
+			// recovery handlers, so log the panic before surfacing it as an
+			// error for every waiter.
+			log.Error(ctx, "dashboard cache computation panicked",
+				log.String("cache_key", key),
+				log.Any("panic", rec),
+				log.String("stack", string(debug.Stack())),
+			)
 			value = nil
 			err = fmt.Errorf("dashboard cache computation panicked: %v", rec)
 		}

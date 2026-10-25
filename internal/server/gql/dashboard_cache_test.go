@@ -172,6 +172,8 @@ func TestCachedDashboardQuerySharesComputePanicWithWaiters(t *testing.T) {
 		calls     int
 		startedCh = make(chan struct{})
 		started   bool
+		joinedCh  = make(chan struct{}, 1)
+		joined    bool
 	)
 	compute := func(context.Context) (int, error) {
 		mu.Lock()
@@ -181,14 +183,35 @@ func TestCachedDashboardQuerySharesComputePanicWithWaiters(t *testing.T) {
 			started = true
 			close(startedCh)
 		}
+		secondFlight := !firstCall && !joined
+		if secondFlight {
+			joined = true
+		}
 		mu.Unlock()
 
 		if firstCall {
 			// Let both callers join the same flight before it panics, so the
 			// assertion is about fan-out to joined waiters, not about a
-			// recompute after the flight finished.
-			<-time.After(25 * time.Millisecond)
+			// recompute after the flight finished. singleflight shares the
+			// in-flight call, so a genuinely joined caller never re-enters
+			// compute; joinedCh only signals when the second caller missed
+			// the flight and started a new one. When the join succeeds the
+			// channel stays silent and the timeout below releases the panic
+			// to every waiter on the flight.
+			select {
+			case <-joinedCh:
+			case <-time.After(5 * time.Second):
+			}
 			panic("boom")
+		}
+		if secondFlight {
+			// Tell the first compute the join was missed so it releases its
+			// panic immediately instead of waiting out the timeout; guarded
+			// so later flights cannot double-signal.
+			select {
+			case joinedCh <- struct{}{}:
+			default:
+			}
 		}
 		return 42, nil
 	}
