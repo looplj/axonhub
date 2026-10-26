@@ -55,6 +55,13 @@ func TestAnalyticsFilterUsesTimestampPrecision(t *testing.T) {
 		require.NoError(t, createErr)
 	}
 
+	// The metadata exposes the earliest usage instant, not a calendar date, so
+	// clients in another timezone cannot shift the window.
+	metadata, err := resolver.AnalyticsMetadata(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, metadata.EarliestTime)
+	require.True(t, metadata.EarliestTime.Equal(day.Add(10*time.Hour)), "earliest time = %s", metadata.EarliestTime)
+
 	requestCount := func(filter *AnalyticsFilter) int {
 		overview, err := resolver.AnalyticsOverview(ctx, filter)
 		require.NoError(t, err)

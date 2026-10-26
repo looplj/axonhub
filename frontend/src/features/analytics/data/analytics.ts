@@ -57,7 +57,7 @@ export const analyticsDimensionStatSchema = z.object({
 export type AnalyticsDimensionStat = z.infer<typeof analyticsDimensionStatSchema>;
 
 export const analyticsMetadataSchema = z.object({
-  earliestDate: z.string().nullable().optional(),
+  earliestTime: z.string().nullable().optional(),
 });
 
 export type AnalyticsMetadata = z.infer<typeof analyticsMetadataSchema>;
@@ -67,7 +67,7 @@ export type AnalyticsMetadata = z.infer<typeof analyticsMetadataSchema>;
 const ANALYTICS_METADATA_QUERY = `
   query GetAnalyticsMetadata {
     analyticsMetadata {
-      earliestDate
+      earliestTime
     }
   }
 `;

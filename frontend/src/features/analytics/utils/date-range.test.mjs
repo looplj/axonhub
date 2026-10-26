@@ -27,7 +27,7 @@ const analyticsSource = transpile(read('features/analytics/utils/date-range.ts')
   ''
 );
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(sharedSource + analyticsSource).toString('base64')}`;
-const { dateTimeRangeToTimestamps, parseLocalDate, startOfLocalDay, timestampsToDateTimeRange } = await import(moduleUrl);
+const { dateTimeRangeToTimestamps, startOfLocalDay, timestampsToDateTimeRange } = await import(moduleUrl);
 
 test('timestamps round-trip through the picker value', () => {
   const start = new Date(2026, 9, 20, 8, 15, 30);
@@ -66,10 +66,38 @@ test('an open range only converts the bounds that are set', () => {
   assert.equal(endTime, null);
 });
 
-test('backend dates and quick ranges resolve to local day boundaries', () => {
-  assert.deepEqual(parseLocalDate('2026-03-10'), new Date(2026, 2, 10));
-  assert.equal(parseLocalDate('not-a-date'), undefined);
-
+test('quick ranges resolve to local day boundaries', () => {
   const now = new Date(2026, 9, 26, 13, 47, 28);
+
   assert.deepEqual(startOfLocalDay(now), new Date(2026, 9, 26, 0, 0, 0, 0));
+});
+
+// Regression: an open-ended filter used to borrow the other bound's day, so
+// merely re-confirming it in the picker wrote a fabricated, single-day range.
+test('a start-only filter does not gain an end bound when restored', () => {
+  const startOnly = new Date(2026, 9, 20, 10, 0, 0);
+
+  const range = timestampsToDateTimeRange(startOnly.toISOString(), null);
+
+  assert.deepEqual(range.from, new Date(2026, 9, 20));
+  assert.equal(range.to, undefined);
+
+  const { startTime, endTime } = dateTimeRangeToTimestamps(range);
+
+  assert.equal(startTime, startOnly.toISOString());
+  assert.equal(endTime, null);
+});
+
+test('an end-only filter does not gain a start bound when restored', () => {
+  const endOnly = new Date(2026, 9, 20, 10, 0, 0);
+
+  const range = timestampsToDateTimeRange(null, endOnly.toISOString());
+
+  assert.equal(range.from, undefined);
+  assert.deepEqual(range.to, new Date(2026, 9, 20));
+
+  const { startTime, endTime } = dateTimeRangeToTimestamps(range);
+
+  assert.equal(startTime, null);
+  assert.notEqual(endTime, null);
 });

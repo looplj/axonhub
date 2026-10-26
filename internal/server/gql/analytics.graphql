@@ -25,8 +25,8 @@ input AnalyticsFilter {
 Metadata for the analytics page (independent of filters)
 """
 type AnalyticsMetadata {
-  "Earliest usage log date (YYYY-MM-DD), null if no data"
-  earliestDate: String
+  "Timestamp of the earliest usage log, null if no data"
+  earliestTime: Time
 }
 
 """

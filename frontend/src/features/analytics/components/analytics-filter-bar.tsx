@@ -13,12 +13,7 @@ import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { useProjects } from '@/features/projects/data/projects';
 import { useUsers } from '@/features/users/data/users';
 import { usePermissions } from '@/hooks/usePermissions';
-import {
-  dateTimeRangeToTimestamps,
-  parseLocalDate,
-  startOfLocalDay,
-  timestampsToDateTimeRange,
-} from '../utils/date-range';
+import { dateTimeRangeToTimestamps, startOfLocalDay, timestampsToDateTimeRange } from '../utils/date-range';
 import { AnalyticsFacetedFilter } from './analytics-faceted-filter';
 
 // Formats the selected range with second precision for the trigger label.
@@ -38,10 +33,10 @@ function formatDateTimeLabel(range: DateTimeRangeValue | undefined, placeholder:
 }
 
 interface AnalyticsFilterBarProps {
-  earliestDate?: string | null;
+  earliestTime?: string | null;
 }
 
-export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
+export function AnalyticsFilterBar({ earliestTime }: AnalyticsFilterBarProps) {
   const { t } = useTranslation();
   const filter = useAnalyticsFilterStore((state) => state.filter);
   const [apiKeySearch, setApiKeySearch] = useState('');
@@ -171,10 +166,11 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
   }, [applyRange]);
 
   const setAllTime = useCallback(() => {
-    if (!earliestDate) return;
+    if (!earliestTime) return;
 
-    applyRange(parseLocalDate(earliestDate) ?? null, new Date());
-  }, [earliestDate, applyRange]);
+    // The API returns an instant, so no client-side timezone reinterpretation.
+    applyRange(new Date(earliestTime), new Date());
+  }, [earliestTime, applyRange]);
 
   const hasFilters =
     filter.startTime || filter.endTime || filter.projectIDs || filter.channelIDs || filter.modelIDs || filter.apiKeyIDs || filter.userIDs;

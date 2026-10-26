@@ -107,8 +107,8 @@ type AnalyticsFilter struct {
 
 // Metadata for the analytics page (independent of filters)
 type AnalyticsMetadata struct {
-	// Earliest usage log date (YYYY-MM-DD), null if no data
-	EarliestDate *string `json:"earliestDate,omitempty"`
+	// Timestamp of the earliest usage log, null if no data
+	EarliestTime *time.Time `json:"earliestTime,omitempty"`
 }
 
 // Overview statistics for the analytics page

@@ -22,8 +22,6 @@ import (
 
 // AnalyticsMetadata is the resolver for the analyticsMetadata field.
 func (r *queryResolver) AnalyticsMetadata(ctx context.Context) (*AnalyticsMetadata, error) {
-	loc := r.systemService.TimeLocation(ctx)
-
 	// Find earliest created_at
 	first, err := r.client.UsageLog.Query().Order(ent.Asc(usagelog.FieldCreatedAt)).First(ctx)
 	if err != nil {
@@ -34,8 +32,9 @@ func (r *queryResolver) AnalyticsMetadata(ctx context.Context) (*AnalyticsMetada
 		return nil, err
 	}
 
-	d := first.CreatedAt.In(loc).Format("2006-01-02")
-	return &AnalyticsMetadata{EarliestDate: &d}, nil
+	// Return the instant itself so clients are not forced to reinterpret a
+	// calendar date in their own timezone.
+	return &AnalyticsMetadata{EarliestTime: &first.CreatedAt}, nil
 }
 
 // AnalyticsOverview is the resolver for the analyticsOverview field.

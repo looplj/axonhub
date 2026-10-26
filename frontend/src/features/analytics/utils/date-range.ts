@@ -36,12 +36,11 @@ export function timestampsToDateTimeRange(startTime?: string | null, endTime?: s
 
   if (!start && !end) return undefined;
 
-  const from = start ?? end;
-  const to = end ?? start;
-
+  // Keep each side independent: filling a missing bound with the other one
+  // would turn an open-ended filter into a single-day range on the next confirm.
   return {
-    from: from ? startOfLocalDay(from) : undefined,
-    to: to ? startOfLocalDay(to) : undefined,
+    from: start ? startOfLocalDay(start) : undefined,
+    to: end ? startOfLocalDay(end) : undefined,
     startTime: start ? toTimeValue(start) : DEFAULT_START_TIME,
     endTime: end ? toTimeValue(end) : DEFAULT_END_TIME,
   };
@@ -59,12 +58,4 @@ export function dateTimeRangeToTimestamps(range?: DateTimeRangeValue): {
   const { createdAtGTE, createdAtLTE } = buildDateRangeWhereClause(range);
 
   return { startTime: createdAtGTE ?? null, endTime: createdAtLTE ?? null };
-}
-
-/** Parses a `YYYY-MM-DD` date (as returned by the backend metadata) as a local day. */
-export function parseLocalDate(value: string): Date | undefined {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
-  if (!match) return undefined;
-
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
