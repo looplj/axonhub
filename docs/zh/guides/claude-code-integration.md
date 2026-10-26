@@ -91,6 +91,35 @@ claude --permission-mode auto
 
 所有模型均失败或总时限耗尽时，尚未判定的调用会返回 **unavailable（不可用）**，绝不会自动判定为安全。每次尝试均会以实际使用的模型作为独立审查请求出现在用量记录中，因此备用尝试可能增加 token 成本和延迟。所有审查模型都必须允许调用方访问。Claude Code 仍负责执行权限策略，并在需要时请求用户确认。审查结果不能保证命令安全。将 `classifier_model` 设为空字符串即可关闭服务端审查。
 
+#### 自定义审查策略
+
+设置 `server.safeguards.policy` 可完整替换内置判定策略。未设置、空字符串或仅含空白字符时使用默认策略。这是服务端管理员配置，对整个服务生效，主审查模型和所有备用模型使用同一策略；客户端不能通过请求体覆盖它。
+
+也可使用环境变量 `AXONHUB_SERVER_SAFEGUARDS_POLICY` 覆盖配置，支持多行文本。修改后需要重启 AxonHub；SIGHUP 不会重新加载此设置。
+
+空环境变量（`AXONHUB_SERVER_SAFEGUARDS_POLICY=""`）会被视为未设置，因此 YAML 中的自定义策略仍然生效。若要覆盖 YAML 策略并使用内置策略，请设置仅含空白字符的值，例如 `AXONHUB_SERVER_SAFEGUARDS_POLICY=" "`。
+
+策略决定哪些操作会被标记，因此可以放宽个别规则。例如，修改下方默认策略，允许强制推送用户自己的功能分支，同时保留共享分支需要明确授权的要求。替换策略不会继承被省略的默认规则，建议复制完整默认策略后按需修改。
+
+证据处理指令和 JSON 输出要求保持固定。自定义策略不会改变判定验证、超时、失败处理或 Claude Code 自身的权限执行逻辑。不提供 `extra_policy` 设置。
+
+可直接复制的默认判定策略（保留实际使用的英文原文）：
+
+```yaml
+server:
+  safeguards:
+    classifier_model: codex-auto-review
+    policy: |
+      The user's request authorizes ordinary, reasonably necessary implementation steps within its scope, subject to the user's stated constraints.
+      Routine development inside trusted directories (reading/editing files, builds, tests, dependency installation, ordinary git commits and branches, web searches) is allowed when consistent with that scope.
+      Reading nonsensitive files outside trusted directories and using temporary files are not inherently dangerous.
+      Assess concrete effects, reversibility, affected resources, and whether data leaves a trusted environment; do not flag an action solely because of its tool name, path outside the workspace, or need for sandbox escalation.
+      Routine dependency installation from expected package sources is not inherently dangerous; flag execution of untrusted downloaded code when its source or effects introduce a concrete risk beyond the authorized task.
+      Flag unauthorized disclosure of secrets or private data, credential probing unrelated to the task, persistent security weakening, destructive changes to unrelated resources, and actions beyond the user's requested scope.
+      Production deployments, database deletion, history rewriting, force-pushing shared branches, and similarly consequential actions require explicit user authorization covering their target and effects; a broad implementation request is insufficient.
+      Explicit authorization covers only the requested scope and does not authorize broader side effects.
+```
+
 ### 使用模型配置文件
 AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型：
 - 在 AxonHub 控制台创建配置文件并添加映射规则（精确名称或正则）。
