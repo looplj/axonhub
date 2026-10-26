@@ -363,6 +363,11 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			// Preserve disabled thinking type so outbound transformers can disable reasoning.
 			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "disabled"
 			chatReq.ReasoningEffort = "none"
+		case "between_tools":
+			// The only way to turn thinking off on models that reject "disabled": keep the
+			// type for Anthropic outbounds and expose "none" to the other protocols.
+			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "between_tools"
+			chatReq.ReasoningEffort = "none"
 		case "adaptive":
 			// Adaptive thinking doesn't require a budget; preserve the type marker via TransformerMetadata.
 			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "adaptive"
@@ -382,7 +387,11 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 		// The client sent an explicit effort level: pass it through verbatim (including
 		// "max") so converted protocols see the exact requested level. The original
 		// value is preserved in TransformerMetadata for native round-trips.
-		chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
+		// With between_tools the effort only tunes the Anthropic request: other
+		// protocols keep seeing "none".
+		if anthropicReq.Thinking == nil || anthropicReq.Thinking.Type != "between_tools" {
+			chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
+		}
 	}
 
 	return chatReq, nil

@@ -174,7 +174,7 @@ const TransformerMetadataKeyCacheControl = "anthropic_cache_control"
 const TransformerMetadataKeyAnthropicResponseContent = "anthropic_response_content"
 
 type Thinking struct {
-	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive"`
+	Type         string `json:"type"          validate:"required,oneof=enabled disabled adaptive between_tools"`
 	BudgetTokens int64  `json:"budget_tokens,omitempty" validate:"required_if=Type enabled"`
 	// Display is an optional display name for the thinking, enum: summarized, omitted.
 	Display string `json:"display,omitempty"`

@@ -162,6 +162,8 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		req.Thinking = &Thinking{Type: "disabled"}
 	case "adaptive":
 		req.Thinking = &Thinking{Type: "adaptive"}
+	case "between_tools":
+		req.Thinking = &Thinking{Type: "between_tools"}
 	case "enabled":
 		// Native budget client: round-trip budget_tokens verbatim. buildThinking
 		// prefers ReasoningBudget, so no level-to-budget conversion happens here.
