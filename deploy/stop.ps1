@@ -54,9 +54,11 @@ function Stop-ByPid(){
     Remove-Item -Force $PidFile -ErrorAction SilentlyContinue
     return $false
   }
-  $proc = Get-Process -Id $processId -ErrorAction SilentlyContinue
+  # A live PID alone does not prove it is our process: Windows recycles PIDs, so a PID
+  # left over from a previous run (typically after a reboot) can belong to anything.
+  $proc = Get-Process -Id $processId -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -eq 'axonhub' }
   if(-not $proc){
-    Write-Warn "Process with PID $processId is not running"
+    Write-Warn "Process with PID $processId is not running AxonHub (PID may have been reused)"
     Remove-Item -Force $PidFile -ErrorAction SilentlyContinue
     return $false
   }
