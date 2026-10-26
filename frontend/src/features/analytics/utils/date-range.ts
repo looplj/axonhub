@@ -6,6 +6,14 @@ import {
   type TimeValue,
 } from '@/utils/date-range';
 
+interface RangeBounds {
+  range: DateTimeRangeValue | undefined;
+  /** Sub-second component of the stored start, kept so the picker round trip is lossless. */
+  startMilliseconds?: number;
+  /** Sub-second component of the stored end, kept so the picker round trip is lossless. */
+  endMilliseconds?: number;
+}
+
 function toTimeValue(date: Date): TimeValue {
   const pad = (value: number) => String(value).padStart(2, '0');
   return { hh: pad(date.getHours()), mm: pad(date.getMinutes()), ss: pad(date.getSeconds()) };
@@ -16,6 +24,10 @@ function parseTimestamp(value?: string | null): Date | undefined {
   const date = new Date(value);
 
   return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function sameTimeValue(left: TimeValue, right: TimeValue): boolean {
+  return left.hh === right.hh && left.mm === right.mm && left.ss === right.ss;
 }
 
 /** Local midnight of the given day, used by the quick range presets. */
@@ -29,20 +41,26 @@ export function startOfLocalDay(date: Date): Date {
 /**
  * Converts the filter timestamps into the value shape used by the shared
  * date range picker, so the selected range can be edited with second precision.
+ * The sub-second component is returned alongside because the picker only edits
+ * whole seconds; dropping it would silently widen the stored range on confirm.
  */
-export function timestampsToDateTimeRange(startTime?: string | null, endTime?: string | null): DateTimeRangeValue | undefined {
+export function timestampsToDateTimeRange(startTime?: string | null, endTime?: string | null): RangeBounds {
   const start = parseTimestamp(startTime);
   const end = parseTimestamp(endTime);
 
-  if (!start && !end) return undefined;
+  if (!start && !end) return { range: undefined };
 
   // Keep each side independent: filling a missing bound with the other one
   // would turn an open-ended filter into a single-day range on the next confirm.
   return {
-    from: start ? startOfLocalDay(start) : undefined,
-    to: end ? startOfLocalDay(end) : undefined,
-    startTime: start ? toTimeValue(start) : DEFAULT_START_TIME,
-    endTime: end ? toTimeValue(end) : DEFAULT_END_TIME,
+    range: {
+      from: start ? startOfLocalDay(start) : undefined,
+      to: end ? startOfLocalDay(end) : undefined,
+      startTime: start ? toTimeValue(start) : DEFAULT_START_TIME,
+      endTime: end ? toTimeValue(end) : DEFAULT_END_TIME,
+    },
+    startMilliseconds: start?.getMilliseconds(),
+    endMilliseconds: end?.getMilliseconds(),
   };
 }
 
@@ -50,12 +68,51 @@ export function timestampsToDateTimeRange(startTime?: string | null, endTime?: s
  * Converts a picked date range into RFC3339 timestamps for the API.
  * The start is inclusive at the first millisecond of the selected second and
  * the end is inclusive at its last millisecond.
+ *
+ * When the picked range still matches the stored one, the stored sub-second
+ * components are reused so confirming an untouched range is a no-op. A side
+ * whose time was edited falls back to the `.000`/`.999` boundaries.
  */
-export function dateTimeRangeToTimestamps(range?: DateTimeRangeValue): {
+export function dateTimeRangeToTimestamps(
+  range: DateTimeRangeValue | undefined,
+  previous?: RangeBounds
+): {
   startTime: string | null;
   endTime: string | null;
 } {
   const { createdAtGTE, createdAtLTE } = buildDateRangeWhereClause(range);
 
-  return { startTime: createdAtGTE ?? null, endTime: createdAtLTE ?? null };
+  const previousRange = previous?.range;
+
+  // A side counts as untouched when its day and its whole-second time still
+  // match; only then is its stored sub-second component carried over.
+  const isUnchanged = (
+    previousDay: Date | undefined,
+    day: Date | undefined,
+    previousTime: TimeValue | undefined,
+    time: TimeValue | undefined
+  ): boolean => !!previousDay && !!day && !!previousTime && !!time && previousDay.getTime() === day.getTime() && sameTimeValue(previousTime, time);
+
+  const startMilliseconds = isUnchanged(previousRange?.from, range?.from, previousRange?.startTime, range?.startTime)
+    ? previous?.startMilliseconds
+    : undefined;
+
+  const endMilliseconds = isUnchanged(previousRange?.to, range?.to, previousRange?.endTime, range?.endTime)
+    ? previous?.endMilliseconds
+    : undefined;
+
+  return {
+    startTime: createdAtGTE ? withMilliseconds(createdAtGTE, startMilliseconds) : null,
+    endTime: createdAtLTE ? withMilliseconds(createdAtLTE, endMilliseconds) : null,
+  };
+}
+
+/** Replaces the millisecond component of an ISO timestamp when one is known. */
+function withMilliseconds(isoTimestamp: string, milliseconds: number | undefined): string {
+  if (milliseconds === undefined) return isoTimestamp;
+
+  const date = new Date(isoTimestamp);
+  date.setMilliseconds(milliseconds);
+
+  return date.toISOString();
 }

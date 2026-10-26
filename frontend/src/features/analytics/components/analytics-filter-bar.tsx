@@ -113,7 +113,7 @@ export function AnalyticsFilterBar({ earliestTime }: AnalyticsFilterBarProps) {
     [projectsData]
   );
 
-  const dateRange = useMemo(
+  const bounds = useMemo(
     () => timestampsToDateTimeRange(filter.startTime, filter.endTime),
     [filter.startTime, filter.endTime]
   );
@@ -128,7 +128,8 @@ export function AnalyticsFilterBar({ earliestTime }: AnalyticsFilterBarProps) {
 
   const handleRangeChange = useCallback(
     (range: DateTimeRangeValue | undefined) => {
-      const { startTime, endTime } = dateTimeRangeToTimestamps(range);
+      // Pass the stored bounds so an untouched range keeps its milliseconds.
+      const { startTime, endTime } = dateTimeRangeToTimestamps(range, bounds);
 
       if (startTime && endTime && new Date(startTime) > new Date(endTime)) {
         toast.error(t('analytics.filter.startAfterEndError'));
@@ -139,7 +140,7 @@ export function AnalyticsFilterBar({ earliestTime }: AnalyticsFilterBarProps) {
       setStartTime(startTime);
       setEndTime(endTime);
     },
-    [setStartTime, setEndTime, t]
+    [bounds, setStartTime, setEndTime, t]
   );
 
   const setQuickRange = useCallback(
@@ -186,7 +187,7 @@ export function AnalyticsFilterBar({ earliestTime }: AnalyticsFilterBarProps) {
 
         {/* Date Range — precise to the second */}
         <DateRangePicker
-          value={dateRange}
+          value={bounds.range}
           onChange={handleRangeChange}
           formatLabel={(range) => formatDateTimeLabel(range, t('analytics.filter.dateRangePlaceholder'))}
         />

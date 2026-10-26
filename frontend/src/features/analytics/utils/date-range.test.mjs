@@ -33,7 +33,7 @@ test('timestamps round-trip through the picker value', () => {
   const start = new Date(2026, 9, 20, 8, 15, 30);
   const end = new Date(2026, 9, 26, 23, 59, 59);
 
-  const range = timestampsToDateTimeRange(start.toISOString(), end.toISOString());
+  const { range } = timestampsToDateTimeRange(start.toISOString(), end.toISOString());
 
   assert.deepEqual(range.from, new Date(2026, 9, 20));
   assert.deepEqual(range.to, new Date(2026, 9, 26));
@@ -77,12 +77,12 @@ test('quick ranges resolve to local day boundaries', () => {
 test('a start-only filter does not gain an end bound when restored', () => {
   const startOnly = new Date(2026, 9, 20, 10, 0, 0);
 
-  const range = timestampsToDateTimeRange(startOnly.toISOString(), null);
+  const bounds = timestampsToDateTimeRange(startOnly.toISOString(), null);
 
-  assert.deepEqual(range.from, new Date(2026, 9, 20));
-  assert.equal(range.to, undefined);
+  assert.deepEqual(bounds.range.from, new Date(2026, 9, 20));
+  assert.equal(bounds.range.to, undefined);
 
-  const { startTime, endTime } = dateTimeRangeToTimestamps(range);
+  const { startTime, endTime } = dateTimeRangeToTimestamps(bounds.range, bounds);
 
   assert.equal(startTime, startOnly.toISOString());
   assert.equal(endTime, null);
@@ -91,13 +91,42 @@ test('a start-only filter does not gain an end bound when restored', () => {
 test('an end-only filter does not gain a start bound when restored', () => {
   const endOnly = new Date(2026, 9, 20, 10, 0, 0);
 
-  const range = timestampsToDateTimeRange(null, endOnly.toISOString());
+  const bounds = timestampsToDateTimeRange(null, endOnly.toISOString());
 
-  assert.equal(range.from, undefined);
-  assert.deepEqual(range.to, new Date(2026, 9, 20));
+  assert.equal(bounds.range.from, undefined);
+  assert.deepEqual(bounds.range.to, new Date(2026, 9, 20));
 
-  const { startTime, endTime } = dateTimeRangeToTimestamps(range);
+  const { startTime, endTime } = dateTimeRangeToTimestamps(bounds.range, bounds);
 
   assert.equal(startTime, null);
   assert.notEqual(endTime, null);
+});
+
+// Regression: the picker edits whole seconds only, so re-confirming a stored
+// range used to rewrite `.123Z`/`.456Z` to `.000Z`/`.999Z` and widen the window.
+test('confirming an unchanged range keeps its millisecond components', () => {
+  const start = new Date(2026, 9, 20, 10, 20, 30, 123);
+  const end = new Date(2026, 9, 21, 11, 22, 33, 456);
+
+  const bounds = timestampsToDateTimeRange(start.toISOString(), end.toISOString());
+  const confirmed = dateTimeRangeToTimestamps(bounds.range, bounds);
+
+  assert.equal(confirmed.startTime, start.toISOString());
+  assert.equal(confirmed.endTime, end.toISOString());
+});
+
+test('editing a bound falls back to whole-second boundaries', () => {
+  const start = new Date(2026, 9, 20, 10, 20, 30, 123);
+  const end = new Date(2026, 9, 21, 11, 22, 33, 456);
+
+  const bounds = timestampsToDateTimeRange(start.toISOString(), end.toISOString());
+  const edited = {
+    ...bounds.range,
+    startTime: { hh: '09', mm: '20', ss: '30' },
+  };
+  const confirmed = dateTimeRangeToTimestamps(edited, bounds);
+
+  assert.equal(confirmed.startTime, new Date(2026, 9, 20, 9, 20, 30, 0).toISOString());
+  // The untouched end still keeps its milliseconds.
+  assert.equal(confirmed.endTime, end.toISOString());
 });
