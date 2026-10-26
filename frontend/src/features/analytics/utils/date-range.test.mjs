@@ -130,3 +130,15 @@ test('editing a bound falls back to whole-second boundaries', () => {
   // The untouched end still keeps its milliseconds.
   assert.equal(confirmed.endTime, end.toISOString());
 });
+
+// Regression (DST fall-back): 01:30 local occurs twice on 2024-11-03 in
+// America/New_York. Rebuilding the bound from wall-clock fields picks the first
+// occurrence, so an untouched bound must be reused verbatim.
+test('an unchanged bound survives a fall-back DST hour', { skip: process.env.TZ !== 'America/New_York' }, () => {
+  const later = '2024-11-03T06:30:00.123Z';
+
+  const bounds = timestampsToDateTimeRange(later, null);
+  const confirmed = dateTimeRangeToTimestamps(bounds.range, bounds);
+
+  assert.equal(confirmed.startTime, later);
+});

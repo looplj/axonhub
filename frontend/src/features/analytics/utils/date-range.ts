@@ -8,10 +8,14 @@ import {
 
 interface RangeBounds {
   range: DateTimeRangeValue | undefined;
-  /** Sub-second component of the stored start, kept so the picker round trip is lossless. */
-  startMilliseconds?: number;
-  /** Sub-second component of the stored end, kept so the picker round trip is lossless. */
-  endMilliseconds?: number;
+  /**
+   * Original timestamps. The picker only edits local wall-clock fields, which
+   * cannot distinguish the two instants of a fall-back DST hour and drops the
+   * sub-second part, so an untouched bound is reused verbatim instead of being
+   * rebuilt.
+   */
+  startTime?: string;
+  endTime?: string;
 }
 
 function toTimeValue(date: Date): TimeValue {
@@ -59,8 +63,8 @@ export function timestampsToDateTimeRange(startTime?: string | null, endTime?: s
       startTime: start ? toTimeValue(start) : DEFAULT_START_TIME,
       endTime: end ? toTimeValue(end) : DEFAULT_END_TIME,
     },
-    startMilliseconds: start?.getMilliseconds(),
-    endMilliseconds: end?.getMilliseconds(),
+    startTime: start?.toISOString(),
+    endTime: end?.toISOString(),
   };
 }
 
@@ -93,26 +97,12 @@ export function dateTimeRangeToTimestamps(
     time: TimeValue | undefined
   ): boolean => !!previousDay && !!day && !!previousTime && !!time && previousDay.getTime() === day.getTime() && sameTimeValue(previousTime, time);
 
-  const startMilliseconds = isUnchanged(previousRange?.from, range?.from, previousRange?.startTime, range?.startTime)
-    ? previous?.startMilliseconds
-    : undefined;
+  const startUnchanged = isUnchanged(previousRange?.from, range?.from, previousRange?.startTime, range?.startTime);
 
-  const endMilliseconds = isUnchanged(previousRange?.to, range?.to, previousRange?.endTime, range?.endTime)
-    ? previous?.endMilliseconds
-    : undefined;
+  const endUnchanged = isUnchanged(previousRange?.to, range?.to, previousRange?.endTime, range?.endTime);
 
   return {
-    startTime: createdAtGTE ? withMilliseconds(createdAtGTE, startMilliseconds) : null,
-    endTime: createdAtLTE ? withMilliseconds(createdAtLTE, endMilliseconds) : null,
+    startTime: startUnchanged ? (previous?.startTime ?? null) : (createdAtGTE ?? null),
+    endTime: endUnchanged ? (previous?.endTime ?? null) : (createdAtLTE ?? null),
   };
-}
-
-/** Replaces the millisecond component of an ISO timestamp when one is known. */
-function withMilliseconds(isoTimestamp: string, milliseconds: number | undefined): string {
-  if (milliseconds === undefined) return isoTimestamp;
-
-  const date = new Date(isoTimestamp);
-  date.setMilliseconds(milliseconds);
-
-  return date.toISOString();
 }
