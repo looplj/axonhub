@@ -218,6 +218,24 @@ func TestApplyReasoningEffortMapping(t *testing.T) {
 		require.Equal(t, "adaptive", result.TransformerMetadata[anthropic.TransformerMetadataKeyThinkingType])
 	})
 
+	t.Run("maps the native effort of between_tools and keeps the unified effort at none", func(t *testing.T) {
+		req := &llm.Request{
+			Model:           "test-model",
+			ReasoningEffort: llm.ReasoningEffortNone,
+			TransformerMetadata: map[string]any{
+				anthropic.TransformerMetadataKeyOutputConfigEffort: "max",
+				anthropic.TransformerMetadataKeyThinkingType:       "between_tools",
+			},
+		}
+
+		result := applyReasoningEffortMapping(req, settings)
+
+		require.NotSame(t, req, result)
+		require.Equal(t, llm.ReasoningEffortNone, result.ReasoningEffort)
+		require.Equal(t, "high", result.TransformerMetadata[anthropic.TransformerMetadataKeyOutputConfigEffort])
+		require.Equal(t, "max", req.TransformerMetadata[anthropic.TransformerMetadataKeyOutputConfigEffort])
+	})
+
 	t.Run("mapping does not mutate the original request metadata", func(t *testing.T) {
 		metadata := map[string]any{
 			anthropic.TransformerMetadataKeyOutputConfigEffort: "max",
