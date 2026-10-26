@@ -5,10 +5,10 @@ Filter input for analytics queries. All fields are optional and support multi-se
 When multiple dimensions are specified, they are combined with AND logic.
 """
 input AnalyticsFilter {
-  "Start date (inclusive, YYYY-MM-DD, parsed in system timezone)"
-  startTime: String
-  "End date (inclusive, YYYY-MM-DD, parsed in system timezone)"
-  endTime: String
+  "Start of the range (inclusive), as an RFC3339 timestamp"
+  startTime: Time
+  "End of the range (inclusive), as an RFC3339 timestamp"
+  endTime: Time
   "Filter by project IDs"
   projectIDs: [ID!]
   "Filter by channel IDs"
