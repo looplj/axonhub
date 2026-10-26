@@ -538,3 +538,37 @@ extend type Query {
 extend type Mutation {
   clearCache(input: ClearCacheInput!): ClearCachePayload!
 }
+
+type ClaudeCodeSafeguardsConfig {
+  classifierModel: String!
+  policy: String!
+  fallbackModels: [String!]!
+  escalateOnDenial: Boolean!
+  attemptTimeoutSeconds: Float!
+  timeoutSeconds: Float!
+  maxTokens: Int!
+  transcriptCharBudget: Int!
+}
+
+input UpdateClaudeCodeSafeguardsInput {
+  classifierModel: String!
+  policy: String!
+  fallbackModels: [String!]!
+  escalateOnDenial: Boolean!
+  attemptTimeoutSeconds: Float!
+  timeoutSeconds: Float!
+  maxTokens: Int!
+  transcriptCharBudget: Int!
+}
+type ClaudeCodeSafeguardsSettings {
+  config: ClaudeCodeSafeguardsConfig!
+  usingServerDefaults: Boolean!
+  defaultPolicy: String!
+}
+extend type Query {
+  claudeCodeSafeguardsSettings: ClaudeCodeSafeguardsSettings!
+}
+extend type Mutation {
+  updateClaudeCodeSafeguardsSettings(input: UpdateClaudeCodeSafeguardsInput!): Boolean!
+  resetClaudeCodeSafeguardsSettings: Boolean!
+}

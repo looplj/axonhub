@@ -59,7 +59,7 @@ server:
     transcript_char_budget: 24000
 ```
 
-Restart AxonHub after changing these settings; they are not applied by SIGHUP reload. The equivalent environment variables are:
+YAML/environment changes require restarting AxonHub; they are not applied by SIGHUP reload and take effect only when no saved UI override exists. The equivalent environment variables are:
 
 ```bash
 export AXONHUB_SERVER_SAFEGUARDS_CLASSIFIER_MODEL="codex-auto-review"
@@ -85,17 +85,19 @@ Despite the setting name `transcript_char_budget`, the transcript limit is measu
 
 `fallback_models` is an ordered list tried after `classifier_model`. A provider error, attempt timeout, or missing/invalid verdict triggers the next reviewer for unresolved tool calls only. By default (`escalate_on_denial: false`), valid verdicts are final: both flagged and not-flagged results are preserved, including valid entries from a partially usable response. In this default mode, a flagged result never triggers a second opinion. Duplicate JSON keys or a malformed response invalidate the response. Client cancellation stops the chain immediately.
 
-Set `server.safeguards.escalate_on_denial: true` (or `AXONHUB_SERVER_SAFEGUARDS_ESCALATE_ON_DENIAL=true`) to also send primary-reviewer denials to the backups for independent reassessment. Approvals remain final. The next valid assessment is final, whether it approves or confirms the denial; additional backups are used only if that assessment fails. Backups receive original evidence without the primary verdict. If all backups fail, time out, or return invalid verdicts, the original denial and explanation are preserved. The same overall and per-attempt deadlines apply. Verdict transitions are logged without prompts or tool arguments; individual reviewer requests remain visible in usage records. This mode can reduce false denials but permits a backup to override a correct primary denial. Restart the service after changing this setting.
+Set `server.safeguards.escalate_on_denial: true` (or `AXONHUB_SERVER_SAFEGUARDS_ESCALATE_ON_DENIAL=true`) to also send primary-reviewer denials to the backups for independent reassessment. Approvals remain final. The next valid assessment is final, whether it approves or confirms the denial; additional backups are used only if that assessment fails. Backups receive original evidence without the primary verdict. If all backups fail, time out, or return invalid verdicts, the original denial and explanation are preserved. The same overall and per-attempt deadlines apply. Verdict transitions are logged without prompts or tool arguments; individual reviewer requests remain visible in usage records. This mode can reduce false denials but permits a backup to override a correct primary denial. For YAML/environment changes, restart the service and ensure there is no saved UI override.
 
 The example allows each reviewer up to 10 seconds, with a 30-second overall ceiling; it does not reserve 20 seconds for the backup. A shorter remaining overall deadline always wins. `attempt_timeout` defaults to zero, meaning each attempt can use the remaining overall budget; set a positive value to leave time for fallback after a stalled request. Its allowed range is 0–2 minutes. `fallback_models` defaults to an empty list, preserving single-reviewer behavior; entries must be nonempty and distinct from each other and the primary model. A disabled primary also disables its backups.
 
 If all reviewers fail or the overall deadline expires, unresolved calls produce an **unavailable** result, never an automatic safe verdict. Each attempt appears as a separate reviewer request in usage records, under the model used; fallback can therefore add token cost and latency. Reviewers must all be accessible to the caller. Claude Code remains responsible for applying its permission policy and asking for confirmation where required. Review results are not a guarantee that a command is safe. Setting `classifier_model` to an empty string disables server-side review.
 
+Configure these settings in **System Settings → Claude Code → Auto-mode safeguards**. Reading requires `read_settings`; saving or returning to server defaults requires `write_settings`. Saved settings override the entire YAML/environment safeguards configuration and apply to new requests without restarting. Existing reviews retain their initial settings. **Return to server defaults** removes that override and uses the configuration loaded at startup. An empty reviewer model disables server-side review even if YAML enables it. These settings only affect Claude Code requests that ask for `dangerous_tool_use`, not native Codex approval reviews.
+
 #### Custom review policy
 
 Set `server.safeguards.policy` to replace the entire built-in decision policy. Missing, empty, or whitespace-only values use the default. This is server-wide administrator configuration, applied to the primary reviewer and every fallback; clients cannot override it through request bodies.
 
-Use `AXONHUB_SERVER_SAFEGUARDS_POLICY` for the equivalent environment override (multiline text is supported). Restart AxonHub after changing the setting; SIGHUP does not reload it.
+Use `AXONHUB_SERVER_SAFEGUARDS_POLICY` for the equivalent environment override (multiline text is supported). For YAML/environment changes, restart AxonHub and return to server defaults in the UI; SIGHUP does not reload this setting.
 
 An empty environment variable (`AXONHUB_SERVER_SAFEGUARDS_POLICY=""`) is treated as unset, so a custom YAML policy remains active. To override a YAML policy with the built-in policy, use a whitespace-only value such as `AXONHUB_SERVER_SAFEGUARDS_POLICY=" "`.
 
