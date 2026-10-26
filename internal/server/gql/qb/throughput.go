@@ -213,8 +213,9 @@ LIMIT ` + fmt.Sprintf("%d", limit)
 // DISTINCT ON expression to lead the ORDER BY of the select it appears in, so
 // the deduplication happens inside the CTE; the outer aggregation, grouping,
 // ordering, and limit are identical to the ROW_NUMBER mode. This deterministic
-// ordering matches the ROW_NUMBER and MAX(id) modes' tie-breaking behavior
-// while avoiding a window function.
+// ordering (created_at DESC, id DESC) matches the ROW_NUMBER ordering so the
+// two modes select the same latest execution per request, while avoiding a
+// window function.
 func buildDistinctOnQuery(placeholder string, config QueryFragmentConfig, limit int) string {
 	return `
 WITH successful_execs AS (

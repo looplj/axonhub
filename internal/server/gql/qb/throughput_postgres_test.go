@@ -38,9 +38,10 @@ import (
 //
 // The fixture additionally carries hand-computed expected aggregate values so
 // the edge cases (created_at ties between executions with different ids,
-// status filtering, zero-latency filtering, duplicate usage-log rows, the exact
-// window boundary, streaming effective latency including TTFT >= latency,
-// multiple dates, and per-day limit cutoff) are proven by the fixture itself,
+// status filtering, zero-latency filtering, production-nullable channel_id and
+// metrics_latency_ms, duplicate usage-log rows, the exact window boundary,
+// streaming effective latency including TTFT >= latency, multiple dates, and
+// per-day limit cutoff) are proven by the fixture itself,
 // independent of which implementation the parity check compares.
 //
 // The PostgreSQL parity test is gated on AXONHUB_TEST_PG_DSN and skips cleanly
@@ -78,14 +79,16 @@ type parityRequest struct {
 // at 301 so they cannot collide with request ids (1..23), keeping the
 // created_at tie-break on id unambiguous.
 type parityExecution struct {
-	id        int
-	requestID int
-	channelID int
-	status    string
-	created   time.Time
-	latencyMS int64 // 0 means the zero-latency filter case
-	ttftMS    int64 // 0 means metrics_first_token_latency_ms IS NULL
-	stream    bool
+	id          int
+	requestID   int
+	channelID   int
+	status      string
+	created     time.Time
+	latencyMS   int64 // 0 means the zero-latency filter case
+	ttftMS      int64 // 0 means metrics_first_token_latency_ms IS NULL
+	stream      bool
+	noChannel   bool // channel_id is written as IS NULL (nullable in production)
+	latencyNull bool // metrics_latency_ms is written as IS NULL (nullable in production)
 }
 
 type parityUsage struct {
@@ -95,7 +98,8 @@ type parityUsage struct {
 
 // buildParityFixture defines the adversarial seed data.
 //
-// Execution rows:
+// Execution rows ("ch NULL" is an explicitly production-nullable channel_id;
+// "NULL lat" is an explicitly NULL metrics_latency_ms, never a sentinel):
 //
 //	301 R1  Alpha  d1 03:00  completed lat 10000
 //	302 R2  Alpha  d1 05:00  completed lat 500
@@ -125,16 +129,26 @@ type parityUsage struct {
 //	326 R21 Alpha  d4 04:00  completed lat 1000
 //	327 R22 Beta   d4 05:00  completed lat 1200 stream ttft 2000  (ttft >= lat -> 0)
 //	328 R23 Gamma  d4 06:00  completed lat 800  stream ttft 1000  (ttft >= lat -> 0)
+//	329 R11 ch NULL d3 07:00 completed lat 6000  (latest eligible execution of
+//	                                   R11; channel_id NULL so by-model counts
+//	                                   it while the by-channel inner join
+//	                                   excludes it)
+//	330 R17 Alpha  d3 05:00  completed NULL lat  (LATER than 322: the
+//	                                   eligibility filter must drop it before
+//	                                   latest-per-request selection, so 322
+//	                                   keeps R17)
 //
 // Latest-execution-per-request selection (the dedup is over the whole window,
-// so the day-2 attempts of R15..R22 below lose to later day-3/4 attempts):
+// so the day-2 attempts of R15..R22 lose to later day-3/4 attempts):
 //
-//	{1:301, 2:302, 6:304, 9:310, 10:311, 15:320, 16:321, 17:322,
-//	 18:323, 19:324, 20:325, 21:326, 22:327, 23:328}
+//	{1:301, 2:302, 6:304, 9:310, 10:311, 11:329,
+//	 15:320, 16:321, 17:322, 18:323, 19:324, 20:325, 21:326, 22:327, 23:328}
 //
 // Channel totals (tokens / raw latency / effective latency / count / thr):
-// Beta includes two usage-log rows for R18 (250 + 125 tokens), so its
-// latency is joined twice, matching usage_logs aggregation semantics.
+// unchanged by the NULL-channel row, which the inner join excludes; Beta
+// includes two usage-log rows for R18 (250 + 125 tokens), so its latency is
+// joined twice, matching usage_logs aggregation semantics.
+//
 //	Alpha {R1,R2,R6,R10,R16,R17,R21}     1780 / 24500 / 24500 / 7 / 72.653...
 //	Beta  {R9,R15,R18x2,R19,R20,R22}     1410 / 13200 / 11500 / 6 / 122.608...
 //	Gamma {R23}                            400 / 800  / 0      / 1 / 0
@@ -143,7 +157,7 @@ type parityUsage struct {
 //
 //	m1 {R1,R6,R10,R16,R17,R21}           1680 / 24000 / 24000 / 6 / 70.0
 //	m2 {R2,R9,R15,R18x2,R19,R20,R22} 1510 / 13700 / 12000 / 7 / 125.833...
-//	m3 {R23}                               400 / 800   / 0     / 1 / 0
+//	m3 {R23,R11}                          700 / 6800  / 6000  / 2 / 116.666...
 //
 // Daily channel (day: group tokens / eff / thr); day 2 has no groups:
 //
@@ -170,6 +184,7 @@ type parityUsage struct {
 //
 //	03-01 m1 {R1,R6,R10}       tokens 180  lat 15000 ttft NULL   req 3 thr 12.0
 //	03-01 m2 {R2,R9}           tokens 180  lat 4500  ttft NULL   req 2 thr 40.0
+//	03-03 m3 {R11}             tokens 300  lat 6000  ttft NULL   req 1 thr 50.0
 //	03-03 m1 {R16,R17}         tokens 900  lat 8000  ttft NULL   req 2 thr 112.5
 //	03-03 m2 {R15}             tokens 100  lat 1000  ttft [500]  req 1 thr 200.0
 //	03-04 m1 {R21}             tokens 600  lat 1000  ttft NULL   req 1 thr 600.0
@@ -259,6 +274,22 @@ func buildParityFixture() (channels []parityChannel, models []parityModel, reque
 		tx(326, 21, 1, 4, 4, 1000, 0, false),
 		tx(327, 22, 2, 4, 5, 1200, 2000, true), // ttft >= lat -> 0
 		tx(328, 23, 3, 4, 6, 800, 1000, true),  // ttft >= lat -> 0
+		{
+			id:        329,
+			requestID: 11,
+			noChannel: true, // channel_id IS NULL: by-model keeps it, by-channel join drops it
+			status:    "completed",
+			created:   dayBase(3).Add(7 * time.Hour),
+			latencyMS: 6000,
+		},
+		{
+			id:          330,
+			requestID:   17,
+			channelID:   1,
+			status:      "completed",
+			created:     dayBase(3).Add(5 * time.Hour),
+			latencyNull: true, // NULL latency: filtered before latest-per-request selection
+		},
 	}
 	usages = []parityUsage{
 		ul(1, 100), ul(2, 100), ul(3, 300), ul(4, 300), ul(5, 200),
@@ -313,9 +344,9 @@ func newParitySchema(t *testing.T, dsn string) *sql.DB {
 		`CREATE TABLE request_executions (
 			id BIGINT PRIMARY KEY,
 			request_id INT NOT NULL,
-			channel_id INT NOT NULL,
+			channel_id INT NULL,
 			status TEXT NOT NULL,
-			metrics_latency_ms BIGINT NOT NULL,
+			metrics_latency_ms BIGINT NULL,
 			metrics_first_token_latency_ms BIGINT,
 			stream BOOLEAN NOT NULL DEFAULT false,
 			created_at TIMESTAMPTZ NOT NULL
@@ -347,6 +378,17 @@ func newParitySchema(t *testing.T, dsn string) *sql.DB {
 		require.NoError(t, err)
 	}
 	for _, e := range executions {
+		// NULL handling uses explicit flags, matched to the production schema
+		// where channel_id and metrics_latency_ms are nullable; a literal 0
+		// latency is the zero-latency filter case, never a NULL sentinel.
+		var channel any
+		if !e.noChannel {
+			channel = e.channelID
+		}
+		var lat any
+		if !e.latencyNull {
+			lat = e.latencyMS
+		}
 		var ttft any
 		if e.ttftMS > 0 {
 			ttft = e.ttftMS
@@ -354,7 +396,7 @@ func newParitySchema(t *testing.T, dsn string) *sql.DB {
 		_, err = db.ExecContext(ctx,
 			`INSERT INTO request_executions (id, request_id, channel_id, status, metrics_latency_ms, metrics_first_token_latency_ms, stream, created_at)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-			e.id, e.requestID, e.channelID, e.status, e.latencyMS, ttft, e.stream, e.created,
+			e.id, e.requestID, channel, e.status, lat, ttft, e.stream, e.created,
 		)
 		require.NoError(t, err, "insert execution id=%d", e.id)
 	}
@@ -464,11 +506,12 @@ func TestThroughputQueryDistinctOnParity_Postgres(t *testing.T) {
 
 	db := newParitySchema(t, dsn)
 
-	// Per-day limit 2 equals the group count on days 1 and 3 (2 groups each)
-	// and is below it on day 4 (3 groups), so the per-day window limit is
-	// evaluated on every day that has groups and actually cuts one group on
-	// day 4. Day 2 has no groups of its own: its executions lose the
-	// whole-window latest-per-request dedup to later attempts.
+	// Per-day limit 2 equals the group count on day 1 (2 groups) and is
+	// below it on days 3 and 4 (3 groups each), so the per-day window limit
+	// is evaluated on every day that has groups and actually cuts one group
+	// on day 3 (m3) and one on day 4 (m3). Day 2 has no groups of its own:
+	// its executions lose the whole-window latest-per-request dedup to later
+	// attempts.
 	t.Run("build_throughput_by_channel", func(t *testing.T) {
 		assertPGParity(t, db, "throughput-by-channel",
 			BuildThroughputQuery(true, ThroughputQueryByChannel, 20, ThroughputModeRowNumber),
@@ -536,6 +579,9 @@ func TestThroughputQueryDistinctOnParity_Postgres(t *testing.T) {
 			got[g.id] = g
 		}
 		require.NoError(t, rows.Err())
+		// Exactly 3 groups: the NULL-channel execution (id 329, R11) must not
+		// create a group — the inner join on channels drops it, while the
+		// by-model totals below count it.
 		require.Len(t, got, 3, "failed/canceled, zero-latency, and pre-window rows must not create groups")
 
 		check := func(id, name, typ string, tokens, lat int64, reqCount int64, thr float64) {
@@ -600,7 +646,11 @@ func TestThroughputQueryDistinctOnParity_Postgres(t *testing.T) {
 		// R18 has two usage rows (250 and 125 tokens), so m2's token sum is
 		// 1510. Its latency is also joined twice; effective latency is 12000.
 		check("m2", "model-two", 1510, 13700, 7, 125.83333333333333)
-		check("m3", "model-three", 400, 800, 1, 0)
+		// m3 also groups R11's NULL-channel execution (id 329, latency 6000,
+		// 300 tokens): model grouping joins through requests and models, so
+		// the NULL channel_id is retained here. R23's stream row folds to 0
+		// effective latency, leaving 6000.
+		check("m3", "model-three", 700, 6800, 2, 116.66666666666667)
 	})
 
 	t.Run("expected_daily_channel", func(t *testing.T) {
@@ -675,10 +725,11 @@ func TestThroughputQueryDistinctOnParity_Postgres(t *testing.T) {
 		}
 		require.NoError(t, rows.Err())
 
-		// 6 rows: day 1 (2 groups), day 3 (2 groups) and day 4 (3 groups);
-		// per-day limit 2 cuts day-4 m3 (zero effective latency). Day 2 has no
-		// groups: its executions lose the whole-window latest-per-request
-		// dedup to later attempts.
+		// 6 rows: day 1 (2 groups), day 3 (3 groups) and day 4 (3 groups);
+		// per-day limit 2 cuts day-3 m3 (the NULL-channel execution, ranked
+		// last at throughput 50) and day-4 m3 (zero effective latency). Day 2
+		// has no groups: its executions lose the whole-window
+		// latest-per-request dedup to later attempts.
 		require.Len(t, got, 6)
 
 		check := func(key, name string, tokens, reqCount int64, thr float64) {
@@ -698,6 +749,7 @@ func TestThroughputQueryDistinctOnParity_Postgres(t *testing.T) {
 		// Day-4 m2 effective latency 7000 = 2500 (R18 twice) + 1000 (R19)
 		// + 1000 (R20) + 0 (R22 folds to zero).
 		check("2024-03-04\x00m2", "model-two", 1230, 4, 175.71428571428572)
+		require.NotContains(t, got, "2024-03-03\x00m3", "per-day limit 2 must cut day-3 m3 (NULL-channel execution, throughput 50)")
 		require.NotContains(t, got, "2024-03-04\x00m3", "per-day limit 2 must cut day-4 m3 (zero effective latency)")
 		for _, day := range []string{"2024-03-02\x00m1", "2024-03-02\x00m2", "2024-03-02\x00m3"} {
 			require.NotContains(t, got, day, "day 2 must have no groups (latest-per-request dedup is whole-window)")
@@ -729,10 +781,12 @@ func TestThroughputQueryDistinctOnParity_Postgres(t *testing.T) {
 		}
 		require.NoError(t, rows.Err())
 
-		// 6 rows: 03-01 {m1,m2}, 03-03 {m1,m2}, 03-04 {m1,m2}. Day-4 m3 is
-		// dropped by the throughput > 0 filter (a single stream row folding to
-		// zero effective latency); day 2 has no groups at all.
-		require.Len(t, got, 6)
+		// 7 rows: 03-01 {m1,m2}, 03-03 {m1,m2,m3}, 03-04 {m1,m2}. The 03-03 m3
+		// row is R11's NULL-channel execution (counted in performance stats
+		// because grouping goes through the model); day-4 m3 is dropped by
+		// the throughput > 0 filter (a single stream row folding to zero
+		// effective latency); day 2 has no groups at all.
+		require.Len(t, got, 7)
 
 		perf := func(key string) row {
 			t.Helper()
@@ -755,6 +809,9 @@ func TestThroughputQueryDistinctOnParity_Postgres(t *testing.T) {
 		// latency is 8200, effective latency is 7000, and positive TTFT average is
 		// 2000.
 		check("2024-03-04\x00m2", 1230, 8200, new(2000.0), 4, 175.71428571428572)
+		// Day 03-03, m3: R11's NULL-channel execution (latency 6000, 300
+		// tokens, no TTFT): throughput 50, above the positive filter.
+		check("2024-03-03\x00m3", 300, 6000, nil, 1, 50.0)
 		// Day 03-03, m2: R15 only (ttft 500 < latency 1000, effective 500).
 		check("2024-03-03\x00m2", 100, 1000, new(500.0), 1, 200.0)
 		// Day 03-04 / 03-03 m1 and both day-1 groups have no ttft rows at all.
@@ -782,16 +839,20 @@ func TestThroughputQueryDistinctOnParity_Postgres(t *testing.T) {
 		got := map[string]row{}
 		for rows.Next() {
 			var date string
-			var channelID int
+			var channelID sql.NullInt64
 			var r row
 			require.NoError(t, rows.Scan(&date, &channelID, &r.tokens, &r.lat, &r.ttft, &r.reqCount, &r.throughput))
-			got[date+"\x00"+strconv.Itoa(channelID)] = r
+			channelKey := "NULL"
+			if channelID.Valid {
+				channelKey = strconv.FormatInt(channelID.Int64, 10)
+			}
+			got[date+"\x00"+channelKey] = r
 		}
 		require.NoError(t, rows.Err())
 
 		// Channel grouping reads channel_id from executions; day-1 Alpha is
 		// R1, R2, R6, and R10: 280 tokens / 15500 ms, no positive TTFT, 4 requests.
-		require.Len(t, got, 6)
+		require.Len(t, got, 7)
 		r, ok := got["2024-03-01\x001"]
 		require.True(t, ok, "missing day-1 channel 1, got %v", parityKeys(got))
 		require.EqualValues(t, 280, r.tokens)
@@ -799,6 +860,15 @@ func TestThroughputQueryDistinctOnParity_Postgres(t *testing.T) {
 		require.Nil(t, r.ttft)
 		require.EqualValues(t, 4, r.reqCount)
 		require.InDelta(t, 18.06451612903226, r.throughput, 1e-9)
+		// Daily performance stats groups directly on execution.channel_id, so
+		// the production-nullable channel produces one NULL-keyed group.
+		nullChannel, ok := got["2024-03-03\x00NULL"]
+		require.True(t, ok, "missing NULL channel group, got %v", parityKeys(got))
+		require.EqualValues(t, 300, nullChannel.tokens)
+		require.EqualValues(t, 6000, nullChannel.lat)
+		require.Nil(t, nullChannel.ttft)
+		require.EqualValues(t, 1, nullChannel.reqCount)
+		require.InDelta(t, 50.0, nullChannel.throughput, 1e-9)
 		require.NotContains(t, got, "2024-03-04\x003", "zero-effective-latency Gamma must be filtered")
 	})
 
@@ -830,6 +900,12 @@ func TestThroughputQueryDistinctOnParity_Postgres(t *testing.T) {
 		require.NotContains(t, ids, int64(305), "failed execution must be filtered")
 		require.NotContains(t, ids, int64(306), "canceled execution must be filtered")
 		require.NotContains(t, ids, int64(309), "pre-window execution must be filtered")
+		// NULL channel_id is a join concern, not an eligibility one: the
+		// latest eligible execution with a NULL channel stays in the set.
+		require.Contains(t, ids, int64(329), "NULL-channel execution must pass eligibility")
+		// The later NULL-latency execution of R17 must be filtered before
+		// latest-per-request selection, so the earlier in-window row wins.
+		require.NotContains(t, ids, int64(330), "NULL-latency execution must be filtered")
 	})
 }
 

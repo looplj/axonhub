@@ -640,16 +640,16 @@ func TestThroughputQueryModeEnum(t *testing.T) {
 // ROW_NUMBER and MAX(id) modes, and no request-level window dedup.
 func TestBuildThroughputQuery_DistinctOn(t *testing.T) {
 	tests := []struct {
-		name             string
-		useDollar        bool
-		queryType        ThroughputQueryType
-		wantContains     []string
-		wantNotContains  []string
+		name            string
+		useDollar       bool
+		queryType       ThroughputQueryType
+		wantContains    []string
+		wantNotContains []string
 	}{
 		{
-			name:             "postgres by channel uses DISTINCT ON with deterministic ordering",
-			useDollar:        true,
-			queryType:        ThroughputQueryByChannel,
+			name:      "postgres by channel uses DISTINCT ON with deterministic ordering",
+			useDollar: true,
+			queryType: ThroughputQueryByChannel,
 			wantContains: []string{
 				"DISTINCT ON (request_id)",
 				"WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= $1",
@@ -665,9 +665,9 @@ func TestBuildThroughputQuery_DistinctOn(t *testing.T) {
 			},
 		},
 		{
-			name:             "postgres by model uses DISTINCT ON with deterministic ordering",
-			useDollar:        true,
-			queryType:        ThroughputQueryByModel,
+			name:      "postgres by model uses DISTINCT ON with deterministic ordering",
+			useDollar: true,
+			queryType: ThroughputQueryByModel,
 			wantContains: []string{
 				"DISTINCT ON (request_id)",
 				"WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= $1",
@@ -735,5 +735,5 @@ func TestAllowedQueryConfigs(t *testing.T) {
 func TestBuildThroughputQuery_RowNumberTieBreaker(t *testing.T) {
 	query := BuildThroughputQuery(false, ThroughputQueryByChannel, 20, ThroughputModeRowNumber)
 	assert.Contains(t, query, "ORDER BY created_at DESC, id DESC",
-		"ties on created_at must resolve the same way as the MAX(id) fallback")
+		"ties on created_at must resolve with the same ordering as the DISTINCT ON mode")
 }
