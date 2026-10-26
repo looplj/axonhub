@@ -936,12 +936,13 @@ func (r *queryResolver) fastestChannels(ctx context.Context, input FastestChanne
 	dialectName := sqlDB.Dialect()
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
-	// The bundled SQLite driver is far newer than 3.25, so window functions are
-	// available. ROW_NUMBER avoids the correlated MAX(id) scan that made these
-	// aggregates roughly three times slower on SQLite.
 	queryMode := qb.ThroughputModeRowNumber
+	if dialectName == dialect.Postgres {
+		queryMode = qb.ThroughputModeDistinctOn
+	}
 
-	// Build query using shared helper function
+	// PostgreSQL uses DISTINCT ON for this ranking; other dialects keep
+	// ROW_NUMBER, which avoids the correlated MAX(id) scan on SQLite.
 	// Fetch more items than needed to allow confidence-based filtering
 	sqlLimit := max(*input.Limit*4, 20)
 	query := qb.BuildThroughputQuery(
@@ -1082,12 +1083,13 @@ func (r *queryResolver) fastestModels(ctx context.Context, input FastestChannels
 	dialectName := sqlDB.Dialect()
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
-	// The bundled SQLite driver is far newer than 3.25, so window functions are
-	// available. ROW_NUMBER avoids the correlated MAX(id) scan that made these
-	// aggregates roughly three times slower on SQLite.
+	// PostgreSQL uses DISTINCT ON for this ranking; other dialects keep
+	// ROW_NUMBER, which avoids the correlated MAX(id) scan on SQLite.
 	queryMode := qb.ThroughputModeRowNumber
+	if dialectName == dialect.Postgres {
+		queryMode = qb.ThroughputModeDistinctOn
+	}
 
-	// Build query with dialect-aware timestamp placeholder
 	// Fetch more items than needed to allow confidence-based filtering
 	sqlLimit := *input.Limit * 4
 	if sqlLimit < 20 {
