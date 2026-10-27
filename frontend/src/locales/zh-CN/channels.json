@@ -491,7 +491,7 @@
   "channels.dialogs.status.restore.description": "确定要恢复渠道 \"{{name}}\" 吗？恢复后该渠道将可以正常使用。",
   "channels.dialogs.status.restore.info": "恢复后的渠道将重新出现在默认列表中。",
   "channels.dialogs.settings.extraModelPrefix.title": "额外模型前缀",
-  "channels.dialogs.settings.extraModelPrefix.description": "配置额外的模型前缀，允许使用带前缀的模型名称访问该渠道。例如：配置前缀为 'deepseek'，则 'deepseek/deepseek-chat' 和 'deepseek-chat' 都可以访问该渠道",
+  "channels.dialogs.settings.extraModelPrefix.description": "配置额外的模型前缀，允许使用带前缀的模型名称访问该渠道。模型别名也会应用该前缀，例如配置前缀为 'deepseek'、别名为 'chat' 时，'chat'、'deepseek/chat' 以及 'deepseek-chat'、'deepseek/deepseek-chat' 都可以访问该渠道",
   "channels.dialogs.settings.extraModelPrefix.placeholder": "例如: deepseek",
   "channels.dialogs.settings.lowercaseModelId.title": "模型名称转小写",
   "channels.dialogs.settings.lowercaseModelId.description": "将模型名称转换为小写，在渠道下发模型名包含大写字母时开启，可实现与其他小写模型名共同负载均衡。例如将'GLM-5.1'转换成'glm-5.1'",

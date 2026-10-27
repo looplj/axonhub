@@ -1740,12 +1740,33 @@ func gcpCredentialsEqual(a, b *objects.GCPCredential) bool {
 	return a.Region == b.Region && a.ProjectID == b.ProjectID && a.JSONData == b.JSONData
 }
 
+// prefixedModelName returns the channel-prefixed form of a model name and
+// reports whether the prefix should be applied. It returns false when no
+// extra prefix is configured or when the model already carries the channel
+// prefix, so callers never produce a doubled prefix such as "p/p/model".
+func (ch *Channel) prefixedModelName(model string) (string, bool) {
+	if ch.Settings == nil || ch.Settings.ExtraModelPrefix == "" {
+		return "", false
+	}
+
+	prefix := ch.Settings.ExtraModelPrefix + "/"
+	if ch.Settings.LowercaseModelID {
+		if strings.HasPrefix(strings.ToLower(model), strings.ToLower(prefix)) {
+			return "", false
+		}
+	} else if strings.HasPrefix(model, prefix) {
+		return "", false
+	}
+
+	return prefix + model, true
+}
+
 // GetModelEntries returns all models this channel can handle, RequestModel -> Entry
 // This unifies:
 // - SupportedModels (direct models)
 // - ExtraModelPrefix (prefixed models)
 // - AutoTrimedModelPrefixes (auto-trimmed models)
-// - ModelMappings (mapped models)
+// - ModelMappings (mapped models, also exposed under ExtraModelPrefix)
 // The result is cached for performance.
 //
 // WARNING: The returned map is internal cached state.
@@ -1813,31 +1834,65 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 	}
 
 	// 4. Model mappings
+	// Register every explicit mapping first. Generated prefixed aliases are
+	// added afterwards, so an explicitly configured prefixed alias always wins
+	// over one synthesized from another mapping.
+	addedMappings := make([]objects.ModelMapping, 0, len(ch.Settings.ModelMappings))
+
 	for _, mapping := range ch.Settings.ModelMappings {
 		// Only add if the target model is supported
-		if slices.Contains(ch.SupportedModels, mapping.To) {
-			if _, exists := entries[mapping.From]; !exists {
-				entries[mapping.From] = ChannelModelEntry{
-					RequestModel: mapping.From,
-					ActualModel:  mapping.To,
-					Source:       "mapping",
-				}
-				// When hideMappedModels is enabled, remove all entries that resolve
-				// to the mapped target model (mapping.To), except for mapping entries
-				// themselves. This covers direct, prefixed, and auto-trimmed variants,
-				// since they are all alternative access paths to the same underlying model.
-				if ch.Settings.HideMappedModels {
-					for key, entry := range entries {
-						if entry.ActualModel == mapping.To && entry.Source != "mapping" {
-							delete(entries, key)
-						}
-					}
+		if !slices.Contains(ch.SupportedModels, mapping.To) {
+			continue
+		}
+
+		if _, exists := entries[mapping.From]; exists {
+			continue
+		}
+
+		entries[mapping.From] = ChannelModelEntry{
+			RequestModel: mapping.From,
+			ActualModel:  mapping.To,
+			Source:       "mapping",
+		}
+		addedMappings = append(addedMappings, mapping)
+
+		// When hideMappedModels is enabled, remove all entries that resolve
+		// to the mapped target model (mapping.To), except for mapping entries
+		// themselves. This covers direct, prefixed, and auto-trimmed variants,
+		// since they are all alternative access paths to the same underlying model.
+		if ch.Settings.HideMappedModels {
+			for key, entry := range entries {
+				if entry.ActualModel == mapping.To && entry.Source != "mapping" {
+					delete(entries, key)
 				}
 			}
 		}
 	}
 
-	// 5. Hide original models if configured
+	// 5. Prefixed aliases for the mappings registered above
+	// ExtraModelPrefix namespaces aliases too, so an alias "x" is reachable as
+	// both "x" and "<prefix>/x". Explicit mappings were registered first, so a
+	// prefixed alias that the user configured explicitly is never overwritten.
+	// Skip generation when the alias already carries this channel's prefix to
+	// avoid building "<prefix>/<prefix>/x".
+	for _, mapping := range addedMappings {
+		prefixedFrom, ok := ch.prefixedModelName(mapping.From)
+		if !ok {
+			continue
+		}
+
+		if _, exists := entries[prefixedFrom]; exists {
+			continue
+		}
+
+		entries[prefixedFrom] = ChannelModelEntry{
+			RequestModel: prefixedFrom,
+			ActualModel:  mapping.To,
+			Source:       "mapping",
+		}
+	}
+
+	// 6. Hide original models if configured
 	// When hideOriginalModels is enabled, remove direct models from the entries
 	// This allows only transformed models (prefix, auto_trim, mapping) to be exposed
 	if ch.Settings.HideOriginalModels {
@@ -1848,7 +1903,7 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 		}
 	}
 
-	// 6. Lowercase model IDs if configured
+	// 7. Lowercase model IDs if configured
 	// When enabled, the matching keys (RequestModel) are lowercased so that
 	// models with different casing can match across channels for failover.
 	// ActualModel is NOT changed — the provider must receive the original casing.

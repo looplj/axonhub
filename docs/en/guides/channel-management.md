@@ -105,7 +105,7 @@ In the channel's **Settings** → **Model Mappings**, add `from → to` pairs:
 
 ### Extra Model Prefix
 
-Adds a **prefixed alias** for every model in the Supported Models list, allowing clients to request models with or without the prefix.
+Adds a **prefixed alias** for every model in the Supported Models list, allowing clients to request models with or without the prefix. **Model mappings (aliases) receive the prefix namespace as well**, so aliases can also be requested with the prefix.
 
 **Use case**: You want to namespace all models in a channel under a common prefix (e.g., `deepseek/`).
 
@@ -116,6 +116,17 @@ Adds a **prefixed alias** for every model in the Supported Models list, allowing
 The channel now accepts **both** of the following request formats:
 - `deepseek-chat` → sends `deepseek-chat` upstream
 - `deepseek/deepseek-chat` → sends `deepseek-chat` upstream
+
+**Alias example:**
+- Supported Models: `deepseek-v4.1-flash-1017`
+- Extra Model Prefix: `company`
+- Model Mapping: `deepseek-flash` → `deepseek-v4.1-flash-1017`
+
+The channel accepts both:
+- `deepseek-flash` → sends `deepseek-v4.1-flash-1017` upstream
+- `company/deepseek-flash` → sends `deepseek-v4.1-flash-1017` upstream
+
+If the alias already starts with the channel prefix (e.g., you configured `company/deepseek-flash` directly), the prefix is not added again.
 
 This is useful when you want to differentiate models from different channels that share the same name — clients can prefix the model with the channel's namespace.
 
@@ -152,7 +163,7 @@ Two options control which model names are exposed in the model list (e.g., when 
 | Option | Effect |
 |--------|--------|
 | **Hide Original Models** | Hides the original (direct) model names. Only transformed names (from prefix, auto-trim, or mapping) are shown. |
-| **Hide Mapped Models** | Hides the `from` names of model mappings. Only the original model names are shown. |
+| **Hide Mapped Models** | Hides the target models that aliases resolve to (both the original and prefixed names). Only aliases are shown, including their prefixed forms. |
 
 **Example — Hide Original Models:**
 - Supported Models: `openai/gpt-5.4`
@@ -166,7 +177,7 @@ The `/v1/models` response only shows `gpt-5.4`, not `openai/gpt-5.4`. Both names
 - Model Mapping: `gpt-4` → `gpt-4o`
 - Hide Mapped Models: enabled
 
-The `/v1/models` response shows `gpt-4o` but hides `gpt-4`. Both names still work for requests.
+The `/v1/models` response only shows the alias `gpt-4` and hides the target `gpt-4o`. Both names still work for requests.
 
 ## Testing and Enabling Channels
 

@@ -9,6 +9,8 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 )
 
+// TestChannel_GetUnifiedModels verifies how GetModelEntries combines direct,
+// prefixed, auto-trimmed, and mapped model names.
 func TestChannel_GetUnifiedModels(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -81,6 +83,68 @@ func TestChannel_GetUnifiedModels(t *testing.T) {
 			},
 		},
 		{
+			name: "with extra prefix and model mappings",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"deepseek-v4.1-flash-1017"},
+					Settings: &objects.ChannelSettings{
+						ExtraModelPrefix: "company",
+						ModelMappings: []objects.ModelMapping{
+							{From: "deepseek-flash", To: "deepseek-v4.1-flash-1017"},
+						},
+					},
+				},
+			},
+			expected: []ChannelModelEntry{
+				{RequestModel: "deepseek-v4.1-flash-1017", ActualModel: "deepseek-v4.1-flash-1017", Source: "direct"},
+				{RequestModel: "company/deepseek-v4.1-flash-1017", ActualModel: "deepseek-v4.1-flash-1017", Source: "prefix"},
+				{RequestModel: "deepseek-flash", ActualModel: "deepseek-v4.1-flash-1017", Source: "mapping"},
+				{RequestModel: "company/deepseek-flash", ActualModel: "deepseek-v4.1-flash-1017", Source: "mapping"},
+			},
+		},
+		{
+			name: "explicit prefixed mapping wins over generated prefixed alias",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"a", "b"},
+					Settings: &objects.ChannelSettings{
+						ExtraModelPrefix: "p",
+						ModelMappings: []objects.ModelMapping{
+							{From: "chat", To: "a"},
+							{From: "p/chat", To: "b"},
+						},
+					},
+				},
+			},
+			expected: []ChannelModelEntry{
+				{RequestModel: "a", ActualModel: "a", Source: "direct"},
+				{RequestModel: "b", ActualModel: "b", Source: "direct"},
+				{RequestModel: "p/a", ActualModel: "a", Source: "prefix"},
+				{RequestModel: "p/b", ActualModel: "b", Source: "prefix"},
+				{RequestModel: "chat", ActualModel: "a", Source: "mapping"},
+				{RequestModel: "p/chat", ActualModel: "b", Source: "mapping"},
+			},
+		},
+		{
+			name: "already prefixed alias is not prefixed twice",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					SupportedModels: []string{"deepseek-v4.1-flash-1017"},
+					Settings: &objects.ChannelSettings{
+						ExtraModelPrefix: "company",
+						ModelMappings: []objects.ModelMapping{
+							{From: "company/deepseek-flash", To: "deepseek-v4.1-flash-1017"},
+						},
+					},
+				},
+			},
+			expected: []ChannelModelEntry{
+				{RequestModel: "deepseek-v4.1-flash-1017", ActualModel: "deepseek-v4.1-flash-1017", Source: "direct"},
+				{RequestModel: "company/deepseek-v4.1-flash-1017", ActualModel: "deepseek-v4.1-flash-1017", Source: "prefix"},
+				{RequestModel: "company/deepseek-flash", ActualModel: "deepseek-v4.1-flash-1017", Source: "mapping"},
+			},
+		},
+		{
 			name: "combined: all features",
 			channel: &Channel{
 				Channel: &ent.Channel{
@@ -101,6 +165,7 @@ func TestChannel_GetUnifiedModels(t *testing.T) {
 				{RequestModel: "custom/deepseek-chat", ActualModel: "deepseek-chat", Source: "prefix"},
 				{RequestModel: "gpt-4", ActualModel: "openai/gpt-4", Source: "auto_trim"},
 				{RequestModel: "gpt4", ActualModel: "openai/gpt-4", Source: "mapping"},
+				{RequestModel: "custom/gpt4", ActualModel: "openai/gpt-4", Source: "mapping"},
 			},
 		},
 		{
@@ -201,6 +266,7 @@ func TestChannel_GetUnifiedModels(t *testing.T) {
 				{RequestModel: "custom/deepseek-chat", ActualModel: "deepseek-chat", Source: "prefix"},
 				{RequestModel: "gpt-4", ActualModel: "openai/gpt-4", Source: "auto_trim"},
 				{RequestModel: "gpt4", ActualModel: "openai/gpt-4", Source: "mapping"},
+				{RequestModel: "custom/gpt4", ActualModel: "openai/gpt-4", Source: "mapping"},
 			},
 		},
 		{
@@ -254,6 +320,7 @@ func TestChannel_GetUnifiedModels(t *testing.T) {
 			},
 			expected: []ChannelModelEntry{
 				{RequestModel: "deepseek-v4-pro", ActualModel: "deep-deepseek-v4-pro", Source: "mapping"},
+				{RequestModel: "AIHubMix/deepseek-v4-pro", ActualModel: "deep-deepseek-v4-pro", Source: "mapping"},
 			},
 		},
 		{
@@ -274,6 +341,7 @@ func TestChannel_GetUnifiedModels(t *testing.T) {
 				{RequestModel: "claude-3", ActualModel: "claude-3", Source: "direct"},
 				{RequestModel: "proxy/claude-3", ActualModel: "claude-3", Source: "prefix"},
 				{RequestModel: "gpt-4", ActualModel: "gpt-4-turbo", Source: "mapping"},
+				{RequestModel: "proxy/gpt-4", ActualModel: "gpt-4-turbo", Source: "mapping"},
 			},
 		},
 		{
@@ -313,6 +381,7 @@ func TestChannel_GetUnifiedModels(t *testing.T) {
 				{RequestModel: "claude-3", ActualModel: "claude-3", Source: "direct"},
 				{RequestModel: "proxy/claude-3", ActualModel: "claude-3", Source: "prefix"},
 				{RequestModel: "gpt-4", ActualModel: "openai/gpt-4-turbo", Source: "mapping"},
+				{RequestModel: "proxy/gpt-4", ActualModel: "openai/gpt-4-turbo", Source: "mapping"},
 			},
 		},
 	}
