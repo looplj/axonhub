@@ -58,7 +58,7 @@ func TestAnalyticsPerformanceStatsPostgresQualifiesUsageLogFilters(t *testing.T)
 		ChannelIDs: []*objects.GUID{{ID: 2}},
 		ModelIDs:   []string{"test-model"},
 	}
-	_, err := resolver.queryDimensionPerformanceStats(ctx, filter, []int{3}, false, nil, "apiKey")
+	_, err := resolver.queryDimensionPerformanceStats(ctx, filter, []int{3}, false, "apiKey")
 	require.ErrorIs(t, err, errCaptureAnalyticsPerformanceQuery)
 	require.Contains(t, driver.query, `"usage_logs"."project_id" IN`)
 	require.Contains(t, driver.query, `"usage_logs"."channel_id" IN`)

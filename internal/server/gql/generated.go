@@ -258,7 +258,7 @@ type ComplexityRoot struct {
 	}
 
 	AnalyticsMetadata struct {
-		EarliestDate func(childComplexity int) int
+		EarliestTime func(childComplexity int) int
 	}
 
 	AnalyticsOverview struct {
@@ -3252,12 +3252,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AnalyticsDimensionStat.TtftMs(childComplexity), true
 
-	case "AnalyticsMetadata.earliestDate":
-		if e.complexity.AnalyticsMetadata.EarliestDate == nil {
+	case "AnalyticsMetadata.earliestTime":
+		if e.complexity.AnalyticsMetadata.EarliestTime == nil {
 			break
 		}
 
-		return e.complexity.AnalyticsMetadata.EarliestDate(childComplexity), true
+		return e.complexity.AnalyticsMetadata.EarliestTime(childComplexity), true
 
 	case "AnalyticsOverview.totalCachedInputTokens":
 		if e.complexity.AnalyticsOverview.TotalCachedInputTokens == nil {
@@ -19081,30 +19081,30 @@ func (ec *executionContext) fieldContext_AnalyticsDimensionStat_ttftMs(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _AnalyticsMetadata_earliestDate(ctx context.Context, field graphql.CollectedField, obj *AnalyticsMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _AnalyticsMetadata_earliestTime(ctx context.Context, field graphql.CollectedField, obj *AnalyticsMetadata) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_AnalyticsMetadata_earliestDate,
+		ec.fieldContext_AnalyticsMetadata_earliestTime,
 		func(ctx context.Context) (any, error) {
-			return obj.EarliestDate, nil
+			return obj.EarliestTime, nil
 		},
 		nil,
-		ec.marshalOString2ᚖstring,
+		ec.marshalOTime2ᚖtimeᚐTime,
 		true,
 		false,
 	)
 }
 
-func (ec *executionContext) fieldContext_AnalyticsMetadata_earliestDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AnalyticsMetadata_earliestTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AnalyticsMetadata",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -49358,8 +49358,8 @@ func (ec *executionContext) fieldContext_Query_analyticsMetadata(_ context.Conte
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "earliestDate":
-				return ec.fieldContext_AnalyticsMetadata_earliestDate(ctx, field)
+			case "earliestTime":
+				return ec.fieldContext_AnalyticsMetadata_earliestTime(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AnalyticsMetadata", field.Name)
 		},
@@ -67533,14 +67533,14 @@ func (ec *executionContext) unmarshalInputAnalyticsFilter(ctx context.Context, o
 		switch k {
 		case "startTime":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startTime"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.StartTime = data
 		case "endTime":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endTime"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -94715,8 +94715,8 @@ func (ec *executionContext) _AnalyticsMetadata(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("AnalyticsMetadata")
-		case "earliestDate":
-			out.Values[i] = ec._AnalyticsMetadata_earliestDate(ctx, field, obj)
+		case "earliestTime":
+			out.Values[i] = ec._AnalyticsMetadata_earliestTime(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -22,8 +22,6 @@ import (
 
 // AnalyticsMetadata is the resolver for the analyticsMetadata field.
 func (r *queryResolver) AnalyticsMetadata(ctx context.Context) (*AnalyticsMetadata, error) {
-	loc := r.systemService.TimeLocation(ctx)
-
 	// Find earliest created_at
 	first, err := r.client.UsageLog.Query().Order(ent.Asc(usagelog.FieldCreatedAt)).First(ctx)
 	if err != nil {
@@ -34,15 +32,15 @@ func (r *queryResolver) AnalyticsMetadata(ctx context.Context) (*AnalyticsMetada
 		return nil, err
 	}
 
-	d := first.CreatedAt.In(loc).Format("2006-01-02")
-	return &AnalyticsMetadata{EarliestDate: &d}, nil
+	// Return the instant itself so clients are not forced to reinterpret a
+	// calendar date in their own timezone.
+	return &AnalyticsMetadata{EarliestTime: &first.CreatedAt}, nil
 }
 
 // AnalyticsOverview is the resolver for the analyticsOverview field.
 func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *AnalyticsFilter) (*AnalyticsOverview, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 	apiKeyIDs, hasUserFilter := r.resolveFilterAPIKeyIDs(ctx, filter)
-	loc := r.systemService.TimeLocation(ctx)
 
 	type overviewResult struct {
 		TotalRequests     int     `json:"total_requests"`
@@ -57,7 +55,7 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 
 	err := r.client.UsageLog.Query().
 		Modify(func(s *sql.Selector) {
-			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
+			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter)
 
 			s.Select(
 				sql.As(sql.Count(s.C(usagelog.FieldID)), "total_requests"),
@@ -98,27 +96,20 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 	nowUTC := xtime.UTCNow()
 	_, offsetSeconds := nowUTC.In(loc).Zone()
 
-	// Determine date range — 同仪表盘 parseTimeWindow 模式
+	// Determine the range of local calendar days to fill — 同仪表盘 parseTimeWindow 模式
 	var startDay, endDay time.Time
 	if filter != nil && filter.StartTime != nil {
-		startDay = parseDateStr(*filter.StartTime, loc)
+		startDay = startOfDay(*filter.StartTime, loc)
 	} else {
 		// Default: 30 days ago
-		nowLocal := nowUTC.In(loc)
-		startDay = time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
-		startDay = startDay.AddDate(0, 0, -29)
+		startDay = startOfDay(nowUTC, loc).AddDate(0, 0, -29)
 	}
 
 	if filter != nil && filter.EndTime != nil {
-		endDay = parseDateStr(*filter.EndTime, loc)
+		endDay = startOfDay(*filter.EndTime, loc)
 	} else {
-		endDay = nowUTC.In(loc)
-		endDay = time.Date(endDay.Year(), endDay.Month(), endDay.Day(), 0, 0, 0, 0, loc)
+		endDay = startOfDay(nowUTC, loc)
 	}
-
-	// 填充缺失日期
-	startDay = time.Date(startDay.Year(), startDay.Month(), startDay.Day(), 0, 0, 0, 0, loc)
-	endDay = time.Date(endDay.Year(), endDay.Month(), endDay.Day(), 0, 0, 0, 0, loc)
 
 	type dailyStats struct {
 		Date         string  `json:"date"`
@@ -134,7 +125,7 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 
 	err := r.client.UsageLog.Query().
 		Modify(func(s *sql.Selector) {
-			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
+			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter)
 
 			// Build dialect-specific date expression
 			createdAtCol := s.C(usagelog.FieldCreatedAt)
@@ -212,7 +203,6 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 func (r *queryResolver) AnalyticsDimensionStats(ctx context.Context, filter *AnalyticsFilter, dimension string) ([]*AnalyticsDimensionStat, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 	apiKeyIDs, hasUserFilter := r.resolveFilterAPIKeyIDs(ctx, filter)
-	loc := r.systemService.TimeLocation(ctx)
 
 	var (
 		results []dimStats
@@ -221,13 +211,13 @@ func (r *queryResolver) AnalyticsDimensionStats(ctx context.Context, filter *Ana
 
 	switch dimension {
 	case "channel":
-		results, err = r.queryChannelStats(ctx, filter, apiKeyIDs, hasUserFilter, loc)
+		results, err = r.queryChannelStats(ctx, filter, apiKeyIDs, hasUserFilter)
 	case "model":
-		results, err = r.queryModelStats(ctx, filter, apiKeyIDs, hasUserFilter, loc)
+		results, err = r.queryModelStats(ctx, filter, apiKeyIDs, hasUserFilter)
 	case "apiKey":
-		results, err = r.queryAPIKeyStats(ctx, filter, apiKeyIDs, hasUserFilter, loc)
+		results, err = r.queryAPIKeyStats(ctx, filter, apiKeyIDs, hasUserFilter)
 	case "user":
-		results, err = r.queryUserStats(ctx, filter, apiKeyIDs, hasUserFilter, loc)
+		results, err = r.queryUserStats(ctx, filter, apiKeyIDs, hasUserFilter)
 	default:
 		return nil, fmt.Errorf("unsupported dimension: %s, must be one of: channel, model, apiKey, user", dimension)
 	}
@@ -236,7 +226,7 @@ func (r *queryResolver) AnalyticsDimensionStats(ctx context.Context, filter *Ana
 		return nil, err
 	}
 
-	performanceByID, err := r.queryDimensionPerformanceStats(ctx, filter, apiKeyIDs, hasUserFilter, loc, dimension)
+	performanceByID, err := r.queryDimensionPerformanceStats(ctx, filter, apiKeyIDs, hasUserFilter, dimension)
 	if err != nil {
 		return nil, err
 	}

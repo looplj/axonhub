@@ -1,124 +1,42 @@
 import { useState, useCallback, useMemo } from 'react';
-import { IconCalendar, IconX, IconFilter } from '@tabler/icons-react';
+import { IconX, IconFilter } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useAnalyticsFilterStore } from '@/stores/analyticsStore';
-import { cn, formatUserName } from '@/lib/utils';
+import { formatUserName } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DateRangePicker } from '@/components/date-range-picker';
+import type { DateTimeRangeValue } from '@/utils/date-range';
 import { useApiKeyOptions, useApiKeyOptionsByIDs } from '@/features/apikeys/data/apikeys';
 import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { useProjects } from '@/features/projects/data/projects';
 import { useUsers } from '@/features/users/data/users';
 import { usePermissions } from '@/hooks/usePermissions';
+import { dateTimeRangeToTimestamps, startOfLocalDay, timestampsToDateTimeRange } from '../utils/date-range';
 import { AnalyticsFacetedFilter } from './analytics-faceted-filter';
 
-// Calendar Date → 'YYYY-MM-DD' 字符串（直接取本地年月日，不做时区转换）
-function formatDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
+// Formats the selected range with second precision for the trigger label.
+function formatDateTimeLabel(range: DateTimeRangeValue | undefined, placeholder: string): string {
+  if (!range?.from && !range?.to) return placeholder;
 
-// 'YYYY-MM-DD' → Date（用于 Calendar selected）
-function parseDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
+  const format = (day: Date, time: { hh: string; mm: string; ss: string }) => {
+    const date = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
 
-interface DateRangePickerProps {
-  startDate: string | null;
-  endDate: string | null;
-  onStartChange: (date: Date | null) => void;
-  onEndChange: (date: Date | null) => void;
-}
+    return `${date} ${time.hh}:${time.mm}:${time.ss}`;
+  };
 
-function DateRangePicker({ startDate, endDate, onStartChange, onEndChange }: DateRangePickerProps) {
-  const { t } = useTranslation();
-  const [startOpen, setStartOpen] = useState(false);
-  const [endOpen, setEndOpen] = useState(false);
+  const from = range.from ? format(range.from, range.startTime) : '...';
+  const to = range.to ? format(range.to, range.endTime) : '...';
 
-  const handleStartDateSelect = useCallback(
-    (date: Date | undefined) => {
-      if (date && endDate) {
-        const end = parseDate(endDate);
-        if (date > end) {
-          toast.error(t('analytics.filter.startDateAfterEndError'));
-          return;
-        }
-      }
-      onStartChange(date || null);
-      setStartOpen(false);
-    },
-    [endDate, onStartChange, t]
-  );
-
-  const handleEndDateSelect = useCallback(
-    (date: Date | undefined) => {
-      if (date && startDate) {
-        const start = parseDate(startDate);
-        if (date < start) {
-          toast.error(t('analytics.filter.endDateBeforeStartError'));
-          return;
-        }
-      }
-      onEndChange(date || null);
-      setEndOpen(false);
-    },
-    [startDate, onEndChange, t]
-  );
-
-  return (
-    <div className='flex items-center gap-2'>
-      <Popover open={startOpen} onOpenChange={setStartOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant='outline'
-            className={cn('h-8 w-[130px] justify-start text-left text-xs font-normal', !startDate && 'text-muted-foreground')}
-          >
-            <IconCalendar className='mr-1 h-3 w-3' />
-            {startDate || t('analytics.filter.startDate')}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className='w-auto p-0' align='start'>
-          <Calendar mode='single' selected={startDate ? parseDate(startDate) : undefined} onSelect={handleStartDateSelect} initialFocus />
-        </PopoverContent>
-      </Popover>
-
-      <span className='text-muted-foreground'>~</span>
-
-      <Popover open={endOpen} onOpenChange={setEndOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant='outline'
-            className={cn('h-8 w-[130px] justify-start text-left text-xs font-normal', !endDate && 'text-muted-foreground')}
-          >
-            <IconCalendar className='mr-1 h-3 w-3' />
-            {endDate || t('analytics.filter.endDate')}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className='w-auto p-0' align='start'>
-          <Calendar
-            mode='single'
-            selected={endDate ? parseDate(endDate) : undefined}
-            onSelect={handleEndDateSelect}
-            disabled={{ after: new Date() }}
-            initialFocus
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
+  return `${from} ~ ${to}`;
 }
 
 interface AnalyticsFilterBarProps {
-  earliestDate?: string | null;
+  earliestTime?: string | null;
 }
 
-export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
+export function AnalyticsFilterBar({ earliestTime }: AnalyticsFilterBarProps) {
   const { t } = useTranslation();
   const filter = useAnalyticsFilterStore((state) => state.filter);
   const [apiKeySearch, setApiKeySearch] = useState('');
@@ -195,52 +113,65 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
     [projectsData]
   );
 
-  const handleStartDate = useCallback(
-    (date: Date | null) => {
-      setStartTime(date ? formatDate(date) : null);
-    },
-    [setStartTime]
+  const bounds = useMemo(
+    () => timestampsToDateTimeRange(filter.startTime, filter.endTime),
+    [filter.startTime, filter.endTime]
   );
 
-  const handleEndDate = useCallback(
-    (date: Date | null) => {
-      setEndTime(date ? formatDate(date) : null);
+  const applyRange = useCallback(
+    (start: Date | null, end: Date | null) => {
+      setStartTime(start ? start.toISOString() : null);
+      setEndTime(end ? end.toISOString() : null);
     },
-    [setEndTime]
+    [setStartTime, setEndTime]
+  );
+
+  const handleRangeChange = useCallback(
+    (range: DateTimeRangeValue | undefined) => {
+      // Pass the stored bounds so an untouched range keeps its milliseconds.
+      const { startTime, endTime } = dateTimeRangeToTimestamps(range, bounds);
+
+      if (startTime && endTime && new Date(startTime) > new Date(endTime)) {
+        toast.error(t('analytics.filter.startAfterEndError'));
+
+        return;
+      }
+
+      setStartTime(startTime);
+      setEndTime(endTime);
+    },
+    [bounds, setStartTime, setEndTime, t]
   );
 
   const setQuickRange = useCallback(
     (days: number) => {
       const now = new Date();
-      const start = new Date();
-      start.setDate(now.getDate() - days + 1);
-      start.setHours(0, 0, 0, 0);
-      setStartTime(formatDate(start));
-      setEndTime(formatDate(now));
+      const start = startOfLocalDay(now);
+      start.setDate(start.getDate() - days + 1);
+
+      applyRange(start, now);
     },
-    [setStartTime, setEndTime]
+    [applyRange]
   );
 
   const setQuickMonth = useCallback(() => {
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    setStartTime(formatDate(start));
-    setEndTime(formatDate(now));
-  }, [setStartTime, setEndTime]);
+
+    applyRange(new Date(now.getFullYear(), now.getMonth(), 1), now);
+  }, [applyRange]);
 
   const setQuickYear = useCallback(() => {
     const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 1);
-    setStartTime(formatDate(start));
-    setEndTime(formatDate(now));
-  }, [setStartTime, setEndTime]);
+
+    applyRange(new Date(now.getFullYear(), 0, 1), now);
+  }, [applyRange]);
 
   const setAllTime = useCallback(() => {
-    if (earliestDate) {
-      setStartTime(earliestDate);
-      setEndTime(formatDate(new Date()));
-    }
-  }, [earliestDate, setStartTime, setEndTime]);
+    if (!earliestTime) return;
+
+    // The API returns an instant, so no client-side timezone reinterpretation.
+    applyRange(new Date(earliestTime), new Date());
+  }, [earliestTime, applyRange]);
 
   const hasFilters =
     filter.startTime || filter.endTime || filter.projectIDs || filter.channelIDs || filter.modelIDs || filter.apiKeyIDs || filter.userIDs;
@@ -254,12 +185,11 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
           {t('analytics.filter.dateRange')}
         </div>
 
-        {/* Date Range */}
+        {/* Date Range — precise to the second */}
         <DateRangePicker
-          startDate={filter.startTime ?? null}
-          endDate={filter.endTime ?? null}
-          onStartChange={handleStartDate}
-          onEndChange={handleEndDate}
+          value={bounds.range}
+          onChange={handleRangeChange}
+          formatLabel={(range) => formatDateTimeLabel(range, t('analytics.filter.dateRangePlaceholder'))}
         />
 
         {/* Quick Range Buttons */}

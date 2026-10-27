@@ -18,52 +18,26 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-// parseDateStr 解析 YYYY-MM-DD 日期字符串为系统时区午夜时间（保持 loc 时区）
-// 与仪表盘 GetCalendarPeriods 中 todayStart 的构建方式一致：
-// time.Date(year, month, day, 0, 0, 0, 0, loc)
-// 不转 UTC，因为后续 fill-missing-dates 循环需要 loc 时区的 Year/Month/Day.
-func parseDateStr(dateStr string, loc *time.Location) time.Time {
-	parts := strings.Split(dateStr, "-")
-	if len(parts) != 3 {
-		return time.Time{}
-	}
-	y, m, d := 0, 0, 0
-	for i, p := range parts {
-		n := 0
-		for _, c := range p {
-			n = n*10 + int(c-'0')
-		}
-		switch i {
-		case 0:
-			y = n
-		case 1:
-			m = n
-		case 2:
-			d = n
-		}
-	}
-	return time.Date(y, time.Month(m), d, 0, 0, 0, 0, loc)
+// startOfDay returns the local midnight of t in loc.
+// It keeps the loc timezone because the fill-missing-dates loop of the daily
+// statistics aggregates per local calendar day.
+func startOfDay(t time.Time, loc *time.Location) time.Time {
+	t = t.In(loc)
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, loc)
 }
 
-func (r *queryResolver) buildAnalyticsWhere(s *sql.Selector, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) {
+func (r *queryResolver) buildAnalyticsWhere(s *sql.Selector, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool) {
 	if filter == nil {
 		return
 	}
 
 	if filter.StartTime != nil {
-		startDate := parseDateStr(*filter.StartTime, loc)
-		if !startDate.IsZero() {
-			// 同仪表盘：本地午夜转 UTC 再比较，数据库 created_at 是 UTC
-			s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), startDate.UTC()))
-		}
+		// 数据库 created_at 存 UTC，时间戳是绝对时刻，直接按 UTC 比较
+		s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), filter.StartTime.UTC()))
 	}
 
 	if filter.EndTime != nil {
-		endDate := parseDateStr(*filter.EndTime, loc)
-		if !endDate.IsZero() {
-			endDateNext := endDate.AddDate(0, 0, 1)
-			s.Where(sql.LT(s.C(usagelog.FieldCreatedAt), endDateNext.UTC()))
-		}
+		s.Where(sql.LTE(s.C(usagelog.FieldCreatedAt), filter.EndTime.UTC()))
 	}
 
 	if len(filter.ProjectIDs) > 0 {
@@ -180,7 +154,6 @@ func (r *queryResolver) queryDimensionPerformanceStats(
 	filter *AnalyticsFilter,
 	apiKeyIDs []int,
 	hasUserFilter bool,
-	loc *time.Location,
 	dimension string,
 ) (map[string]dimensionPerformanceStats, error) {
 	type rawPerformanceStats struct {
@@ -219,7 +192,7 @@ func (r *queryResolver) queryDimensionPerformanceStats(
 				sql.EQ(executionTable.C(requestexecution.FieldID), latestExecutionID),
 			)
 
-			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
+			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter)
 
 			var dimensionIDColumn string
 			switch dimension {
@@ -296,7 +269,7 @@ func (r *queryResolver) queryDimensionPerformanceStats(
 	}), nil
 }
 
-func (r *queryResolver) queryChannelStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) ([]dimStats, error) {
+func (r *queryResolver) queryChannelStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool) ([]dimStats, error) {
 	type channelStatsRaw struct {
 		ChannelID    int     `json:"channel_id"`
 		Name         string  `json:"name"`
@@ -319,7 +292,7 @@ func (r *queryResolver) queryChannelStats(ctx context.Context, filter *Analytics
 			)
 			s.Where(sql.EQ(channelTable.C(channel.FieldDeletedAt), 0))
 
-			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
+			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter)
 
 			s.Select(
 				sql.As(s.C(usagelog.FieldChannelID), "channel_id"),
@@ -357,12 +330,12 @@ func (r *queryResolver) queryChannelStats(ctx context.Context, filter *Analytics
 	return results, nil
 }
 
-func (r *queryResolver) queryModelStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) ([]dimStats, error) {
+func (r *queryResolver) queryModelStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool) ([]dimStats, error) {
 	var results []dimStats
 
 	err := r.client.UsageLog.Query().
 		Modify(func(s *sql.Selector) {
-			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
+			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter)
 
 			s.Select(
 				sql.As(s.C(usagelog.FieldModelID), "id"),
@@ -385,7 +358,7 @@ func (r *queryResolver) queryModelStats(ctx context.Context, filter *AnalyticsFi
 	return results, nil
 }
 
-func (r *queryResolver) queryAPIKeyStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) ([]dimStats, error) {
+func (r *queryResolver) queryAPIKeyStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool) ([]dimStats, error) {
 	type apiKeyStatsRaw struct {
 		APIKeyID     int     `json:"api_key_id"`
 		RequestCount int     `json:"request_count"`
@@ -401,7 +374,7 @@ func (r *queryResolver) queryAPIKeyStats(ctx context.Context, filter *AnalyticsF
 	err := r.client.UsageLog.Query().
 		Where(usagelog.APIKeyIDNotNil()).
 		Modify(func(s *sql.Selector) {
-			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
+			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter)
 
 			s.Select(
 				sql.As(s.C(usagelog.FieldAPIKeyID), "api_key_id"),
@@ -451,7 +424,7 @@ func (r *queryResolver) queryAPIKeyStats(ctx context.Context, filter *AnalyticsF
 	return results, nil
 }
 
-func (r *queryResolver) queryUserStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) ([]dimStats, error) {
+func (r *queryResolver) queryUserStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool) ([]dimStats, error) {
 	type userStatsRaw struct {
 		UserID       int     `json:"user_id"`
 		FirstName    string  `json:"first_name"`
@@ -483,7 +456,7 @@ func (r *queryResolver) queryUserStats(ctx context.Context, filter *AnalyticsFil
 			)
 			s.Where(sql.EQ(apiKeyTable.C(apikey.FieldDeletedAt), 0))
 
-			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
+			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter)
 
 			s.Select(
 				sql.As(userTable.C("id"), "user_id"),

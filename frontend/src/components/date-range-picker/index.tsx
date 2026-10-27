@@ -17,10 +17,12 @@ interface DateRangePickerProps {
   onCancel?: () => void;
   onConfirm?: (range: DateTimeRangeValue) => void;
   className?: string;
+  /** Custom label for the trigger button; defaults to the picked dates. */
+  formatLabel?: (range: DateTimeRangeValue | undefined) => string;
 }
 
 export function DateRangePicker(props: DateRangePickerProps) {
-  const { value, onChange, onCancel, onConfirm, className } = props;
+  const { value, onChange, onCancel, onConfirm, className, formatLabel } = props;
   const { t } = useTranslation();
   const isControlled = Object.prototype.hasOwnProperty.call(props, 'value');
   const [open, setOpen] = React.useState(false);
@@ -71,7 +73,9 @@ export function DateRangePicker(props: DateRangePickerProps) {
   }, [isControlled, normalizedValue, internalValue, onCancel]);
 
   const currentValue = isControlled ? normalizedValue : internalValue;
-  const label = formatRange(currentValue?.from, currentValue?.to, t('common.filters.dateRange'));
+  const label = formatLabel
+    ? formatLabel(currentValue)
+    : formatRange(currentValue?.from, currentValue?.to, t('common.filters.dateRange'));
 
   return (
     <div className={cn('grid gap-2', className)}>
