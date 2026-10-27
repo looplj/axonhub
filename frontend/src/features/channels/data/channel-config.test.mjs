@@ -432,3 +432,28 @@ test('Ollama has localized channel, provider, and cookie-field labels', () => {
     assert.ok(channels['channels.dialogs.fields.ollamaQuota.authCookie.description']);
   }
 });
+
+test('AtmoRouter exposes OpenAI and Anthropic channel variants', () => {
+  const schema = read('features/channels/data/schema.ts');
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+  const providersConfig = read('features/channels/data/config_providers.ts');
+
+  assert.match(schema, /channelTypeSchema[\s\S]*'atmorouter'[\s\S]*'atmorouter_anthropic'/);
+  assert.match(
+    channelsConfig,
+    /atmorouter:\s*{[\s\S]*?baseURL:\s*'https:\/\/atmorouter\.dev\/v1'[\s\S]*?apiFormat:\s*OPENAI_CHAT_COMPLETIONS/
+  );
+  assert.match(
+    channelsConfig,
+    /atmorouter_anthropic:\s*{[\s\S]*?baseURL:\s*'https:\/\/atmorouter\.dev'[\s\S]*?apiFormat:\s*ANTHROPIC_MESSAGES/
+  );
+  assert.match(channelsConfig, /CHANNEL_TYPE_TO_PROVIDER[\s\S]*atmorouter_anthropic:\s*'atmorouter'/);
+  assert.match(providersConfig, /atmorouter:\s*{[\s\S]*channelTypes:\s*\[\s*'atmorouter',\s*'atmorouter_anthropic'\s*\]/);
+
+  for (const locale of ['en', 'zh-CN']) {
+    const channels = parseLocale(locale);
+    assert.ok(channels['channels.types.atmorouter']);
+    assert.ok(channels['channels.types.atmorouter_anthropic']);
+    assert.ok(channels['channels.providers.atmorouter']);
+  }
+});

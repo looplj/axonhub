@@ -111,6 +111,8 @@ func (Channel) Fields() []ent.Field {
 				"commandcode_anthropic",
 				"typesafe",
 				"cloudflare",
+				"atmorouter",
+				"atmorouter_anthropic",
 			).
 			Annotations(
 				entgql.OrderField("TYPE"),

@@ -149,6 +149,8 @@ export const channelTypeSchema = z.enum([
   'zenmux_video',
   'commandcode',
   'commandcode_anthropic',
+  'atmorouter',
+  'atmorouter_anthropic',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 

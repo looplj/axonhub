@@ -36,6 +36,7 @@ import {
   Cloudflare,
 } from '@lobehub/icons';
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
+import { AtmoRouterIcon } from '../components/atmorouter-icon';
 import { CommandCodeIcon } from '../components/commandcode-icon';
 import { EvolinkIcon } from '../components/evolink-icon';
 import { FennoIcon } from '../components/fenno-icon';
@@ -933,6 +934,31 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
     icon: CommandCodeIcon,
   },
+  atmorouter: {
+    channelType: 'atmorouter',
+    baseURL: 'https://atmorouter.dev/v1',
+    defaultModels: [
+      'cc/claude-sonnet-4-6',
+      'cc/claude-opus-4-7',
+      'cx/gpt-5.6-sol',
+      'cbcn/glm-5.3',
+      'cb/kimi-k3',
+      'cb/minimax-m3',
+      'ali/qwen3.8-max',
+      'ali/deepseek-v4.1-flash',
+    ],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    icon: AtmoRouterIcon,
+  },
+  atmorouter_anthropic: {
+    channelType: 'atmorouter_anthropic',
+    baseURL: 'https://atmorouter.dev',
+    defaultModels: ['cc/claude-sonnet-4-6', 'cc/claude-opus-4-7', 'cc/claude-haiku-4-5'],
+    apiFormat: ANTHROPIC_MESSAGES,
+    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    icon: AtmoRouterIcon,
+  },
 };
 
 /**
@@ -996,7 +1022,8 @@ export type Provider =
   | 'evolink'
   | 'groq'
   | 'zenmux'
-  | 'commandcode';
+  | 'commandcode'
+  | 'atmorouter';
 
 /**
  * Map channel type to provider
@@ -1077,6 +1104,8 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   zenmux_video: 'zenmux',
   commandcode: 'commandcode',
   commandcode_anthropic: 'commandcode',
+  atmorouter: 'atmorouter',
+  atmorouter_anthropic: 'atmorouter',
 };
 
 /**

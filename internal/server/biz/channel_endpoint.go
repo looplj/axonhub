@@ -352,6 +352,8 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
 		{APIFormat: llm.APIFormatOpenAIEmbedding.String()},
 	},
+	channel.TypeAtmorouter:          openAIChatOnlyDefaultEndpoints,
+	channel.TypeAtmorouterAnthropic: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 }
 
 func validateEndpointsForChannelType(channelType channel.Type, endpoints []objects.ChannelEndpoint, baseURL ...string) error {

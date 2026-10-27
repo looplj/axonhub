@@ -36,6 +36,7 @@ import {
   Cloudflare,
 } from '@lobehub/icons';
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
+import { AtmoRouterIcon } from '../components/atmorouter-icon';
 import { CommandCodeIcon } from '../components/commandcode-icon';
 import { EvolinkIcon } from '../components/evolink-icon';
 import { FennoIcon } from '../components/fenno-icon';
@@ -325,6 +326,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: CommandCodeIcon,
     color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
     channelTypes: ['commandcode', 'commandcode_anthropic'],
+  },
+  atmorouter: {
+    provider: 'atmorouter',
+    icon: AtmoRouterIcon,
+    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    channelTypes: ['atmorouter', 'atmorouter_anthropic'],
   },
 };
 
