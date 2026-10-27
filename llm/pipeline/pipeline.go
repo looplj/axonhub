@@ -47,6 +47,14 @@ type ChannelSameChannelRetryLimit interface {
 	SameChannelRetryLimit() (limit int, ok bool)
 }
 
+// PreflightSkipper is an optional interface for outbounds that can reject a
+// candidate locally, before any request is sent upstream (for example a circuit
+// breaker refusing a probe). Such a rejection must not consume the retry budget,
+// because no upstream attempt was made and the next candidate can be tried.
+type PreflightSkipper interface {
+	IsPreflightSkip(err error) bool
+}
+
 // ChannelCustomizedExecutor interface for channel need custom the process of request.
 // The customized executor will be used to execute the request.
 // e.g. the aws bedrock process need a custom executor to handle the request.
@@ -326,6 +334,30 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		// Determine retry strategy
 		canRetry := false
 		timeoutRetry := isResponseTimeoutError(lastErr)
+
+		// 0. A preflight skip means the candidate rejected the request before any
+		// upstream attempt (e.g. a circuit breaker refusing a probe while another
+		// probe is in flight). No upstream capacity was consumed, so move to the
+		// next candidate without spending the channel retry budget - otherwise a
+		// collision on the probe lease would fail a request even though a healthy
+		// channel is available.
+		if skipper, ok := p.Outbound.(PreflightSkipper); ok && skipper.IsPreflightSkip(lastErr) {
+			if retryable, ok := p.Outbound.(Retryable); ok && retryable.HasMoreChannels() {
+				if err := retryable.NextChannel(ctx); err == nil {
+					sameChannelRetries = 0
+
+					slog.DebugContext(ctx, "switched to next channel after a preflight skip",
+						slog.Int("channel_switches", channelSwitches),
+					)
+
+					continue
+				} else {
+					slog.WarnContext(ctx, "failed to switch channel after a preflight skip", slog.Any("error", err))
+				}
+			}
+
+			break
+		}
 
 		// 1. Try same-channel retry first if supported
 		if !timeoutRetry {

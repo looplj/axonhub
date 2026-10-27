@@ -766,6 +766,15 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		requiredCount = 1 + retryPolicy.MaxChannelRetries
 	}
 
+	// A circuit-breaker preflight rejection (probe lease busy) rolls over to the next
+	// candidate without spending a retry, so keep one spare candidate for that
+	// rollover. Otherwise a request whose only candidate is a probe-locked channel
+	// would fail even though a healthy channel is available.
+	if s.effectiveRoutingPolicy != nil &&
+		s.effectiveRoutingPolicy.LoadBalancerStrategy == biz.LoadBalancerStrategyCircuitBreaker {
+		requiredCount++
+	}
+
 	stickyID, stickyOK := 0, false
 	if traceStickyMode == biz.TraceStickyPreferPreviousChannel {
 		stickyID, stickyOK = s.resolveStickyChannelID(ctx, req, candidates)
