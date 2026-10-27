@@ -161,8 +161,11 @@ func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, mo
 	now := time.Now()
 	policy := m.GetPolicy(ctx)
 
-	// 1. TTL Check: prevent zombie counts
-	if stats.ConsecutiveFailures > 0 {
+	// 1. TTL Check: prevent zombie counts.
+	// Only apply it while the circuit is Closed. In Open/HalfOpen the counter drives
+	// the state transitions, so resetting it would demote an Open circuit to
+	// HalfOpen and let the channel back in without a single successful request.
+	if stats.State == StateClosed && stats.ConsecutiveFailures > 0 {
 		if now.Sub(stats.LastFailureAt) > policy.FailureStatsTTL {
 			log.Info(ctx, "Resetting expired failure stats for model",
 				log.Int("channel_id", channelID),
@@ -272,40 +275,13 @@ func (m *ModelCircuitBreaker) GetModelCircuitBreakerStats(ctx context.Context, c
 }
 
 // GetEffectiveWeight calculates the effective weight for a model based on its circuit breaker state.
-// When the failure stats have exceeded the TTL (no new failures for FailureStatsTTL duration),
-// the circuit breaker is lazily reset to allow recovery even if no background goroutine is running.
+// Recovery is driven exclusively by a successful request: an Open circuit stays Open until a
+// probe succeeds, no matter how much time has passed.
 func (m *ModelCircuitBreaker) GetEffectiveWeight(ctx context.Context, channelID int, modelID string, baseWeight float64) float64 {
 	stats := m.getStats(channelID, modelID)
 
 	stats.RLock()
 	policy := m.GetPolicy(ctx)
-
-	// Lazy TTL-based auto-recovery: if no failures occurred within the TTL window
-	// while the circuit is Open or HalfOpen, reset to Closed so the channel can
-	// recover without requiring a manual restart or background goroutine.
-	if stats.State != StateClosed && stats.ConsecutiveFailures > 0 &&
-		!stats.LastFailureAt.IsZero() && time.Since(stats.LastFailureAt) > policy.FailureStatsTTL {
-		stats.RUnlock()
-		stats.Lock()
-		// Double-check under write lock to avoid races with concurrent RecordError.
-		if stats.State != StateClosed && stats.ConsecutiveFailures > 0 &&
-			!stats.LastFailureAt.IsZero() && time.Since(stats.LastFailureAt) > policy.FailureStatsTTL {
-			log.Info(ctx, "Circuit breaker auto-recovered due to TTL expiry",
-				log.Int("channel_id", channelID),
-				log.String("model_id", modelID),
-				log.String("previous_state", string(stats.State)),
-				log.Int("previous_failures", stats.ConsecutiveFailures),
-				log.Duration("time_since_last_failure", time.Since(stats.LastFailureAt)),
-			)
-			stats.State = StateClosed
-			stats.ConsecutiveFailures = 0
-			stats.NextProbeAt = time.Time{}
-			stats.probeAttempts = 0
-			atomic.StoreInt32(&stats.probingInProgress, 0)
-		}
-		stats.Unlock()
-		stats.RLock()
-	}
 
 	defer stats.RUnlock()
 
@@ -318,12 +294,15 @@ func (m *ModelCircuitBreaker) GetEffectiveWeight(ctx context.Context, channelID 
 		return baseWeight * policy.HalfOpenWeight
 
 	case StateOpen:
-		// Open: default weight is 0
-		// [Key] Lazy Probe logic:
-		// If current time has passed NextProbeAt, allow only ONE request for probing
+		// Open: default weight is 0.
+		// [Key] Lazy probe logic: once NextProbeAt has passed and no other probe is in
+		// flight, score the candidate with its FULL weight. A throttled probe weight
+		// (HalfOpenWeight) competes poorly with healthy channels and is effectively
+		// never selected, so the circuit could never recover. The outbound probe lease
+		// (TryBeginProbe) still guarantees at most one real request per window.
 		if time.Now().After(stats.NextProbeAt) {
 			if atomic.LoadInt32(&stats.probingInProgress) == 0 {
-				return baseWeight * policy.HalfOpenWeight
+				return baseWeight
 			}
 		}
 
