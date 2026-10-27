@@ -15,6 +15,9 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/samber/lo"
+	"github.com/vektah/gqlparser/v2/gqlerror"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -31,8 +34,6 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
-	"github.com/samber/lo"
-	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -936,12 +937,13 @@ func (r *queryResolver) fastestChannels(ctx context.Context, input FastestChanne
 	dialectName := sqlDB.Dialect()
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
-	// The bundled SQLite driver is far newer than 3.25, so window functions are
-	// available. ROW_NUMBER avoids the correlated MAX(id) scan that made these
-	// aggregates roughly three times slower on SQLite.
 	queryMode := qb.ThroughputModeRowNumber
+	if dialectName == dialect.Postgres {
+		queryMode = qb.ThroughputModeDistinctOn
+	}
 
-	// Build query using shared helper function
+	// PostgreSQL uses DISTINCT ON for this ranking; other dialects keep
+	// ROW_NUMBER, which avoids the correlated MAX(id) scan on SQLite.
 	// Fetch more items than needed to allow confidence-based filtering
 	sqlLimit := max(*input.Limit*4, 20)
 	query := qb.BuildThroughputQuery(
@@ -956,7 +958,8 @@ func (r *queryResolver) fastestChannels(ctx context.Context, input FastestChanne
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("context canceled: %w", err)
 	}
-	// ROW_NUMBER mode needs the window start once, in the CTE.
+	// The window start is the sole query argument, bound once for the
+	// selected query mode (ROW_NUMBER or DISTINCT ON).
 	queryArgs := []any{since.UTC()}
 
 	rows, err := sqlDB.DB().QueryContext(ctx, query, queryArgs...)
@@ -1082,12 +1085,13 @@ func (r *queryResolver) fastestModels(ctx context.Context, input FastestChannels
 	dialectName := sqlDB.Dialect()
 	useDollarPlaceholders := dialectName == dialect.Postgres
 
-	// The bundled SQLite driver is far newer than 3.25, so window functions are
-	// available. ROW_NUMBER avoids the correlated MAX(id) scan that made these
-	// aggregates roughly three times slower on SQLite.
+	// PostgreSQL uses DISTINCT ON for this ranking; other dialects keep
+	// ROW_NUMBER, which avoids the correlated MAX(id) scan on SQLite.
 	queryMode := qb.ThroughputModeRowNumber
+	if dialectName == dialect.Postgres {
+		queryMode = qb.ThroughputModeDistinctOn
+	}
 
-	// Build query with dialect-aware timestamp placeholder
 	// Fetch more items than needed to allow confidence-based filtering
 	sqlLimit := *input.Limit * 4
 	if sqlLimit < 20 {
@@ -1104,7 +1108,8 @@ func (r *queryResolver) fastestModels(ctx context.Context, input FastestChannels
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("context canceled: %w", err)
 	}
-	// ROW_NUMBER mode needs the window start once, in the CTE.
+	// The window start is the sole query argument, bound once for the
+	// selected query mode (ROW_NUMBER or DISTINCT ON).
 	queryArgs := []any{since.UTC()}
 
 	rows, err := sqlDB.DB().QueryContext(ctx, query, queryArgs...)
