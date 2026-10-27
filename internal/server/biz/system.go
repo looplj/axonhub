@@ -27,6 +27,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
+	"github.com/looplj/axonhub/internal/server/safeguards"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -669,8 +670,9 @@ func (p *ProbeFrequency) UnmarshalGQL(v any) error {
 type SystemServiceParams struct {
 	fx.In
 
-	CacheConfig xcache.Config
-	Ent         *ent.Client
+	SafeguardsConfig safeguards.Config `optional:"true"`
+	CacheConfig      xcache.Config
+	Ent              *ent.Client
 }
 
 func NewSystemService(params SystemServiceParams) *SystemService {
@@ -678,13 +680,16 @@ func NewSystemService(params SystemServiceParams) *SystemService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		CacheConfig: params.CacheConfig,
-		Cache:       xcache.NewFromConfig[ent.System](params.CacheConfig),
+		safeguardsDefaults: params.SafeguardsConfig,
+		CacheConfig:        params.CacheConfig,
+		Cache:              xcache.NewFromConfig[ent.System](params.CacheConfig),
 	}
 }
 
 type SystemService struct {
 	*AbstractService
+
+	safeguardsDefaults safeguards.Config
 
 	CacheConfig xcache.Config
 	Cache       xcache.Cache[ent.System]

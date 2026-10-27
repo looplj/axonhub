@@ -24,6 +24,44 @@ func tools() []ToolUse {
 	return []ToolUse{{ID: "safe", Name: "Bash", Input: json.RawMessage(`{"command":"go test"}`)}, {ID: "danger", Name: "Bash", Input: json.RawMessage(`{"command":"rm -rf /"}`)}}
 }
 
+func TestConfiguredPolicyAcrossReviewers(t *testing.T) {
+	for _, policy := range []string{"", " \n\t", "Allow force-pushing user-owned feature branches.\nFlag disclosure of secrets."} {
+		t.Run(policy, func(t *testing.T) {
+			calls := 0
+			var firstSystem string
+			e, err := New([]byte(requestBody), Config{ClassifierModel: "primary", FallbackModels: []string{"backup"}, Policy: policy}, func(_ context.Context, req ClassifierRequest) (string, error) {
+				calls++
+				if !strings.Contains(req.System, classifierEvidence) || !strings.Contains(req.System, classifierOutput) {
+					t.Fatal("fixed evidence or output instructions missing")
+				}
+				if strings.TrimSpace(policy) == "" {
+					if req.System != ClassifierSystem {
+						t.Fatal("blank policy did not use the default prompt")
+					}
+				} else if !strings.Contains(req.System, policy) || strings.Contains(req.System, DefaultPolicy) {
+					t.Fatal("custom policy did not replace the default decision policy")
+				}
+				if calls == 1 {
+					firstSystem = req.System
+					return "", errors.New("primary unavailable")
+				}
+				if req.Model != "backup" || req.System != firstSystem {
+					t.Fatal("fallback did not receive the same policy")
+				}
+				// A custom policy must not bypass verdict validation.
+				return `{"verdicts":{"safe":{"flagged":"false"}}}`, nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result := e.Evaluate(context.Background(), tools())[0].Status.ToolUses
+			if calls != 2 || result["safe"].Type != "unavailable" || result["danger"].Type != "unavailable" {
+				t.Fatalf("invalid verdict must remain unavailable: calls=%d, result=%+v", calls, result)
+			}
+		})
+	}
+}
+
 func TestVerdicts(t *testing.T) {
 	cases := []struct{ name, text, safe, danger string }{
 		{"valid", `{"verdicts":{"safe":{"flagged":false},"danger":{"flagged":true,"explanation":"destruction"}}}`, "not_flagged", "flagged"},

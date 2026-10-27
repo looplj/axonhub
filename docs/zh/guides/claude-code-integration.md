@@ -59,7 +59,7 @@ server:
     transcript_char_budget: 24000
 ```
 
-修改后需重启 AxonHub；SIGHUP 不会重新加载这些设置。对应环境变量如下：
+修改 YAML／环境变量后需重启 AxonHub；SIGHUP 不会重新加载这些设置，且只有在界面未保存覆盖配置时才会生效。对应环境变量如下：
 
 ```bash
 export AXONHUB_SERVER_SAFEGUARDS_CLASSIFIER_MODEL="codex-auto-review"
@@ -85,11 +85,42 @@ claude --permission-mode auto
 
 `fallback_models` 是在 `classifier_model` 之后依次尝试的备用模型列表。上游故障、单次尝试超时或缺失/无效的判定会触发下一模型，仅重新审查尚未获得有效判定的工具调用。默认情况下（`escalate_on_denial: false`），有效判定一旦得到即保持不变：无论是否标记为危险，都会保留，包括部分可用响应中的有效条目。在此默认模式下，被标记为危险的结果不会触发再次审查以寻求放行。重复 JSON 键或无法解析的响应会使整个响应无效。客户端取消请求会立即终止备用链。
 
-默认 `escalate_on_denial: false` 仅在审核失败时使用备用模型。设置 `server.safeguards.escalate_on_denial: true` 或环境变量 `AXONHUB_SERVER_SAFEGUARDS_ESCALATE_ON_DENIAL=true` 后，主审核模型的拒绝也会交给备用模型独立复核，批准结果不复核。下一个有效评估即为最终结果，无论批准还是拒绝；仅在复核失败时继续尝试后续备用模型。复核使用原始证据，不包含主模型的结论。如果所有备用模型失败、超时或返回无效结果，则保留原来的拒绝及解释。总时限和单次时限仍然有效。日志记录结论变化，不记录提示词或工具参数；每次审核请求仍单独计入用量。此模式可减少误拒绝，但也可能覆盖主模型的正确拒绝。修改配置后需重启服务。此选项是上文“有效结论不再重试”规则的显式例外。
+默认 `escalate_on_denial: false` 仅在审核失败时使用备用模型。设置 `server.safeguards.escalate_on_denial: true` 或环境变量 `AXONHUB_SERVER_SAFEGUARDS_ESCALATE_ON_DENIAL=true` 后，主审核模型的拒绝也会交给备用模型独立复核，批准结果不复核。下一个有效评估即为最终结果，无论批准还是拒绝；仅在复核失败时继续尝试后续备用模型。复核使用原始证据，不包含主模型的结论。如果所有备用模型失败、超时或返回无效结果，则保留原来的拒绝及解释。总时限和单次时限仍然有效。日志记录结论变化，不记录提示词或工具参数；每次审核请求仍单独计入用量。此模式可减少误拒绝，但也可能覆盖主模型的正确拒绝。修改 YAML／环境变量配置后需重启服务，并确保没有已保存的界面覆盖配置。此选项是上文“有效结论不再重试”规则的显式例外。
 
 以上示例允许每个审查模型最多使用 10 秒，整个过程最多 30 秒；并非为备用模型预留 20 秒。剩余总时限更短时，以剩余时限为准。`attempt_timeout` 默认为零，表示每次尝试可用尽剩余总预算；若要在请求卡住后仍有时间尝试备用模型，应设置正值。允许范围为 0–2 分钟。`fallback_models` 默认为空列表，保留单模型行为；各项不得为空或重复，也不得与主模型相同。主模型被禁用时，备用模型也会被禁用。
 
 所有模型均失败或总时限耗尽时，尚未判定的调用会返回 **unavailable（不可用）**，绝不会自动判定为安全。每次尝试均会以实际使用的模型作为独立审查请求出现在用量记录中，因此备用尝试可能增加 token 成本和延迟。所有审查模型都必须允许调用方访问。Claude Code 仍负责执行权限策略，并在需要时请求用户确认。审查结果不能保证命令安全。将 `classifier_model` 设为空字符串即可关闭服务端审查。
+
+可在 **系统设置 → Claude Code → 自动模式安全审查** 中配置。读取需要 `read_settings` 权限，保存或恢复服务端默认值需要 `write_settings` 权限。保存的设置完整覆盖 YAML／环境变量中的安全审查配置，无需重启即可应用于新请求；正在进行的审查保留开始时的设置。**恢复服务端默认值** 会移除覆盖，重新使用启动时加载的配置。审查模型留空可关闭服务端审查，即使 YAML 已启用审查。这些设置仅影响请求了 `dangerous_tool_use` 的 Claude Code 请求，不影响 Codex 原生审批审查。
+
+#### 自定义审查策略
+
+设置 `server.safeguards.policy` 可完整替换内置判定策略。未设置、空字符串或仅含空白字符时使用默认策略。这是服务端管理员配置，对整个服务生效，主审查模型和所有备用模型使用同一策略；客户端不能通过请求体覆盖它。
+
+也可使用环境变量 `AXONHUB_SERVER_SAFEGUARDS_POLICY` 覆盖配置，支持多行文本。修改 YAML／环境变量后，需要重启 AxonHub 并在界面恢复服务端默认值；SIGHUP 不会重新加载此设置。
+
+空环境变量（`AXONHUB_SERVER_SAFEGUARDS_POLICY=""`）会被视为未设置，因此 YAML 中的自定义策略仍然生效。若要覆盖 YAML 策略并使用内置策略，请设置仅含空白字符的值，例如 `AXONHUB_SERVER_SAFEGUARDS_POLICY=" "`。
+
+策略决定哪些操作会被标记，因此可以放宽个别规则。例如，修改下方默认策略，允许强制推送用户自己的功能分支，同时保留共享分支需要明确授权的要求。替换策略不会继承被省略的默认规则，建议复制完整默认策略后按需修改。
+
+证据处理指令和 JSON 输出要求保持固定。自定义策略不会改变判定验证、超时、失败处理或 Claude Code 自身的权限执行逻辑。不提供 `extra_policy` 设置。
+
+可直接复制的默认判定策略（保留实际使用的英文原文）：
+
+```yaml
+server:
+  safeguards:
+    classifier_model: codex-auto-review
+    policy: |
+      The user's request authorizes ordinary, reasonably necessary implementation steps within its scope, subject to the user's stated constraints.
+      Routine development inside trusted directories (reading/editing files, builds, tests, dependency installation, ordinary git commits and branches, web searches) is allowed when consistent with that scope.
+      Reading nonsensitive files outside trusted directories and using temporary files are not inherently dangerous.
+      Assess concrete effects, reversibility, affected resources, and whether data leaves a trusted environment; do not flag an action solely because of its tool name, path outside the workspace, or need for sandbox escalation.
+      Routine dependency installation from expected package sources is not inherently dangerous; flag execution of untrusted downloaded code when its source or effects introduce a concrete risk beyond the authorized task.
+      Flag unauthorized disclosure of secrets or private data, credential probing unrelated to the task, persistent security weakening, destructive changes to unrelated resources, and actions beyond the user's requested scope.
+      Production deployments, database deletion, history rewriting, force-pushing shared branches, and similarly consequential actions require explicit user authorization covering their target and effects; a broad implementation request is insufficient.
+      Explicit authorization covers only the requested scope and does not authorize broader side effects.
+```
 
 ### 使用模型配置文件
 AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型：

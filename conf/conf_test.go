@@ -141,12 +141,13 @@ func TestSafeguardsConfigDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := cfg.APIServer.Safeguards
-	if got.EscalateOnDenial || got.ClassifierModel != "" || len(got.FallbackModels) != 0 || got.AttemptTimeout != 0 || got.Timeout != 30*time.Second || got.MaxTokens != 4096 || got.TranscriptCharBudget != 24000 {
+	if got.Policy != "" || got.EscalateOnDenial || got.ClassifierModel != "" || len(got.FallbackModels) != 0 || got.AttemptTimeout != 0 || got.Timeout != 30*time.Second || got.MaxTokens != 4096 || got.TranscriptCharBudget != 24000 {
 		t.Fatalf("unexpected safeguards defaults: %+v", got)
 	}
 }
 
 func TestSafeguardsConfigEnvironmentOverridesYAML(t *testing.T) {
+	t.Setenv("AXONHUB_SERVER_SAFEGUARDS_POLICY", "Allow feature branch updates.\nFlag secret disclosure.")
 	t.Setenv("AXONHUB_SERVER_SAFEGUARDS_ESCALATE_ON_DENIAL", "true")
 	t.Setenv("AXONHUB_SERVER_SAFEGUARDS_CLASSIFIER_MODEL", " gemini-3.8-flash ")
 	t.Setenv("AXONHUB_SERVER_SAFEGUARDS_FALLBACK_MODELS", `[" codex-auto-review ","backup"]`)
@@ -157,6 +158,7 @@ func TestSafeguardsConfigEnvironmentOverridesYAML(t *testing.T) {
 	for _, source := range []string{"", `server:
   safeguards:
     classifier_model: other-model
+    policy: YAML policy
     fallback_models: [other-backup]
     attempt_timeout: 5s
     timeout: 20s
@@ -168,9 +170,47 @@ func TestSafeguardsConfigEnvironmentOverridesYAML(t *testing.T) {
 			t.Fatal(err)
 		}
 		got := cfg.APIServer.Safeguards
+		if got.Policy != "Allow feature branch updates.\nFlag secret disclosure." {
+			t.Fatalf("policy environment override was not applied: %q", got.Policy)
+		}
 		if !got.EscalateOnDenial || got.ClassifierModel != "gemini-3.8-flash" || !slices.Equal(got.FallbackModels, []string{"codex-auto-review", "backup"}) || got.AttemptTimeout != 4*time.Second || got.Timeout != 12*time.Second || got.MaxTokens != 2048 || got.TranscriptCharBudget != 12000 {
 			t.Fatalf("environment overrides were not applied: %+v", got)
 		}
+	}
+}
+
+func TestSafeguardsPolicyYAML(t *testing.T) {
+	cfg, _, err := loadConfig(writeTestConfig(t, `server:
+  safeguards:
+    policy: |
+      Allow feature branch updates.
+      Flag secret disclosure.
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.APIServer.Safeguards.Policy; got != "Allow feature branch updates.\nFlag secret disclosure.\n" {
+		t.Fatalf("multiline policy was not preserved: %q", got)
+	}
+}
+
+func TestSafeguardsPolicyEmptyEnvironmentOverride(t *testing.T) {
+	for _, tc := range []struct {
+		name, value, want string
+	}{
+		{name: "empty preserves YAML", value: "", want: "YAML policy"},
+		{name: "whitespace overrides YAML", value: " \n\t", want: " \n\t"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("AXONHUB_SERVER_SAFEGUARDS_POLICY", tc.value)
+			cfg, _, err := loadConfig(writeTestConfig(t, "server:\n  safeguards:\n    policy: YAML policy\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := cfg.APIServer.Safeguards.Policy; got != tc.want {
+				t.Fatalf("unexpected policy for environment value %q: got %q, want %q", tc.value, got, tc.want)
+			}
+		})
 	}
 }
 

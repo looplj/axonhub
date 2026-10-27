@@ -16,9 +16,11 @@ server:
   llm_request_timeout: "600s"   # LLM request timeout duration (env: AXONHUB_SERVER_LLM_REQUEST_TIMEOUT)
   # Optional Claude Code auto-mode reviewer; empty classifier_model disables it.
   # Select a model exposed by an existing channel, accessible to the calling API key.
-  # Restart AxonHub after changing these settings; SIGHUP does not reload them.
+  # System Settings > Claude Code can override this entire configuration without restart.
+  # File/env changes require restart and apply only when no saved UI override exists; SIGHUP does not reload them.
   safeguards:
     classifier_model: ""         # e.g. "codex-auto-review" (env: AXONHUB_SERVER_SAFEGUARDS_CLASSIFIER_MODEL)
+    policy: ""                  # Replaces the full decision policy; blank uses the built-in default (env: AXONHUB_SERVER_SAFEGUARDS_POLICY)
     escalate_on_denial: false    # Ask a backup to reassess primary denials; preserve denial if reassessment fails
     fallback_models: []          # Ordered backups, e.g. ["gemini-3.8-flash"] (env: AXONHUB_SERVER_SAFEGUARDS_FALLBACK_MODELS, JSON array)
     attempt_timeout: "0s"        # Per-model limit, 0 uses remaining total budget; e.g. 10s (env: AXONHUB_SERVER_SAFEGUARDS_ATTEMPT_TIMEOUT)

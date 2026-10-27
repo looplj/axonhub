@@ -255,6 +255,7 @@ func setDefaults(v *viper.Viper) {
 
 	// Server-side tool-review defaults. Register every key for env-only configuration.
 	v.SetDefault("server.safeguards.classifier_model", "")
+	v.SetDefault("server.safeguards.policy", "")
 	v.SetDefault("server.safeguards.fallback_models", []string{})
 	v.SetDefault("server.safeguards.escalate_on_denial", false)
 	v.SetDefault("server.safeguards.attempt_timeout", "0s")
