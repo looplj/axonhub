@@ -2,7 +2,7 @@ module github.com/looplj/axonhub/anthropic_test
 
 go 1.25.2
 
-require github.com/anthropics/anthropic-sdk-go v1.82.0
+require github.com/anthropics/anthropic-sdk-go v1.84.0
 
 require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
