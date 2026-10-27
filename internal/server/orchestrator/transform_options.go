@@ -78,8 +78,21 @@ func applyReasoningEffortMapping(req *llm.Request, channelSettings *objects.Chan
 		return req
 	}
 
-	mapped := llm.ApplyReasoningEffortMapping(req.ReasoningEffort, channelSettings.TransformOptions.ReasoningEffortMapping)
-	if mapped == req.ReasoningEffort {
+	// With thinking.type=between_tools the Anthropic inbound keeps the unified effort at
+	// "none" (thinking is off for other protocols) and records the native effort only in
+	// TransformerMetadata, so map that value instead and leave ReasoningEffort as is.
+	source := req.ReasoningEffort
+	nativeOnly := false
+	if source == llm.ReasoningEffortNone && req.TransformerMetadata != nil {
+		thinkingType, _ := req.TransformerMetadata[anthropic.TransformerMetadataKeyThinkingType].(string)
+		if effort, ok := req.TransformerMetadata[anthropic.TransformerMetadataKeyOutputConfigEffort].(string); ok && thinkingType == "between_tools" && effort != "" {
+			source = effort
+			nativeOnly = true
+		}
+	}
+
+	mapped := llm.ApplyReasoningEffortMapping(source, channelSettings.TransformOptions.ReasoningEffortMapping)
+	if mapped == source {
 		return req
 	}
 
@@ -98,7 +111,9 @@ func applyReasoningEffortMapping(req *llm.Request, channelSettings *objects.Chan
 		newReq.TransformerMetadata = metadata
 	}
 
-	newReq.ReasoningEffort = mapped
+	if !nativeOnly {
+		newReq.ReasoningEffort = mapped
+	}
 
 	return &newReq
 }
