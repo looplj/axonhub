@@ -70,7 +70,7 @@ func TestRecordError_OpenState_BackoffOnlyOnProbe(t *testing.T) {
 		t.Fatalf("expected Open state, got %s", stats.State)
 	}
 	// Pin NextProbeAt to a known time that is before what a fresh backoff would produce.
-	// The backoff formula for probeAttempts=0 is now + ProbeInterval(5min),
+	// The backoff formula starts at 2x ProbeInterval (10min) for the first probe failure,
 	// so pinning to now-1s ensures the new value will be strictly after the pin.
 	pinnedProbeAt := time.Now().Add(-time.Second)
 	stats.NextProbeAt = pinnedProbeAt
@@ -139,4 +139,45 @@ func TestGetEffectiveWeight_TTLAutoRecovery(t *testing.T) {
 		t.Fatalf("expected 0 consecutive failures after auto-recovery, got %d", stats.ConsecutiveFailures)
 	}
 	stats.Unlock()
+}
+
+// TestRecordError_ProbeBackoffSequence verifies the exponential backoff sequence
+// after consecutive probe failures: 10m, 20m, 40m and then capped at 40m.
+func TestRecordError_ProbeBackoffSequence(t *testing.T) {
+	ctx := context.Background()
+	cb := NewModelCircuitBreaker()
+
+	channelID := 1
+	modelID := "gpt-test"
+
+	for range 5 {
+		cb.RecordError(ctx, channelID, modelID, false)
+	}
+
+	policy := DefaultModelCircuitBreakerPolicy()
+	wantIntervals := []time.Duration{
+		2 * policy.ProbeInterval, // first probe failure: 10m
+		4 * policy.ProbeInterval, // 20m
+		8 * policy.ProbeInterval, // 40m (cap)
+		8 * policy.ProbeInterval, // stays at the cap
+	}
+
+	stats := cb.getStats(channelID, modelID)
+	for i, want := range wantIntervals {
+		// Open the probe window so the failure is treated as a real probe.
+		stats.Lock()
+		stats.NextProbeAt = time.Now().Add(-time.Second)
+		stats.Unlock()
+
+		before := time.Now()
+		cb.RecordError(ctx, channelID, modelID, true)
+
+		stats.Lock()
+		got := stats.NextProbeAt.Sub(before)
+		stats.Unlock()
+
+		if got < want || got > want+2*time.Second {
+			t.Fatalf("probe #%d: expected backoff around %v, got %v", i+1, want, got)
+		}
+	}
 }

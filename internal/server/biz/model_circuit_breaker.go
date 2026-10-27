@@ -183,7 +183,7 @@ func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, mo
 		if stats.State != StateOpen {
 			stats.State = StateOpen
 			stats.NextProbeAt = now.Add(policy.ProbeInterval) // Set next probe time
-			stats.probeAttempts = 0                           // Reset probe count
+			stats.probeAttempts = 1                           // The initial interval counts as the first backoff step
 
 			log.Warn(ctx, "model turn to break due to consecutive failures",
 				log.Int("channel_id", channelID),
