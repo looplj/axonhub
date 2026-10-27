@@ -28,7 +28,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.5
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/coreos/go-oidc/v3 v3.21.0
-	github.com/dlclark/regexp2/v2 v2.5.1
+	github.com/dlclark/regexp2/v2 v2.10.0
 	github.com/eko/gocache/lib/v4 v4.2.2
 	github.com/eko/gocache/store/go_cache/v4 v4.2.3
 	github.com/expr-lang/expr v1.17.8
