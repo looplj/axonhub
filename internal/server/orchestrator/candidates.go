@@ -85,6 +85,13 @@ const (
 	// associationCacheTTL is the time-to-live for association cache entries.
 	// After this duration, cache entries are invalidated even if channels haven't changed.
 	associationCacheTTL = 5 * time.Minute
+
+	// circuitBreakerPreflightSpareCandidates is the number of extra candidates kept
+	// while the circuit-breaker strategy is active. A candidate whose probe lease is
+	// already taken rejects the request locally (errSkipCandidateByCircuitBreaker):
+	// no upstream call is made and no retry is consumed, so the request needs
+	// somewhere to roll over to.
+	circuitBreakerPreflightSpareCandidates = 2
 )
 
 // DefaultSelector directly selects enabled channels supporting the requested model.
@@ -767,12 +774,11 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	}
 
 	// A circuit-breaker preflight rejection (probe lease busy) rolls over to the next
-	// candidate without spending a retry, so keep one spare candidate for that
-	// rollover. Otherwise a request whose only candidate is a probe-locked channel
-	// would fail even though a healthy channel is available.
-	if s.effectiveRoutingPolicy != nil &&
-		s.effectiveRoutingPolicy.LoadBalancerStrategy == biz.LoadBalancerStrategyCircuitBreaker {
-		requiredCount++
+	// candidate without spending a retry, so keep spare candidates for that rollover.
+	// Otherwise a request whose candidates are all probe-locked would fail even though
+	// a healthy channel is available.
+	if s.needsPreflightSpares() {
+		requiredCount += circuitBreakerPreflightSpareCandidates
 	}
 
 	stickyID, stickyOK := 0, false
@@ -915,6 +921,13 @@ func extractStickyCandidate(
 	return &stickyClone, remainingCandidates
 }
 
+// needsPreflightSpares reports whether the selection has to keep spare candidates
+// for local rejections that do not consume a retry.
+func (s *LoadBalancedSelector) needsPreflightSpares() bool {
+	return s.effectiveRoutingPolicy != nil &&
+		s.effectiveRoutingPolicy.LoadBalancerStrategy == biz.LoadBalancerStrategyCircuitBreaker
+}
+
 func (s *LoadBalancedSelector) sortCandidates(
 	ctx context.Context,
 	loadBalancer *LoadBalancer,
@@ -955,10 +968,18 @@ func (s *LoadBalancedSelector) sortCandidates(
 
 		// Apply load balancing to sort candidates within this priority group.
 		useStream := req.Stream != nil && *req.Stream
+
 		var sortedCandidates []*ChannelModelsCandidate
-		if loadBalancer == nil {
+
+		switch {
+		case loadBalancer == nil:
 			sortedCandidates = group
-		} else {
+		case s.needsPreflightSpares():
+			// Keep enough candidates from this group: preflight rejections do not
+			// consume retries, so the group must be able to supply every candidate
+			// the caller asked for instead of the retry-derived top-K.
+			sortedCandidates = loadBalancer.SortTopKWithoutTracking(ctx, group, req.Model, useStream, requiredCount)
+		default:
 			sortedCandidates = loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream)
 		}
 
