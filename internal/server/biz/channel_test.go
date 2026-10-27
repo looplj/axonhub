@@ -209,6 +209,73 @@ func TestChannelService_ListModels(t *testing.T) {
 	}
 }
 
+func TestChannelService_ListModels_PrefixedModelAlias(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	_, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Prefixed Alias Channel").
+		SetBaseURL("https://api.deepseek.com").
+		SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+		SetSupportedModels([]string{"deepseek-v4.1-flash-1017"}).
+		SetDefaultTestModel("deepseek-v4.1-flash-1017").
+		SetStatus(channel.StatusEnabled).
+		SetSettings(&objects.ChannelSettings{
+			ExtraModelPrefix: "company",
+			ModelMappings: []objects.ModelMapping{
+				{From: "deepseek-flash", To: "deepseek-v4.1-flash-1017"},
+			},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	allModels := []string{
+		"deepseek-v4.1-flash-1017",
+		"company/deepseek-v4.1-flash-1017",
+		"deepseek-flash",
+		"company/deepseek-flash",
+	}
+
+	tests := []struct {
+		name     string
+		input    ListModelsInput
+		expected []string
+	}{
+		{
+			name:     "all channel models",
+			input:    ListModelsInput{IncludeAllChannelModels: true},
+			expected: allModels,
+		},
+		{
+			name:     "mappings and prefixes requested",
+			input:    ListModelsInput{IncludeMapping: true, IncludePrefix: true},
+			expected: allModels,
+		},
+		{
+			name:     "mappings requested without prefixes",
+			input:    ListModelsInput{IncludeMapping: true},
+			expected: []string{"deepseek-v4.1-flash-1017", "deepseek-flash"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := svc.ListModels(ctx, tt.input)
+			require.NoError(t, err)
+
+			actualIDs := lo.Map(result, func(m *ModelIdentityWithStatus, _ int) string {
+				return m.ID
+			})
+			require.ElementsMatch(t, tt.expected, actualIDs)
+		})
+	}
+}
+
 func TestChannelService_CreateChannel_PersistsAutoSyncModelPatternAndManualModels(t *testing.T) {
 	svc, client := setupTestChannelService(t)
 	defer client.Close()

@@ -193,6 +193,40 @@ func TestChannel_ChooseModel_WithExtraModelPrefix(t *testing.T) {
 			inputModel:  "openai/deepseek-chat",
 			expectError: true,
 		},
+		{
+			name: "model alias without prefix resolves to mapped model",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					Name:            "Test Channel",
+					SupportedModels: []string{"deepseek-v4.1-flash-1017"},
+					Settings: &objects.ChannelSettings{
+						ExtraModelPrefix: "company",
+						ModelMappings: []objects.ModelMapping{
+							{From: "deepseek-flash", To: "deepseek-v4.1-flash-1017"},
+						},
+					},
+				},
+			},
+			inputModel:    "deepseek-flash",
+			expectedModel: "deepseek-v4.1-flash-1017",
+		},
+		{
+			name: "model alias with prefix resolves to mapped model",
+			channel: &Channel{
+				Channel: &ent.Channel{
+					Name:            "Test Channel",
+					SupportedModels: []string{"deepseek-v4.1-flash-1017"},
+					Settings: &objects.ChannelSettings{
+						ExtraModelPrefix: "company",
+						ModelMappings: []objects.ModelMapping{
+							{From: "deepseek-flash", To: "deepseek-v4.1-flash-1017"},
+						},
+					},
+				},
+			},
+			inputModel:    "company/deepseek-flash",
+			expectedModel: "deepseek-v4.1-flash-1017",
+		},
 	}
 
 	for _, tt := range tests {
