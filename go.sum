@@ -224,8 +224,8 @@ github.com/eapache/queue v1.1.0/go.mod h1:6eCeP0CKFpHLu8blIFXhExK/dRa7WDZfr6jVFP
 github.com/edsrzf/mmap-go v1.0.0/go.mod h1:YO35OhQPt3KJa3ryjFM5Bs14WD66h8eGKpfaBNrHW5M=
 github.com/eko/gocache/lib/v4 v4.4.0 h1:oG3bwd+QagAQck8veR9uSbG/B89pet4TSOuHoi8oFEU=
 github.com/eko/gocache/lib/v4 v4.4.0/go.mod h1:Zus8mwmaPu1VYOzfomb+Dvx2wV7fT5jDRbHYtQM6MEY=
-github.com/eko/gocache/store/go_cache/v4 v4.2.3 h1:9F2mN6+6LEnFTR/wzc2zRMl8iV3HwF7/X3eIYnpKvT4=
-github.com/eko/gocache/store/go_cache/v4 v4.2.3/go.mod h1:oZcTjIjtHiCKCFS5KfxFrcmHFJKJd3wCNwuYeqWBuhI=
+github.com/eko/gocache/store/go_cache/v4 v4.2.10 h1:yq79vHMELbN7BU5zVn5VupOrBGHOsTJ0WMKG5SxWw0A=
+github.com/eko/gocache/store/go_cache/v4 v4.2.10/go.mod h1:CHtk+VV4KPg6Sqmqoc6ij0OWvWyWjEdJX6ESv01usBY=
 github.com/envoyproxy/go-control-plane v0.6.9/go.mod h1:SBwIajubJHhxtWwsL9s8ss4safvEdbitLhGGK48rN6g=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
