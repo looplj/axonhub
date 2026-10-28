@@ -306,7 +306,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				outputSinceUsage = true
 				usageEvidence = llm.AccountingEvidenceUnavailable
 			}
-			if !allChoicesFinished(seenChoices, finishedChoices) {
+			// Only a placeholder that carries choices can leave them unfinished.
+			// A choices-less sentinel adds nothing, so the evidence the earlier
+			// block established (e.g. a trailing usage-only clean-EOF candidate)
+			// must survive.
+			if len(chunk.Choices) > 0 && !allChoicesFinished(seenChoices, finishedChoices) {
 				usageEvidence = llm.AccountingEvidenceUnavailable
 			}
 		case chunk.Usage != nil:

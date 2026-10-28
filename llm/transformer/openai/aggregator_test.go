@@ -272,6 +272,21 @@ func TestAggregateStreamChunks_AccountingProvenance(t *testing.T) {
 			wantCompletion: 34,
 		},
 		{
+			// A choices-less zero sentinel after a nonzero usage-only block adds
+			// nothing: the clean-EOF candidate the real block established must
+			// survive, otherwise the stream loses its usage row.
+			name: "zero usage-only sentinel keeps the earlier clean EOF candidate",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+			},
+			want:           llm.AccountingEvidenceCleanEndCandidate,
+			wantUse:        true,
+			wantPrompt:     12,
+			wantCompletion: 34,
+		},
+		{
 			name: "repeated zero finish placeholders are unavailable",
 			chunks: []*httpclient.StreamEvent{
 				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
