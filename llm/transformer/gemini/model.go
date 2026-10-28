@@ -29,6 +29,7 @@ type GenerateContentRequest struct {
 	CachedContent string `json:"cachedContent,omitempty"`
 }
 
+// UnmarshalJSON accepts system_instruction as a fallback for systemInstruction.
 func (r *GenerateContentRequest) UnmarshalJSON(data []byte) error {
 	type requestAlias GenerateContentRequest
 	var decoded struct {
@@ -78,6 +79,7 @@ type Part struct {
 	ThoughtSignature string `json:"thoughtSignature,omitempty"`
 }
 
+// UnmarshalJSON accepts inline_data as a fallback for inlineData.
 func (p *Part) UnmarshalJSON(data []byte) error {
 	type partAlias Part
 	var decoded struct {
@@ -103,6 +105,7 @@ type Blob struct {
 	Data string `json:"data,omitempty"`
 }
 
+// UnmarshalJSON accepts mime_type as a fallback when mimeType is empty.
 func (b *Blob) UnmarshalJSON(data []byte) error {
 	type blobAlias Blob
 	var decoded struct {
