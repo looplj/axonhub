@@ -90,7 +90,7 @@
     "shiki": "^3.15.0",
     "sonner": "^2.0.5",
     "streamdown": "^1.2.0",
-    "tailwind-merge": "^3.3.1",
+    "tailwind-merge": "^3.7.0",
     "tailwindcss": "^4.1.10",
     "tokenlens": "^1.2.1",
     "tw-animate-css": "^1.3.4",
