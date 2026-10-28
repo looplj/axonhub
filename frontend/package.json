@@ -63,7 +63,7 @@
     "@tanstack/react-virtual": "^3.13.18",
     "@vvo/tzdb": "^6.201.1",
     "@xyflow/react": "^12.9.2",
-    "ai": "^5.0.52",
+    "ai": "^7.0.153",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.1.1",
