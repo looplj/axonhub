@@ -4,6 +4,8 @@
 
 AxonHub provides native support for the Gemini API, enabling access to Gemini's powerful multi-modal capabilities. You can use the Gemini SDK to access not only Gemini models but also OpenAI, Anthropic, and other supported models.
 
+GenerateContent requests also accept `system_instruction`, `inline_data`, and `mime_type` as aliases for `systemInstruction`, `inlineData`, and `mimeType`. When both spellings supply values, the camelCase value takes precedence. Gemini output continues to use the standard camelCase field names.
+
 ## Key Benefits
 
 - **API Interoperability**: Use Gemini API to call OpenAI, Anthropic, and other supported models
