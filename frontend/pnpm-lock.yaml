@@ -120,8 +120,8 @@ importers:
         specifier: ^3.13.18
         version: 3.13.23(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@vvo/tzdb':
-        specifier: ^6.198.0
-        version: 6.198.0
+        specifier: ^6.201.1
+        version: 6.201.1
       '@xyflow/react':
         specifier: ^12.9.2
         version: 12.10.1(@types/react@19.2.14)(immer@11.1.18)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -3358,8 +3358,8 @@ packages:
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
 
-  '@vvo/tzdb@6.198.0':
-    resolution: {integrity: sha512-bNRWBhWYl0edVgyX6AYbhoCM2tk2lXJjGCyO2VDc2xn6Dw8dLd7WGj2DDXkVOkmOIQTNjEAcxrEpIzz5pWVwFg==}
+  '@vvo/tzdb@6.201.1':
+    resolution: {integrity: sha512-ib7ymHHyiGD9N/WWGMX5951hmxaFnOP3W8l0ATUxaH0Y/NczPHWS4cQgJUd1S9zyjCq0od8WXxRHlnjlHNPdNg==}
 
   '@xyflow/react@12.10.1':
     resolution: {integrity: sha512-5eSWtIK/+rkldOuFbOOz44CRgQRjtS9v5nufk77DV+XBnfCGL9HAQ8PG00o2ZYKqkEU/Ak6wrKC95Tu+2zuK3Q==}
@@ -9367,7 +9367,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vvo/tzdb@6.198.0': {}
+  '@vvo/tzdb@6.201.1': {}
 
   '@xyflow/react@12.10.1(@types/react@19.2.14)(immer@11.1.18)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
