@@ -193,6 +193,27 @@ type ChannelLimiterStats struct {
 	QueueSize int `json:"queueSize"`
 }
 
+// Performance statistics for a specific channel-model pair (the actual model a
+// channel invoked, not the client-requested model). Aggregated across the selected
+// time window so callers can compare the same model across channels or different
+// models within one channel.
+type ChannelModelPerformanceStat struct {
+	ChannelID    string `json:"channelId"`
+	ChannelName  string `json:"channelName"`
+	ModelID      string `json:"modelId"`
+	RequestCount int    `json:"requestCount"`
+	SuccessCount int    `json:"successCount"`
+	FailedCount  int    `json:"failedCount"`
+	// Success rate in [0, 100]
+	SuccessRate float64 `json:"successRate"`
+	// Output token throughput in tokens per second, null when no valid latency metrics exist
+	Throughput *float64 `json:"throughput,omitempty"`
+	// Average time to first token in milliseconds, null when no streaming request recorded a first token
+	TtftMs      *float64 `json:"ttftMs,omitempty"`
+	TotalCost   float64  `json:"totalCost"`
+	TotalTokens int      `json:"totalTokens"`
+}
+
 // Performance statistics for a specific channel on a given date
 type ChannelPerformanceStat struct {
 	Date         string   `json:"date"`
