@@ -159,8 +159,8 @@ importers:
         specifier: ^3.0.7
         version: 3.0.7
       lucide-react:
-        specifier: ^0.523.0
-        version: 0.523.0(react@19.2.4)
+        specifier: ^1.61.0
+        version: 1.61.0(@types/react@19.2.14)(react@19.2.4)
       motion:
         specifier: ^12.23.24
         version: 12.37.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -4727,11 +4727,6 @@ packages:
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  lucide-react@0.523.0:
-    resolution: {integrity: sha512-rUjQoy7egZT9XYVXBK1je9ckBnNp7qzRZOhLQx5RcEp2dCGlXo+mv6vf7Am4LimEcFBJIIZzSGfgTqc9QCrPSw==}
-    peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
   lucide-react@0.542.0:
     resolution: {integrity: sha512-w3hD8/SQB7+lzU2r4VdFyzzOzKnUjTZIF/MQJGSSvni7Llewni4vuViRppfRAa2guOsY5k4jZyxw/i9DQHv+dw==}
     peerDependencies:
@@ -4742,10 +4737,14 @@ packages:
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  lucide-react@1.39.0:
-    resolution: {integrity: sha512-y8nXoEwvqqIsF927NBWXODa4bfMrcUeEb/9sgpwFqg0gUjgn3j5Hznk+v7STmPgZ2iQ11JKlbQGdFRuTOwvYkA==}
+  lucide-react@1.61.0:
+    resolution: {integrity: sha512-v2SQPPPNjnr+BlhL9Spuzmo5yR+hLkftfuE4E3jaxdNPgSH0hJKPcLJBP7yAta87jQNPsSERS59PJjCJ/CorBA==}
     peerDependencies:
+      '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -7085,7 +7084,7 @@ snapshots:
       immer: 11.1.18
       katex: 0.18.5
       leva: 0.10.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      lucide-react: 1.39.0(react@19.2.4)
+      lucide-react: 1.61.0(@types/react@19.2.14)(react@19.2.4)
       marked: 18.0.11
       motion: 12.37.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       numeral: 2.0.6
@@ -10882,10 +10881,6 @@ snapshots:
     dependencies:
       react: 19.2.4
 
-  lucide-react@0.523.0(react@19.2.4):
-    dependencies:
-      react: 19.2.4
-
   lucide-react@0.542.0(react@19.2.4):
     dependencies:
       react: 19.2.4
@@ -10894,9 +10889,11 @@ snapshots:
     dependencies:
       react: 19.2.4
 
-  lucide-react@1.39.0(react@19.2.4):
+  lucide-react@1.61.0(@types/react@19.2.14)(react@19.2.4):
     dependencies:
       react: 19.2.4
+    optionalDependencies:
+      '@types/react': 19.2.14
 
   magic-string@0.30.21:
     dependencies:
