@@ -13,10 +13,10 @@ importers:
     dependencies:
       '@ai-sdk-tools/devtools':
         specifier: ^0.6.0
-        version: 0.6.1(@ai-sdk/react@2.0.156(react@19.2.4)(zod@4.6.6))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.6)
+        version: 0.6.1(@ai-sdk/react@2.0.156(react@19.2.4)(zod@4.6.7))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)
       '@ai-sdk/react':
         specifier: ^2.0.0
-        version: 2.0.156(react@19.2.4)(zod@4.6.6)
+        version: 2.0.156(react@19.2.4)(zod@4.6.7)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -127,7 +127,7 @@ importers:
         version: 12.10.1(@types/react@19.2.14)(immer@11.1.18)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       ai:
         specifier: ^5.0.52
-        version: 5.0.154(zod@4.6.6)
+        version: 5.0.154(zod@4.6.7)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -222,8 +222,8 @@ importers:
         specifier: ^1.1.6
         version: 1.1.6(react@19.2.4)
       zod:
-        specifier: ^4.6.6
-        version: 4.6.6
+        specifier: ^4.6.7
+        version: 4.6.7
       zustand:
         specifier: ^5.0.5
         version: 5.0.12(@types/react@19.2.14)(immer@11.1.18)(react@19.2.4)(use-sync-external-store@1.7.0(react@19.2.4))
@@ -6248,8 +6248,8 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.6.6:
-    resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
   zustand@3.7.2:
     resolution: {integrity: sha512-PIJDIZKtokhof+9+60cpockVOq05sJzHCriyvaLBmEJixseQ1a5Kdov6fWZfWOu5SK9c+FhH1jU0tntLxRJYMA==}
@@ -6298,14 +6298,14 @@ packages:
 
 snapshots:
 
-  '@ai-sdk-tools/devtools@0.6.1(@ai-sdk/react@2.0.156(react@19.2.4)(zod@4.6.6))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.6)':
+  '@ai-sdk-tools/devtools@0.6.1(@ai-sdk/react@2.0.156(react@19.2.4)(zod@4.6.7))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.6.7)':
     dependencies:
-      '@ai-sdk/react': 2.0.156(react@19.2.4)(zod@4.6.6)
+      '@ai-sdk/react': 2.0.156(react@19.2.4)(zod@4.6.7)
       '@emotion/react': 11.14.0(@types/react@19.2.14)(react@19.2.4)
       '@emotion/styled': 11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react@19.2.4)
       '@mui/icons-material': 7.3.9(@mui/material@7.3.9(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/react@19.2.14)(react@19.2.4)
       '@mui/material': 7.3.9(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      ai: 5.0.154(zod@4.6.6)
+      ai: 5.0.154(zod@4.6.7)
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
       react-json-view-lite: 2.5.0(react@19.2.4)
@@ -6316,33 +6316,33 @@ snapshots:
       - supports-color
       - zod
 
-  '@ai-sdk/gateway@2.0.58(zod@4.6.6)':
+  '@ai-sdk/gateway@2.0.58(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 2.0.1
-      '@ai-sdk/provider-utils': 3.0.22(zod@4.6.6)
+      '@ai-sdk/provider-utils': 3.0.22(zod@4.6.7)
       '@vercel/oidc': 3.1.0
-      zod: 4.6.6
+      zod: 4.6.7
 
-  '@ai-sdk/provider-utils@3.0.22(zod@4.6.6)':
+  '@ai-sdk/provider-utils@3.0.22(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 2.0.1
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.0.6
-      zod: 4.6.6
+      zod: 4.6.7
 
   '@ai-sdk/provider@2.0.1':
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@2.0.156(react@19.2.4)(zod@4.6.6)':
+  '@ai-sdk/react@2.0.156(react@19.2.4)(zod@4.6.7)':
     dependencies:
-      '@ai-sdk/provider-utils': 3.0.22(zod@4.6.6)
-      ai: 5.0.154(zod@4.6.6)
+      '@ai-sdk/provider-utils': 3.0.22(zod@4.6.7)
+      ai: 5.0.154(zod@4.6.7)
       react: 19.2.4
       swr: 2.4.1(react@19.2.4)
       throttleit: 2.1.0
     optionalDependencies:
-      zod: 4.6.6
+      zod: 4.6.7
 
   '@ant-design/colors@8.0.1':
     dependencies:
@@ -9419,13 +9419,13 @@ snapshots:
       screenfull: 5.2.0
       tslib: 2.8.1
 
-  ai@5.0.154(zod@4.6.6):
+  ai@5.0.154(zod@4.6.7):
     dependencies:
-      '@ai-sdk/gateway': 2.0.58(zod@4.6.6)
+      '@ai-sdk/gateway': 2.0.58(zod@4.6.7)
       '@ai-sdk/provider': 2.0.1
-      '@ai-sdk/provider-utils': 3.0.22(zod@4.6.6)
+      '@ai-sdk/provider-utils': 3.0.22(zod@4.6.7)
       '@opentelemetry/api': 1.9.0
-      zod: 4.6.6
+      zod: 4.6.7
 
   ajv@6.14.0:
     dependencies:
@@ -10676,7 +10676,7 @@ snapshots:
       typescript: 5.8.3
       unbash: 2.2.0
       yaml: 2.8.2
-      zod: 4.6.6
+      zod: 4.6.7
 
   layout-base@1.0.2: {}
 
@@ -12727,7 +12727,7 @@ snapshots:
 
   zod@3.25.76: {}
 
-  zod@4.6.6: {}
+  zod@4.6.7: {}
 
   zustand@3.7.2(react@19.2.4):
     optionalDependencies:
