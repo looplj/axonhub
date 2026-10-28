@@ -4,6 +4,8 @@
 
 AxonHub 原生支持 Gemini API，可访问 Gemini 强大的多模态功能。您可以使用 Gemini SDK 访问 Gemini 模型，也可以访问 OpenAI、Anthropic 和其他支持的模型。
 
+GenerateContent 请求也接受 `system_instruction`、`inline_data` 和 `mime_type`，分别作为 `systemInstruction`、`inlineData` 和 `mimeType` 的兼容别名。两种写法都有值时，优先使用 camelCase 字段的值。Gemini 输出仍使用标准的 camelCase 字段名。
+
 ## 核心优势
 
 - **API 互操作性**：使用 Gemini API 调用 OpenAI、Anthropic 和其他支持的模型
