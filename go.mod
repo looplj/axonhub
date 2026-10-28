@@ -30,7 +30,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/dlclark/regexp2/v2 v2.10.0
 	github.com/eko/gocache/lib/v4 v4.4.0
-	github.com/eko/gocache/store/go_cache/v4 v4.2.3
+	github.com/eko/gocache/store/go_cache/v4 v4.2.10
 	github.com/expr-lang/expr v1.17.8
 	github.com/gin-contrib/cors v1.7.9
 	github.com/gin-contrib/sse v1.1.1
