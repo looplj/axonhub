@@ -244,6 +244,34 @@ func TestAggregateStreamChunks_AccountingProvenance(t *testing.T) {
 			wantCompletion: 34,
 		},
 		{
+			// The kept counts only cover what was produced before the placeholder;
+			// output arriving with the skipped zero block invalidates the evidence.
+			name: "output in skipped zero block clears the evidence",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{"content":"tail"}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+			},
+			want:           llm.AccountingEvidenceUnavailable,
+			wantUse:        true,
+			wantPrompt:     12,
+			wantCompletion: 34,
+		},
+		{
+			// A placeholder that leaves choices unfinished cannot declare the
+			// earlier block final either.
+			name: "unfinished choices in skipped zero block clear the evidence",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+			},
+			want:           llm.AccountingEvidenceUnavailable,
+			wantUse:        true,
+			wantPrompt:     12,
+			wantCompletion: 34,
+		},
+		{
 			name: "repeated zero finish placeholders are unavailable",
 			chunks: []*httpclient.StreamEvent{
 				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},

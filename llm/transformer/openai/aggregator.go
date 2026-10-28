@@ -295,11 +295,19 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		switch {
 		case chunk.Usage != nil && isZeroUsage(chunk.Usage) && sawNonZeroUsage:
 			// A zero block after a real one is a placeholder: keep the earlier
-			// counts and evidence instead of zeroing them. Providers use these
-			// as finish-chunk / trailing sentinels, and accepting one would save
-			// an undercounted zero row.
+			// counts instead of zeroing them. Providers use these as finish-chunk
+			// / trailing sentinels, and accepting one would save an undercounted
+			// zero row.
+			//
+			// The earlier counts still only describe what was produced before
+			// that block, so any later output (or a stream that has not finished
+			// every choice) invalidates the evidence that block established.
 			if chunkOutput {
 				outputSinceUsage = true
+				usageEvidence = llm.AccountingEvidenceUnavailable
+			}
+			if !allChoicesFinished(seenChoices, finishedChoices) {
+				usageEvidence = llm.AccountingEvidenceUnavailable
 			}
 		case chunk.Usage != nil:
 			usage = chunk.Usage
