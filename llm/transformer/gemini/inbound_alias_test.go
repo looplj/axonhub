@@ -52,12 +52,15 @@ func TestGenerateContentFieldAliases_PreferCamelCaseAndMarshalCanonicalNames(t *
 		"contents":[{"parts":[{
 			"inline_data":{"mime_type":"image/jpeg","data":"alias"},
 			"inlineData":{"mime_type":"image/jpeg","mimeType":"image/png","data":"canonical"}
+		},{
+			"fileData":{"mime_type":"audio/wav","mimeType":"audio/mpeg","fileUri":"https://example.com/media"}
 		}]}]
 	}`), &request)
 	require.NoError(t, err)
 	require.Equal(t, "canonical", request.SystemInstruction.Parts[0].Text)
 	require.Equal(t, "canonical", request.Contents[0].Parts[0].InlineData.Data)
 	require.Equal(t, "image/png", request.Contents[0].Parts[0].InlineData.MIMEType)
+	require.Equal(t, "audio/mpeg", request.Contents[0].Parts[1].FileData.MIMEType)
 
 	body, err := json.Marshal(request)
 	require.NoError(t, err)
@@ -74,8 +77,37 @@ func TestGenerateContentFieldAliases_RejectInvalidValues(t *testing.T) {
 		`{"system_instruction":42}`,
 		`{"contents":[{"parts":[{"inline_data":42}]}]}`,
 		`{"contents":[{"parts":[{"inline_data":{"mime_type":42}}]}]}`,
+		`{"contents":[{"parts":[{"fileData":{"mime_type":42}}]}]}`,
 	} {
 		var request GenerateContentRequest
 		require.Error(t, json.Unmarshal([]byte(body), &request), body)
+	}
+}
+
+func TestInboundTransformer_FileDataMIMETypeAliases(t *testing.T) {
+	for _, fields := range []struct {
+		name, mimeFields string
+	}{
+		{"camelCase", `"mimeType":"audio/mpeg"`},
+		{"snake_case", `"mime_type":"audio/mpeg"`},
+		{"camelCase precedence", `"mimeType":"audio/mpeg","mime_type":"audio/wav"`},
+		{"empty camelCase fallback", `"mimeType":"","mime_type":"audio/mpeg"`},
+	} {
+		t.Run(fields.name, func(t *testing.T) {
+			body := []byte(`{"contents":[{"role":"user","parts":[{"fileData":{` +
+				fields.mimeFields + `,"fileUri":"https://example.com/media"}}]}]}`)
+			result, err := NewInboundTransformer().TransformRequest(context.Background(), &httpclient.Request{
+				Path: "/v1beta/models/gemini-test:generateContent", Body: body,
+			})
+			require.NoError(t, err)
+			require.Len(t, result.Messages, 1)
+			require.Len(t, result.Messages[0].Content.MultipleContent, 1)
+			part := result.Messages[0].Content.MultipleContent[0]
+			require.Equal(t, "input_audio", part.Type)
+			require.NotNil(t, part.InputAudio)
+			require.Equal(t, "https://example.com/media", part.InputAudio.URL)
+			require.Equal(t, "audio/mpeg", part.InputAudio.MIMEType)
+			require.Equal(t, "mp3", part.InputAudio.Format)
+		})
 	}
 }

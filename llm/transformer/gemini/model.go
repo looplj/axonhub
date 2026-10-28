@@ -131,6 +131,23 @@ type FileData struct {
 	FileURI string `json:"fileUri,omitempty"`
 }
 
+// UnmarshalJSON accepts mime_type as a fallback when mimeType is empty.
+func (f *FileData) UnmarshalJSON(data []byte) error {
+	type fileDataAlias FileData
+	var decoded struct {
+		fileDataAlias
+		MIMETypeSnake string `json:"mime_type"`
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*f = FileData(decoded.fileDataAlias)
+	if f.MIMEType == "" {
+		f.MIMEType = decoded.MIMETypeSnake
+	}
+	return nil
+}
+
 // FunctionCall represents a predicted function call.
 type FunctionCall struct {
 	// ID is the unique ID of the function call.
