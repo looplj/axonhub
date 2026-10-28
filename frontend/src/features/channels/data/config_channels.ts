@@ -39,6 +39,7 @@ import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { CommandCodeIcon } from '../components/commandcode-icon';
 import { EvolinkIcon } from '../components/evolink-icon';
 import { FennoIcon } from '../components/fenno-icon';
+import { RuncrateIcon } from '../components/runcrate-icon';
 import { TypeSafeIcon } from '../components/typesafe-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
@@ -845,6 +846,35 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     icon: EvolinkIcon,
   },
+  runcrate: {
+    channelType: 'runcrate',
+    baseURL: 'https://api.runcrate.ai/v1',
+    defaultModels: [
+      'deepseek-ai/DeepSeek-V4.1-Flash',
+      'zai-org/GLM-5.3',
+      'zai-org/GLM-5.3-Flash',
+      'Qwen/Qwen3.8-Flash',
+      'moonshotai/Kimi-K2.6',
+      'openai/gpt-oss-120b',
+    ],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: RuncrateIcon,
+  },
+  runcrate_anthropic: {
+    channelType: 'runcrate_anthropic',
+    baseURL: 'https://api.runcrate.ai',
+    defaultModels: [
+      'deepseek-ai/DeepSeek-V4.1-Flash',
+      'zai-org/GLM-5.3',
+      'zai-org/GLM-5.3-Flash',
+      'Qwen/Qwen3.8-Flash',
+      'moonshotai/Kimi-K2.6',
+    ],
+    apiFormat: ANTHROPIC_MESSAGES,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: RuncrateIcon,
+  },
   cline: {
     channelType: 'cline',
     baseURL: 'https://api.cline.bot/api/v1',
@@ -996,7 +1026,8 @@ export type Provider =
   | 'evolink'
   | 'groq'
   | 'zenmux'
-  | 'commandcode';
+  | 'commandcode'
+  | 'runcrate';
 
 /**
  * Map channel type to provider
@@ -1077,6 +1108,8 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   zenmux_video: 'zenmux',
   commandcode: 'commandcode',
   commandcode_anthropic: 'commandcode',
+  runcrate: 'runcrate',
+  runcrate_anthropic: 'runcrate',
 };
 
 /**

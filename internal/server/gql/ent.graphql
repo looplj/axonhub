@@ -1342,6 +1342,8 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   commandcode_anthropic
   typesafe
   cloudflare
+  runcrate
+  runcrate_anthropic
 }
 """
 ChannelWhereInput is used for filtering Channel objects.
