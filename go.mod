@@ -45,7 +45,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f
 	github.com/jackc/pgx/v5 v5.9.2
-	github.com/kaptinlin/jsonrepair v0.2.4
+	github.com/kaptinlin/jsonrepair v0.4.10
 	github.com/looplj/afero-s3 v0.1.0
 	github.com/looplj/afero-webdav v0.0.0-20260128073818-3f60e732e991
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -82,6 +82,7 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.24 // indirect
+	github.com/go-json-experiment/json v0.0.0-20260601182631-00ed12fed2a6 // indirect
 	github.com/klauspost/compress v1.18.7 // indirect
 	github.com/tmaxmax/go-sse v0.11.0 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.8.0 // indirect
