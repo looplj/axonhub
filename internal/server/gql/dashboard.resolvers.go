@@ -1461,10 +1461,6 @@ func (r *queryResolver) channelModelPerformanceStats(ctx context.Context, timeWi
 		return nil, fmt.Errorf("failed to get channel-model execution stats: %w", err)
 	}
 
-	if len(executionResults) == 0 {
-		return []*ChannelModelPerformanceStat{}, nil
-	}
-
 	// Step 2: throughput/ttft/token/cost per (channel_id, model_id) from
 	// usage_log joined to its latest execution for latency/stream metrics.
 	// Throughput follows biz.PerformanceRecord.Calculate and
@@ -1474,6 +1470,7 @@ func (r *queryResolver) channelModelPerformanceStats(ctx context.Context, timeWi
 	type usageStat struct {
 		ChannelID    int      `json:"channel_id"`
 		ModelID      string   `json:"model_id"`
+		RequestCount int      `json:"request_count"`
 		InputTokens  int64    `json:"input_tokens"`
 		OutputTokens int64    `json:"output_tokens"`
 		TotalTokens  int64    `json:"total_tokens"`
@@ -1547,6 +1544,7 @@ func (r *queryResolver) channelModelPerformanceStats(ctx context.Context, timeWi
 			s.Select(
 				sql.As(s.C(usagelog.FieldChannelID), "channel_id"),
 				sql.As(s.C(usagelog.FieldModelID), "model_id"),
+				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
@@ -1561,14 +1559,21 @@ func (r *queryResolver) channelModelPerformanceStats(ctx context.Context, timeWi
 		return nil, fmt.Errorf("failed to get channel-model usage stats: %w", err)
 	}
 
-	// Merge: execution stats are authoritative for counts; usage stats supply
-	// token/cost/throughput/ttft for pairs that produced usage data.
+	// Merge: execution stats are authoritative for request/success/failed counts;
+	// usage stats supply token/cost/throughput/ttft for pairs that produced usage
+	// data. A streaming request started just before a window boundary can write
+	// its usage_log just after it, so usage-only pairs (no in-window execution)
+	// are retained too — their usage rows are completed requests, counted as
+	// successes, so their tokens and cost are not silently dropped.
 	usageByKey := lo.SliceToMap(usageResults, func(item usageStat) (string, usageStat) {
 		return fmt.Sprintf("%d\x00%s", item.ChannelID, item.ModelID), item
 	})
 
-	results := make([]channelModelStat, 0, len(executionResults))
+	executionKeys := make(map[string]struct{}, len(executionResults))
+	results := make([]channelModelStat, 0, len(executionResults)+len(usageResults))
 	for _, exec := range executionResults {
+		key := fmt.Sprintf("%d\x00%s", exec.ChannelID, exec.ModelID)
+		executionKeys[key] = struct{}{}
 		stat := channelModelStat{
 			ChannelID:    exec.ChannelID,
 			ModelID:      exec.ModelID,
@@ -1576,7 +1581,7 @@ func (r *queryResolver) channelModelPerformanceStats(ctx context.Context, timeWi
 			SuccessCount: exec.SuccessCount,
 			FailedCount:  exec.FailedCount,
 		}
-		if usage, ok := usageByKey[fmt.Sprintf("%d\x00%s", exec.ChannelID, exec.ModelID)]; ok {
+		if usage, ok := usageByKey[key]; ok {
 			stat.InputTokens = usage.InputTokens
 			stat.OutputTokens = usage.OutputTokens
 			stat.TotalTokens = usage.TotalTokens
@@ -1585,6 +1590,24 @@ func (r *queryResolver) channelModelPerformanceStats(ctx context.Context, timeWi
 			stat.TtftMs = usage.TtftMs
 		}
 		results = append(results, stat)
+	}
+	for _, usage := range usageResults {
+		key := fmt.Sprintf("%d\x00%s", usage.ChannelID, usage.ModelID)
+		if _, ok := executionKeys[key]; ok {
+			continue
+		}
+		results = append(results, channelModelStat{
+			ChannelID:    usage.ChannelID,
+			ModelID:      usage.ModelID,
+			RequestCount: usage.RequestCount,
+			SuccessCount: usage.RequestCount,
+			InputTokens:  usage.InputTokens,
+			OutputTokens: usage.OutputTokens,
+			TotalTokens:  usage.TotalTokens,
+			TotalCost:    usage.TotalCost,
+			Throughput:   usage.Throughput,
+			TtftMs:       usage.TtftMs,
+		})
 	}
 
 	if len(results) == 0 {
