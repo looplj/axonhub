@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 // TestRuncrateOutboundRouting locks in the Runcrate outbound contract:
@@ -91,5 +92,8 @@ func TestRuncrateOutboundRouting(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "https://api.runcrate.ai/v1/messages", httpReq.URL)
 		require.Equal(t, "rc_test", httpReq.Auth.APIKey)
+		require.Equal(t, httpclient.AuthTypeAPIKey, httpReq.Auth.Type)
+		require.Equal(t, "X-API-Key", httpReq.Auth.HeaderKey)
+		require.Equal(t, "2023-06-01", httpReq.Headers.Get("Anthropic-Version"))
 	})
 }
