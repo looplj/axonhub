@@ -513,16 +513,26 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 		Role: "user", // Function responses come from user role in Gemini
 	}
 
-	var responseData map[string]any
-	if msg.Content.Content != nil {
-		_ = json.Unmarshal([]byte(*msg.Content.Content), &responseData)
+	result := lo.FromPtrOr(msg.Content.Content, "")
+	if msg.Content.Content == nil {
+		var texts []string
+		for _, part := range msg.Content.MultipleContent {
+			if part.Type == "text" && part.Text != nil {
+				texts = append(texts, *part.Text)
+			}
+		}
+
+		result = strings.Join(texts, "\n")
 	}
+
+	var responseData map[string]any
+	_ = json.Unmarshal([]byte(result), &responseData)
 
 	if responseData == nil || geminiFunctionResponseContainsRef(responseData) {
 		// Keep the original text when it is not a JSON object, or when it
 		// contains "$ref". Gemini only treats an object key named "$ref" as a
 		// media-part pointer, so the schema reference stays intact inside a string.
-		responseData = map[string]any{"result": lo.FromPtrOr(msg.Content.Content, "")}
+		responseData = map[string]any{"result": result}
 	}
 
 	toolCallID := lo.FromPtr(msg.ToolCallID)
