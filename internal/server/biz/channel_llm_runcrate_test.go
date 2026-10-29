@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -53,8 +54,22 @@ func TestRuncrateOutboundRouting(t *testing.T) {
 		require.Equal(t, "https://api.runcrate.ai/v1/chat/completions", httpReq.URL)
 		require.Equal(t, "rc_test", httpReq.Auth.APIKey)
 
-		_, err = BuildOutboundByAPIFormat(ch, llm.APIFormatOpenAIEmbedding.String())
+		embeddingOutbound, err := BuildOutboundByAPIFormat(ch, llm.APIFormatOpenAIEmbedding.String())
 		require.NoError(t, err, "runcrate should expose embeddings")
+
+		embeddingReq, err := embeddingOutbound.TransformRequest(ctx, &llm.Request{
+			Model:       "Qwen/Qwen3-Embedding-8B",
+			RequestType: llm.RequestTypeEmbedding,
+			APIFormat:   llm.APIFormatOpenAIEmbedding,
+			Embedding: &llm.EmbeddingRequest{
+				Input: llm.EmbeddingInput{String: "hello"},
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, "https://api.runcrate.ai/v1/embeddings", embeddingReq.URL)
+		require.Equal(t, "rc_test", embeddingReq.Auth.APIKey)
+		require.Equal(t, "Qwen/Qwen3-Embedding-8B", gjson.GetBytes(embeddingReq.Body, "model").String())
+		require.Equal(t, "hello", gjson.GetBytes(embeddingReq.Body, "input").String())
 	})
 
 	t.Run("runcrate_anthropic uses the Anthropic messages route", func(t *testing.T) {
