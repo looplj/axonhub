@@ -210,6 +210,8 @@ type ChannelSettings {
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPattern!]
   maxSingleChannelRetries: Int
+
+  responseTimeout: ChannelResponseTimeout
   modelProtocols: [ModelProtocol!]
   apiKeyStrategy: String
   apiKeyRoundRobinSwitchAfter: Int
@@ -222,6 +224,23 @@ enum ChannelQuotaRoutingMode {
   IGNORE_QUOTA
   REMOVE_ON_EXHAUSTED
   BACKPRESSURE
+}
+
+enum ChannelResponseTimeoutMode {
+  INHERIT
+  CUSTOM
+}
+
+type ChannelResponseTimeout {
+  mode: ChannelResponseTimeoutMode
+  streamFirstEventTimeoutSeconds: Int
+  nonStreamResponseTimeoutSeconds: Int
+}
+
+input ChannelResponseTimeoutInput {
+  mode: ChannelResponseTimeoutMode
+  streamFirstEventTimeoutSeconds: Int
+  nonStreamResponseTimeoutSeconds: Int
 }
 
 enum CapabilityPolicy {
@@ -297,6 +316,8 @@ input ChannelSettingsInput {
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPatternInput!]
   maxSingleChannelRetries: Int
+
+  responseTimeout: ChannelResponseTimeoutInput
   modelProtocols: [ModelProtocolInput!]
   apiKeyStrategy: String
   apiKeyRoundRobinSwitchAfter: Int

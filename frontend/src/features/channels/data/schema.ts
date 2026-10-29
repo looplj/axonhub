@@ -345,6 +345,20 @@ export const channelProviderQuotaSettingsSchema = z.object({
 });
 export type ChannelProviderQuotaSettings = z.infer<typeof channelProviderQuotaSettingsSchema>;
 
+// Per-channel overrides for the global retry policy response timeouts. A null
+// object (or INHERIT mode) follows the global settings; CUSTOM overrides the
+// corresponding value when set and inherits it when null.
+//
+// The upper bound is deliberately not enforced here: the backend rejects an
+// out-of-range override on save, and a parse that also rejected it would break
+// the whole channel list when the two bounds drift apart.
+export const channelResponseTimeoutSchema = z.object({
+  mode: z.enum(['INHERIT', 'CUSTOM']).optional().nullable(),
+  streamFirstEventTimeoutSeconds: z.number().int().min(0).optional().nullable(),
+  nonStreamResponseTimeoutSeconds: z.number().int().min(0).optional().nullable(),
+});
+export type ChannelResponseTimeout = z.infer<typeof channelResponseTimeoutSchema>;
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
@@ -366,6 +380,8 @@ export const channelSettingsSchema = z.object({
   // tolerate any value an API client could have stored; the editor still bounds
   // user input. A strict upper bound here can reject a whole channel response.
   maxSingleChannelRetries: z.number().int().min(0).optional().nullable(),
+
+  responseTimeout: channelResponseTimeoutSchema.optional().nullable(),
   modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
   providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
   // The backend stores an empty strategy for "unset" and returns it verbatim, and
