@@ -967,9 +967,9 @@ func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 		require.Len(t, apiKey.Scopes, 0)
 	})
 
-	t.Run("Create service_account type API key with custom scopes", func(t *testing.T) {
+	t.Run("Create service_account type API key with custom project scopes", func(t *testing.T) {
 		serviceAccountType := apikey.TypeServiceAccount
-		customScopes := []string{"read_channels", "write_channels", "read_channels"}
+		customScopes := []string{"read_requests", "write_requests", "read_api_keys"}
 		apiKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
 			Name:      "Service Account with Scopes",
 			ProjectID: testProject.ID,
@@ -979,11 +979,49 @@ func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, apiKey)
 		require.Equal(t, apikey.TypeServiceAccount, apiKey.Type)
-		require.NotNil(t, apiKey.Scopes)
-		require.Len(t, apiKey.Scopes, 3)
-		require.Contains(t, apiKey.Scopes, "read_channels")
-		require.Contains(t, apiKey.Scopes, "write_channels")
-		require.Contains(t, apiKey.Scopes, "read_channels")
+		require.Equal(t, customScopes, apiKey.Scopes)
+	})
+
+	t.Run("project owner cannot grant system-only scopes to service_account key", func(t *testing.T) {
+		serviceAccountType := apikey.TypeServiceAccount
+		_, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "Service Account with System Scope",
+			ProjectID: testProject.ID,
+			Type:      &serviceAccountType,
+			Scopes:    []string{string(scopes.ScopeReadChannels)},
+		})
+		require.ErrorContains(t, err, "don't possess at system level")
+	})
+
+	t.Run("system owner can grant system-only scopes to service_account key", func(t *testing.T) {
+		systemOwner, err := client.User.Create().
+			SetEmail(fmt.Sprintf("system-owner-%d@example.com", time.Now().UnixNano())).
+			SetPassword("password").
+			SetStatus(user.StatusActivated).
+			SetIsOwner(true).
+			Save(ctx)
+		require.NoError(t, err)
+
+		serviceAccountType := apikey.TypeServiceAccount
+		apiKey, err := apiKeyService.CreateAPIKey(contexts.WithUser(ctx, systemOwner), ent.CreateAPIKeyInput{
+			Name:      "System Owner Service Account",
+			ProjectID: testProject.ID,
+			Type:      &serviceAccountType,
+			Scopes:    []string{string(scopes.ScopeReadChannels)},
+		})
+		require.NoError(t, err)
+		require.Equal(t, []string{string(scopes.ScopeReadChannels)}, apiKey.Scopes)
+	})
+
+	t.Run("invalid scope is rejected", func(t *testing.T) {
+		serviceAccountType := apikey.TypeServiceAccount
+		_, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
+			Name:      "Service Account with Invalid Scope",
+			ProjectID: testProject.ID,
+			Type:      &serviceAccountType,
+			Scopes:    []string{"not_a_scope"},
+		})
+		require.ErrorContains(t, err, "invalid scope")
 	})
 
 	t.Run("Create user type API key ignores provided scopes", func(t *testing.T) {
@@ -1022,12 +1060,12 @@ func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 			Name:      "Service Key",
 			ProjectID: testProject.ID,
 			Type:      &serviceAccountType,
-			Scopes:    []string{"read_channels"},
+			Scopes:    []string{"read_requests"},
 		})
 		require.NoError(t, err)
 		require.Equal(t, apikey.TypeServiceAccount, serviceAPIKey.Type)
 		require.Len(t, serviceAPIKey.Scopes, 1)
-		require.Contains(t, serviceAPIKey.Scopes, "read_channels")
+		require.Contains(t, serviceAPIKey.Scopes, "read_requests")
 	})
 
 	t.Run("Verify API key key format is correct for both types", func(t *testing.T) {
@@ -1052,6 +1090,95 @@ func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 		require.True(t, len(serviceAPIKey.Key) > 3)
 		require.Equal(t, "ah-", serviceAPIKey.Key[:3])
 		require.NotEqual(t, userAPIKey.Key, serviceAPIKey.Key)
+	})
+}
+
+func TestAPIKeyService_UpdateAPIKey_ServiceAccountScopeGrant(t *testing.T) {
+	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer apiKeyService.Stop()
+	defer client.Close()
+
+	setupCtx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+
+	owner, err := client.User.Create().
+		SetEmail(fmt.Sprintf("owner-%d@example.com", time.Now().UnixNano())).
+		SetPassword("password").
+		SetStatus(user.StatusActivated).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	proj, err := client.Project.Create().
+		SetName(uuid.NewString()).
+		SetStatus(project.StatusActive).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	_, err = client.UserProject.Create().
+		SetUserID(owner.ID).
+		SetProjectID(proj.ID).
+		SetIsOwner(true).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	ctx := contexts.WithUser(setupCtx, owner)
+
+	serviceAccountType := apikey.TypeServiceAccount
+	key, err := apiKeyService.CreateAPIKey(ctx, ent.CreateAPIKeyInput{
+		Name:      "Service Account Update",
+		ProjectID: proj.ID,
+		Type:      &serviceAccountType,
+		Scopes:    []string{string(scopes.ScopeWriteRequests)},
+	})
+	require.NoError(t, err)
+
+	t.Run("set cannot grant system-only scope", func(t *testing.T) {
+		_, err := apiKeyService.UpdateAPIKey(ctx, key.ID, ent.UpdateAPIKeyInput{
+			Scopes: []string{string(scopes.ScopeReadChannels)},
+		})
+		require.ErrorContains(t, err, "don't possess at system level")
+	})
+
+	t.Run("append cannot grant system-only scope", func(t *testing.T) {
+		_, err := apiKeyService.UpdateAPIKey(ctx, key.ID, ent.UpdateAPIKeyInput{
+			AppendScopes: []string{string(scopes.ScopeReadChannels)},
+		})
+		require.ErrorContains(t, err, "don't possess at system level")
+	})
+
+	t.Run("combined set and append cannot grant system-only scope", func(t *testing.T) {
+		_, err := apiKeyService.UpdateAPIKey(ctx, key.ID, ent.UpdateAPIKeyInput{
+			Scopes:       []string{string(scopes.ScopeWriteRequests)},
+			AppendScopes: []string{string(scopes.ScopeReadChannels)},
+		})
+		require.ErrorContains(t, err, "don't possess at system level")
+	})
+
+	t.Run("append project scope is allowed", func(t *testing.T) {
+		updated, err := apiKeyService.UpdateAPIKey(ctx, key.ID, ent.UpdateAPIKeyInput{
+			AppendScopes: []string{string(scopes.ScopeReadRequests)},
+		})
+		require.NoError(t, err)
+		require.ElementsMatch(t, []string{
+			string(scopes.ScopeWriteRequests),
+			string(scopes.ScopeReadRequests),
+		}, updated.Scopes)
+	})
+
+	t.Run("set project scopes is allowed", func(t *testing.T) {
+		updated, err := apiKeyService.UpdateAPIKey(ctx, key.ID, ent.UpdateAPIKeyInput{
+			Scopes: []string{string(scopes.ScopeReadRequests), string(scopes.ScopeWriteRequests)},
+		})
+		require.NoError(t, err)
+		require.ElementsMatch(t, []string{
+			string(scopes.ScopeReadRequests),
+			string(scopes.ScopeWriteRequests),
+		}, updated.Scopes)
+	})
+
+	t.Run("clear scopes is allowed", func(t *testing.T) {
+		updated, err := apiKeyService.UpdateAPIKey(ctx, key.ID, ent.UpdateAPIKeyInput{ClearScopes: true})
+		require.NoError(t, err)
+		require.Empty(t, updated.Scopes)
 	})
 }
 
@@ -1506,7 +1633,7 @@ func TestAPIKeyService_RotateAPIKey(t *testing.T) {
 
 	t.Run("rotate service account type API key successfully", func(t *testing.T) {
 		serviceAccountType := apikey.TypeServiceAccount
-		customScopes := []string{"read_channels", "write_channels"}
+		customScopes := []string{"read_requests", "write_requests"}
 
 		// Create a service account API key
 		originalKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
@@ -1531,6 +1658,24 @@ func TestAPIKeyService_RotateAPIKey(t *testing.T) {
 		require.Equal(t, originalID, rotatedKey.ID)
 		require.Equal(t, apikey.TypeServiceAccount, rotatedKey.Type)
 		require.Equal(t, customScopes, rotatedKey.Scopes)
+	})
+
+	t.Run("cannot rotate a service account key carrying system scopes", func(t *testing.T) {
+		// A key minted by a system owner may carry a system-only scope. A
+		// project owner must not be able to rotate it into a usable key.
+		escalated, err := client.APIKey.Create().
+			SetName("Escalated Service Key").
+			SetKey("ah-escalated-rotate").
+			SetUserID(ownerUser.ID).
+			SetProjectID(testProject.ID).
+			SetType(apikey.TypeServiceAccount).
+			SetStatus(apikey.StatusEnabled).
+			SetScopes([]string{string(scopes.ScopeReadChannels)}).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		_, err = apiKeyService.RotateAPIKey(ctxWithUser, escalated.ID)
+		require.ErrorContains(t, err, "don't possess at system level")
 	})
 
 	t.Run("cannot rotate noauth type API key", func(t *testing.T) {
