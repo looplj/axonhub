@@ -892,3 +892,37 @@ func TestLoadBalancer_TopK_DefaultPolicy(t *testing.T) {
 	require.Len(t, result, 1)
 	assert.Equal(t, 2, result[0].Channel.ID, "Should return only best channel with default policy")
 }
+
+// TestLoadBalancer_SortTopKWithoutTracking verifies that the caller can keep more
+// candidates than the retry-derived top-K. Preflight rejections (probe lease busy)
+// do not consume a retry, so the selection keeps spare candidates for the rollover.
+func TestLoadBalancer_SortTopKWithoutTracking(t *testing.T) {
+	ctx := context.Background()
+
+	// Retries disabled: the retry-derived top-K is 1.
+	strategy := &channelBasedStrategy{
+		name: "test",
+		scores: map[int]float64{
+			1: 30,
+			2: 20,
+			3: 10,
+		},
+	}
+
+	lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: false}, strategy)
+
+	candidates := []*ChannelModelsCandidate{
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
+	}
+
+	limited := lb.SortWithoutTracking(ctx, candidates, "", false)
+	require.Len(t, limited, 1, "the retry-derived top-K must stay 1 when retries are disabled")
+
+	kept := lb.SortTopKWithoutTracking(ctx, candidates, "", false, 3)
+	require.Len(t, kept, 3, "the caller-provided limit must be honoured")
+	assert.Equal(t, 1, kept[0].Channel.ID)
+	assert.Equal(t, 2, kept[1].Channel.ID)
+	assert.Equal(t, 3, kept[2].Channel.ID)
+}

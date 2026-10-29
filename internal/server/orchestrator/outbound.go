@@ -1029,6 +1029,13 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	return nil
 }
 
+// IsPreflightSkip reports whether the attempt was rejected locally, before any
+// upstream call. It implements the pipeline.PreflightSkipper interface so the
+// pipeline can move on to the next candidate without spending a channel retry.
+func (p *PersistentOutboundTransformer) IsPreflightSkip(err error) bool {
+	return errors.Is(err, errSkipCandidateByCircuitBreaker)
+}
+
 // CanRetry returns true if the current channel can be retried.
 // It implements the pipeline.ChannelRetryable interface, it just check the error is retryable, the
 // pipeline will ensure the maxSameChannelRetries is not exceeded.

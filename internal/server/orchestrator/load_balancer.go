@@ -174,6 +174,20 @@ func (lb *LoadBalancer) SortWithoutTracking(ctx context.Context, candidates []*C
 	return lb.sort(ctx, candidates, model, stream, false)
 }
 
+// SortTopKWithoutTracking sorts candidates and keeps at most topK of them,
+// instead of deriving topK from the retry policy. Callers use it when they need
+// more candidates than the retry budget, for example to keep spare candidates
+// for local (preflight) rejections that do not consume retries.
+func (lb *LoadBalancer) SortTopKWithoutTracking(
+	ctx context.Context,
+	candidates []*ChannelModelsCandidate,
+	model string,
+	stream bool,
+	topK int,
+) []*ChannelModelsCandidate {
+	return lb.sortWithLimit(ctx, candidates, model, stream, false, topK)
+}
+
 // TrackSelection records a selected channel.
 func (lb *LoadBalancer) TrackSelection(candidate *ChannelModelsCandidate) {
 	if candidate != nil && candidate.Channel != nil && lb.selectionTracker != nil {
@@ -192,12 +206,30 @@ func (lb *LoadBalancer) sort(
 		return candidates
 	}
 
+	// Calculate topK based on retry policy
+	return lb.sortWithLimit(ctx, candidates, model, stream, trackSelection, lb.calculateTopK(ctx, candidates))
+}
+
+// sortWithLimit sorts candidates, keeping at most topK of them.
+func (lb *LoadBalancer) sortWithLimit(
+	ctx context.Context,
+	candidates []*ChannelModelsCandidate,
+	model string,
+	stream bool,
+	trackSelection bool,
+	topK int,
+) []*ChannelModelsCandidate {
+	if len(candidates) <= 1 {
+		return candidates
+	}
+
+	if topK <= 0 || topK > len(candidates) {
+		topK = len(candidates)
+	}
+
 	// Add model information to context for circuit-breaker strategy
 	ctx = contextWithRequestedModel(ctx, model)
 	ctx = contextWithRequestStream(ctx, stream)
-
-	// Calculate topK based on retry policy
-	topK := lb.calculateTopK(ctx, candidates)
 
 	// Use debug path if debug mode is enabled
 	debugEnabled := IsDebugEnabled(ctx)

@@ -63,6 +63,7 @@ type mockOutbound struct {
 	hasMoreChannels       func() bool
 	nextChannel           func(context.Context) error
 	canRetry              func(error) bool
+	isPreflightSkip       func(error) bool
 	prepareForRetry       func(context.Context) error
 	transformRequest      func(context.Context, *llm.Request) (*httpclient.Request, error)
 	transformResponse     func(context.Context, *httpclient.Response) (*llm.Response, error)
@@ -123,6 +124,14 @@ func (m *mockOutbound) NextChannel(ctx context.Context) error {
 func (m *mockOutbound) CanRetry(err error) bool {
 	if m.canRetry != nil {
 		return m.canRetry(err)
+	}
+
+	return false
+}
+
+func (m *mockOutbound) IsPreflightSkip(err error) bool {
+	if m.isPreflightSkip != nil {
+		return m.isPreflightSkip(err)
 	}
 
 	return false
@@ -911,4 +920,83 @@ func transformLlmContentToEvents(_ context.Context, stream streams.Stream[*llm.R
 
 		return &httpclient.StreamEvent{Data: []byte("metadata")}
 	}), nil
+}
+
+// TestPipeline_Process_PreflightSkipDoesNotSpendRetry verifies that a candidate
+// rejected locally, before any upstream call (e.g. a circuit breaker refusing a
+// probe because another probe is still in flight), rolls over to the next
+// candidate even when retries are disabled.
+func TestPipeline_Process_PreflightSkipDoesNotSpendRetry(t *testing.T) {
+	ctx := context.Background()
+
+	skipErr := errors.New("skip candidate by circuit breaker")
+
+	execCalls := 0
+	executor := &mockExecutor{
+		do: func(ctx context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+			execCalls++
+			if execCalls == 1 {
+				return nil, skipErr
+			}
+
+			return &httpclient.Response{}, nil
+		},
+	}
+
+	switchCalls := 0
+	outbound := &mockOutbound{
+		canRetry:        func(err error) bool { return false },
+		isPreflightSkip: func(err error) bool { return errors.Is(err, skipErr) },
+		hasMoreChannels: func() bool { return switchCalls == 0 },
+		nextChannel: func(ctx context.Context) error {
+			switchCalls++
+			return nil
+		},
+	}
+
+	p := &pipeline{
+		Executor: executor,
+		Inbound:  &mockInbound{},
+		Outbound: outbound,
+		// Retries disabled: without the preflight-skip path this request would fail.
+		maxChannelRetries:     0,
+		maxSameChannelRetries: 0,
+	}
+
+	res, err := p.Process(ctx, &httpclient.Request{})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.Equal(t, 2, execCalls)
+	require.Equal(t, 1, switchCalls)
+}
+
+// TestPipeline_Process_PreflightSkipWithoutFallbackFails verifies that a preflight
+// skip fails fast when no other candidate is available.
+func TestPipeline_Process_PreflightSkipWithoutFallbackFails(t *testing.T) {
+	ctx := context.Background()
+
+	skipErr := errors.New("skip candidate by circuit breaker")
+
+	executor := &mockExecutor{
+		do: func(ctx context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+			return nil, skipErr
+		},
+	}
+
+	outbound := &mockOutbound{
+		isPreflightSkip: func(err error) bool { return errors.Is(err, skipErr) },
+		hasMoreChannels: func() bool { return false },
+	}
+
+	p := &pipeline{
+		Executor:              executor,
+		Inbound:               &mockInbound{},
+		Outbound:              outbound,
+		maxChannelRetries:     0,
+		maxSameChannelRetries: 0,
+	}
+
+	res, err := p.Process(ctx, &httpclient.Request{})
+	require.Error(t, err)
+	require.Nil(t, res)
 }
