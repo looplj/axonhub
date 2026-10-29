@@ -40,8 +40,7 @@ interface ChannelModelPerformanceTableProps {
 
 export function ChannelModelPerformanceTable({ timePeriod = 'allTime', onTimePeriodChange }: ChannelModelPerformanceTableProps) {
   const { t, i18n } = useTranslation();
-  const timeWindow = timePeriod === 'allTime' ? undefined : timePeriod;
-  const { data, isLoading, error } = useChannelModelPerformanceStats(timeWindow);
+  const { data, isLoading, error } = useChannelModelPerformanceStats(timePeriod);
   const { data: generalSettings } = useGeneralSettings();
   const [sortField, setSortField] = useState<SortField>('requestCount');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -55,8 +54,8 @@ export function ChannelModelPerformanceTable({ timePeriod = 'allTime', onTimePer
         val,
         currency: currencyCode,
         locale,
-        minimumFractionDigits: 4,
-        maximumFractionDigits: 4,
+        minimumFractionDigits: 6,
+        maximumFractionDigits: 6,
       }),
     [currencyCode, locale, t]
   );
