@@ -21,13 +21,15 @@
 
 ---
 
-## ❤️ 赞助商
+> 🚀 **试试我的新项目 [Reveric（幻界）](https://lj.s.gy/LDfOjx)**：Agent Native 创作工作台，从小说、剧本到自动生成视频、自动剪辑成片，让智能体参与创作全流程。
+
+## ❤️ 赞助
 
 <div align="center">
 
 <table width="100%">
   <tr>
-    <td width="50%" align="center" valign="top">
+    <td width="100%" align="center" valign="top">
       <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
         <img src="docs/sponsors/apikey-fun.png" alt="APIKEY.FUN" height="50"/>
         <br/>
@@ -44,29 +46,6 @@
         AxonHub 用户通过<a href="https://apikey.fun/register?aff=axonhub" target="_blank">专属链接注册</a>，还可享受最高充值永久 95 折专属优惠。
       </div>
     </td>
-    <td width="50%" align="center" valign="top">
-      <a href="https://lj.s.gy/DUq59H" target="_blank">
-        <img src="https://www.infistar.cc/logo.png" alt="无限星河 Infistar.cc" height="50"/>
-        <br/>
-        <strong>无限星河 Infistar.cc</strong>
-      </a>
-      <div align="center">
-        <a href="https://lj.s.gy/DUq59H" target="_blank">
-          <img src="docs/sponsors/infistar-banner.png" alt="Infistar.cc 无限星河" width="100%"/>
-        </a>
-      </div>
-      <div align="left">
-       <strong>AxonHub × Infistar.cc 无限星河｜高可用全模型 API</strong>
-      </div>
-      <div align="left">
-        ⚡ 企业级高并发稳定调度｜官方 1 折起 · 透明倍率 · 多节点冗余<br/>
-        🧠 全系模型支持｜ChatGPT · Claude · Gemini · DeepSeek<br/>
-        🎨 全模态接入｜文本 · 图像 · 视频 · Embedding / Rerank
-      </div>
-      <div align="left">
-        AxonHub 用户通过<a href="https://lj.s.gy/DUq59H" target="_blank">专属链接</a>注册，可享专属特惠。
-      </div>
-    </td>
   </tr>
 </table>
 
@@ -77,7 +56,7 @@
 <table border="1" cellspacing="0" cellpadding="16">
   <thead>
     <tr>
-      <th align="center" width="220">赞助商</th>
+      <th align="center" width="220">赞助</th>
       <th align="left">详情</th>
     </tr>
   </thead>
