@@ -7,7 +7,6 @@ package gql
 
 import (
 	"context"
-	"io"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/contexts"
@@ -35,13 +34,9 @@ func (r *mutationResolver) Backup(ctx context.Context, input backup.BackupOption
 
 // Restore is the resolver for the restore field.
 func (r *mutationResolver) Restore(ctx context.Context, file graphql.Upload, input backup.RestoreOptions) (*RestorePayload, error) {
-	fileContent, err := io.ReadAll(file.File)
-	if err != nil {
-		return nil, err
-	}
-
-	err = r.backupService.Restore(ctx, fileContent, input)
-	if err != nil {
+	// Hand the upload stream straight to the service. Reading it into a []byte
+	// first would hold the whole backup in memory on top of the decoded form.
+	if err := r.backupService.Restore(ctx, file.File, input); err != nil {
 		return nil, err
 	}
 
