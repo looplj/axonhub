@@ -1471,6 +1471,8 @@ func (r *queryResolver) channelModelPerformanceStats(ctx context.Context, timeWi
 		ChannelID    int      `json:"channel_id"`
 		ModelID      string   `json:"model_id"`
 		RequestCount int      `json:"request_count"`
+		SuccessCount int      `json:"success_count"`
+		FailedCount  int      `json:"failed_count"`
 		InputTokens  int64    `json:"input_tokens"`
 		OutputTokens int64    `json:"output_tokens"`
 		TotalTokens  int64    `json:"total_tokens"`
@@ -1545,6 +1547,12 @@ func (r *queryResolver) channelModelPerformanceStats(ctx context.Context, timeWi
 				sql.As(s.C(usagelog.FieldChannelID), "channel_id"),
 				sql.As(s.C(usagelog.FieldModelID), "model_id"),
 				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
+				// Success/failed come from the joined execution's status, not from the
+				// presence of a usage_log row: a failed or canceled stream can still
+				// report usage and write a usage_log, so counting every usage row as a
+				// success would overstate the success rate.
+				sql.As(fmt.Sprintf("SUM(CASE WHEN %s = '%s' THEN 1 ELSE 0 END)", executionTable.C(requestexecution.FieldStatus), requestexecution.StatusCompleted), "success_count"),
+				sql.As(fmt.Sprintf("SUM(CASE WHEN %s = '%s' THEN 1 ELSE 0 END)", executionTable.C(requestexecution.FieldStatus), requestexecution.StatusFailed), "failed_count"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
@@ -1563,8 +1571,10 @@ func (r *queryResolver) channelModelPerformanceStats(ctx context.Context, timeWi
 	// usage stats supply token/cost/throughput/ttft for pairs that produced usage
 	// data. A streaming request started just before a window boundary can write
 	// its usage_log just after it, so usage-only pairs (no in-window execution)
-	// are retained too — their usage rows are completed requests, counted as
-	// successes, so their tokens and cost are not silently dropped.
+	// are retained too — their success/failed counts come from the joined
+	// execution's status (a failed/canceled stream can still report usage), so
+	// their tokens and cost are not silently dropped and the success rate stays
+	// accurate.
 	usageByKey := lo.SliceToMap(usageResults, func(item usageStat) (string, usageStat) {
 		return fmt.Sprintf("%d\x00%s", item.ChannelID, item.ModelID), item
 	})
@@ -1600,7 +1610,8 @@ func (r *queryResolver) channelModelPerformanceStats(ctx context.Context, timeWi
 			ChannelID:    usage.ChannelID,
 			ModelID:      usage.ModelID,
 			RequestCount: usage.RequestCount,
-			SuccessCount: usage.RequestCount,
+			SuccessCount: usage.SuccessCount,
+			FailedCount:  usage.FailedCount,
 			InputTokens:  usage.InputTokens,
 			OutputTokens: usage.OutputTokens,
 			TotalTokens:  usage.TotalTokens,
