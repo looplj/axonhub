@@ -29,6 +29,23 @@ type GenerateContentRequest struct {
 	CachedContent string `json:"cachedContent,omitempty"`
 }
 
+// UnmarshalJSON accepts system_instruction as a fallback for systemInstruction.
+func (r *GenerateContentRequest) UnmarshalJSON(data []byte) error {
+	type requestAlias GenerateContentRequest
+	var decoded struct {
+		requestAlias
+		SystemInstructionSnake *Content `json:"system_instruction"`
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*r = GenerateContentRequest(decoded.requestAlias)
+	if r.SystemInstruction == nil {
+		r.SystemInstruction = decoded.SystemInstructionSnake
+	}
+	return nil
+}
+
 // Content represents the multi-part content of a message.
 type Content struct {
 	// Parts is the ordered Parts that constitute a single message.
@@ -62,6 +79,23 @@ type Part struct {
 	ThoughtSignature string `json:"thoughtSignature,omitempty"`
 }
 
+// UnmarshalJSON accepts inline_data as a fallback for inlineData.
+func (p *Part) UnmarshalJSON(data []byte) error {
+	type partAlias Part
+	var decoded struct {
+		partAlias
+		InlineDataSnake *Blob `json:"inline_data"`
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*p = Part(decoded.partAlias)
+	if p.InlineData == nil {
+		p.InlineData = decoded.InlineDataSnake
+	}
+	return nil
+}
+
 // Blob represents raw media bytes.
 type Blob struct {
 	// MIMEType is the IANA standard MIME type of the source data.
@@ -71,6 +105,23 @@ type Blob struct {
 	Data string `json:"data,omitempty"`
 }
 
+// UnmarshalJSON accepts mime_type as a fallback when mimeType is empty.
+func (b *Blob) UnmarshalJSON(data []byte) error {
+	type blobAlias Blob
+	var decoded struct {
+		blobAlias
+		MIMETypeSnake string `json:"mime_type"`
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*b = Blob(decoded.blobAlias)
+	if b.MIMEType == "" {
+		b.MIMEType = decoded.MIMETypeSnake
+	}
+	return nil
+}
+
 // FileData represents URI based data.
 type FileData struct {
 	// MIMEType is the IANA standard MIME type of the source data.
@@ -78,6 +129,23 @@ type FileData struct {
 
 	// FileURI is the URI.
 	FileURI string `json:"fileUri,omitempty"`
+}
+
+// UnmarshalJSON accepts mime_type as a fallback when mimeType is empty.
+func (f *FileData) UnmarshalJSON(data []byte) error {
+	type fileDataAlias FileData
+	var decoded struct {
+		fileDataAlias
+		MIMETypeSnake string `json:"mime_type"`
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*f = FileData(decoded.fileDataAlias)
+	if f.MIMEType == "" {
+		f.MIMEType = decoded.MIMETypeSnake
+	}
+	return nil
 }
 
 // FunctionCall represents a predicted function call.
