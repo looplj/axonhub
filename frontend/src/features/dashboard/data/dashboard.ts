@@ -133,6 +133,20 @@ export const channelPerformanceStatSchema = z.object({
   requestCount: z.number(),
 });
 
+export const channelModelPerformanceStatSchema = z.object({
+  channelId: z.string(),
+  channelName: z.string(),
+  modelId: z.string(),
+  requestCount: z.number(),
+  successCount: z.number(),
+  failedCount: z.number(),
+  successRate: z.number(),
+  throughput: z.number().nullable(),
+  ttftMs: z.number().nullable(),
+  totalCost: z.number(),
+  totalTokens: z.number(),
+});
+
 export type RequestStats = z.infer<typeof requestStatsSchema>;
 export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
 export type RequestsByChannel = z.infer<typeof requestsByChannelSchema>;
@@ -150,6 +164,7 @@ export type TopProjects = z.infer<typeof topProjectsSchema>;
 export type ChannelSuccessRate = z.infer<typeof channelSuccessRateSchema>;
 export type ModelPerformanceStat = z.infer<typeof modelPerformanceStatSchema>;
 export type ChannelPerformanceStat = z.infer<typeof channelPerformanceStatSchema>;
+export type ChannelModelPerformanceStat = z.infer<typeof channelModelPerformanceStatSchema>;
 
 export const tokenStatsSchema = z.object({
   totalInputTokensToday: z.number(),
@@ -390,6 +405,24 @@ const CHANNEL_PERFORMANCE_STATS_QUERY = `
       throughput
       ttftMs
       requestCount
+    }
+  }
+`;
+
+const CHANNEL_MODEL_PERFORMANCE_STATS_QUERY = `
+  query ChannelModelPerformanceStats($timeWindow: String, $limit: Int) {
+    channelModelPerformanceStats(timeWindow: $timeWindow, limit: $limit) {
+      channelId
+      channelName
+      modelId
+      requestCount
+      successCount
+      failedCount
+      successRate
+      throughput
+      ttftMs
+      totalCost
+      totalTokens
     }
   }
 `;
@@ -649,5 +682,22 @@ export function useChannelPerformanceStats() {
     refetchInterval: DASHBOARD_SLOW_REFETCH_MS,
     staleTime: DASHBOARD_SLOW_REFETCH_MS,
     refetchOnWindowFocus: false,
+  });
+}
+
+export function useChannelModelPerformanceStats(timeWindow?: string, limit?: number) {
+  return useQuery({
+    queryKey: ['channelModelPerformanceStats', timeWindow, limit],
+    queryFn: async () => {
+      const data = await graphqlRequest<{ channelModelPerformanceStats: ChannelModelPerformanceStat[] }>(CHANNEL_MODEL_PERFORMANCE_STATS_QUERY, {
+        ...(timeWindow != null && { timeWindow }),
+        ...(limit != null && { limit }),
+      });
+      return data.channelModelPerformanceStats.map((item) => channelModelPerformanceStatSchema.parse(item));
+    },
+    refetchInterval: DASHBOARD_SLOW_REFETCH_MS,
+    staleTime: DASHBOARD_SLOW_REFETCH_MS,
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
   });
 }

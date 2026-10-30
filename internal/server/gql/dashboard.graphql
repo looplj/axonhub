@@ -156,6 +156,29 @@ type ChannelPerformanceStat {
   requestCount: Int!
 }
 
+"""
+Performance statistics for a specific channel-model pair (the actual model a
+channel invoked, not the client-requested model). Aggregated across the selected
+time window so callers can compare the same model across channels or different
+models within one channel.
+"""
+type ChannelModelPerformanceStat {
+  channelId: String!
+  channelName: String!
+  modelId: String!
+  requestCount: Int!
+  successCount: Int!
+  failedCount: Int!
+  "Success rate in [0, 100]"
+  successRate: Float!
+  "Output token throughput in tokens per second, null when no valid latency metrics exist"
+  throughput: Float
+  "Average time to first token in milliseconds, null when no streaming request recorded a first token"
+  ttftMs: Float
+  totalCost: Float!
+  totalTokens: Int!
+}
+
 input FastestChannelsInput {
   timeWindow: String!
   limit: Int = 5
@@ -246,6 +269,12 @@ extend type Query {
   Get performance statistics for channels over time
   """
   channelPerformanceStats: [ChannelPerformanceStat!]!
+  """
+  Get aggregated performance statistics per channel-model pair (the actual model
+  a channel invoked). Use timeWindow (day/week/month/allTime) and limit to scope
+  the result set.
+  """
+  channelModelPerformanceStats(timeWindow: String, limit: Int): [ChannelModelPerformanceStat!]!
   tokenStatsByChannel(timeWindow: String): [TokenStatsByChannel!]!
   tokenStatsByModel(timeWindow: String): [TokenStatsByModel!]!
   costStatsByChannel(timeWindow: String): [CostStatsByChannel!]!
