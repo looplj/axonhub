@@ -106,7 +106,7 @@ func convertGeminiFinishReasonToLLM(reason string, hasToolCall bool) *string {
 		}
 	case "MAX_TOKENS":
 		llmReason = "length"
-	case "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "IMAGE_SAFETY":
+	case "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION":
 		llmReason = "content_filter"
 	default:
 		llmReason = "stop"

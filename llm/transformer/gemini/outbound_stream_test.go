@@ -786,6 +786,8 @@ func TestOutboundTransformer_TransformStreamChunk_FinishReasons(t *testing.T) {
 		{"PROHIBITED_CONTENT to content_filter", "PROHIBITED_CONTENT", "content_filter"},
 		{"SPII to content_filter", "SPII", "content_filter"},
 		{"IMAGE_SAFETY to content_filter", "IMAGE_SAFETY", "content_filter"},
+		{"IMAGE_PROHIBITED_CONTENT to content_filter", "IMAGE_PROHIBITED_CONTENT", "content_filter"},
+		{"IMAGE_RECITATION to content_filter", "IMAGE_RECITATION", "content_filter"},
 		{"unknown to stop", "UNKNOWN", "stop"},
 	}
 
