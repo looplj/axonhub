@@ -1740,12 +1740,33 @@ func gcpCredentialsEqual(a, b *objects.GCPCredential) bool {
 	return a.Region == b.Region && a.ProjectID == b.ProjectID && a.JSONData == b.JSONData
 }
 
+// prefixedModelName returns the channel-prefixed form of a model name and
+// reports whether the prefix should be applied. It returns false when no
+// extra prefix is configured or when the model already carries the channel
+// prefix, so callers never produce a doubled prefix such as "p/p/model".
+func (ch *Channel) prefixedModelName(model string) (string, bool) {
+	if ch.Settings == nil || ch.Settings.ExtraModelPrefix == "" {
+		return "", false
+	}
+
+	prefix := ch.Settings.ExtraModelPrefix + "/"
+	if ch.Settings.LowercaseModelID {
+		if strings.HasPrefix(strings.ToLower(model), strings.ToLower(prefix)) {
+			return "", false
+		}
+	} else if strings.HasPrefix(model, prefix) {
+		return "", false
+	}
+
+	return prefix + model, true
+}
+
 // GetModelEntries returns all models this channel can handle, RequestModel -> Entry
 // This unifies:
 // - SupportedModels (direct models)
 // - ExtraModelPrefix (prefixed models)
 // - AutoTrimedModelPrefixes (auto-trimmed models)
-// - ModelMappings (mapped models)
+// - ModelMappings (mapped models, also exposed under ExtraModelPrefix)
 // The result is cached for performance.
 //
 // WARNING: The returned map is internal cached state.
@@ -1822,6 +1843,21 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 					ActualModel:  mapping.To,
 					Source:       "mapping",
 				}
+
+				// ExtraModelPrefix namespaces aliases too, so an alias "x" is
+				// reachable as both "x" and "<prefix>/x". Skip the prefixed
+				// variant when the alias already carries this channel's prefix
+				// to avoid building "<prefix>/<prefix>/x".
+				if prefixedFrom, ok := ch.prefixedModelName(mapping.From); ok {
+					if _, exists := entries[prefixedFrom]; !exists {
+						entries[prefixedFrom] = ChannelModelEntry{
+							RequestModel: prefixedFrom,
+							ActualModel:  mapping.To,
+							Source:       "mapping",
+						}
+					}
+				}
+
 				// When hideMappedModels is enabled, remove all entries that resolve
 				// to the mapped target model (mapping.To), except for mapping entries
 				// themselves. This covers direct, prefixed, and auto-trimmed variants,

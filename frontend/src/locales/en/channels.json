@@ -494,7 +494,7 @@
   "channels.dialogs.status.restore.description": "Are you sure you want to restore channel \"{{name}}\"? The channel will be available for use after restoring.",
   "channels.dialogs.status.restore.info": "Restored channels will reappear in the default list.",
   "channels.dialogs.settings.extraModelPrefix.title": "Extra Model Prefix",
-  "channels.dialogs.settings.extraModelPrefix.description": "Configure extra model prefixes to allow access to this channel using prefixed model names. For example: with prefix 'deepseek', both 'deepseek/deepseek-chat' and 'deepseek-chat' can access this channel.",
+  "channels.dialogs.settings.extraModelPrefix.description": "Configure extra model prefixes to allow access to this channel using prefixed model names. Model aliases also get the prefix, e.g. with prefix 'deepseek' and alias 'chat', both 'chat' and 'deepseek/chat' work alongside 'deepseek-chat' and 'deepseek/deepseek-chat'.",
   "channels.dialogs.settings.extraModelPrefix.placeholder": "e.g., deepseek",
   "channels.dialogs.settings.lowercaseModelId.title": "Lowercase Model Name",
   "channels.dialogs.settings.lowercaseModelId.description": "Convert model names to lowercase. Enable when channel-provided model names contain uppercase letters, to balance load with other lowercase model names. For example, converts 'GLM-5.1' to 'glm-5.1'",

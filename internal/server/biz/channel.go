@@ -496,10 +496,10 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 	modelMap := make(map[string]channel.Status)
 
 	for _, ch := range channels {
+		bizCh := &Channel{Channel: ch}
+
 		if input.IncludeAllChannelModels {
 			// Use GetModelEntries to get all model entries (including mapping, prefix, auto_trim)
-			bizCh := &Channel{Channel: ch}
-
 			entries := bizCh.GetModelEntries()
 			for requestModel := range entries {
 				setModelStatus(modelMap, requestModel, ch.Status)
@@ -516,6 +516,14 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 					// Only add the mapping if the target model is supported
 					if slices.Contains(ch.SupportedModels, mapping.To) {
 						setModelStatus(modelMap, mapping.From, ch.Status)
+
+						// ExtraModelPrefix also namespaces aliases, so expose
+						// the prefixed alias alongside the plain one.
+						if input.IncludePrefix {
+							if prefixedFrom, ok := bizCh.prefixedModelName(mapping.From); ok {
+								setModelStatus(modelMap, prefixedFrom, ch.Status)
+							}
+						}
 					}
 				}
 			}
