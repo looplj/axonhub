@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"slices"
 	"strings"
 	"text/template"
 
@@ -346,6 +347,49 @@ func applyBodySetIfAbsent(
 }
 
 func applyBodyDelete(body []byte, op objects.OverrideOperation) ([]byte, error) {
+	for i := 0; i < len(op.Path); i++ {
+		if op.Path[i] == '\\' {
+			i++
+			continue
+		}
+
+		if !strings.HasPrefix(op.Path[i:], "[*]") {
+			continue
+		}
+
+		rest := op.Path[i+3:]
+		if rest != "" && rest[0] != '.' && !strings.HasPrefix(rest, "[*]") {
+			continue
+		}
+
+		prefix := op.Path[:i]
+		array := gjson.ParseBytes(body)
+		if prefix != "" {
+			array = gjson.GetBytes(body, prefix)
+		}
+
+		if !array.IsArray() {
+			return body, nil
+		}
+
+		// Walk backwards so deleting array elements does not shift later indexes.
+		for index := range slices.Backward(array.Array()) {
+			expanded := op
+			expanded.Path = fmt.Sprintf("%d%s", index, rest)
+			if prefix != "" {
+				expanded.Path = prefix + "." + expanded.Path
+			}
+
+			var err error
+			body, err = applyBodyDelete(body, expanded)
+			if err != nil {
+				return body, err
+			}
+		}
+
+		return body, nil
+	}
+
 	return sjson.DeleteBytes(body, op.Path)
 }
 

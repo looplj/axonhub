@@ -2345,6 +2345,57 @@ func TestOverrideOperationsArrayOps(t *testing.T) {
 		return string(result.Body)
 	}
 
+	t.Run("delete removes a field from every array item", func(t *testing.T) {
+		ops := `[{"op":"delete","path":"input[*].internal_chat_message_metadata_passthrough"}]`
+		body := `{"input":[{"role":"user","content":"hello","internal_chat_message_metadata_passthrough":{"id":1}},{"role":"assistant","content":"hi","internal_chat_message_metadata_passthrough":null},{"role":"user","content":"next"}],"model":"test"}`
+
+		got := runMiddleware(t, ops, body)
+
+		require.JSONEq(t, `{"input":[{"role":"user","content":"hello"},{"role":"assistant","content":"hi"},{"role":"user","content":"next"}],"model":"test"}`, got)
+	})
+
+	t.Run("delete traverses nested arrays and preserves other values", func(t *testing.T) {
+		ops := `[{"op":"delete","path":"messages[*].content[*].cache_control"}]`
+		body := `{"messages":[{"content":[{"text":"hello","cache_control":{"type":"ephemeral"}},{"text":"next","id":9007199254740993}]},{"content":"plain text"},{"content":[null,{"text":"last","cache_control":false}]}]}`
+
+		got := runMiddleware(t, ops, body)
+
+		require.JSONEq(t, `{"messages":[{"content":[{"text":"hello"},{"text":"next","id":9007199254740993}]},{"content":"plain text"},{"content":[null,{"text":"last"}]}]}`, got)
+		require.Equal(t, "9007199254740993", gjson.Get(got, "messages.0.content.1.id").Raw)
+	})
+
+	t.Run("delete wildcard leaves missing and non-array paths unchanged", func(t *testing.T) {
+		ops := `[{"op":"delete","path":"input[*].metadata"}]`
+		for _, body := range []string{`{}`, `{"input":[]}`, `{"input":null}`, `{"input":{"metadata":"keep"}}`, `{"input":[null,7,"text",{}]}`} {
+			require.JSONEq(t, body, runMiddleware(t, ops, body))
+		}
+	})
+
+	t.Run("delete wildcard respects escaped path characters", func(t *testing.T) {
+		ops := `[{"op":"delete","path":"message\\.list[*].meta\\.data"}]`
+		body := `{"message.list":[{"meta.data":"remove","keep":true}],"message":{"list":[{"meta.data":"keep"}]}}`
+
+		got := runMiddleware(t, ops, body)
+
+		require.JSONEq(t, `{"message.list":[{"keep":true}],"message":{"list":[{"meta.data":"keep"}]}}`, got)
+	})
+
+	t.Run("delete preserves exact indexes and escaped literal wildcards", func(t *testing.T) {
+		ops := `[{"op":"delete","path":"input.1.metadata"},{"op":"delete","path":"literal\\[\\*\\].metadata"}]`
+		body := `{"input":[{"metadata":"keep"},{"metadata":"remove","keep":true}],"literal[*]":{"metadata":"remove","keep":false}}`
+
+		got := runMiddleware(t, ops, body)
+
+		require.JSONEq(t, `{"input":[{"metadata":"keep"},{"keep":true}],"literal[*]":{"keep":false}}`, got)
+	})
+
+	t.Run("delete wildcard removes all selected array elements", func(t *testing.T) {
+		ops := `[{"op":"delete","path":"input[*]"}]`
+		got := runMiddleware(t, ops, `{"input":[1,2,3],"keep":true}`)
+
+		require.JSONEq(t, `{"input":[],"keep":true}`, got)
+	})
+
 	t.Run("array_append inserts a single object at the end", func(t *testing.T) {
 		ops := `[{"op":"array_append","path":"system","value":"{\"type\":\"text\",\"text\":\"injected\"}"}]`
 		got := runMiddleware(t, ops, `{"system":[{"type":"text","text":"original"}]}`)

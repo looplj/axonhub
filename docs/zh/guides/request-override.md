@@ -288,6 +288,19 @@ AxonHub 支持以下重写操作：
 ]
 ```
 
+请求体的 `delete` 操作支持用 `[*]` 遍历数组中的每个元素，删除字段并保留消息本身：
+
+```json
+[
+  {
+    "op": "delete",
+    "path": "input[*].internal_chat_message_metadata_passthrough"
+  }
+]
+```
+
+通配符可以嵌套，例如 `messages[*].content[*].cache_control`。字段不存在、数组为空或目标不是数组时，保持原值不变。其他操作和请求头路径继续使用原有语法。
+
 ## 重写请求头 (Override Headers)
 
 重写请求头使用与重写参数相同的操作格式：
