@@ -1339,6 +1339,45 @@ func TestConvertLLMToolMessageToGeminiContent(t *testing.T) {
 			},
 		},
 		{
+			name: "tool message with text content parts",
+			input: &llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_789"),
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "text", Text: lo.ToPtr("Sunny")},
+						{Type: "text", Text: lo.ToPtr("22C")},
+					},
+				},
+			},
+			req: &GenerateContentRequest{},
+			validate: func(t *testing.T, result *Content) {
+				t.Helper()
+				require.Len(t, result.Parts, 1)
+				require.NotNil(t, result.Parts[0].FunctionResponse)
+				require.Equal(t, "Sunny\n22C", result.Parts[0].FunctionResponse.Response["result"])
+			},
+		},
+		{
+			name: "tool message with a JSON text content part",
+			input: &llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_790"),
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "text", Text: lo.ToPtr(`{"temperature": 72}`)},
+					},
+				},
+			},
+			req: &GenerateContentRequest{},
+			validate: func(t *testing.T, result *Content) {
+				t.Helper()
+				require.Len(t, result.Parts, 1)
+				require.NotNil(t, result.Parts[0].FunctionResponse)
+				require.Equal(t, 72.0, result.Parts[0].FunctionResponse.Response["temperature"])
+			},
+		},
+		{
 			name: "tool message without tool call ID",
 			input: &llm.Message{
 				Role: "tool",
