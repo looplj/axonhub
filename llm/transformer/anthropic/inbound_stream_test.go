@@ -479,8 +479,9 @@ func TestInboundStream_UsesUsageFromFinalUsageOnlyChunk(t *testing.T) {
 
 // TestInboundStream_UsesUsageFromFinishChunkWithoutUsageOnlyChunk covers providers
 // that report usage only on the chunk carrying finish_reason and never send a
-// separate usage-only chunk. The terminal event is emitted at clean stream end,
-// so the usage collected along the way must still reach message_delta.
+// separate usage-only chunk. The terminal event must be emitted on that chunk,
+// not deferred to stream end: Claude Code finalizes its bookkeeping when
+// message_delta arrives, so a late one is discarded.
 func TestInboundStream_UsesUsageFromFinishChunkWithoutUsageOnlyChunk(t *testing.T) {
 	transformer := NewInboundTransformer()
 	text := "Hi"
@@ -529,6 +530,163 @@ func TestInboundStream_UsesUsageFromFinishChunkWithoutUsageOnlyChunk(t *testing.
 	require.NotNil(t, deltaUsage)
 	require.EqualValues(t, 120, deltaUsage.InputTokens)
 	require.EqualValues(t, 8, deltaUsage.OutputTokens)
+}
+
+// TestInboundStream_FinalizesAsSoonAsTheFinishChunkCarriesUsage pins down the
+// timing rather than just the content: the terminal events must be emitted while
+// the stream is still being consumed, exactly on the chunk that supplies the real
+// counts. A provider that keeps the stream open afterwards (agent2api appends its
+// own terminator) would otherwise make Claude Code discard the late message_delta.
+func TestInboundStream_FinalizesAsSoonAsTheFinishChunkCarriesUsage(t *testing.T) {
+	transformer := NewInboundTransformer()
+	text := "Hi"
+	finishReason := "stop"
+
+	source := &countingResponseStream{
+		items: []*llm.Response{
+			{
+				ID:     "chatcmpl-standard",
+				Object: "chat.completion.chunk",
+				Model:  "gpt-4o",
+				Choices: []llm.Choice{{
+					Index: 0,
+					Delta: &llm.Message{
+						Role:    "assistant",
+						Content: llm.MessageContent{Content: &text},
+					},
+				}},
+			},
+			{
+				ID:     "chatcmpl-standard",
+				Object: "chat.completion.chunk",
+				Model:  "gpt-4o",
+				Choices: []llm.Choice{{
+					Index:        0,
+					FinishReason: &finishReason,
+				}},
+				Usage: &llm.Usage{
+					PromptTokens:     120,
+					CompletionTokens: 8,
+					TotalTokens:      128,
+				},
+			},
+			{Object: "[DONE]"},
+		},
+	}
+
+	stream, err := transformer.TransformStream(t.Context(), source)
+	require.NoError(t, err)
+
+	terminalAt := -1
+
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+
+		if (event.Type == "message_delta" || event.Type == "message_stop") && terminalAt < 0 {
+			terminalAt = source.consumed
+		}
+	}
+
+	require.NoError(t, stream.Err())
+	// Consumed counts: 1 = text chunk, 2 = finish chunk with usage, 3 = [DONE].
+	// The terminal events must be in flight as soon as the finish chunk is read.
+	require.Equal(t, 2, terminalAt, "terminal events should be emitted on the usage-bearing finish chunk")
+}
+
+// TestInboundStream_FinalizesOnZeroCompletionUsage covers a filtered or empty
+// response, where upstream legitimately reports a zero completion total. The
+// terminal event must still be emitted on that usage chunk; requiring a positive
+// completion count would defer it to stream end and reintroduce the latency this
+// change removes.
+func TestInboundStream_FinalizesOnZeroCompletionUsage(t *testing.T) {
+	transformer := NewInboundTransformer()
+	text := "Hi"
+	finishReason := "stop"
+
+	source := &countingResponseStream{
+		items: []*llm.Response{
+			{
+				ID:     "chatcmpl-filtered",
+				Object: "chat.completion.chunk",
+				Model:  "gpt-4o",
+				Choices: []llm.Choice{{
+					Index: 0,
+					Delta: &llm.Message{
+						Role:    "assistant",
+						Content: llm.MessageContent{Content: &text},
+					},
+				}},
+			},
+			{
+				ID:     "chatcmpl-filtered",
+				Object: "chat.completion.chunk",
+				Model:  "gpt-4o",
+				Choices: []llm.Choice{{
+					Index:        0,
+					FinishReason: &finishReason,
+				}},
+				// Filtered response: a real usage object with no completion tokens.
+				Usage: &llm.Usage{PromptTokens: 120, CompletionTokens: 0, TotalTokens: 120},
+			},
+			{Object: "[DONE]"},
+		},
+	}
+
+	stream, err := transformer.TransformStream(t.Context(), source)
+	require.NoError(t, err)
+
+	terminalAt := -1
+
+	var deltaUsage *Usage
+
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+
+		if event.Type == "message_delta" {
+			deltaUsage = event.Usage
+
+			if terminalAt < 0 {
+				terminalAt = source.consumed
+			}
+		}
+	}
+
+	require.NoError(t, stream.Err())
+	require.Equal(t, 2, terminalAt, "terminal events should be emitted on the usage-bearing finish chunk")
+	require.NotNil(t, deltaUsage)
+	require.EqualValues(t, 120, deltaUsage.InputTokens)
+	require.EqualValues(t, 0, deltaUsage.OutputTokens)
+}
+
+// countingResponseStream records how many source items have been read when a
+// transformed event surfaces, which reveals whether finalization waited for the
+// stream to end.
+type countingResponseStream struct {
+	items    []*llm.Response
+	index    int
+	consumed int
+}
+
+func (s *countingResponseStream) Next() bool {
+	return s.index < len(s.items)
+}
+
+func (s *countingResponseStream) Current() *llm.Response {
+	item := s.items[s.index]
+	s.index++
+	s.consumed = s.index
+
+	return item
+}
+
+func (s *countingResponseStream) Err() error {
+	return nil
+}
+
+func (s *countingResponseStream) Close() error {
+	return nil
 }
 
 func TestInboundStream_DoesNotDuplicateTerminalEvents(t *testing.T) {
