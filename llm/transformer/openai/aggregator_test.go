@@ -148,10 +148,13 @@ func TestAggregateStreamChunks(t *testing.T) {
 
 func TestAggregateStreamChunks_AccountingProvenance(t *testing.T) {
 	tests := []struct {
-		name    string
-		chunks  []*httpclient.StreamEvent
-		want    llm.AccountingEvidence
-		wantUse bool
+		name           string
+		chunks         []*httpclient.StreamEvent
+		want           llm.AccountingEvidence
+		wantUse        bool
+		wantCached     int64
+		wantPrompt     int64
+		wantCompletion int64
 	}{
 		{
 			name: "choices-less final usage is explicit including zero",
@@ -171,6 +174,119 @@ func TestAggregateStreamChunks_AccountingProvenance(t *testing.T) {
 			wantUse: true,
 		},
 		{
+			// Proxies fronting an upstream stream may put the usage block on a
+			// chunk that still carries choices and send finish_reason afterwards,
+			// without usage. The usage is still authoritative once every choice
+			// finished, even though it arrived before the terminal chunk.
+			name: "usage before finish chunk is still final",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"role":"assistant","content":""}}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46,"prompt_tokens_details":{"cached_tokens":8}}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}]}`)},
+			},
+			want:       llm.AccountingEvidenceCleanEndCandidate,
+			wantUse:    true,
+			wantCached: 8,
+		},
+		{
+			// A usage block followed by more output cannot be final: those later
+			// tokens are not covered by it, so recording it would undercount.
+			name: "usage followed by later output stays unavailable",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"role":"assistant","content":""}}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":" more"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}]}`)},
+			},
+			want:    llm.AccountingEvidenceUnavailable,
+			wantUse: true,
+		},
+		{
+			// A zero usage block that arrives after real output is a placeholder,
+			// not the final usage: accepting it would persist zero tokens.
+			name: "zero usage after later output is unavailable",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"role":"assistant","content":""}}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":" more"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+			},
+			want:    llm.AccountingEvidenceUnavailable,
+			wantUse: true,
+		},
+		{
+			// A zero placeholder on the finish chunk is ignored: the nonzero block
+			// before it stays accounted for.
+			name: "zero finish placeholder keeps the earlier nonzero usage",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"role":"assistant","content":""}}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+			},
+			want:           llm.AccountingEvidenceCleanEndCandidate,
+			wantUse:        true,
+			wantPrompt:     12,
+			wantCompletion: 34,
+		},
+		{
+			// Trailing zeros (finish-chunk placeholder + usage-only sentinel) must
+			// not zero out the counts the provider already reported.
+			name: "trailing zero blocks keep the earlier nonzero usage",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"role":"assistant","content":""}}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+			},
+			want:           llm.AccountingEvidenceCleanEndCandidate,
+			wantUse:        true,
+			wantPrompt:     12,
+			wantCompletion: 34,
+		},
+		{
+			// The kept counts only cover what was produced before the placeholder;
+			// output arriving with the skipped zero block invalidates the evidence.
+			name: "output in skipped zero block clears the evidence",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{"content":"tail"}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+			},
+			want:           llm.AccountingEvidenceUnavailable,
+			wantUse:        true,
+			wantPrompt:     12,
+			wantCompletion: 34,
+		},
+		{
+			// A placeholder that leaves choices unfinished cannot declare the
+			// earlier block final either.
+			name: "unfinished choices in skipped zero block clear the evidence",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+			},
+			want:           llm.AccountingEvidenceUnavailable,
+			wantUse:        true,
+			wantPrompt:     12,
+			wantCompletion: 34,
+		},
+		{
+			// A choices-less zero sentinel after a nonzero usage-only block adds
+			// nothing: the clean-EOF candidate the real block established must
+			// survive, otherwise the stream loses its usage row.
+			name: "zero usage-only sentinel keeps the earlier clean EOF candidate",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+			},
+			want:           llm.AccountingEvidenceCleanEndCandidate,
+			wantUse:        true,
+			wantPrompt:     12,
+			wantCompletion: 34,
+		},
+		{
 			name: "repeated zero finish placeholders are unavailable",
 			chunks: []*httpclient.StreamEvent{
 				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
@@ -187,6 +303,15 @@ func TestAggregateStreamChunks_AccountingProvenance(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.want, meta.AccountingEvidence)
 			require.Equal(t, tt.wantUse, meta.Usage != nil)
+			if tt.wantCached > 0 {
+				require.NotNil(t, meta.Usage.PromptTokensDetails)
+				require.Equal(t, tt.wantCached, meta.Usage.PromptTokensDetails.CachedTokens)
+			}
+			if tt.wantPrompt > 0 || tt.wantCompletion > 0 {
+				require.NotNil(t, meta.Usage)
+				require.Equal(t, tt.wantPrompt, meta.Usage.PromptTokens)
+				require.Equal(t, tt.wantCompletion, meta.Usage.CompletionTokens)
+			}
 		})
 	}
 }
