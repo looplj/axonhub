@@ -374,7 +374,7 @@ func TestProviderQuotaService_PeriodQuotaSurvivesPersistence(t *testing.T) {
 				PeriodQuota: lo.ToPtr(90.0),
 			},
 		},
-	}, now)
+	}, now, false)
 
 	persisted, err := client.ProviderQuotaStatus.Query().
 		Where(providerquotastatus.ChannelIDEQ(ch.ID)).

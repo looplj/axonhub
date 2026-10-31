@@ -49,7 +49,7 @@ const DEFAULT_WEBHOOK_BODY_TEMPLATE = `{
     "usage_ratio": {{.Quota.UsageRatio}},
     "usage_percent": {{.Quota.UsagePercent}},
     "next_reset_at": "{{.Quota.NextResetAt}}",
-    "limits": {{.Quota.Limits}},
+    "limits": {{.Quota.Limits | json}},
     "warning_threshold_ratio": {{.Quota.WarningThresholdRatio}}
   }
 }`;
@@ -106,7 +106,7 @@ export function WebhookSettings() {
       const nextSubscriptions = prev.subscriptions
         .map((subscription) => ({
           ...subscription,
-          targetNames: subscription.targetNames.filter((name) => name !== removedTarget?.name),
+          targetNames: subscription.targetNames.filter((name) => name !== (removedTarget?.name || '').trim()),
         }))
         .filter((subscription) => subscription.targetNames.length > 0);
 
@@ -187,16 +187,19 @@ export function WebhookSettings() {
 
   const handleTargetNameChange = useCallback((index: number, value: string) => {
     setFormData((prev) => {
-      const previousName = prev.targets[index]?.name;
-      // Trim so subscription entries always match the trimmed name the
-      // membership check below compares against (a whitespace-only rename
-      // difference would otherwise look unsubscribed and duplicate on save).
+      // Keep the raw entered value in state so multiword names can be typed
+      // without the cursor fighting trailing whitespace. Subscription entries
+      // are compared and persisted by trimmed name.
+      const previousName = (prev.targets[index]?.name || '').trim();
       const trimmedName = value.trim();
-      const nextTargets = prev.targets.map((target, i) => (i === index ? { ...target, name: trimmedName } : target));
-      const nextSubscriptions = prev.subscriptions.map((subscription) => ({
-        ...subscription,
-        targetNames: subscription.targetNames.map((targetName) => (targetName === previousName ? trimmedName : targetName)),
-      }));
+      const renameOccurred = previousName !== trimmedName;
+      const nextTargets = prev.targets.map((target, i) => (i === index ? { ...target, name: value } : target));
+      const nextSubscriptions = renameOccurred
+        ? prev.subscriptions.map((subscription) => ({
+            ...subscription,
+            targetNames: subscription.targetNames.map((targetName) => (targetName === previousName ? trimmedName : targetName)),
+          }))
+        : prev.subscriptions;
 
       return {
         ...prev,

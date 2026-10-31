@@ -706,16 +706,29 @@ func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, chann
 	// reset was in flight; reload the edge under the lock so saveQuotaStatus
 	// computes the webhook transition against that status, not the
 	// pre-reset snapshot loaded before the reset call.
-	ch, err = svc.db.Channel.Query().Where(channel.IDEQ(channelID)).WithProviderQuotaStatus().Only(ctx)
+	reloadFailed := false
+	reloaded, err := svc.db.Channel.Query().Where(channel.IDEQ(channelID)).WithProviderQuotaStatus().Only(ctx)
 	if err != nil {
-		svc.mu.Unlock()
-		return fmt.Errorf("failed to load channel: %w", err)
+		// The provider reset already succeeded upstream; a transient DB read
+		// failure here must not report the mutation as failed. Proceed with
+		// the pre-reset channel snapshot, whose (stale) quota edge still
+		// gives saveQuotaStatus a best-effort previous status.
+		reloadFailed = true
+		log.Error(ctx, "Failed to reload channel after quota reset; refreshing with stale channel",
+			log.Int("channel_id", ch.ID),
+			log.String("provider", providerType),
+			log.Cause(err))
+	} else {
+		ch = reloaded
 	}
 
 	now := time.Now()
 	svc.checkChannelQuota(ctx, quotaCheckGroup{
 		channels:   []*ent.Channel{ch},
 		accountKey: quotaAccountKey(providerType, ch),
+		// Suppress the duplicate transition event with a stale pre-reset edge
+		// (see quotaCheckGroup.suppressWebhooks).
+		suppressWebhooks: reloadFailed,
 	}, now)
 	svc.mu.Unlock()
 
@@ -872,7 +885,7 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 		// persisted row carries only its own carried status.
 		memberQuotaData.RawData = lo.Assign(map[string]any{}, quotaData.RawData)
 		svc.fillPeriodQuotas(ctx, member.ID, &memberQuotaData, now)
-		svc.saveQuotaStatus(ctx, member, providerType, group.accountKey, memberQuotaData, now)
+		svc.saveQuotaStatus(ctx, member, providerType, group.accountKey, memberQuotaData, now, group.suppressWebhooks)
 
 		log.Debug(ctx, "Updated quota status",
 			log.Int("channel_id", member.ID),
@@ -882,6 +895,8 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 	}
 }
 
+// suppressWebhooks persists the fresh status while skipping the transition
+// notification (see quotaCheckGroup.suppressWebhooks).
 func (svc *ProviderQuotaService) saveQuotaStatus(
 	ctx context.Context,
 	ch *ent.Channel,
@@ -889,6 +904,7 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 	accountKey string,
 	quotaData provider_quota.QuotaData,
 	now time.Time,
+	suppressWebhooks bool,
 ) {
 	nextCheck := now.Add(svc.nextCheckIntervalForStatus(providerquotastatus.Status(quotaData.Status)))
 	pt := providerquotastatus.ProviderType(providerType)
@@ -966,7 +982,7 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 
 	svc.updateQuotaCache(ch.ID, providerType, providerquotastatus.Status(quotaData.Status), quotaData.Ready, quotaData.Limits)
 
-	if havePrevious {
+	if havePrevious && !suppressWebhooks {
 		svc.notifyQuotaStatusChange(ctx, ch, rawPrevious, lastKnownQuotaStatus(ch, previous), quotaData)
 	}
 }
@@ -1057,13 +1073,19 @@ func (svc *ProviderQuotaService) notifyQuotaStatusChange(
 
 	// Providers report several windows of the same limit type (e.g. Synthetic
 	// emits both a 5h and a weekly token window), so each window gets its own
-	// line; identical duplicates are dropped by full-line identity.
+	// line; identical duplicates are dropped by full-line identity. Multi-account
+	// channels append the account label so the same window from two accounts
+	// stays distinct; single-account limits keep the plain line byte-identical
+	// to the account-less format.
 	limits := make([]string, 0, len(quotaData.Limits))
 	seenLines := make(map[string]struct{}, len(quotaData.Limits))
 	for _, limit := range quotaData.Limits {
 		line := fmt.Sprintf(
 			"%s (%s) %.2f %s", limit.Type, limit.Window, limit.UsageRatio, limit.Status,
 		)
+		if limit.Account != "" {
+			line = fmt.Sprintf("%s [account: %s]", line, limit.Account)
+		}
 		if _, ok := seenLines[line]; ok {
 			continue
 		}

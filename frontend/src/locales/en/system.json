@@ -58,7 +58,7 @@
   "system.webhook.headers": "Request Headers",
   "system.webhook.addHeader": "Add Header",
   "system.webhook.body": "Payload Template",
-  "system.webhook.templateHelp": "Available template variables: {{.Event}}, {{.Severity}}, {{.OccurredAt}}, {{.Channel.ID}}, {{.Channel.Name}}, {{.Channel.Provider}}, {{.Channel.BaseURL}}, {{.Channel.Status}}, {{.Trigger.Type}}, {{.Trigger.StatusCode}}, {{.Trigger.Threshold}}, {{.Trigger.ActualCount}}, {{.Trigger.Reason}}. For provider.quota.* events the render context additionally fills {{.Quota.PreviousStatus}}, {{.Quota.NewStatus}}, {{.Quota.UsageRatio}}, {{.Quota.UsagePercent}}, {{.Quota.NextResetAt}}, {{.Quota.Limits}}, {{.Quota.WarningThresholdRatio}}.",
+  "system.webhook.templateHelp": "Available template variables: {{.Event}}, {{.Severity}}, {{.OccurredAt}}, {{.Channel.ID}}, {{.Channel.Name}}, {{.Channel.Provider}}, {{.Channel.BaseURL}}, {{.Channel.Status}}, {{.Trigger.Type}}, {{.Trigger.StatusCode}}, {{.Trigger.Threshold}}, {{.Trigger.ActualCount}}, {{.Trigger.Reason}}. For provider.quota.* events the render context additionally fills {{.Quota.PreviousStatus}}, {{.Quota.NewStatus}}, {{.Quota.UsageRatio}}, {{.Quota.UsagePercent}}, {{.Quota.NextResetAt}}, {{.Quota.Limits | json}}, {{.Quota.WarningThresholdRatio}}. The json function renders a value as compact JSON.",
   "system.webhook.validation.nameRequired": "Address name is required.",
   "system.webhook.validation.nameUnique": "Address names must be unique.",
   "system.webhook.validation.urlRequired": "Request URL is required when webhook delivery is enabled.",

@@ -3,6 +3,7 @@ package biz
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"net/http"
@@ -318,12 +319,24 @@ func renderWebhookHeaders(headers []objects.HeaderEntry, renderCtx WebhookRender
 	return result, nil
 }
 
+// webhookTemplateFuncs makes values render as compact JSON so the default
+// body template stays valid JSON (e.g. "limits": {{.Quota.Limits | json}}).
+var webhookTemplateFuncs = template.FuncMap{
+	"json": func(v any) string {
+		b, err := json.Marshal(v)
+		if err != nil {
+			return "null"
+		}
+		return string(b)
+	},
+}
+
 func renderWebhookTemplate(value string, renderCtx WebhookRenderContext) (string, error) {
 	if !strings.Contains(value, "{{") || !strings.Contains(value, "}}") {
 		return value, nil
 	}
 
-	tmpl, err := template.New("webhook").Funcs(template.FuncMap{}).Parse(value)
+	tmpl, err := template.New("webhook").Funcs(webhookTemplateFuncs).Parse(value)
 	if err != nil {
 		return "", err
 	}

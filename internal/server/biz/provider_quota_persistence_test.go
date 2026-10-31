@@ -242,7 +242,7 @@ func TestProviderQuotaService_SaveQuotaStatus_ReplacesStaleClinePassDataWhenUnav
 			"pass_state":   "unavailable",
 			"balance":      map[string]any{"raw_balance": int64(497582)},
 		},
-	}, time.Now())
+	}, time.Now(), false)
 
 	persisted, err := client.ProviderQuotaStatus.Query().
 		Where(providerquotastatus.ChannelIDEQ(channelEntity.ID)).
@@ -301,7 +301,7 @@ func TestProviderQuotaService_SaveQuotaStatus_UpdatesChangedProviderIdentity(t *
 		Status:       string(providerquotastatus.StatusAvailable),
 		Ready:        true,
 		RawData:      map[string]any{"provider": "synthetic"},
-	}, time.Now())
+	}, time.Now(), false)
 
 	persisted, err := client.ProviderQuotaStatus.Query().
 		Where(providerquotastatus.ChannelIDEQ(channelEntity.ID)).
@@ -366,7 +366,7 @@ func TestProviderQuotaService_SaveQuotaStatus_PersistsSyntheticCredits(t *testin
 				Ready:      true,
 			},
 		},
-	}, time.Now())
+	}, time.Now(), false)
 
 	assertSyntheticCreditsPersisted := func(t *testing.T, cachedLimits []provider_quota.QuotaLimitStatus) {
 		t.Helper()

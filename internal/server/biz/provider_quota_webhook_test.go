@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -155,7 +156,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "claudecode",
 			Status:       string(providerquotastatus.StatusWarning),
 			Ready:        true,
-		}, time.Now())
+		}, time.Now(), false)
 		expectQuotaWebhook(t, notifications, EventProviderQuotaWarning, "available", "warning")
 
 		ch = requery(ch)
@@ -163,7 +164,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "claudecode",
 			Status:       string(providerquotastatus.StatusExhausted),
 			Ready:        false,
-		}, time.Now())
+		}, time.Now(), false)
 		// exhausted only: no separate warning event.
 		expectQuotaWebhook(t, notifications, EventProviderQuotaExhausted, "warning", "exhausted")
 		expectNoQuotaWebhook(t, notifications)
@@ -173,7 +174,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "claudecode",
 			Status:       string(providerquotastatus.StatusAvailable),
 			Ready:        true,
-		}, time.Now())
+		}, time.Now(), false)
 		expectQuotaWebhook(t, notifications, EventProviderQuotaRecovered, "exhausted", "available")
 
 		persisted, err := client.ProviderQuotaStatus.Query().
@@ -198,7 +199,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "claudecode",
 			Status:       string(providerquotastatus.StatusAvailable),
 			Ready:        true,
-		}, time.Now())
+		}, time.Now(), false)
 		expectQuotaWebhook(t, notifications, EventProviderQuotaRecovered, "warning", "available")
 	})
 
@@ -221,7 +222,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "claudecode",
 			Status:       string(providerquotastatus.StatusAvailable),
 			Ready:        true,
-		}, time.Now())
+		}, time.Now(), false)
 		expectQuotaWebhook(t, notifications, EventProviderQuotaRecovered, "unknown", "available")
 
 		persisted, err := client.ProviderQuotaStatus.Query().
@@ -250,7 +251,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "claudecode",
 			Status:       string(providerquotastatus.StatusExhausted),
 			Ready:        false,
-		}, time.Now())
+		}, time.Now(), false)
 		expectQuotaWebhook(t, notifications, EventProviderQuotaExhausted, "unknown", "exhausted")
 	})
 
@@ -268,7 +269,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "claudecode",
 			Status:       string(providerquotastatus.StatusWarning),
 			Ready:        true,
-		}, time.Now())
+		}, time.Now(), false)
 		expectNoQuotaWebhook(t, notifications)
 
 		persisted, err := client.ProviderQuotaStatus.Query().
@@ -292,7 +293,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "claudecode",
 			Status:       string(providerquotastatus.StatusWarning),
 			Ready:        true,
-		}, time.Now())
+		}, time.Now(), false)
 		expectNoQuotaWebhook(t, notifications)
 	})
 
@@ -314,7 +315,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "claudecode",
 			Status:       string(providerquotastatus.StatusUnknown),
 			Ready:        false,
-		}, time.Now())
+		}, time.Now(), false)
 		expectNoQuotaWebhook(t, notifications)
 
 		ch = requery(ch)
@@ -322,7 +323,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "claudecode",
 			Status:       string(providerquotastatus.StatusUnknown),
 			Ready:        false,
-		}, time.Now())
+		}, time.Now(), false)
 		expectNoQuotaWebhook(t, notifications)
 
 		persisted, err := client.ProviderQuotaStatus.Query().
@@ -336,7 +337,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "claudecode",
 			Status:       string(providerquotastatus.StatusAvailable),
 			Ready:        true,
-		}, time.Now())
+		}, time.Now(), false)
 		expectQuotaWebhook(t, notifications, EventProviderQuotaRecovered, "unknown", "available")
 	})
 
@@ -366,7 +367,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "claudecode",
 			Status:       string(providerquotastatus.StatusAvailable),
 			Ready:        true,
-		}, time.Now())
+		}, time.Now(), false)
 		expectQuotaWebhook(t, notifications, EventProviderQuotaRecovered, "unknown", "available")
 	})
 
@@ -410,7 +411,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 			ProviderType: "nanogpt",
 			Status:       string(providerquotastatus.StatusAvailable),
 			Ready:        true,
-		}, time.Now())
+		}, time.Now(), false)
 		expectNoQuotaWebhook(t, notifications)
 
 		persisted, err := client.ProviderQuotaStatus.Query().
@@ -419,4 +420,188 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 		require.Equal(t, providerquotastatus.ProviderTypeNanogpt, persisted.ProviderType)
 		require.Equal(t, providerquotastatus.StatusAvailable, persisted.Status)
 	})
+}
+
+// newTestQuotaWebhookLimitsHarness is newTestQuotaWebhookHarness with a body
+// template that captures the rendered {{.Quota.Limits | json}} array.
+func newTestQuotaWebhookLimitsHarness(t *testing.T, client *ent.Client) (*ProviderQuotaService, chan string) {
+	t.Helper()
+
+	notifications := make(chan string, 8)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+
+		notifications <- string(body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := WebhookNotifierConfig{
+		Targets: []WebhookTarget{
+			{
+				Name:      "default",
+				Enabled:   true,
+				URL:       server.URL,
+				TimeoutMs: 1000,
+				Body:      `{"event":"{{.Event}}","limits":{{.Quota.Limits | json}}}`,
+			},
+		},
+		Subscriptions: []WebhookSubscription{
+			{Event: EventProviderQuotaWarning, TargetNames: []string{"default"}},
+			{Event: EventProviderQuotaExhausted, TargetNames: []string{"default"}},
+			{Event: EventProviderQuotaRecovered, TargetNames: []string{"default"}},
+		},
+	}
+
+	systemService := newTestSystemServiceWithWebhookConfig(t, client, cfg)
+
+	svc := NewProviderQuotaService(ProviderQuotaServiceParams{
+		Ent:             client,
+		SystemService:   systemService,
+		HttpClient:      httpclient.NewHttpClient(),
+		WebhookNotifier: NewWebhookNotifier(systemService, httpclient.NewHttpClient()),
+	})
+
+	return svc, notifications
+}
+
+// TestProviderQuotaService_QuotaWebhookLimitsLines locks the rendered
+// `limits` array in quota webhook payloads: multi-account limits carry an
+// `[account: X]` suffix keyed for dedup, and account-less limits stay
+// byte-identical to the pre-suffix format.
+func TestProviderQuotaService_QuotaWebhookLimitsLines(t *testing.T) {
+	tests := []struct {
+		name   string
+		limits []provider_quota.QuotaLimitStatus
+		want   []string
+	}{
+		{
+			name: "single_account_limit_carrying_account_suffix",
+			limits: []provider_quota.QuotaLimitStatus{
+				{
+					Type:       provider_quota.QuotaLimitTypeToken,
+					Window:     provider_quota.QuotaWindowWeekly,
+					UsageRatio: 0.90,
+					Status:     string(providerquotastatus.StatusWarning),
+					Account:    "0001",
+				},
+			},
+			want: []string{"token (weekly) 0.90 warning [account: 0001]"},
+		},
+		{
+			name: "same_window_distinct_accounts_stay_separate_in_input_order",
+			limits: []provider_quota.QuotaLimitStatus{
+				{
+					Type:       provider_quota.QuotaLimitTypeToken,
+					Window:     provider_quota.QuotaWindowWeekly,
+					UsageRatio: 0.90,
+					Status:     string(providerquotastatus.StatusWarning),
+					Account:    "0001",
+				},
+				{
+					Type:       provider_quota.QuotaLimitTypeToken,
+					Window:     provider_quota.QuotaWindowWeekly,
+					UsageRatio: 0.90,
+					Status:     string(providerquotastatus.StatusWarning),
+					Account:    "0002",
+				},
+			},
+			want: []string{
+				"token (weekly) 0.90 warning [account: 0001]",
+				"token (weekly) 0.90 warning [account: 0002]",
+			},
+		},
+		{
+			name: "accountless_limit_keeps_legacy_line_format",
+			limits: []provider_quota.QuotaLimitStatus{
+				{
+					Type:       provider_quota.QuotaLimitTypeToken,
+					Window:     provider_quota.QuotaWindowWeekly,
+					UsageRatio: 0.90,
+					Status:     string(providerquotastatus.StatusWarning),
+					Account:    "",
+				},
+			},
+			want: []string{"token (weekly) 0.90 warning"},
+		},
+		{
+			name: "identical_accountless_limits_deduplicate",
+			limits: []provider_quota.QuotaLimitStatus{
+				{
+					Type:       provider_quota.QuotaLimitTypeToken,
+					Window:     provider_quota.QuotaWindowWeekly,
+					UsageRatio: 0.90,
+					Status:     string(providerquotastatus.StatusWarning),
+					Account:    "",
+				},
+				{
+					Type:       provider_quota.QuotaLimitTypeToken,
+					Window:     provider_quota.QuotaWindowWeekly,
+					UsageRatio: 0.90,
+					Status:     string(providerquotastatus.StatusWarning),
+					Account:    "",
+				},
+			},
+			want: []string{"token (weekly) 0.90 warning"},
+		},
+		{
+			name: "identical_suffixed_limits_deduplicate",
+			limits: []provider_quota.QuotaLimitStatus{
+				{
+					Type:       provider_quota.QuotaLimitTypeToken,
+					Window:     provider_quota.QuotaWindowWeekly,
+					UsageRatio: 0.90,
+					Status:     string(providerquotastatus.StatusWarning),
+					Account:    "0001",
+				},
+				{
+					Type:       provider_quota.QuotaLimitTypeToken,
+					Window:     provider_quota.QuotaWindowWeekly,
+					UsageRatio: 0.90,
+					Status:     string(providerquotastatus.StatusWarning),
+					Account:    "0001",
+				},
+			},
+			want: []string{"token (weekly) 0.90 warning [account: 0001]"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+			defer client.Close()
+
+			ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+			ch := createQuotaWebhookTestChannel(t, ctx, client)
+			// An available previous status makes the warning save an
+			// available → warning transition, so every case renders a payload.
+			seedQuotaRow(t, ctx, client, ch.ID, providerquotastatus.ProviderTypeClaudecode, providerquotastatus.StatusAvailable, map[string]any{})
+			updated, err := client.Channel.Query().Where(channel.IDEQ(ch.ID)).WithProviderQuotaStatus().Only(ctx)
+			require.NoError(t, err)
+			ch = updated
+
+			svc, notifications := newTestQuotaWebhookLimitsHarness(t, client)
+
+			svc.saveQuotaStatus(ctx, ch, "claudecode", "", provider_quota.QuotaData{
+				ProviderType: "claudecode",
+				Status:       string(providerquotastatus.StatusWarning),
+				Ready:        true,
+				Limits:       tt.limits,
+			}, time.Now(), false)
+
+			var received struct {
+				Event  string   `json:"event"`
+				Limits []string `json:"limits"`
+			}
+			select {
+			case body := <-notifications:
+				require.NoError(t, json.Unmarshal([]byte(body), &received))
+				require.Equal(t, EventProviderQuotaWarning, received.Event)
+				require.Equal(t, tt.want, received.Limits)
+			case <-time.After(time.Second):
+				t.Fatalf("timed out waiting for quota webhook %s", EventProviderQuotaWarning)
+			}
+		})
+	}
 }

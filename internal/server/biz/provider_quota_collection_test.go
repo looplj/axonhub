@@ -45,6 +45,38 @@ func (c *failingQuotaChecker) SupportsChannel(*ent.Channel) bool {
 	return true
 }
 
+// statusQuotaChecker deterministically returns a fixed quota status (e.g.
+// `unknown`) from CheckQuota, for exercising saveQuotaStatus paths that the
+// always-available countingQuotaChecker cannot reach.
+type statusQuotaChecker struct {
+	calls        atomic.Int32
+	providerType string
+	status       string
+}
+
+func (c *statusQuotaChecker) CheckQuota(context.Context, *ent.Channel) (provider_quota.QuotaData, error) {
+	c.calls.Add(1)
+	return provider_quota.QuotaData{Status: c.status, ProviderType: c.providerType}, nil
+}
+
+func (c *statusQuotaChecker) SupportsChannel(*ent.Channel) bool {
+	return true
+}
+
+// statusQuotaResetter is statusQuotaChecker with a passing reset, for
+// ResetChannelQuotaNow refreshes that must observe a non-`available` status.
+type statusQuotaResetter struct {
+	statusQuotaChecker
+}
+
+func (c *statusQuotaResetter) ListResets(context.Context, *ent.Channel) (provider_quota.ResetList, error) {
+	return provider_quota.ResetList{Supported: true}, nil
+}
+
+func (c *statusQuotaResetter) Reset(context.Context, *ent.Channel) error {
+	return nil
+}
+
 type countingQuotaResetter struct {
 	countingQuotaChecker
 
@@ -412,4 +444,147 @@ func TestProviderQuotaService_ListResets_UsesOptionalResetter(t *testing.T) {
 	require.True(t, resets.Supported)
 	require.Len(t, resets.Resets, 1)
 	require.EqualValues(t, 1, resetter.listCalls.Load())
+}
+
+// resettingQuotaResetter simulates a provider reset whose effect lands before
+// the service can observe it: it soft-deletes the channel row before returning
+// nil, so the post-reset channel reload in ResetChannelQuotaNow reports
+// NotFound and the refresh proceeds with the stale pre-reset snapshot.
+type resettingQuotaResetter struct {
+	countingQuotaResetter
+
+	client *ent.Client
+}
+
+func (c *resettingQuotaResetter) Reset(ctx context.Context, ch *ent.Channel) error {
+	c.resetCalls.Add(1)
+	if err := c.client.Channel.DeleteOne(ch).Exec(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+// TestProviderQuotaService_ResetChannelQuotaNow_SucceedsWhenReloadFails locks
+// the log-and-proceed behavior when the post-reset channel reload fails: the
+// reset is reported as successful, the refresh still runs, and the fresh
+// status is persisted with the transition webhook suppressed (see
+// quotaCheckGroup.suppressWebhooks).
+func TestProviderQuotaService_ResetChannelQuotaNow_SucceedsWhenReloadFails(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	svc, notifications, _ := newTestQuotaWebhookHarness(t, client)
+	svc.checkers["codex"] = &resettingQuotaResetter{
+		countingQuotaResetter: countingQuotaResetter{
+			countingQuotaChecker: countingQuotaChecker{providerType: "codex"},
+			resets:               provider_quota.ResetList{Supported: true},
+		},
+		client: client,
+	}
+
+	ch := createProviderQuotaCollectionChannel(t, ctx, client, "Codex", channel.TypeCodex)
+	require.NoError(t, client.Channel.UpdateOne(ch).
+		SetCredentials(objects.ChannelCredentials{APIKey: "{\"access_token\":\"test-token\"}"}).
+		Exec(ctx))
+
+	// A pre-primed exhausted row: without suppression the post-reset refresh
+	// (exhausted → available) would emit provider.quota.recovered.
+	seedQuotaRow(t, ctx, client, ch.ID, providerquotastatus.ProviderTypeCodex, providerquotastatus.StatusExhausted, map[string]any{})
+
+	require.NoError(t, svc.ResetChannelQuotaNow(ctx, ch.ID))
+
+	resetter := svc.checkers["codex"].(*resettingQuotaResetter)
+	require.Equal(t, int32(1), resetter.resetCalls.Load())
+	require.Equal(t, int32(1), resetter.calls.Load())
+
+	persisted, err := client.ProviderQuotaStatus.Query().
+		Where(providerquotastatus.ChannelIDEQ(ch.ID)).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, providerquotastatus.StatusAvailable, persisted.Status)
+	require.True(t, persisted.Ready)
+
+	// The stale pre-reset edge made the refresh recompute exhausted →
+	// available; the duplicate recovery must not be delivered.
+	expectNoQuotaWebhook(t, notifications)
+
+	// Suppression must skip only the notification: the fresh status was
+	// persisted above and must also be in the in-memory cache, proving
+	// updateQuotaCache ran.
+	cached := svc.GetQuotaStatus(ctx, ch.ID)
+	require.NotNil(t, cached)
+	require.Equal(t, providerquotastatus.StatusAvailable, cached.Status)
+	require.True(t, cached.Ready)
+
+	t.Run("unknown_refresh_carries_previous_status", func(t *testing.T) {
+		ch2 := createProviderQuotaCollectionChannel(t, ctx, client, "Codex 2", channel.TypeCodex)
+		require.NoError(t, client.Channel.UpdateOne(ch2).
+			SetCredentials(objects.ChannelCredentials{APIKey: "{\"access_token\":\"test-token2\"}"}).
+			Exec(ctx))
+
+		// A deterministic unknown result (not an error) is required to reach
+		// the _previous_status carry in saveQuotaStatus; a checker error goes
+		// to saveQuotaError instead.
+		checker := &statusQuotaResetter{statusQuotaChecker: statusQuotaChecker{providerType: "codex", status: "unknown"}}
+		svc.checkers["codex"] = checker
+
+		seedQuotaRow(t, ctx, client, ch2.ID, providerquotastatus.ProviderTypeCodex, providerquotastatus.StatusExhausted, map[string]any{})
+		require.NoError(t, svc.ResetChannelQuotaNow(ctx, ch2.ID))
+
+		require.Equal(t, int32(1), checker.calls.Load())
+
+		persisted, err := client.ProviderQuotaStatus.Query().
+			Where(providerquotastatus.ChannelIDEQ(ch2.ID)).Only(ctx)
+		require.NoError(t, err)
+		require.Equal(t, providerquotastatus.StatusUnknown, persisted.Status)
+		require.False(t, persisted.Ready)
+		// The suppressed refresh must still carry the last known non-unknown
+		// status into the persisted quota_data so a later recovery resolves
+		// exhausted → available.
+		require.Equal(t, providerquotastatus.StatusExhausted.String(), persisted.QuotaData["_previous_status"])
+
+		// No known→unknown transition fires an event, suppressed or not.
+		expectNoQuotaWebhook(t, notifications)
+	})
+}
+
+// TestProviderQuotaService_ResetChannelQuotaNow_EmitsRecoveryWhenReloadSucceeds
+// is the positive control for quotaCheckGroup.suppressWebhooks: when the
+// post-reset channel reload succeeds, suppression is off and the exhausted →
+// available recovery must be delivered.
+func TestProviderQuotaService_ResetChannelQuotaNow_EmitsRecoveryWhenReloadSucceeds(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	svc, notifications, _ := newTestQuotaWebhookHarness(t, client)
+	svc.checkers["codex"] = &countingQuotaResetter{
+		countingQuotaChecker: countingQuotaChecker{providerType: "codex"},
+		resets:               provider_quota.ResetList{Supported: true},
+	}
+
+	ch := createProviderQuotaCollectionChannel(t, ctx, client, "Codex", channel.TypeCodex)
+	require.NoError(t, client.Channel.UpdateOne(ch).
+		SetCredentials(objects.ChannelCredentials{APIKey: "{\"access_token\":\"test-token\"}"}).
+		Exec(ctx))
+
+	// A pre-primed exhausted row: with a passing resetter the post-reset
+	// reload succeeds, suppression stays off, and the refresh emits the
+	// exhausted → available recovery exactly once.
+	seedQuotaRow(t, ctx, client, ch.ID, providerquotastatus.ProviderTypeCodex, providerquotastatus.StatusExhausted, map[string]any{})
+
+	require.NoError(t, svc.ResetChannelQuotaNow(ctx, ch.ID))
+
+	resetter := svc.checkers["codex"].(*countingQuotaResetter)
+	require.Equal(t, int32(1), resetter.resetCalls.Load())
+	require.Equal(t, int32(1), resetter.calls.Load())
+
+	persisted, err := client.ProviderQuotaStatus.Query().
+		Where(providerquotastatus.ChannelIDEQ(ch.ID)).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, providerquotastatus.StatusAvailable, persisted.Status)
+	require.True(t, persisted.Ready)
+
+	expectQuotaWebhook(t, notifications, EventProviderQuotaRecovered, "exhausted", "available")
+	expectNoQuotaWebhook(t, notifications)
 }

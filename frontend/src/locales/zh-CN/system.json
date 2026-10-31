@@ -58,7 +58,7 @@
   "system.webhook.headers": "请求头",
   "system.webhook.addHeader": "添加请求头",
   "system.webhook.body": "载荷模板",
-  "system.webhook.templateHelp": "可用模板变量：{{.Event}}、{{.Severity}}、{{.OccurredAt}}、{{.Channel.ID}}、{{.Channel.Name}}、{{.Channel.Provider}}、{{.Channel.BaseURL}}、{{.Channel.Status}}、{{.Trigger.Type}}、{{.Trigger.StatusCode}}、{{.Trigger.Threshold}}、{{.Trigger.ActualCount}}、{{.Trigger.Reason}}。对于 provider.quota.* 事件，渲染上下文还会填充 {{.Quota.PreviousStatus}}、{{.Quota.NewStatus}}、{{.Quota.UsageRatio}}、{{.Quota.UsagePercent}}、{{.Quota.NextResetAt}}、{{.Quota.Limits}}、{{.Quota.WarningThresholdRatio}}。",
+  "system.webhook.templateHelp": "可用模板变量：{{.Event}}、{{.Severity}}、{{.OccurredAt}}、{{.Channel.ID}}、{{.Channel.Name}}、{{.Channel.Provider}}、{{.Channel.BaseURL}}、{{.Channel.Status}}、{{.Trigger.Type}}、{{.Trigger.StatusCode}}、{{.Trigger.Threshold}}、{{.Trigger.ActualCount}}、{{.Trigger.Reason}}。对于 provider.quota.* 事件，渲染上下文还会填充 {{.Quota.PreviousStatus}}、{{.Quota.NewStatus}}、{{.Quota.UsageRatio}}、{{.Quota.UsagePercent}}、{{.Quota.NextResetAt}}、{{.Quota.Limits | json}}、{{.Quota.WarningThresholdRatio}}。json 函数会将值渲染为紧凑 JSON。",
   "system.webhook.validation.nameRequired": "地址名称不能为空。",
   "system.webhook.validation.nameUnique": "地址名称必须唯一。",
   "system.webhook.validation.urlRequired": "启用 Webhook 投递时，请求地址不能为空。",
