@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -2396,6 +2397,53 @@ func TestOverrideOperationsArrayOps(t *testing.T) {
 		require.JSONEq(t, `{"input":[],"keep":true}`, got)
 	})
 
+	t.Run("delete wildcard preserves relative paths while rebuilding arrays", func(t *testing.T) {
+		for _, tt := range []struct {
+			name string
+			path string
+			body string
+			want string
+		}{
+			{
+				name: "root array",
+				path: "[*].metadata",
+				body: `[{"metadata":true,"keep":9007199254740993},null,7]`,
+				want: `[{"keep":9007199254740993},null,7]`,
+			},
+			{
+				name: "adjacent wildcards",
+				path: "input[*][*].metadata",
+				body: `{"input":[[{"metadata":true,"keep":1},7],[{"metadata":null}],null]}`,
+				want: `{"input":[[{"keep":1},7],[{}],null]}`,
+			},
+			{
+				name: "remove nested items",
+				path: "input[*][*]",
+				body: `{"input":[[1,2],[3],null]}`,
+				want: `{"input":[[],[],null]}`,
+			},
+			{
+				name: "empty object key",
+				path: "input[*].",
+				body: `{"input":[{"":true,"keep":1},null,{"":2}]}`,
+				want: `{"input":[{"keep":1},null,{}]}`,
+			},
+		} {
+			t.Run(tt.name, func(t *testing.T) {
+				ops, err := json.Marshal([]objects.OverrideOperation{{Op: objects.OverrideOpDelete, Path: tt.path}})
+				require.NoError(t, err)
+				got := runMiddleware(t, string(ops), tt.body)
+				require.Equal(t, tt.want, got)
+			})
+		}
+	})
+
+	t.Run("delete wildcard without matches preserves the original bytes", func(t *testing.T) {
+		ops := `[{"op":"delete","path":"input[*].metadata"}]`
+		body := `{ "input": [ { "keep": 1e+09 }, null, 7 ], "id": 9007199254740993 }`
+		require.Equal(t, body, runMiddleware(t, ops, body))
+	})
+
 	t.Run("array_append inserts a single object at the end", func(t *testing.T) {
 		ops := `[{"op":"array_append","path":"system","value":"{\"type\":\"text\",\"text\":\"injected\"}"}]`
 		got := runMiddleware(t, ops, `{"system":[{"type":"text","text":"original"}]}`)
@@ -2660,4 +2708,44 @@ func TestOverrideBodySkipsNonJSONBody(t *testing.T) {
 		require.Equal(t, "b64_json", gjson.GetBytes(modified.Body, "response_format").String())
 		require.Equal(t, "a cat", gjson.GetBytes(modified.Body, "prompt").String())
 	})
+}
+
+func TestOverrideDeleteWildcardAllocationBudget(t *testing.T) {
+	ctx := context.Background()
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			Settings: &objects.ChannelSettings{
+				OverrideParameters: `[{"op":"delete","path":"input[*].metadata"}]`,
+			},
+		},
+	}
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest:       &llm.Request{Model: "test"},
+		},
+	}
+	middleware := applyOverrideRequestBody(outbound)
+	items := strings.TrimSuffix(strings.Repeat(`{"metadata":true,"keep":1},`, 128), ",")
+	body := []byte(`{"input":[` + items + `],"padding":"` + strings.Repeat("x", 256*1024) + `"}`)
+	var got []byte
+
+	result := testing.Benchmark(func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			request, err := middleware.OnOutboundRawRequest(ctx, &httpclient.Request{Body: body})
+			if err != nil {
+				b.Fatal(err)
+			}
+			got = request.Body
+		}
+	})
+
+	require.Equal(t, int64(128), gjson.GetBytes(got, "input.#").Int())
+	require.False(t, gjson.GetBytes(got, "input.0.metadata").Exists())
+	require.Equal(t, int64(1), gjson.GetBytes(got, "input.127.keep").Int())
+	require.Len(t, gjson.GetBytes(got, "padding").String(), 256*1024)
+	// Allow ample middleware overhead, but not a full-body copy for every item.
+	require.Less(t, result.AllocedBytesPerOp(), int64(8*len(body)))
+	t.Logf("request bytes: %d; allocated bytes/op: %d", len(body), result.AllocedBytesPerOp())
 }

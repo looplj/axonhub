@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
-	"slices"
 	"strings"
 	"text/template"
 
@@ -372,22 +371,45 @@ func applyBodyDelete(body []byte, op objects.OverrideOperation) ([]byte, error) 
 			return body, nil
 		}
 
-		// Walk backwards so deleting array elements does not shift later indexes.
-		for index := range slices.Backward(array.Array()) {
-			expanded := op
-			expanded.Path = fmt.Sprintf("%d%s", index, rest)
-			if prefix != "" {
-				expanded.Path = prefix + "." + expanded.Path
+		// Delete within each item's raw JSON, then replace the array once.
+		// This avoids copying the full request body for every array element.
+		rebuilt := make([]byte, 0, len(array.Raw))
+		rebuilt = append(rebuilt, '[')
+		changed := false
+		if rest == "" {
+			changed = len(array.Array()) > 0
+		} else {
+			relative := op
+			relative.Path = strings.TrimPrefix(rest, ".")
+			if relative.Path == "" {
+				// A trailing dot selects an empty object key in SJSON paths.
+				relative.Path = ":"
 			}
 
-			var err error
-			body, err = applyBodyDelete(body, expanded)
-			if err != nil {
-				return body, err
+			for index, item := range array.Array() {
+				raw := []byte(item.Raw)
+				updated, err := applyBodyDelete(raw, relative)
+				if err != nil {
+					return body, err
+				}
+
+				changed = changed || !bytes.Equal(raw, updated)
+				if index > 0 {
+					rebuilt = append(rebuilt, ',')
+				}
+				rebuilt = append(rebuilt, updated...)
 			}
 		}
+		rebuilt = append(rebuilt, ']')
 
-		return body, nil
+		if !changed {
+			return body, nil
+		}
+		if prefix == "" {
+			return rebuilt, nil
+		}
+
+		return sjson.SetRawBytes(body, prefix, rebuilt)
 	}
 
 	return sjson.DeleteBytes(body, op.Path)
