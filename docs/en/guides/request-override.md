@@ -288,6 +288,19 @@ Use the `delete` operation to remove specified fields:
 ]
 ```
 
+For body `delete` operations, use `[*]` to visit every element of an array and delete a field without removing the messages themselves:
+
+```json
+[
+  {
+    "op": "delete",
+    "path": "input[*].internal_chat_message_metadata_passthrough"
+  }
+]
+```
+
+Wildcards can be nested, for example `messages[*].content[*].cache_control`. Missing fields, empty arrays, and non-array values are left unchanged. Other operations and header paths retain their existing syntax.
+
 ## Override Headers
 
 Override headers use the same operation format as override parameters:

@@ -346,6 +346,73 @@ func applyBodySetIfAbsent(
 }
 
 func applyBodyDelete(body []byte, op objects.OverrideOperation) ([]byte, error) {
+	for i := 0; i < len(op.Path); i++ {
+		if op.Path[i] == '\\' {
+			i++
+			continue
+		}
+
+		if !strings.HasPrefix(op.Path[i:], "[*]") {
+			continue
+		}
+
+		rest := op.Path[i+3:]
+		if rest != "" && rest[0] != '.' && !strings.HasPrefix(rest, "[*]") {
+			continue
+		}
+
+		prefix := op.Path[:i]
+		array := gjson.ParseBytes(body)
+		if prefix != "" {
+			array = gjson.GetBytes(body, prefix)
+		}
+
+		if !array.IsArray() {
+			return body, nil
+		}
+
+		// Delete within each item's raw JSON, then replace the array once.
+		// This avoids copying the full request body for every array element.
+		rebuilt := make([]byte, 0, len(array.Raw))
+		rebuilt = append(rebuilt, '[')
+		changed := false
+		if rest == "" {
+			changed = len(array.Array()) > 0
+		} else {
+			relative := op
+			// Keep a concrete index before the suffix so empty path segments
+			// retain their meaning, including the distinction between .[*] and [*].
+			relative.Path = "0" + rest
+
+			for index, item := range array.Array() {
+				raw := make([]byte, 0, len(item.Raw)+2)
+				raw = append(raw, '[')
+				raw = append(raw, item.Raw...)
+				raw = append(raw, ']')
+				updated, err := applyBodyDelete(raw, relative)
+				if err != nil {
+					return body, err
+				}
+
+				changed = changed || !bytes.Equal(raw, updated)
+				if index > 0 {
+					rebuilt = append(rebuilt, ',')
+				}
+				rebuilt = append(rebuilt, gjson.GetBytes(updated, "0").Raw...)
+			}
+		}
+		rebuilt = append(rebuilt, ']')
+
+		if !changed {
+			return body, nil
+		}
+		if prefix == "" {
+			return rebuilt, nil
+		}
+
+		return sjson.SetRawBytes(body, prefix, rebuilt)
+	}
+
 	return sjson.DeleteBytes(body, op.Path)
 }
 
