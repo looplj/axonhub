@@ -296,6 +296,80 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 		expectNoQuotaWebhook(t, notifications)
 	})
 
+	t.Run("consecutive_unknown_rows_keep_carry", func(t *testing.T) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+		ch := createQuotaWebhookTestChannel(t, ctx, client)
+		seedQuotaRow(t, ctx, client, ch.ID, providerquotastatus.ProviderTypeClaudecode, providerquotastatus.StatusWarning, map[string]any{})
+
+		svc, notifications, requery := newTestQuotaWebhookHarness(t, client)
+
+		// Two consecutive checks return unknown: the first one leaves the
+		// row at unknown carrying the previous status, the second must not
+		// drop the carry.
+		ch = requery(ch)
+		svc.saveQuotaStatus(ctx, ch, "claudecode", "", provider_quota.QuotaData{
+			ProviderType: "claudecode",
+			Status:       string(providerquotastatus.StatusUnknown),
+			Ready:        false,
+		}, time.Now())
+		expectNoQuotaWebhook(t, notifications)
+
+		ch = requery(ch)
+		svc.saveQuotaStatus(ctx, ch, "claudecode", "", provider_quota.QuotaData{
+			ProviderType: "claudecode",
+			Status:       string(providerquotastatus.StatusUnknown),
+			Ready:        false,
+		}, time.Now())
+		expectNoQuotaWebhook(t, notifications)
+
+		persisted, err := client.ProviderQuotaStatus.Query().
+			Where(providerquotastatus.ChannelIDEQ(ch.ID)).Only(ctx)
+		require.NoError(t, err)
+		require.Equal(t, "warning", persisted.QuotaData["_previous_status"])
+
+		// Recovery after the degraded interlude fires the event.
+		ch = requery(ch)
+		svc.saveQuotaStatus(ctx, ch, "claudecode", "", provider_quota.QuotaData{
+			ProviderType: "claudecode",
+			Status:       string(providerquotastatus.StatusAvailable),
+			Ready:        true,
+		}, time.Now())
+		expectQuotaWebhook(t, notifications, EventProviderQuotaRecovered, "unknown", "available")
+	})
+
+	t.Run("credential_reset_preserves_carry", func(t *testing.T) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+		ch := createQuotaWebhookTestChannel(t, ctx, client)
+		seedQuotaRow(t, ctx, client, ch.ID, providerquotastatus.ProviderTypeClaudecode, providerquotastatus.StatusExhausted, map[string]any{})
+
+		svc, notifications, requery := newTestQuotaWebhookHarness(t, client)
+
+		// An invalid-credentials failure resets the row to unknown; the last
+		// known status must survive for the post-re-auth recovery event.
+		ch = requery(ch)
+		svc.saveQuotaError(ctx, ch, "claudecode", "", fmt.Errorf("bad key: %w", provider_quota.ErrInvalidCredentials), 1, time.Now())
+		expectNoQuotaWebhook(t, notifications)
+
+		persisted, err := client.ProviderQuotaStatus.Query().
+			Where(providerquotastatus.ChannelIDEQ(ch.ID)).Only(ctx)
+		require.NoError(t, err)
+		require.Equal(t, "exhausted", persisted.QuotaData["_previous_status"])
+
+		ch = requery(ch)
+		svc.saveQuotaStatus(ctx, ch, "claudecode", "", provider_quota.QuotaData{
+			ProviderType: "claudecode",
+			Status:       string(providerquotastatus.StatusAvailable),
+			Ready:        true,
+		}, time.Now())
+		expectQuotaWebhook(t, notifications, EventProviderQuotaRecovered, "unknown", "available")
+	})
+
 	t.Run("check_failure_is_silent_and_preserves_status", func(t *testing.T) {
 		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 		defer client.Close()

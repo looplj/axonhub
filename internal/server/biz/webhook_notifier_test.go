@@ -248,6 +248,7 @@ func TestWebhookNotifier_QuotaEvents(t *testing.T) {
 	tests := []struct {
 		name      string
 		eventName string
+		severity  string
 		previous  string
 		newStatus string
 		notify    func(n *WebhookNotifier, evt QuotaStatusChangedEvent)
@@ -255,6 +256,7 @@ func TestWebhookNotifier_QuotaEvents(t *testing.T) {
 		{
 			name:      "warning",
 			eventName: EventProviderQuotaWarning,
+			severity:  "warning",
 			previous:  "available",
 			newStatus: "warning",
 			notify: func(n *WebhookNotifier, evt QuotaStatusChangedEvent) {
@@ -264,6 +266,7 @@ func TestWebhookNotifier_QuotaEvents(t *testing.T) {
 		{
 			name:      "exhausted",
 			eventName: EventProviderQuotaExhausted,
+			severity:  "critical",
 			previous:  "warning",
 			newStatus: "exhausted",
 			notify: func(n *WebhookNotifier, evt QuotaStatusChangedEvent) {
@@ -273,6 +276,7 @@ func TestWebhookNotifier_QuotaEvents(t *testing.T) {
 		{
 			name:      "recovered",
 			eventName: EventProviderQuotaRecovered,
+			severity:  "info",
 			previous:  "exhausted",
 			newStatus: "available",
 			notify: func(n *WebhookNotifier, evt QuotaStatusChangedEvent) {
@@ -330,7 +334,7 @@ func TestWebhookNotifier_QuotaEvents(t *testing.T) {
 
 			require.JSONEq(t, fmt.Sprintf(
 				`{"event":"%s","severity":"%s","previous_status":"%s","new_status":"%s","usage_percent":85,"warning_threshold_ratio":0.8}`,
-				tt.eventName, QuotaEventSeverity[tt.eventName], tt.previous, tt.newStatus,
+				tt.eventName, tt.severity, tt.previous, tt.newStatus,
 			), receivedBody)
 		})
 	}
