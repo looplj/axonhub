@@ -227,6 +227,26 @@ func TestAggregateStreamChunks_SetsCompletedForStopReason(t *testing.T) {
 	require.True(t, meta.Completed)
 }
 
+func TestAggregateStreamChunks_RepairsInvalidToolInput(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"message_start","message":{"id":"msg_repair","type":"message","role":"assistant","content":[],"model":"claude-sonnet-4-6","usage":{"input_tokens":1,"output_tokens":0}}}`)},
+		{Data: []byte(`{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"tool_repro","name":"search","input":{}}}`)},
+		{Data: []byte(`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"query\": 查询资料}"}}`)},
+		{Data: []byte(`{"type":"content_block_stop","index":0}`)},
+		{Data: []byte(`{"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":10}}`)},
+		{Data: []byte(`{"type":"message_stop"}`)},
+	}
+
+	body, meta, err := AggregateStreamChunks(t.Context(), chunks, PlatformDirect)
+	require.NoError(t, err)
+	require.NotNil(t, meta.Usage)
+
+	var msg Message
+	require.NoError(t, json.Unmarshal(body, &msg))
+	require.Len(t, msg.Content, 1)
+	assert.JSONEq(t, `{"query":"查询资料"}`, string(msg.Content[0].Input))
+}
+
 func TestAggregateStreamChunks_DoesNotCompleteWithoutMessageStart(t *testing.T) {
 	chunks := []*httpclient.StreamEvent{
 		{Data: []byte(`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"partial"}}`)},
