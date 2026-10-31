@@ -391,4 +391,32 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 		require.Equal(t, float64(1), persisted.QuotaData["error_count"])
 		require.Equal(t, "check_failed", persisted.QuotaData["error_code"])
 	})
+
+	t.Run("provider_identity_change_does_not_fire_transition", func(t *testing.T) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+		ch := createQuotaWebhookTestChannel(t, ctx, client)
+		// The channel switches providers while the stored row still carries
+		// the old provider's exhausted status: the new provider's first
+		// status is a first-ever detection for that provider, so nothing fires.
+		seedQuotaRow(t, ctx, client, ch.ID, providerquotastatus.ProviderTypeClaudecode, providerquotastatus.StatusExhausted, map[string]any{})
+
+		svc, notifications, requery := newTestQuotaWebhookHarness(t, client)
+
+		ch = requery(ch)
+		svc.saveQuotaStatus(ctx, ch, "nanogpt", "", provider_quota.QuotaData{
+			ProviderType: "nanogpt",
+			Status:       string(providerquotastatus.StatusAvailable),
+			Ready:        true,
+		}, time.Now())
+		expectNoQuotaWebhook(t, notifications)
+
+		persisted, err := client.ProviderQuotaStatus.Query().
+			Where(providerquotastatus.ChannelIDEQ(ch.ID)).Only(ctx)
+		require.NoError(t, err)
+		require.Equal(t, providerquotastatus.ProviderTypeNanogpt, persisted.ProviderType)
+		require.Equal(t, providerquotastatus.StatusAvailable, persisted.Status)
+	})
 }

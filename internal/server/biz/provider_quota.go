@@ -702,6 +702,16 @@ func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, chann
 	// Hold the service mutex to keep the in-memory cache consistent with the DB
 	// in case a scheduled quota check is running concurrently.
 	svc.mu.Lock()
+	// A scheduled check may have saved a fresh status while the provider
+	// reset was in flight; reload the edge under the lock so saveQuotaStatus
+	// computes the webhook transition against that status, not the
+	// pre-reset snapshot loaded before the reset call.
+	ch, err = svc.db.Channel.Query().Where(channel.IDEQ(channelID)).WithProviderQuotaStatus().Only(ctx)
+	if err != nil {
+		svc.mu.Unlock()
+		return fmt.Errorf("failed to load channel: %w", err)
+	}
+
 	now := time.Now()
 	svc.checkChannelQuota(ctx, quotaCheckGroup{
 		channels:   []*ent.Channel{ch},
@@ -886,14 +896,17 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 	// The previous status is read from the channel's loaded edge (or the
 	// in-memory cache, which every save/updateQuotaCache keeps in sync with the
 	// DB) before the upsert, so no extra query is needed. It drives webhook
-	// transition detection after a successful write.
+	// transition detection after a successful write. It is only usable when it
+	// belongs to the same provider: a channel that switched providers must not
+	// report a transition (e.g. the old provider's exhausted as "recovered")
+	// against the new provider's first status — same rule saveQuotaError applies.
 	var previous providerquotastatus.Status
 	havePrevious := false
 	var rawPrevious string
-	if ch.Edges.ProviderQuotaStatus != nil {
-		previous = ch.Edges.ProviderQuotaStatus.Status
+	if existing := ch.Edges.ProviderQuotaStatus; existing != nil && existing.ProviderType == pt {
+		previous = existing.Status
 		havePrevious = true
-	} else if cached := svc.GetQuotaStatus(ctx, ch.ID); cached != nil {
+	} else if cached := svc.GetQuotaStatus(ctx, ch.ID); cached != nil && providerquotastatus.ProviderType(cached.ProviderType) == pt {
 		previous = cached.Status
 		havePrevious = true
 	}
@@ -1042,16 +1055,20 @@ func (svc *ProviderQuotaService) notifyQuotaStatusChange(
 		nextResetAt = quotaData.NextResetAt.Format(time.RFC3339)
 	}
 
+	// Providers report several windows of the same limit type (e.g. Synthetic
+	// emits both a 5h and a weekly token window), so each window gets its own
+	// line; identical duplicates are dropped by full-line identity.
 	limits := make([]string, 0, len(quotaData.Limits))
-	seenTypes := make(map[provider_quota.QuotaLimitType]bool, len(quotaData.Limits))
+	seenLines := make(map[string]struct{}, len(quotaData.Limits))
 	for _, limit := range quotaData.Limits {
-		if seenTypes[limit.Type] {
+		line := fmt.Sprintf(
+			"%s (%s) %.2f %s", limit.Type, limit.Window, limit.UsageRatio, limit.Status,
+		)
+		if _, ok := seenLines[line]; ok {
 			continue
 		}
-		seenTypes[limit.Type] = true
-		limits = append(limits, fmt.Sprintf(
-			"%s (%s) %.2f %s", limit.Type, limit.Window, limit.UsageRatio, limit.Status,
-		))
+		seenLines[line] = struct{}{}
+		limits = append(limits, line)
 	}
 
 	event := QuotaStatusChangedEvent{

@@ -12,7 +12,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { proxyTypeSchema, type ProxyConfig, type ProxyType } from '@/features/channels/data/schema';
-import { useProxyPresets, useUpdateWebhookNotifierConfig, useWebhookNotifierConfig, type WebhookNotifierConfig, type WebhookTarget } from '../data/system';
+import {
+  useProxyPresets,
+  useUpdateWebhookNotifierConfig,
+  useWebhookNotifierConfig,
+  type WebhookNotifierConfig,
+  type WebhookTarget,
+} from '../data/system';
 
 const WEBHOOK_EVENTS = [
   { id: 'channel.auto_disabled', i18nKey: 'system.webhook.events.channelAutoDisabled' },
@@ -36,6 +42,15 @@ const DEFAULT_WEBHOOK_BODY_TEMPLATE = `{
     "threshold": {{.Trigger.Threshold}},
     "actual_count": {{.Trigger.ActualCount}},
     "reason": "{{.Trigger.Reason}}"
+  },
+  "quota": {
+    "previous_status": "{{.Quota.PreviousStatus}}",
+    "new_status": "{{.Quota.NewStatus}}",
+    "usage_ratio": {{.Quota.UsageRatio}},
+    "usage_percent": {{.Quota.UsagePercent}},
+    "next_reset_at": "{{.Quota.NextResetAt}}",
+    "limits": {{.Quota.Limits}},
+    "warning_threshold_ratio": {{.Quota.WarningThresholdRatio}}
   }
 }`;
 
@@ -103,12 +118,15 @@ export function WebhookSettings() {
     });
   }, []);
 
-  const handleTargetChange = useCallback((index: number, field: 'name' | 'url' | 'timeoutMs' | 'body' | 'enabled', value: string | number | boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      targets: prev.targets.map((target, i) => (i === index ? { ...target, [field]: value } : target)),
-    }));
-  }, []);
+  const handleTargetChange = useCallback(
+    (index: number, field: 'name' | 'url' | 'timeoutMs' | 'body' | 'enabled', value: string | number | boolean) => {
+      setFormData((prev) => ({
+        ...prev,
+        targets: prev.targets.map((target, i) => (i === index ? { ...target, [field]: value } : target)),
+      }));
+    },
+    []
+  );
 
   const handleTargetProxyChange = useCallback((index: number, proxy: ProxyConfig | undefined) => {
     setFormData((prev) => ({
@@ -133,11 +151,13 @@ export function WebhookSettings() {
           ...target,
           proxy: {
             type,
-            ...(type === proxyTypeSchema.enum.url ? {
-              url: target.proxy?.type === proxyTypeSchema.enum.url ? target.proxy.url : '',
-              username: target.proxy?.type === proxyTypeSchema.enum.url ? target.proxy.username : '',
-              password: target.proxy?.type === proxyTypeSchema.enum.url ? target.proxy.password : '',
-            } : {}),
+            ...(type === proxyTypeSchema.enum.url
+              ? {
+                  url: target.proxy?.type === proxyTypeSchema.enum.url ? target.proxy.url : '',
+                  username: target.proxy?.type === proxyTypeSchema.enum.url ? target.proxy.username : '',
+                  password: target.proxy?.type === proxyTypeSchema.enum.url ? target.proxy.password : '',
+                }
+              : {}),
           },
         };
       }),
@@ -156,9 +176,9 @@ export function WebhookSettings() {
           ...target,
           proxy: {
             type: target.proxy?.type || proxyTypeSchema.enum.url,
-            url: field === 'url' ? value : (target.proxy?.url || ''),
-            username: field === 'username' ? value : (target.proxy?.username || ''),
-            password: field === 'password' ? value : (target.proxy?.password || ''),
+            url: field === 'url' ? value : target.proxy?.url || '',
+            username: field === 'username' ? value : target.proxy?.username || '',
+            password: field === 'password' ? value : target.proxy?.password || '',
           },
         };
       }),
@@ -168,10 +188,14 @@ export function WebhookSettings() {
   const handleTargetNameChange = useCallback((index: number, value: string) => {
     setFormData((prev) => {
       const previousName = prev.targets[index]?.name;
-      const nextTargets = prev.targets.map((target, i) => (i === index ? { ...target, name: value } : target));
+      // Trim so subscription entries always match the trimmed name the
+      // membership check below compares against (a whitespace-only rename
+      // difference would otherwise look unsubscribed and duplicate on save).
+      const trimmedName = value.trim();
+      const nextTargets = prev.targets.map((target, i) => (i === index ? { ...target, name: trimmedName } : target));
       const nextSubscriptions = prev.subscriptions.map((subscription) => ({
         ...subscription,
-        targetNames: subscription.targetNames.map((targetName) => (targetName === previousName ? value : targetName)),
+        targetNames: subscription.targetNames.map((targetName) => (targetName === previousName ? trimmedName : targetName)),
       }));
 
       return {
@@ -263,7 +287,7 @@ export function WebhookSettings() {
         return false;
       }
 
-      normalizedNames.add(normalizedName)
+      normalizedNames.add(normalizedName);
       if (target.enabled && !target.url.trim()) {
         toast.error(t('system.webhook.validation.urlRequired'));
         return false;
@@ -285,29 +309,43 @@ export function WebhookSettings() {
         ...target,
         name: target.name.trim(),
         url: target.url.trim(),
-        proxy: target.proxy?.type === proxyTypeSchema.enum.url
-          ? (() => {
-              const proxyURL = target.proxy.url?.trim() || '';
-              if (!proxyURL) {
-                return undefined;
-              }
+        proxy:
+          target.proxy?.type === proxyTypeSchema.enum.url
+            ? (() => {
+                const proxyURL = target.proxy.url?.trim() || '';
+                if (!proxyURL) {
+                  return undefined;
+                }
 
-              return {
-                ...target.proxy,
-                url: proxyURL,
-                username: target.proxy.username?.trim() || undefined,
-                password: target.proxy.password?.trim() || undefined,
-              };
-            })()
-          : target.proxy,
+                return {
+                  ...target.proxy,
+                  url: proxyURL,
+                  username: target.proxy.username?.trim() || undefined,
+                  password: target.proxy.password?.trim() || undefined,
+                };
+              })()
+            : target.proxy,
       }));
 
       const validTargetNames = new Set(normalizedTargets.map((target) => target.name));
+      // Dedupe on trimmed equality so whitespace-variant names loaded from an
+      // older saved config cannot subscribe the same target twice.
       const normalizedSubscriptions = formData.subscriptions
-        .map((subscription) => ({
-          ...subscription,
-          targetNames: subscription.targetNames.filter((targetName) => validTargetNames.has(targetName.trim())).map((targetName) => targetName.trim()),
-        }))
+        .map((subscription) => {
+          const uniqueNames = new Set<string>();
+          const targetNames: string[] = [];
+          for (const targetName of subscription.targetNames) {
+            const trimmed = targetName.trim();
+            if (!validTargetNames.has(trimmed) || uniqueNames.has(trimmed)) {
+              continue;
+            }
+
+            uniqueNames.add(trimmed);
+            targetNames.push(trimmed);
+          }
+
+          return { ...subscription, targetNames };
+        })
         .filter((subscription) => subscription.targetNames.length > 0);
 
       await updateWebhookNotifierConfig.mutateAsync({
@@ -362,7 +400,7 @@ export function WebhookSettings() {
             </div>
           </div>
 
-          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
             <div className='space-y-0.5'>
               <div className='text-sm font-medium'>{t('system.webhook.targets.title')}</div>
               <div className='text-muted-foreground text-sm'>{t('system.webhook.targets.description')}</div>
@@ -385,7 +423,7 @@ export function WebhookSettings() {
                 return (
                   <div key={targetIndex} className='space-y-4 rounded-md border p-3 sm:p-4'>
                     <div className='flex items-start justify-between gap-2'>
-                      <div className='space-y-1 min-w-0 flex-1'>
+                      <div className='min-w-0 flex-1 space-y-1'>
                         <div className='text-sm font-medium'>{t('system.webhook.target.title', { index: targetIndex + 1 })}</div>
                         <div className='text-muted-foreground text-sm'>{t('system.webhook.target.description')}</div>
                       </div>
@@ -394,8 +432,8 @@ export function WebhookSettings() {
                       </Button>
                     </div>
 
-                    <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-md border p-3'>
-                      <div className='space-y-0.5 min-w-0'>
+                    <div className='flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between'>
+                      <div className='min-w-0 space-y-0.5'>
                         <Label htmlFor={`webhook-enabled-${targetIndex}`} className='text-sm font-medium'>
                           {t('system.webhook.enabled.label')}
                         </Label>
@@ -443,7 +481,9 @@ export function WebhookSettings() {
                         onChange={(e) => handleTargetChange(targetIndex, 'url', e.target.value)}
                         aria-invalid={target.enabled && !target.url.trim()}
                       />
-                      {target.enabled && !target.url.trim() && <div className='text-destructive text-xs'>{t('system.webhook.validation.urlRequired')}</div>}
+                      {target.enabled && !target.url.trim() && (
+                        <div className='text-destructive text-xs'>{t('system.webhook.validation.urlRequired')}</div>
+                      )}
                     </div>
 
                     <div className='space-y-4 rounded-md border p-3 sm:p-4'>
@@ -499,7 +539,9 @@ export function WebhookSettings() {
                       )}
 
                       {proxyType === proxyTypeSchema.enum.environment && (
-                        <div className='text-muted-foreground rounded-md border p-3 text-sm'>{t('system.webhook.proxy.environmentHint')}</div>
+                        <div className='text-muted-foreground rounded-md border p-3 text-sm'>
+                          {t('system.webhook.proxy.environmentHint')}
+                        </div>
                       )}
 
                       {proxyType === proxyTypeSchema.enum.url && (
@@ -542,14 +584,18 @@ export function WebhookSettings() {
                         {WEBHOOK_EVENTS.map((event) => (
                           <label key={event.id} className='flex items-start gap-3'>
                             <Checkbox
-                              checked={targetName
-                                ? (formData.subscriptions.find((subscription) => subscription.event === event.id)?.targetNames || []).includes(targetName)
-                                : false}
+                              checked={
+                                targetName
+                                  ? (
+                                      formData.subscriptions.find((subscription) => subscription.event === event.id)?.targetNames || []
+                                    ).includes(targetName)
+                                  : false
+                              }
                               onCheckedChange={(checked) => handleSubscriptionChange(event.id, targetName, checked === true)}
                               disabled={!targetName}
-                              className='shrink-0 mt-0.5'
+                              className='mt-0.5 shrink-0'
                             />
-                            <div className='space-y-1 min-w-0 flex-1'>
+                            <div className='min-w-0 flex-1 space-y-1'>
                               <div className='font-mono text-xs break-all'>{event.id}</div>
                               <div className='text-muted-foreground text-sm'>{t(event.i18nKey)}</div>
                             </div>
@@ -559,18 +605,40 @@ export function WebhookSettings() {
                     </div>
 
                     <div className='space-y-3'>
-                      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
+                      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                         <Label className='text-sm font-medium'>{t('system.webhook.headers')}</Label>
-                        <Button type='button' variant='outline' size='sm' onClick={() => addHeader(targetIndex)} className='w-full sm:w-auto'>
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          onClick={() => addHeader(targetIndex)}
+                          className='w-full sm:w-auto'
+                        >
                           <Plus className='mr-1 h-4 w-4' />
                           {t('system.webhook.addHeader')}
                         </Button>
                       </div>
                       {(target.headers || []).map((header, headerIndex) => (
-                        <div key={headerIndex} className='flex flex-col sm:flex-row items-start sm:items-center gap-2'>
-                          <Input value={header.key} placeholder='Header' onChange={(e) => handleHeaderChange(targetIndex, headerIndex, 'key', e.target.value)} className='w-full' />
-                          <Input value={header.value} placeholder='Value' onChange={(e) => handleHeaderChange(targetIndex, headerIndex, 'value', e.target.value)} className='w-full' />
-                          <Button type='button' variant='ghost' size='icon' onClick={() => removeHeader(targetIndex, headerIndex)} className='shrink-0'>
+                        <div key={headerIndex} className='flex flex-col items-start gap-2 sm:flex-row sm:items-center'>
+                          <Input
+                            value={header.key}
+                            placeholder='Header'
+                            onChange={(e) => handleHeaderChange(targetIndex, headerIndex, 'key', e.target.value)}
+                            className='w-full'
+                          />
+                          <Input
+                            value={header.value}
+                            placeholder='Value'
+                            onChange={(e) => handleHeaderChange(targetIndex, headerIndex, 'value', e.target.value)}
+                            className='w-full'
+                          />
+                          <Button
+                            type='button'
+                            variant='ghost'
+                            size='icon'
+                            onClick={() => removeHeader(targetIndex, headerIndex)}
+                            className='shrink-0'
+                          >
                             <Trash2 className='h-4 w-4' />
                           </Button>
                         </div>
