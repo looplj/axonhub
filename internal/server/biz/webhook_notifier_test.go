@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -241,6 +242,135 @@ func TestWebhookNotifier_SelectTargetsSkipsInvalidTargets(t *testing.T) {
 
 	require.Len(t, targets, 1)
 	require.Equal(t, "a", targets[0].Name)
+}
+
+func TestWebhookNotifier_QuotaEvents(t *testing.T) {
+	tests := []struct {
+		name      string
+		eventName string
+		previous  string
+		newStatus string
+		notify    func(n *WebhookNotifier, evt QuotaStatusChangedEvent)
+	}{
+		{
+			name:      "warning",
+			eventName: EventProviderQuotaWarning,
+			previous:  "available",
+			newStatus: "warning",
+			notify: func(n *WebhookNotifier, evt QuotaStatusChangedEvent) {
+				n.NotifyProviderQuotaWarning(context.Background(), evt)
+			},
+		},
+		{
+			name:      "exhausted",
+			eventName: EventProviderQuotaExhausted,
+			previous:  "warning",
+			newStatus: "exhausted",
+			notify: func(n *WebhookNotifier, evt QuotaStatusChangedEvent) {
+				n.NotifyProviderQuotaExhausted(context.Background(), evt)
+			},
+		},
+		{
+			name:      "recovered",
+			eventName: EventProviderQuotaRecovered,
+			previous:  "exhausted",
+			newStatus: "available",
+			notify: func(n *WebhookNotifier, evt QuotaStatusChangedEvent) {
+				n.NotifyProviderQuotaRecovered(context.Background(), evt)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+			defer client.Close()
+
+			var receivedBody string
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+
+				receivedBody = string(body)
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			cfg := WebhookNotifierConfig{
+				Targets: []WebhookTarget{
+					{
+						Name:      "default",
+						Enabled:   true,
+						URL:       server.URL,
+						TimeoutMs: 1000,
+						Body: `{"event":"{{.Event}}","severity":"{{.Severity}}",` +
+							`"previous_status":"{{.Quota.PreviousStatus}}","new_status":"{{.Quota.NewStatus}}",` +
+							`"usage_percent":{{.Quota.UsagePercent}},"warning_threshold_ratio":{{.Quota.WarningThresholdRatio}}}`,
+					},
+				},
+				Subscriptions: []WebhookSubscription{
+					{Event: EventProviderQuotaWarning, TargetNames: []string{"default"}},
+					{Event: EventProviderQuotaExhausted, TargetNames: []string{"default"}},
+					{Event: EventProviderQuotaRecovered, TargetNames: []string{"default"}},
+				},
+			}
+
+			systemService := newTestSystemServiceWithWebhookConfig(t, client, cfg)
+			notifier := NewWebhookNotifier(systemService, httpclient.NewHttpClient())
+
+			tt.notify(notifier, QuotaStatusChangedEvent{
+				ChannelID:      1,
+				ChannelName:    "primary",
+				PreviousStatus: tt.previous,
+				NewStatus:      tt.newStatus,
+				UsageRatio:     0.85,
+				OccurredAt:     time.Now(),
+			})
+
+			require.JSONEq(t, fmt.Sprintf(
+				`{"event":"%s","severity":"%s","previous_status":"%s","new_status":"%s","usage_percent":85,"warning_threshold_ratio":0.8}`,
+				tt.eventName, QuotaEventSeverity[tt.eventName], tt.previous, tt.newStatus,
+			), receivedBody)
+		})
+	}
+
+	// Negative ratio renders usage_percent 0.
+	t.Run("usage_percent_is_zero_for_negative_ratio", func(t *testing.T) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		var receivedBody string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+
+			receivedBody = string(body)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		cfg := WebhookNotifierConfig{
+			Targets: []WebhookTarget{
+				{
+					Name:      "default",
+					Enabled:   true,
+					URL:       server.URL,
+					TimeoutMs: 1000,
+					Body:      `{"usage_percent":{{.Quota.UsagePercent}}}`,
+				},
+			},
+			Subscriptions: []WebhookSubscription{
+				{Event: EventProviderQuotaRecovered, TargetNames: []string{"default"}},
+			},
+		}
+
+		systemService := newTestSystemServiceWithWebhookConfig(t, client, cfg)
+		notifier := NewWebhookNotifier(systemService, httpclient.NewHttpClient())
+		notifier.NotifyProviderQuotaRecovered(context.Background(), QuotaStatusChangedEvent{UsageRatio: -1, OccurredAt: time.Now()})
+
+		require.JSONEq(t, `{"usage_percent":0}`, receivedBody)
+	})
 }
 
 func TestRenderWebhookTemplate_NoTemplate(t *testing.T) {

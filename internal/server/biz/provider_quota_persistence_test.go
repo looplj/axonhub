@@ -231,7 +231,7 @@ func TestProviderQuotaService_SaveQuotaStatus_ReplacesStaleClinePassDataWhenUnav
 		AbstractService: &AbstractService{db: client},
 		checkInterval:   5 * time.Minute,
 	}
-	service.saveQuotaStatus(ctx, channelEntity.ID, "cline", "", provider_quota.QuotaData{
+	service.saveQuotaStatus(ctx, channelEntity, "cline", "", provider_quota.QuotaData{
 		ProviderType: "cline",
 		Status:       string(providerquotastatus.StatusExhausted),
 		Ready:        false,
@@ -296,7 +296,7 @@ func TestProviderQuotaService_SaveQuotaStatus_UpdatesChangedProviderIdentity(t *
 		AbstractService: &AbstractService{db: client},
 		checkInterval:   5 * time.Minute,
 	}
-	service.saveQuotaStatus(ctx, channelEntity.ID, "synthetic", "", provider_quota.QuotaData{
+	service.saveQuotaStatus(ctx, channelEntity, "synthetic", "", provider_quota.QuotaData{
 		ProviderType: "synthetic",
 		Status:       string(providerquotastatus.StatusAvailable),
 		Ready:        true,
@@ -344,7 +344,7 @@ func TestProviderQuotaService_SaveQuotaStatus_PersistsSyntheticCredits(t *testin
 
 	periodCost := 0.03
 	periodQuota := 10.50
-	service.saveQuotaStatus(ctx, channelEntity.ID, "synthetic", "", provider_quota.QuotaData{
+	service.saveQuotaStatus(ctx, channelEntity, "synthetic", "", provider_quota.QuotaData{
 		ProviderType: "synthetic",
 		Status:       "available",
 		Ready:        true,

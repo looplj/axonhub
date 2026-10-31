@@ -14,7 +14,12 @@ import { Switch } from '@/components/ui/switch';
 import { proxyTypeSchema, type ProxyConfig, type ProxyType } from '@/features/channels/data/schema';
 import { useProxyPresets, useUpdateWebhookNotifierConfig, useWebhookNotifierConfig, type WebhookNotifierConfig, type WebhookTarget } from '../data/system';
 
-const AUTO_DISABLED_EVENT = 'channel.auto_disabled';
+const WEBHOOK_EVENTS = [
+  { id: 'channel.auto_disabled', i18nKey: 'system.webhook.events.channelAutoDisabled' },
+  { id: 'provider.quota.warning', i18nKey: 'system.webhook.events.providerQuotaWarning' },
+  { id: 'provider.quota.exhausted', i18nKey: 'system.webhook.events.providerQuotaExhausted' },
+  { id: 'provider.quota.recovered', i18nKey: 'system.webhook.events.providerQuotaRecovered' },
+] as const;
 
 const DEFAULT_WEBHOOK_BODY_TEMPLATE = `{
   "event": "{{.Event}}",
@@ -68,13 +73,8 @@ export function WebhookSettings() {
   }, [webhookConfig]);
 
   const getSubscribedTargetNames = useCallback(
-    () => new Set(formData.subscriptions.find((subscription) => subscription.event === AUTO_DISABLED_EVENT)?.targetNames || []),
+    (event: string) => new Set(formData.subscriptions.find((subscription) => subscription.event === event)?.targetNames || []),
     [formData.subscriptions]
-  );
-
-  const isTargetSubscribed = useCallback(
-    (targetName: string) => getSubscribedTargetNames().has(targetName),
-    [getSubscribedTargetNames]
   );
 
   const addTarget = useCallback(() => {
@@ -226,17 +226,17 @@ export function WebhookSettings() {
     }));
   }, []);
 
-  const handleSubscriptionChange = useCallback((targetName: string, checked: boolean) => {
+  const handleSubscriptionChange = useCallback((eventId: string, targetName: string, checked: boolean) => {
     setFormData((prev) => {
-      const current = prev.subscriptions.find((subscription) => subscription.event === AUTO_DISABLED_EVENT);
+      const current = prev.subscriptions.find((subscription) => subscription.event === eventId);
       const nextTargetNames = checked
         ? Array.from(new Set([...(current?.targetNames || []), targetName]))
         : (current?.targetNames || []).filter((name) => name !== targetName);
 
-      const nextSubscriptions = prev.subscriptions.filter((subscription) => subscription.event !== AUTO_DISABLED_EVENT);
+      const nextSubscriptions = prev.subscriptions.filter((subscription) => subscription.event !== eventId);
       if (nextTargetNames.length > 0) {
         nextSubscriptions.push({
-          event: AUTO_DISABLED_EVENT,
+          event: eventId,
           targetNames: nextTargetNames,
         });
       }
@@ -326,7 +326,6 @@ export function WebhookSettings() {
     );
   }
 
-  const subscribedTargetCount = getSubscribedTargetNames().size;
   const normalizedNameCounts = formData.targets.reduce<Record<string, number>>((acc, target) => {
     const normalizedName = target.name.trim();
     if (!normalizedName) {
@@ -348,14 +347,18 @@ export function WebhookSettings() {
           <div className='bg-muted/50 space-y-2 rounded-md border p-4'>
             <div className='text-sm font-medium'>{t('system.webhook.availableEvents.title')}</div>
             <div className='text-muted-foreground text-sm'>{t('system.webhook.availableEvents.description')}</div>
-            <div className='bg-background flex items-center justify-between rounded-md border p-3'>
-              <div className='space-y-1'>
-                <div className='font-mono text-xs'>{AUTO_DISABLED_EVENT}</div>
-                <div className='text-muted-foreground text-sm'>{t('system.webhook.events.channelAutoDisabled')}</div>
-              </div>
-              <div className='text-muted-foreground text-sm'>
-                {t('system.webhook.subscriptionCount', { count: subscribedTargetCount })}
-              </div>
+            <div className='space-y-2'>
+              {WEBHOOK_EVENTS.map((event) => (
+                <div key={event.id} className='bg-background flex items-center justify-between rounded-md border p-3'>
+                  <div className='space-y-1'>
+                    <div className='font-mono text-xs'>{event.id}</div>
+                    <div className='text-muted-foreground text-sm'>{t(event.i18nKey)}</div>
+                  </div>
+                  <div className='text-muted-foreground text-sm'>
+                    {t('system.webhook.subscriptionCount', { count: getSubscribedTargetNames(event.id).size })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -376,7 +379,6 @@ export function WebhookSettings() {
             <div className='space-y-4'>
               {formData.targets.map((target, targetIndex) => {
                 const targetName = target.name.trim();
-                const targetSubscribed = targetName ? isTargetSubscribed(targetName) : false;
                 const hasDuplicateName = !!targetName && normalizedNameCounts[targetName] > 1;
                 const proxyType = target.proxy?.type || proxyTypeSchema.enum.disabled;
 
@@ -536,18 +538,24 @@ export function WebhookSettings() {
                         <div className='text-sm font-medium'>{t('system.webhook.subscription')}</div>
                         <div className='text-muted-foreground text-sm'>{t('system.webhook.subscriptionHelp')}</div>
                       </div>
-                      <label className='flex items-start gap-3'>
-                        <Checkbox
-                          checked={targetSubscribed}
-                          onCheckedChange={(checked) => handleSubscriptionChange(target.name.trim(), checked === true)}
-                          disabled={!target.name.trim()}
-                          className='shrink-0 mt-0.5'
-                        />
-                        <div className='space-y-1 min-w-0 flex-1'>
-                          <div className='font-mono text-xs break-all'>{AUTO_DISABLED_EVENT}</div>
-                          <div className='text-muted-foreground text-sm'>{t('system.webhook.events.channelAutoDisabled')}</div>
-                        </div>
-                      </label>
+                      <div className='space-y-2'>
+                        {WEBHOOK_EVENTS.map((event) => (
+                          <label key={event.id} className='flex items-start gap-3'>
+                            <Checkbox
+                              checked={targetName
+                                ? (formData.subscriptions.find((subscription) => subscription.event === event.id)?.targetNames || []).includes(targetName)
+                                : false}
+                              onCheckedChange={(checked) => handleSubscriptionChange(event.id, targetName, checked === true)}
+                              disabled={!targetName}
+                              className='shrink-0 mt-0.5'
+                            />
+                            <div className='space-y-1 min-w-0 flex-1'>
+                              <div className='font-mono text-xs break-all'>{event.id}</div>
+                              <div className='text-muted-foreground text-sm'>{t(event.i18nKey)}</div>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
                     </div>
 
                     <div className='space-y-3'>
