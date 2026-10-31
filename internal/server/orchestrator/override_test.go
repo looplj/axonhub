@@ -2423,6 +2423,24 @@ func TestOverrideOperationsArrayOps(t *testing.T) {
 				want: `{"input":[[],[],null]}`,
 			},
 			{
+				name: "wildcard in an empty object key",
+				path: "input[*].[*]",
+				body: `{"input":[{"":[1,2],"keep":true}]}`,
+				want: `{"input":[{"":[],"keep":true}]}`,
+			},
+			{
+				name: "field wildcard in an empty object key",
+				path: "input[*].[*].metadata",
+				body: `{"input":[{"":[{"metadata":true,"keep":1}]}]}`,
+				want: `{"input":[{"":[{"keep":1}]}]}`,
+			},
+			{
+				name: "empty key wildcard does not select the array item itself",
+				path: "input[*].[*]",
+				body: `{"input":[[1,2],null]}`,
+				want: `{"input":[[1,2],null]}`,
+			},
+			{
 				name: "empty object key",
 				path: "input[*].",
 				body: `{"input":[{"":true,"keep":1},null,{"":2}]}`,

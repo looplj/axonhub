@@ -380,14 +380,15 @@ func applyBodyDelete(body []byte, op objects.OverrideOperation) ([]byte, error) 
 			changed = len(array.Array()) > 0
 		} else {
 			relative := op
-			relative.Path = strings.TrimPrefix(rest, ".")
-			if relative.Path == "" {
-				// A trailing dot selects an empty object key in SJSON paths.
-				relative.Path = ":"
-			}
+			// Keep a concrete index before the suffix so empty path segments
+			// retain their meaning, including the distinction between .[*] and [*].
+			relative.Path = "0" + rest
 
 			for index, item := range array.Array() {
-				raw := []byte(item.Raw)
+				raw := make([]byte, 0, len(item.Raw)+2)
+				raw = append(raw, '[')
+				raw = append(raw, item.Raw...)
+				raw = append(raw, ']')
 				updated, err := applyBodyDelete(raw, relative)
 				if err != nil {
 					return body, err
@@ -397,7 +398,7 @@ func applyBodyDelete(body []byte, op objects.OverrideOperation) ([]byte, error) 
 				if index > 0 {
 					rebuilt = append(rebuilt, ',')
 				}
-				rebuilt = append(rebuilt, updated...)
+				rebuilt = append(rebuilt, gjson.GetBytes(updated, "0").Raw...)
 			}
 		}
 		rebuilt = append(rebuilt, ']')
