@@ -102,11 +102,17 @@ export function WebhookSettings() {
   const removeTarget = useCallback((index: number) => {
     setFormData((prev) => {
       const removedTarget = prev.targets[index];
+      const removedName = (removedTarget?.name || '').trim();
       const nextTargets = prev.targets.filter((_, i) => i !== index);
+      // Subscriptions are keyed by trimmed name, and the UI only flags
+      // duplicate names via aria-invalid — targets sharing a trimmed name can
+      // coexist. Drop a name only when the removed target was its sole owner;
+      // a remaining target with the same trimmed name keeps its subscriptions.
+      const remainingNames = new Set(nextTargets.map((target) => target.name.trim()));
       const nextSubscriptions = prev.subscriptions
         .map((subscription) => ({
           ...subscription,
-          targetNames: subscription.targetNames.filter((name) => name !== (removedTarget?.name || '').trim()),
+          targetNames: subscription.targetNames.filter((name) => name.trim() !== removedName || remainingNames.has(name.trim())),
         }))
         .filter((subscription) => subscription.targetNames.length > 0);
 
@@ -189,15 +195,20 @@ export function WebhookSettings() {
     setFormData((prev) => {
       // Keep the raw entered value in state so multiword names can be typed
       // without the cursor fighting trailing whitespace. Subscription entries
-      // are compared and persisted by trimmed name.
-      const previousName = (prev.targets[index]?.name || '').trim();
+      // are compared and persisted by trimmed name. Entries loaded from an
+      // older saved config may still carry the raw untrimmed name, so both
+      // the raw and the trimmed previous name are rewritten.
+      const rawPreviousName = prev.targets[index]?.name || '';
+      const previousName = rawPreviousName.trim();
       const trimmedName = value.trim();
       const renameOccurred = previousName !== trimmedName;
       const nextTargets = prev.targets.map((target, i) => (i === index ? { ...target, name: value } : target));
       const nextSubscriptions = renameOccurred
         ? prev.subscriptions.map((subscription) => ({
             ...subscription,
-            targetNames: subscription.targetNames.map((targetName) => (targetName === previousName ? trimmedName : targetName)),
+            targetNames: subscription.targetNames.map((targetName) =>
+              targetName === previousName || targetName === rawPreviousName ? trimmedName : targetName
+            ),
           }))
         : prev.subscriptions;
 
