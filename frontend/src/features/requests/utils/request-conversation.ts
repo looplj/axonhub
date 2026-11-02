@@ -353,6 +353,28 @@ export function parseRequestConversation(body: unknown, format?: string): Conver
       });
     }
     tools = normalizeAnthropicTools(body.tools);
+  } else if (fmt === 'gemini/interactions') {
+    if (typeof body.system_instruction === 'string' && body.system_instruction) {
+      systemText = body.system_instruction;
+      messages.push({ index: 0, role: 'system', content: systemText, raw: { role: 'system', content: systemText } });
+    }
+    if (typeof body.input === 'string') {
+      messages.push({ index: messages.length, role: 'user', content: body.input, raw: body.input });
+    } else if (Array.isArray(body.input)) {
+      body.input.forEach((item) => {
+        if (!isRecord(item)) return;
+        const role = item.role === 'model' || item.role === 'assistant' ? 'assistant' : item.role === 'tool' ? 'tool' : stringify(item.role) || 'user';
+        const content = typeof item.text === 'string' ? item.text : typeof item.content === 'string' ? item.content : prettyJson(item.content);
+        messages.push({
+          index: messages.length,
+          role,
+          content,
+          toolCallId: role === 'tool' ? stringify(item.call_id) || undefined : undefined,
+          raw: item,
+        });
+      });
+    }
+    tools = normalizeGeminiTools(body.tools);
   } else if (fmt.startsWith('gemini') || Array.isArray(body.contents)) {
     if (isRecord(body.systemInstruction) && Array.isArray(body.systemInstruction.parts)) {
       systemText = body.systemInstruction.parts
