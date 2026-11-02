@@ -338,11 +338,33 @@ func rawPromptTextFields(body []byte, apiFormat llm.APIFormat) ([]rawPromptTextF
 		return anthropicPromptTextFields(body), nil
 	case llm.APIFormatGeminiContents:
 		return geminiPromptTextFields(body), nil
+	case llm.APIFormatGeminiInteractions:
+		return geminiInteractionsPromptTextFields(body), nil
 	case llm.APIFormatOpenAIDecisions:
 		return decisionsPromptTextFields(body), nil
 	default:
 		return nil, fmt.Errorf("API format %q does not support raw prompt protection patches", apiFormat)
 	}
+}
+
+func geminiInteractionsPromptTextFields(body []byte) []rawPromptTextField {
+	fields := rawStringField(body, "system_instruction", "system")
+	input := gjson.GetBytes(body, "input")
+	if input.Type == gjson.String {
+		return append(fields, rawPromptTextField{path: "input", role: "user"})
+	}
+
+	for i := range jsonArrayLength(body, "input") {
+		itemPath := fmt.Sprintf("input.%d", i)
+		role := gjson.GetBytes(body, itemPath+".role").String()
+		if role == "" {
+			role = "user"
+		}
+		fields = append(fields, rawStringField(body, itemPath+".text", role)...)
+		fields = append(fields, rawContentTextFields(body, itemPath+".content", role, "text")...)
+	}
+
+	return fields
 }
 
 func decisionsPromptTextFields(body []byte) []rawPromptTextField {
