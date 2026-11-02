@@ -178,7 +178,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 					if !json.Valid(block.Input) {
 						slog.WarnContext(ctx, "invalid tool use input", slog.String("input", string(block.Input)))
 
-						repaired, err := jsonrepair.JSONRepair(string(block.Input))
+						repaired, err := jsonrepair.Repair(string(block.Input))
 						if err == nil {
 							block.Input = []byte(repaired)
 						}
