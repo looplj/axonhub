@@ -301,7 +301,7 @@ func TestBuildImageEditRequest_WithImage(t *testing.T) {
 	imageData, _ := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==")
 
 	req := &llm.Request{
-		Model:     "gpt-image-1",
+		Model:     "dall-e-2",
 		APIFormat: llm.APIFormatOpenAIImageEdit,
 		Image: &llm.ImageRequest{
 			Prompt: "Make this image brighter",
@@ -465,22 +465,35 @@ func TestBuildImageVariationRequest_OmitsResponseFormatWhenUnset(t *testing.T) {
 	require.NoError(t, err)
 
 	ot := tr.(*OutboundTransformer)
-	req := &llm.Request{
-		Model:     "gpt-image-2",
-		APIFormat: llm.APIFormatOpenAIImageVariation,
-		Image: &llm.ImageRequest{
-			Images: [][]byte{[]byte("image")},
-		},
+	for _, model := range []string{"dall-e-2", ""} {
+		name := model
+		if name == "" {
+			name = "empty-model"
+		}
+
+		t.Run(name, func(t *testing.T) {
+			req := &llm.Request{
+				Model:     model,
+				APIFormat: llm.APIFormatOpenAIImageVariation,
+				Image: &llm.ImageRequest{
+					Images: [][]byte{[]byte("image")},
+				},
+			}
+
+			httpReq, err := ot.buildImageVariationRequest(req, "test-key")
+			require.NoError(t, err)
+
+			var body map[string]any
+			require.NoError(t, json.Unmarshal(httpReq.JSONBody, &body))
+			assert.NotContains(t, body, "response_format")
+
+			reader := multipart.NewReader(bytes.NewReader(httpReq.Body), strings.TrimPrefix(httpReq.Headers.Get("Content-Type"), "multipart/form-data; boundary="))
+			form, err := reader.ReadForm(1024)
+			require.NoError(t, err)
+			defer form.RemoveAll()
+			assert.NotContains(t, form.Value, "response_format")
+		})
 	}
-
-	httpReq, err := ot.buildImageVariationRequest(req, "test-key")
-	require.NoError(t, err)
-
-	reader := multipart.NewReader(bytes.NewReader(httpReq.Body), strings.TrimPrefix(httpReq.Headers.Get("Content-Type"), "multipart/form-data; boundary="))
-	form, err := reader.ReadForm(1024)
-	require.NoError(t, err)
-	defer form.RemoveAll()
-	assert.NotContains(t, form.Value, "response_format")
 }
 
 // Test buildImageGenerationAPIRequest routing
