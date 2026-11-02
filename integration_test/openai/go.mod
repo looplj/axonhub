@@ -2,7 +2,7 @@ module github.com/looplj/axonhub/openai_test
 
 go 1.26.0
 
-require github.com/openai/openai-go/v3 v3.86.0
+require github.com/openai/openai-go/v3 v3.87.0
 
 require (
 	github.com/coder/websocket v1.8.15 // indirect
