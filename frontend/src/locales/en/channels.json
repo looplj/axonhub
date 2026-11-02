@@ -366,6 +366,7 @@
   "channels.dialogs.fields.apiFormat.formats.openai/audio_translations": "OpenAI (Audio Translations)",
   "channels.dialogs.fields.apiFormat.formats.anthropic/messages": "Anthropic (Messages)",
   "channels.dialogs.fields.apiFormat.formats.gemini/contents": "Gemini (Contents)",
+  "channels.dialogs.fields.apiFormat.formats.gemini/interactions": "Gemini (Interactions)",
   "channels.dialogs.fields.apiFormat.formats.gemini/embeddings": "Gemini (Embeddings)",
   "channels.dialogs.fields.apiFormat.formats.jina/rerank": "Jina (Rerank)",
   "channels.dialogs.fields.apiFormat.formats.jina/embeddings": "Jina (Embeddings)",

@@ -163,6 +163,7 @@
     "models.dialogs.association.conditions.formatOptions.openai/audio_translations": "OpenAI (语音翻译)",
     "models.dialogs.association.conditions.formatOptions.anthropic/messages": "Anthropic (Messages)",
     "models.dialogs.association.conditions.formatOptions.gemini/contents": "Gemini (Contents)",
+    "models.dialogs.association.conditions.formatOptions.gemini/interactions": "Gemini (Interactions)",
     "models.dialogs.association.conditions.formatOptions.gemini/embeddings": "Gemini (Embeddings)",
     "models.dialogs.association.conditions.formatOptions.aisdk/text": "AI SDK (Text)",
     "models.dialogs.association.conditions.formatOptions.aisdk/datastream": "AI SDK (Data Stream)",
