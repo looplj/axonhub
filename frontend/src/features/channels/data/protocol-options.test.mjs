@@ -48,6 +48,30 @@ const channelConfigs = {
 
 const configs = { providerConfigs, channelConfigs };
 
+const geminiConfigs = {
+  providerConfigs: { gemini: { channelTypes: ['gemini'] } },
+  channelConfigs: { gemini: { apiFormat: 'gemini/contents' } },
+};
+
+test('offers Gemini Interactions as an explicit opt-in format for Gemini channels', () => {
+  assert.deepEqual(getApiFormatsForProvider('gemini', geminiConfigs), ['gemini/contents', 'gemini/interactions']);
+  assert.equal(getChannelTypeForApiFormat('gemini', 'gemini/interactions', geminiConfigs), 'gemini');
+});
+
+test('keeps Gemini Interactions unavailable to providers without a Gemini channel', () => {
+  assert.equal(getChannelTypeForApiFormat('openai', 'gemini/interactions', configs), undefined);
+});
+
+test('routes Gemini Interactions to the native endpoint and localizes its labels', () => {
+  assert.equal(getApiPath('gemini/interactions'), '/v1beta/interactions');
+  for (const locale of ['en', 'zh-CN']) {
+    const channels = parseLocale(locale, 'channels.json');
+    const models = parseLocale(locale, 'models.json');
+    assert.ok(channels['channels.dialogs.fields.apiFormat.formats.gemini/interactions'], `${locale} channels label missing`);
+    assert.ok(models['models.dialogs.association.conditions.formatOptions.gemini/interactions'], `${locale} models label missing`);
+  }
+});
+
 test('includes ZenMux native video in the add-channel provider formats', () => {
   assert.deepEqual(getApiFormatsForProvider('zenmux', configs), ['openai/chat_completions', 'openai/responses', 'zenmux/video']);
 });
