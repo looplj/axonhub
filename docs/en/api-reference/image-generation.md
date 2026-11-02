@@ -168,7 +168,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | `model` | string | The model to use. | `dall-e-2` |
 | `n` | integer | The number of images to generate. | 1 |
 | `size` | string | The size of the generated images. | `"1024x1024"` |
-| `response_format` | string | The format: `"url"` or `"b64_json"`. For OpenAI-compatible channels, if omitted, AxonHub leaves the field out and the upstream model determines the default; provider-specific channels may apply their own defaults. | - |
+| `response_format` | string | The format: `"url"` or `"b64_json"`. For OpenAI-compatible channels, if omitted, AxonHub leaves the field out and the upstream model determines the default; provider-specific channels may apply their own defaults. JSON image edits reject a non-empty value, including Codex edits and edits with remote image references. | - |
 | `user` | string | A unique identifier for your end-user. | - |
 | `background` | string | Background style: `"opaque"` or `"transparent"`. | - |
 | `output_format` | string | Image format: `"png"`, `"webp"`, or `"jpeg"`. | `"png"` |
