@@ -64,3 +64,15 @@ func TestWithAPIKeyConfig_AllowsMissingAuthorizationWhenNoAuthAllowed(t *testing
 		t.Fatalf("expected status %d, got %d", http.StatusNoContent, recorder.Code)
 	}
 }
+
+func TestExtractGeminiAPIKeyFromRequest_PrefersHeaderOverQuery(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/test?key=query-key", nil)
+	req.Header.Set("Authorization", "header-key")
+	key, err := ExtractGeminiAPIKeyFromRequest(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if key != "header-key" {
+		t.Fatalf("key = %q, want header-key", key)
+	}
+}
