@@ -117,7 +117,7 @@ func TestBuildImageGenerateRequest_BasicPrompt(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "A cute baby sea otter", body["prompt"])
 	assert.Equal(t, "dall-e-3", body["model"])
-	assert.Equal(t, "b64_json", body["response_format"])
+	assert.NotContains(t, body, "response_format")
 }
 
 func TestBuildImageGenerateRequest_WithParameters(t *testing.T) {
@@ -251,7 +251,7 @@ func TestBuildImageGenerateRequest_WithoutImage(t *testing.T) {
 	assert.False(t, hasImage, "image field should not be present when no input images")
 }
 
-func TestBuildImageGenerateRequest_GPTImageModelOmitsResponseFormat(t *testing.T) {
+func TestBuildImageGenerateRequest_ForwardsExplicitResponseFormat(t *testing.T) {
 	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
 	require.NoError(t, err)
 
@@ -270,7 +270,7 @@ func TestBuildImageGenerateRequest_GPTImageModelOmitsResponseFormat(t *testing.T
 	var body map[string]any
 	err = json.Unmarshal(httpReq.Body, &body)
 	require.NoError(t, err)
-	assert.NotContains(t, body, "response_format")
+	assert.Equal(t, "b64_json", body["response_format"])
 }
 
 func TestBuildImageGenerateRequest_NoPrompt(t *testing.T) {
@@ -319,9 +319,19 @@ func TestBuildImageEditRequest_WithImage(t *testing.T) {
 
 	// Verify headers - should be multipart/form-data
 	assert.Contains(t, httpReq.Headers.Get("Content-Type"), "multipart/form-data")
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.JSONBody, &body))
+	assert.NotContains(t, body, "response_format")
+
+	reader := multipart.NewReader(bytes.NewReader(httpReq.Body), strings.TrimPrefix(httpReq.Headers.Get("Content-Type"), "multipart/form-data; boundary="))
+	form, err := reader.ReadForm(1024)
+	require.NoError(t, err)
+	defer form.RemoveAll()
+	assert.NotContains(t, form.Value, "response_format")
 }
 
-func TestBuildImageEditRequest_GPTImage2OmitsResponseFormat(t *testing.T) {
+func TestBuildImageEditRequest_ForwardsExplicitResponseFormat(t *testing.T) {
 	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
 	require.NoError(t, err)
 
@@ -345,7 +355,13 @@ func TestBuildImageEditRequest_GPTImage2OmitsResponseFormat(t *testing.T) {
 	var body map[string]any
 	err = json.Unmarshal(httpReq.JSONBody, &body)
 	require.NoError(t, err)
-	assert.NotContains(t, body, "response_format")
+	assert.Equal(t, "b64_json", body["response_format"])
+
+	reader := multipart.NewReader(bytes.NewReader(httpReq.Body), strings.TrimPrefix(httpReq.Headers.Get("Content-Type"), "multipart/form-data; boundary="))
+	form, err := reader.ReadForm(1024)
+	require.NoError(t, err)
+	defer form.RemoveAll()
+	assert.Equal(t, []string{"b64_json"}, form.Value["response_format"])
 }
 
 func TestBuildImageEditRequest_MultipleImagesUsesArrayField(t *testing.T) {
@@ -411,6 +427,60 @@ func TestBuildImageEditRequest_NoPrompt(t *testing.T) {
 	_, err = ot.buildImageEditRequest(req, "test-key")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "prompt is required")
+}
+
+func TestBuildImageVariationRequest_ForwardsExplicitResponseFormat(t *testing.T) {
+	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	ot := tr.(*OutboundTransformer)
+	imageData, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==")
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model:     "gpt-image-2",
+		APIFormat: llm.APIFormatOpenAIImageVariation,
+		Image: &llm.ImageRequest{
+			Images:         [][]byte{imageData},
+			ResponseFormat: "b64_json",
+		},
+	}
+
+	httpReq, err := ot.buildImageVariationRequest(req, "test-key")
+	require.NoError(t, err)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.JSONBody, &body))
+	assert.Equal(t, "b64_json", body["response_format"])
+
+	reader := multipart.NewReader(bytes.NewReader(httpReq.Body), strings.TrimPrefix(httpReq.Headers.Get("Content-Type"), "multipart/form-data; boundary="))
+	form, err := reader.ReadForm(1024)
+	require.NoError(t, err)
+	defer form.RemoveAll()
+	assert.Equal(t, []string{"b64_json"}, form.Value["response_format"])
+}
+
+func TestBuildImageVariationRequest_OmitsResponseFormatWhenUnset(t *testing.T) {
+	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	ot := tr.(*OutboundTransformer)
+	req := &llm.Request{
+		Model:     "gpt-image-2",
+		APIFormat: llm.APIFormatOpenAIImageVariation,
+		Image: &llm.ImageRequest{
+			Images: [][]byte{[]byte("image")},
+		},
+	}
+
+	httpReq, err := ot.buildImageVariationRequest(req, "test-key")
+	require.NoError(t, err)
+
+	reader := multipart.NewReader(bytes.NewReader(httpReq.Body), strings.TrimPrefix(httpReq.Headers.Get("Content-Type"), "multipart/form-data; boundary="))
+	form, err := reader.ReadForm(1024)
+	require.NoError(t, err)
+	defer form.RemoveAll()
+	assert.NotContains(t, form.Value, "response_format")
 }
 
 // Test buildImageGenerationAPIRequest routing
