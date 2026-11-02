@@ -87,6 +87,14 @@ func reportedModel(body []byte, format llm.APIFormat, eventType string, stream b
 		}
 	case llm.APIFormatGeminiContents, llm.APIFormatGeminiEmbedding:
 		return jsonModel(body, "modelVersion", "response.modelVersion")
+	case llm.APIFormatGeminiInteractions:
+		if !stream {
+			return jsonModel(body, "model", "interaction.model")
+		}
+		switch eventType {
+		case "interaction.created", "interaction.completed":
+			return jsonModel(body, "model", "interaction.model")
+		}
 	case llm.APIFormatOpenAIChatCompletion, llm.APIFormatOpenAICompletion, llm.APIFormatOllamaChat:
 		// Cline wraps an OpenAI-compatible response in a success/data envelope.
 		if gjson.GetBytes(body, "success").Type == gjson.True {
