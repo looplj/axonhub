@@ -19,6 +19,39 @@ AxonHub provides native support for the Gemini API, enabling access to Gemini's 
 - `GET /gemini/v1beta/models` - List available models
 - `GET /v1beta/models` - List available models (alternative)
 
+### Interactions API
+
+AxonHub also exposes the stateless Gemini Interactions API through the existing
+Gemini channel type. Configure an explicit `gemini/interactions` endpoint on the
+channel, then call either:
+
+- `POST /gemini/v1beta/interactions`
+- `POST /v1beta/interactions`
+
+The request uses the official `input`, `tools`, `generation_config`, and
+`response_format` fields. `input` may be a string or a stateless array of
+supported steps. AxonHub forces the upstream request to `store: false`.
+`previous_interaction_id`, `continuation_token`, `background`, retrieval, cancel,
+and delete operations are not implemented in this stateless phase.
+
+```json
+{
+  "model": "gemini-2.5-flash",
+  "input": "What is the weather?",
+  "tools": [{
+    "type": "function",
+    "name": "get_weather",
+    "parameters": {"type": "object"}
+  }],
+  "store": false
+}
+```
+
+Set `stream: true` for SSE. The stream uses the official
+`interaction.created`, `interaction.status_update`, `step.start`, `step.delta`,
+`step.stop`, `interaction.completed`, and `error` event types; function-call arguments are
+delivered through `arguments_delta` fragments.
+
 **Example Request:**
 ```go
 import (
