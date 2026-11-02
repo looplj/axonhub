@@ -1,11 +1,16 @@
 package antigravity
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -83,18 +88,155 @@ func TestTransformerReasoningCatalogCacheAndCredentialIsolation(t *testing.T) {
 
 func TestModelCatalog_ResolveUnknownOrNoneEffort(t *testing.T) {
 	catalog := ModelCatalog{
-		"gemini-3.8-flash-low":  struct{}{},
-		"gemini-3.8-flash-high": struct{}{},
+		"gemini-4-argon-low":  struct{}{},
+		"gemini-4-argon-high": struct{}{},
+		"gemini-3-pro-low":    struct{}{},
 	}
-	res, err := catalog.Resolve("gemini-3.8-flash", "none")
+	for _, effort := range []string{"none", "unsupported-effort", "medium"} {
+		model, err := catalog.Resolve("gemini-4-argon", effort)
+		require.ErrorContains(t, err, "does not offer reasoning effort")
+		require.Empty(t, model, "must not return a nonexistent bare wire ID")
+	}
+	// Legacy behavior remains available when it resolves to a discovered model.
+	model, err := catalog.Resolve("gemini-3-pro", "none")
 	require.NoError(t, err)
-	require.Equal(t, "gemini-3.8-flash", res)
+	require.Equal(t, "gemini-3-pro-low", model)
+}
 
-	res, err = catalog.Resolve("gemini-3.8-flash", "unsupported-effort")
+func TestReasoningCatalogFailureCooldownPreservesEffort(t *testing.T) {
+	for _, firstEffort := range []string{"", "high"} {
+		t.Run("first effort="+firstEffort, func(t *testing.T) {
+			var calls atomic.Int32
+			tr := &Transformer{httpClient: catalogTestClient(func(r *http.Request) (*http.Response, error) {
+				calls.Add(1)
+				return catalogTestResponse(http.StatusServiceUnavailable, `{}`), nil
+			})}
+			_, err := tr.resolveReasoningModel(t.Context(), "gemini-3-pro", firstEffort, "token", 0)
+			if firstEffort != "" {
+				require.ErrorContains(t, err, "resolve Antigravity reasoning effort")
+			} else {
+				require.NoError(t, err)
+			}
+			for range 2 {
+				model, err := tr.resolveReasoningModel(t.Context(), "gemini-3-pro", "high", "token", 0)
+				require.ErrorContains(t, err, "resolve Antigravity reasoning effort")
+				require.Empty(t, model)
+			}
+			require.EqualValues(t, 1, calls.Load(), "failure is retained during cooldown")
+		})
+	}
+}
+
+func TestReasoningCatalogRefreshKeepsStaleCatalog(t *testing.T) {
+	tr := &Transformer{
+		modelCatalog: ModelCatalog{"gemini-4-argon-high": {}},
+		httpClient: catalogTestClient(func(r *http.Request) (*http.Response, error) {
+			return catalogTestResponse(http.StatusServiceUnavailable, `{}`), nil
+		}),
+	}
+	for range 2 {
+		model, err := tr.resolveReasoningModel(t.Context(), "gemini-4-argon", "high", "token", 0)
+		require.NoError(t, err)
+		require.Equal(t, "gemini-4-argon-high", model)
+	}
+}
+
+func catalogTestClient(fn func(*http.Request) (*http.Response, error)) *httpclient.HttpClient {
+	return httpclient.NewHttpClientWithClient(&http.Client{Transport: &mockRoundTripper{roundTrip: fn}})
+}
+
+func catalogTestResponse(status int, body string) *http.Response {
+	return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}
+}
+
+func resolveCatalogAsync(tr *Transformer, ctx context.Context, token string, version uint64) <-chan error {
+	result := make(chan error, 1)
+	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				result <- fmt.Errorf("catalog resolver panicked: %v", recovered)
+			}
+		}()
+		model, err := tr.resolveReasoningModel(ctx, "gemini-4-argon", "high", token, version)
+		if err == nil && model != "gemini-4-argon-high" {
+			err = fmt.Errorf("expected account-specific high variant, got %q", model)
+		}
+		result <- err
+	}()
+	return result
+}
+
+func TestReasoningCatalogRefreshSharedAndCancellable(t *testing.T) {
+	var calls atomic.Int32
+	started, release := make(chan struct{}), make(chan struct{})
+	var releaseOnce sync.Once
+	finish := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(finish)
+	tr := &Transformer{httpClient: catalogTestClient(func(r *http.Request) (*http.Response, error) {
+		if calls.Add(1) == 1 {
+			close(started)
+		}
+		select {
+		case <-r.Context().Done():
+			return nil, r.Context().Err()
+		case <-release:
+			return catalogTestResponse(http.StatusOK, `{"models":{"gemini-4-argon-high":{}}}`), nil
+		}
+	})}
+	firstCtx, cancelFirst := context.WithCancel(t.Context())
+	first := resolveCatalogAsync(tr, firstCtx, "token", 0)
+	<-started
+	cancelFirst()
+	select {
+	case err := <-first:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("the refreshing caller must be able to cancel")
+	}
+	// The cancelled initiator must not cancel the refresh or spawn another one.
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+	_, err := tr.resolveReasoningModel(ctx, "gemini-4-argon", "high", "token", 0)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.EqualValues(t, 1, calls.Load())
+	finish()
+	model, err := tr.resolveReasoningModel(t.Context(), "gemini-4-argon", "high", "token", 0)
 	require.NoError(t, err)
-	require.Equal(t, "gemini-3.8-flash", res)
+	require.Equal(t, "gemini-4-argon-high", model)
+	require.EqualValues(t, 1, calls.Load(), "the shared refresh must be reusable after cancellation")
+}
 
-	// Supported tier missing still errors
-	_, err = catalog.Resolve("gemini-3.8-flash", "medium")
+func TestReasoningCatalogRefreshDoesNotCrossCredentialGenerations(t *testing.T) {
+	started, release := make(chan struct{}), make(chan struct{})
+	var releaseOnce sync.Once
+	finish := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(finish)
+	tr := &Transformer{httpClient: catalogTestClient(func(r *http.Request) (*http.Response, error) {
+		if r.Header.Get("Authorization") == "Bearer old" {
+			close(started)
+			<-release
+			return catalogTestResponse(http.StatusOK, `{"models":{"gemini-4-argon-high":{}}}`), nil
+		}
+		return catalogTestResponse(http.StatusOK, `{"models":{"gemini-4-argon-low":{}}}`), nil
+	})}
+	old := resolveCatalogAsync(tr, t.Context(), "old", 0)
+	<-started
+	tr.SetAPIKey("new-refresh|project")
+	_, err := tr.resolveReasoningModel(t.Context(), "gemini-4-argon", "high", "new", 1)
 	require.ErrorContains(t, err, "does not offer reasoning effort")
+	finish()
+	require.NoError(t, <-old, "old request must use its own catalog, not the new account's")
+	tr.modelCatalogMu.Lock()
+	defer tr.modelCatalogMu.Unlock()
+	require.Equal(t, ModelCatalog{"gemini-4-argon-low": {}}, tr.modelCatalog)
+}
+
+func TestReasoningCatalogPreservesNativeEffortTiers(t *testing.T) {
+	for _, effort := range []string{"minimal", "xhigh"} {
+		model := "gemini-future-" + effort
+		catalog := ModelCatalog{model: {}}
+		resolved, err := catalog.Resolve("gemini-future", effort)
+		require.NoError(t, err)
+		require.Equal(t, model, resolved)
+	}
 }

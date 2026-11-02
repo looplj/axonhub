@@ -225,6 +225,44 @@ func TestBuildThroughputQuery(t *testing.T) {
 			wantNotContains:       []string{"$1", "ROW_NUMBER()"},
 		},
 
+		// ThroughputModeDistinctOn tests
+		{
+			name:                  "by channel with dollar placeholders and DISTINCT ON",
+			useDollarPlaceholders: true,
+			queryType:             ThroughputQueryByChannel,
+			limit:                 10,
+			mode:                  ThroughputModeDistinctOn,
+			wantContains:          []string{"$1", "DISTINCT ON (request_id)", "WITH successful_execs AS", "JOIN channels c ON", "ORDER BY request_id, created_at DESC, id DESC", "LIMIT 10"},
+			wantNotContains:       []string{"ROW_NUMBER()", "MAX(re2.id)", "WHERE se.rn = 1"},
+		},
+		{
+			name:                  "by model with dollar placeholders and DISTINCT ON",
+			useDollarPlaceholders: true,
+			queryType:             ThroughputQueryByModel,
+			limit:                 10,
+			mode:                  ThroughputModeDistinctOn,
+			wantContains:          []string{"$1", "DISTINCT ON (request_id)", "WITH successful_execs AS", "JOIN requests r ON", "LEFT JOIN models m ON", "ORDER BY request_id, created_at DESC, id DESC", "LIMIT 10"},
+			wantNotContains:       []string{"ROW_NUMBER()", "MAX(re2.id)"},
+		},
+		{
+			name:                  "by channel with question mark placeholders and DISTINCT ON falls back to ROW_NUMBER",
+			useDollarPlaceholders: false,
+			queryType:             ThroughputQueryByChannel,
+			limit:                 10,
+			mode:                  ThroughputModeDistinctOn,
+			wantContains:          []string{"?", "ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC, id DESC)", "WHERE se.rn = 1", "LIMIT 10"},
+			wantNotContains:       []string{"$1", "DISTINCT ON"},
+		},
+		{
+			name:                  "by model with question mark placeholders and DISTINCT ON falls back to ROW_NUMBER",
+			useDollarPlaceholders: false,
+			queryType:             ThroughputQueryByModel,
+			limit:                 10,
+			mode:                  ThroughputModeDistinctOn,
+			wantContains:          []string{"?", "ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC, id DESC)", "LIMIT 10"},
+			wantNotContains:       []string{"$1", "DISTINCT ON"},
+		},
+
 		// ThroughputQueryByModel tests
 		{
 			name:                  "by model with dollar placeholders and ROW_NUMBER",
@@ -593,6 +631,83 @@ func TestThroughputQueryTypeEnum(t *testing.T) {
 func TestThroughputQueryModeEnum(t *testing.T) {
 	assert.Equal(t, ThroughputQueryMode(0), ThroughputModeRowNumber, "ThroughputModeRowNumber should be 0")
 	assert.Equal(t, ThroughputQueryMode(1), ThroughputModeMaxID, "ThroughputModeMaxID should be 1")
+	assert.Equal(t, ThroughputQueryMode(2), ThroughputModeDistinctOn, "ThroughputModeDistinctOn should be 2")
+}
+
+// TestBuildThroughputQuery_DistinctOn tests the PostgreSQL DISTINCT ON SQL shape:
+// one latest successful execution per request with exact ordering
+// request_id, created_at DESC, id DESC, the same eligibility filter as the
+// ROW_NUMBER and MAX(id) modes, and no request-level window dedup.
+func TestBuildThroughputQuery_DistinctOn(t *testing.T) {
+	tests := []struct {
+		name            string
+		useDollar       bool
+		queryType       ThroughputQueryType
+		wantContains    []string
+		wantNotContains []string
+	}{
+		{
+			name:      "postgres by channel uses DISTINCT ON with deterministic ordering",
+			useDollar: true,
+			queryType: ThroughputQueryByChannel,
+			wantContains: []string{
+				"DISTINCT ON (request_id)",
+				"WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= $1",
+				"ORDER BY request_id, created_at DESC, id DESC",
+				"FROM successful_execs se",
+				"GROUP BY se.channel_id, c.name, c.type",
+				"ORDER BY throughput DESC",
+			},
+			wantNotContains: []string{
+				"ROW_NUMBER()",
+				"MAX(re2.id)",
+				"WHERE se.rn = 1",
+			},
+		},
+		{
+			name:      "postgres by model uses DISTINCT ON with deterministic ordering",
+			useDollar: true,
+			queryType: ThroughputQueryByModel,
+			wantContains: []string{
+				"DISTINCT ON (request_id)",
+				"WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= $1",
+				"ORDER BY request_id, created_at DESC, id DESC",
+				"FROM successful_execs se",
+				"GROUP BY r.model_id, m.name",
+			},
+			wantNotContains: []string{
+				"ROW_NUMBER()",
+				"MAX(re2.id)",
+				"WHERE se.rn = 1",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BuildThroughputQuery(tt.useDollar, tt.queryType, 10, ThroughputModeDistinctOn)
+
+			for _, want := range tt.wantContains {
+				assert.Contains(t, got, want, "query should contain %q", want)
+			}
+
+			for _, notWant := range tt.wantNotContains {
+				assert.NotContains(t, got, notWant, "query should not contain %q", notWant)
+			}
+
+			// The eligibility filter is identical to the ROW_NUMBER CTE.
+			assert.Contains(t, got,
+				"WITH successful_execs AS (\n    SELECT DISTINCT ON (request_id)\n",
+				"DISTINCT ON must appear in the same CTE as the ROW_NUMBER mode")
+		})
+	}
+
+	t.Run("non-postgresql falls back to ROW_NUMBER output exactly", func(t *testing.T) {
+		fallback := BuildThroughputQuery(false, ThroughputQueryByChannel, 10, ThroughputModeDistinctOn)
+		expected := BuildThroughputQuery(false, ThroughputQueryByChannel, 10, ThroughputModeRowNumber)
+		assert.Equal(t, expected, fallback,
+			"DISTINCT ON on a non-PostgreSQL dialect must produce exactly the ROW_NUMBER query")
+	})
 }
 
 // TestAllowedQueryConfigs tests that the query configurations are valid.
@@ -615,4 +730,10 @@ func TestAllowedQueryConfigs(t *testing.T) {
 	assert.Contains(t, modelConfig.JoinClause, "requests r ON", "should join requests table")
 	assert.Contains(t, modelConfig.JoinClause, "models m ON", "should join models table")
 	assert.Contains(t, modelConfig.GroupBy, "model_id", "should group by model_id")
+}
+
+func TestBuildThroughputQuery_RowNumberTieBreaker(t *testing.T) {
+	query := BuildThroughputQuery(false, ThroughputQueryByChannel, 20, ThroughputModeRowNumber)
+	assert.Contains(t, query, "ORDER BY created_at DESC, id DESC",
+		"ties on created_at must resolve with the same ordering as the DISTINCT ON mode")
 }

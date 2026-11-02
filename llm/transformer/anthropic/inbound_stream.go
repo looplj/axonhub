@@ -69,7 +69,9 @@ type anthropicInboundStream struct {
 
 	// Buffered citations for the currently open text block. These are emitted as
 	// citations_delta events immediately before the text block is closed.
-	pendingTextCitations []TextCitation
+	pendingTextCitations     []TextCitation
+	responsesSearches        map[string]responsesSearchState
+	responsesSearchCitations []responsesSearchSource
 }
 
 // generateSignature generates a random signature using base64(uuid).
@@ -541,6 +543,11 @@ func (s *anthropicInboundStream) Next() bool {
 			}
 		}
 
+		if err := s.emitResponsesSearchBlocks(nil, true); err != nil {
+			s.err = fmt.Errorf("failed to finalize search blocks: %w", err)
+			return false
+		}
+
 		if err := s.closeOpenContentBlocks(); err != nil {
 			s.err = fmt.Errorf("failed to close content blocks at stream end: %w", err)
 			return false
@@ -593,10 +600,9 @@ func (s *anthropicInboundStream) Next() bool {
 	if !s.hasStarted {
 		s.hasStarted = true
 
-		usage := &Usage{
-			InputTokens:  1,
-			OutputTokens: 1,
-		}
+		// Usage is unknown until the provider reports it. The API layer can add
+		// a client-only input estimate without contaminating persisted usage.
+		usage := &Usage{}
 		if chunk.Usage != nil {
 			usage = convertToAnthropicUsage(chunk.Usage)
 		}
@@ -618,6 +624,21 @@ func (s *anthropicInboundStream) Next() bool {
 			s.err = fmt.Errorf("failed to enqueue message_start event: %w", err)
 			return false
 		}
+	}
+
+	if len(chunk.Choices) > 0 {
+		choice := chunk.Choices[0]
+		if choice.Message != nil {
+			s.responsesSearchCitations = appendResponsesSearchCitations(s.responsesSearchCitations, choice.Message.Annotations)
+		}
+		if choice.Delta != nil {
+			s.responsesSearchCitations = appendResponsesSearchCitations(s.responsesSearchCitations, choice.Delta.Annotations)
+		}
+	}
+	finalSearchSnapshot := len(chunk.Choices) > 0 && chunk.Choices[0].FinishReason != nil
+	if err := s.emitResponsesSearchBlocks(chunk.TransformerMetadata, finalSearchSnapshot); err != nil {
+		s.err = fmt.Errorf("failed to emit search blocks: %w", err)
+		return false
 	}
 
 	// Process the current chunk
@@ -1053,7 +1074,7 @@ func (s *anthropicInboundStream) Next() bool {
 		if choice.FinishReason != nil && !s.hasFinished {
 			s.hasFinished = true
 
-			contentClosed := false
+			contentClosed := s.lastEventType == "content_block_stop"
 
 			if err := s.closeThinkingBlock(); err != nil {
 				s.err = fmt.Errorf("failed to close thinking block: %w", err)

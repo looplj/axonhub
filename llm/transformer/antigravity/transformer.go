@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
@@ -63,6 +65,8 @@ type Transformer struct {
 	modelCatalog          ModelCatalog
 	modelCatalogExpiresAt time.Time
 	modelCatalogVersion   uint64
+	modelCatalogError     error
+	modelCatalogRefresh   singleflight.Group
 }
 
 // NewTransformer creates a new Antigravity Transformer.
@@ -460,6 +464,7 @@ func (t *Transformer) SetAPIKey(apiKey string) {
 	t.modelCatalogMu.Lock()
 	if apiKey != t.config.APIKey {
 		t.modelCatalog = nil
+		t.modelCatalogError = nil
 		t.modelCatalogExpiresAt = time.Time{}
 		t.modelCatalogVersion++
 	}

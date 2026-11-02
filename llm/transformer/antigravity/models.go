@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -65,6 +66,10 @@ func (c ModelCatalog) Resolve(model, effort string) (string, error) {
 		return transformModelForAntigravity(model), nil
 	}
 	if effort != "" {
+		// Prefer an exact upstream tier before applying compatibility aliases.
+		if id := variants[effort]; id != "" {
+			return id, nil
+		}
 		switch effort {
 		case "xhigh", "max":
 			effort = "high"
@@ -82,7 +87,13 @@ func (c ModelCatalog) Resolve(model, effort string) (string, error) {
 		case "extra-low", "low", "medium", "high":
 			return "", fmt.Errorf("Antigravity model %q does not offer reasoning effort %q", base, effort)
 		default:
-			return transformModelForAntigravity(model), nil
+			// Preserve legacy handling only when it produces an offered wire ID.
+			// New catalog-only model families may have no bare upstream model.
+			legacy := transformModelForAntigravity(model)
+			if _, ok := c[legacy]; ok {
+				return legacy, nil
+			}
+			return "", fmt.Errorf("Antigravity model %q does not offer reasoning effort %q", base, effort)
 		}
 	}
 	defaults := []string{"medium", "low", "high", "extra-low", "minimal", "xhigh"}
@@ -139,57 +150,70 @@ func FetchModelCatalog(ctx context.Context, client *httpclient.HttpClient, acces
 // The cache belongs to the transformer/credential, never to all accounts. No
 // serialized cache format changes are involved, and SetAPIKey invalidates it.
 func (t *Transformer) resolveReasoningModel(ctx context.Context, model, effort, accessToken string, catalogVersion uint64) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	if _, suffix := SplitReasoningModel(NormalizeModelName(model)); suffix != "" && effort == "" {
 		return transformModelForAntigravity(model), nil
 	}
 
-	t.modelCatalogMu.Lock()
-	catalog := t.modelCatalog
-	expiresAt := t.modelCatalogExpiresAt
-	currentVersion := t.modelCatalogVersion
-	needsFetch := catalogVersion != currentVersion || time.Now().After(expiresAt)
-	client := t.httpClient
-	project := t.config.Project
-	t.modelCatalogMu.Unlock()
-
-	if needsFetch {
-		if client == nil {
-			client = httpclient.NewHttpClientWithClient(&http.Client{Timeout: tokenExchangeTimeout})
-		}
-		fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		fetched, err := FetchModelCatalog(fetchCtx, client, accessToken, project)
-		cancel()
-
+	// A failed refresh is cached too: explicit efforts must not silently fall
+	// back to a different effort while discovery is in its retry cooldown.
+	load := func() (ModelCatalog, error, bool) {
 		t.modelCatalogMu.Lock()
-		if err == nil {
-			if catalogVersion == t.modelCatalogVersion {
+		defer t.modelCatalogMu.Unlock()
+		if catalogVersion == t.modelCatalogVersion && time.Now().Before(t.modelCatalogExpiresAt) {
+			return t.modelCatalog, t.modelCatalogError, true
+		}
+		return nil, nil, false
+	}
+	catalog, fetchErr, cached := load()
+	if !cached {
+		// Sharing is credential-specific. The bounded refresh outlives any one
+		// caller, while every waiter can leave immediately on cancellation.
+		result := t.modelCatalogRefresh.DoChan(strconv.FormatUint(catalogVersion, 10), func() (any, error) {
+			if catalog, err, ok := load(); ok {
+				return catalog, err
+			}
+			t.modelCatalogMu.Lock()
+			client, project := t.httpClient, t.config.Project
+			t.modelCatalogMu.Unlock()
+			if client == nil {
+				client = httpclient.NewHttpClientWithClient(&http.Client{Timeout: tokenExchangeTimeout})
+			}
+			fetchCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+			defer cancel()
+			fetched, err := FetchModelCatalog(fetchCtx, client, accessToken, project)
+
+			t.modelCatalogMu.Lock()
+			defer t.modelCatalogMu.Unlock()
+			if catalogVersion != t.modelCatalogVersion {
+				// An old request may use its own result, but must neither read nor
+				// overwrite the new credential's catalog.
+				return fetched, err
+			}
+			t.modelCatalogError = err
+			if err == nil {
 				t.modelCatalog = fetched
 				t.modelCatalogExpiresAt = time.Now().Add(5 * time.Minute)
-				catalog = fetched
-			}
-		} else {
-			if ctx.Err() != nil {
-				t.modelCatalogMu.Unlock()
-				return "", ctx.Err()
-			}
-			if catalogVersion == t.modelCatalogVersion {
-				catalog = t.modelCatalog
-				t.modelCatalogExpiresAt = time.Now().Add(10 * time.Second)
 			} else {
-				catalog = nil
+				t.modelCatalogExpiresAt = time.Now().Add(10 * time.Second)
 			}
-			if catalog == nil && effort != "" {
-				t.modelCatalogMu.Unlock()
-				return "", fmt.Errorf("resolve Antigravity reasoning effort: %w", err)
-			}
+			return t.modelCatalog, err
+		})
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case resolved := <-result:
+			catalog, _ = resolved.Val.(ModelCatalog)
+			fetchErr = resolved.Err
 		}
-		if catalog == nil && catalogVersion == t.modelCatalogVersion {
-			catalog = t.modelCatalog
-		}
-		t.modelCatalogMu.Unlock()
 	}
 
 	if catalog == nil {
+		if effort != "" && fetchErr != nil {
+			return "", fmt.Errorf("resolve Antigravity reasoning effort: %w", fetchErr)
+		}
 		return transformModelForAntigravity(model), nil
 	}
 	return catalog.Resolve(model, effort)

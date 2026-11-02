@@ -43,10 +43,12 @@ var (
 // A generic antigravity/<App version> identity receives the IDE catalog, which
 // excludes App/CLI-only models even with the same account and access token.
 func GetUserAgent() string {
-	versionMu.RLock()
-	defer versionMu.RUnlock()
+	return userAgentForVersion(GetVersion())
+}
 
-	return fmt.Sprintf("antigravity/cli/%s (aidev_client; os_type=%s; arch=%s; auth_method=consumer)", currentVersion, runtime.GOOS, runtime.GOARCH)
+// userAgentForVersion formats the client identity from a single version snapshot.
+func userAgentForVersion(version string) string {
+	return fmt.Sprintf("antigravity/cli/%s (aidev_client; os_type=%s; arch=%s; auth_method=consumer)", version, runtime.GOOS, runtime.GOARCH)
 }
 
 // GetVersion returns the current CLI version under the shared version lock.
@@ -60,7 +62,7 @@ func GetVersion() string {
 // SetClientHeaders keeps model discovery and inference on the same client identity.
 func SetClientHeaders(headers http.Header) {
 	version := GetVersion()
-	headers.Set("User-Agent", GetUserAgent())
+	headers.Set("User-Agent", userAgentForVersion(version))
 	headers.Set("X-Client-Name", "antigravity")
 	headers.Set("X-Client-Version", version)
 	headers.Set("X-Goog-Api-Client", ApiClient)
@@ -99,8 +101,8 @@ func (f *versionFetcher) init(ctx context.Context) {
 	fallback := UserAgentVersionFallback
 
 	if f.manifestURL != "" {
-		if v := f.fetchVersion(ctx, f.manifestURL, changelogScanBytes); v != "" {
-			setVersion(newerVersion(fallback, v))
+		if v := f.fetchVersion(ctx, f.manifestURL, changelogScanBytes); v != "" && newerVersion(fallback, v) == v {
+			setVersion(v)
 			slog.InfoContext(ctx, "antigravity: CLI version resolved from release manifest", "version", GetVersion())
 			return
 		}

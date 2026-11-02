@@ -110,6 +110,76 @@ func TestAntigravityLegacyPoolLimits(t *testing.T) {
 	require.Len(t, quota.RawData["models"], 5)
 }
 
+// TestAntigravityPoolsCarryIndependentAvailabilityGroups pins the routing
+// contract that keeps the two Antigravity pools apart: every limit of a pool
+// must carry that pool's availability group, and the group must never repeat an
+// existing provider group.
+func TestAntigravityPoolsCarryIndependentAvailabilityGroups(t *testing.T) {
+	summary, err := parseAntigravityQuotaSummary([]byte(antigravitySummaryFixture))
+	require.NoError(t, err)
+
+	legacy, err := parseAntigravityQuota([]byte(`{"models":{"gemini-3-pro":{"quotaInfo":{"remainingFraction":0.8}},"claude-sonnet":{"quotaInfo":{"remainingFraction":0.5}}}}`))
+	require.NoError(t, err)
+
+	for _, quota := range []QuotaData{summary, legacy} {
+		for _, limit := range quota.Limits {
+			// The window is "<pool>_<cadence>", and pool names themselves contain
+			// underscores, so map the window back to its pool explicitly.
+			pool := antigravityModelPool(strings.ReplaceAll(limit.Window, "_", " "))
+			require.NotEmpty(t, pool, "window %q", limit.Window)
+			require.Equal(t, antigravityPoolAvailabilityGroup(pool), limit.AvailabilityGroup, "window %q", limit.Window)
+			require.NotEqual(t, zhipuAccountsAvailabilityGroup, limit.AvailabilityGroup)
+			require.NotEqual(t, apertisAvailabilityGroup, limit.AvailabilityGroup)
+		}
+	}
+	require.NotEqual(t,
+		antigravityPoolAvailabilityGroup("gemini"),
+		antigravityPoolAvailabilityGroup("claude_gpt"),
+		"the two pools must not share one availability group",
+	)
+}
+
+// TestAntigravityExhaustedPoolKeepsTheOtherRoutable reproduces the routing
+// failure where a spent Claude/GPT weekly bucket dropped channels that still had
+// Gemini capacity: the pools must be evaluated independently.
+func TestAntigravityExhaustedPoolKeepsTheOtherRoutable(t *testing.T) {
+	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+
+	for _, pool := range []string{"gemini", "claude_gpt"} {
+		t.Run(pool+" exhausted keeps the other pool routable", func(t *testing.T) {
+			limits := []QuotaLimitStatus{
+				{Type: QuotaLimitTypeToken, Status: "available", UsageRatio: 0.08, Window: "gemini_7d", AvailabilityGroup: antigravityPoolAvailabilityGroup("gemini")},
+				{Type: QuotaLimitTypeToken, Status: "exhausted", UsageRatio: 1, Window: "claude_gpt_7d", AvailabilityGroup: antigravityPoolAvailabilityGroup("claude_gpt")},
+			}
+			// Mark the pool under test as the exhausted one and the other as available.
+			for i := range limits {
+				if strings.HasPrefix(limits[i].Window, pool) {
+					limits[i].Status, limits[i].UsageRatio = "exhausted", 1
+				} else {
+					limits[i].Status, limits[i].UsageRatio = "available", 0.08
+				}
+			}
+
+			state, _ := EvaluateQuotaRouting(limits, "available", QuotaLimitTypeToken, now)
+			require.Equal(t, RoutingOpen, state)
+		})
+	}
+}
+
+// TestAntigravityUngroupedPoolsStillCollapse documents the legacy behavior that
+// the availability group fixes: without a group, an exhausted pool window still
+// poisons the whole channel.
+func TestAntigravityUngroupedPoolsStillCollapse(t *testing.T) {
+	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
+	limits := []QuotaLimitStatus{
+		{Type: QuotaLimitTypeToken, Status: "available", UsageRatio: 0.08, Window: "gemini_7d"},
+		{Type: QuotaLimitTypeToken, Status: "exhausted", UsageRatio: 1, Window: "claude_gpt_7d"},
+	}
+
+	state, _ := EvaluateQuotaRouting(limits, "available", QuotaLimitTypeToken, now)
+	require.Equal(t, RoutingExhausted, state)
+}
+
 // TestAntigravitySummaryRequest prefers the summary and only falls back for unavailable summary APIs.
 func TestAntigravitySummaryRequest(t *testing.T) {
 	for _, tc := range []struct {

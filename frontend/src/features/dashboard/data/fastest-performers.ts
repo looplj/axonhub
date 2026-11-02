@@ -2,8 +2,10 @@ import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 
-// Refetch interval constant (30 seconds)
-const REFETCH_INTERVAL_MS = 30000;
+// Throughput rankings are expensive 30-day aggregates. The performance
+// section already refreshes its charts every five minutes, so polling these
+// every 30 seconds only loaded the database.
+const REFETCH_INTERVAL_MS = 5 * 60_000;
 
 // Schema definitions for regular queries
 export const fastestChannelSchema = z.object({
@@ -68,13 +70,12 @@ export function useFastestChannels(timeWindow: string = 'day', limit: number = 5
   return useQuery({
     queryKey: ['fastestChannels', timeWindow, limit],
     queryFn: async () => {
-      const data = await graphqlRequest<{ fastestChannels: FastestChannel[] }>(
-        FASTEST_CHANNELS_QUERY,
-        { input: { timeWindow, limit } }
-      );
+      const data = await graphqlRequest<{ fastestChannels: FastestChannel[] }>(FASTEST_CHANNELS_QUERY, { input: { timeWindow, limit } });
       return data.fastestChannels.map((item) => fastestChannelSchema.parse(item));
     },
     refetchInterval: REFETCH_INTERVAL_MS,
+    staleTime: REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash
   });
 }
@@ -83,14 +84,12 @@ export function useFastestModels(timeWindow: string = 'day', limit: number = 5) 
   return useQuery({
     queryKey: ['fastestModels', timeWindow, limit],
     queryFn: async () => {
-      const data = await graphqlRequest<{ fastestModels: FastestModel[] }>(
-        FASTEST_MODELS_QUERY,
-        { input: { timeWindow, limit } }
-      );
+      const data = await graphqlRequest<{ fastestModels: FastestModel[] }>(FASTEST_MODELS_QUERY, { input: { timeWindow, limit } });
       return data.fastestModels.map((item) => fastestModelSchema.parse(item));
     },
     refetchInterval: REFETCH_INTERVAL_MS,
+    staleTime: REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash
   });
 }
-

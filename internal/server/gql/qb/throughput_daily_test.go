@@ -127,6 +127,44 @@ func TestBuildDailyModelThroughputQuery(t *testing.T) {
 			wantNotContains: []string{"WITH successful_execs"},
 		},
 		{
+			name:          "model query with DISTINCT ON mode postgres",
+			dialect:       "postgres",
+			timezone:      "UTC",
+			offsetSeconds: 0,
+			limit:         10,
+			mode:          ThroughputModeDistinctOn,
+			wantContains: []string{
+				"WITH successful_execs AS",
+				"DISTINCT ON (request_id)",
+				"ORDER BY request_id, created_at DESC, id DESC",
+				"JOIN requests r ON",
+				"JOIN models m ON",
+				"r.model_id",
+				"model_name",
+				"to_char",
+				"throughput",
+				"request_count",
+				"daily_rn <= 10",
+				"ORDER BY date DESC, throughput DESC",
+			},
+			wantNotContains: []string{"MAX(re2.id)", "ROW_NUMBER() OVER (PARTITION BY request_id", "WHERE se.rn = 1"},
+		},
+		{
+			name:          "model query with DISTINCT ON mode mysql falls back to ROW_NUMBER",
+			dialect:       "mysql",
+			timezone:      "UTC",
+			offsetSeconds: 0,
+			limit:         10,
+			mode:          ThroughputModeDistinctOn,
+			wantContains: []string{
+				"WITH successful_execs AS",
+				"ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC, id DESC)",
+				"WHERE se.rn = 1",
+				"daily_rn <= 10",
+			},
+			wantNotContains: []string{"DISTINCT ON"},
+		},
+		{
 			name:          "model query with sqlite",
 			dialect:       "sqlite",
 			timezone:      "UTC",
@@ -220,6 +258,41 @@ func TestBuildDailyChannelThroughputQuery(t *testing.T) {
 				"daily_rn <= 10",
 			},
 			wantNotContains: []string{"WITH successful_execs"},
+		},
+		{
+			name:          "channel query with DISTINCT ON mode postgres",
+			dialect:       "postgres",
+			timezone:      "UTC",
+			offsetSeconds: 0,
+			limit:         10,
+			mode:          ThroughputModeDistinctOn,
+			wantContains: []string{
+				"WITH successful_execs AS",
+				"DISTINCT ON (request_id)",
+				"ORDER BY request_id, created_at DESC, id DESC",
+				"JOIN channels c ON",
+				"se.channel_id",
+				"channel_name",
+				"to_char",
+				"throughput",
+				"request_count",
+				"daily_rn <= 10",
+			},
+			wantNotContains: []string{"MAX(re2.id)", "ROW_NUMBER() OVER (PARTITION BY request_id", "WHERE se.rn = 1", "JOIN requests r ON"},
+		},
+		{
+			name:          "channel query with DISTINCT ON mode sqlite falls back to ROW_NUMBER",
+			dialect:       "sqlite",
+			timezone:      "UTC",
+			offsetSeconds: 0,
+			limit:         10,
+			mode:          ThroughputModeDistinctOn,
+			wantContains: []string{
+				"WITH successful_execs AS",
+				"ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC, id DESC)",
+				"WHERE se.rn = 1",
+			},
+			wantNotContains: []string{"DISTINCT ON"},
 		},
 		{
 			name:          "channel query with sqlite",
@@ -585,6 +658,54 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 				"r.model_id",
 			},
 		},
+		{
+			name:          "model query with postgres and DISTINCT ON mode",
+			dialect:       "postgres",
+			timezone:      "UTC",
+			offsetSeconds: 0,
+			queryType:     DailyThroughputByModel,
+			placeholder:   "$1",
+			mode:          ThroughputModeDistinctOn,
+			wantContains: []string{
+				"WITH successful_execs AS",
+				"DISTINCT ON (se.request_id)",
+				"ORDER BY se.request_id, se.created_at DESC, se.id DESC",
+				"JOIN requests r ON se.request_id = r.id",
+				"r.model_id",
+				"to_char",
+				"NULLIF(",
+				", 0)",
+				"GROUP BY exec_date",
+				"WHERE daily.throughput IS NOT NULL",
+				"AND daily.throughput > 0",
+				"ORDER BY date DESC, throughput DESC",
+			},
+			wantNotContains: []string{
+				"MAX(se2.id)",
+				"latest_execs",
+				"ROW_NUMBER() OVER (PARTITION BY se.request_id",
+				"WHERE se.rn = 1",
+			},
+		},
+		{
+			name:          "channel query with mysql and DISTINCT ON mode falls back to ROW_NUMBER",
+			dialect:       "mysql",
+			timezone:      "UTC",
+			offsetSeconds: 0,
+			queryType:     DailyThroughputByChannel,
+			placeholder:   "?",
+			mode:          ThroughputModeDistinctOn,
+			wantContains: []string{
+				"WITH successful_execs AS",
+				"ROW_NUMBER() OVER (PARTITION BY se.request_id ORDER BY se.created_at DESC, se.id DESC)",
+				"WHERE se.rn = 1",
+				"GROUP BY exec_date",
+			},
+			wantNotContains: []string{
+				"DISTINCT ON",
+				"JOIN requests r ON se.request_id = r.id",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -655,4 +776,86 @@ func TestBuildDailyPerformanceStatsQuery_ConditionalJoinRequests(t *testing.T) {
 	channelQuery := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByChannel, "$1", ThroughputModeRowNumber)
 	assert.NotContains(t, channelQuery, "JOIN requests r ON se.request_id = r.id", "channel query should not join requests")
 	assert.NotContains(t, channelQuery, "r.model_id", "channel query should not reference r.model_id")
+}
+
+func TestBuildDailyPerformanceStatsQuery_RowNumberTieBreaker(t *testing.T) {
+	query := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByModel, "$1", ThroughputModeRowNumber)
+	assert.Contains(t, query, "ORDER BY se.created_at DESC, se.id DESC",
+		"ties on created_at must resolve the same way as the MAX(id) fallback")
+}
+
+func TestBuildDailyThroughputQuery_RowNumberTieBreaker(t *testing.T) {
+	query := BuildDailyModelThroughputQuery("postgres", "UTC", 0, 10, ThroughputModeRowNumber)
+	assert.Contains(t, query, "ORDER BY created_at DESC, id DESC",
+		"ties on created_at must resolve the same way as the MAX(id) fallback")
+}
+
+// TestBuildDailyThroughputQuery_DistinctOn tests the PostgreSQL DISTINCT ON SQL
+// shape for the daily builders: one latest successful execution per request
+// with exact ordering request_id, created_at DESC, id DESC, while the
+// per-day ROW_NUMBER() ranking window is retained.
+func TestBuildDailyThroughputQuery_DistinctOn(t *testing.T) {
+	t.Run("model query postgres uses DISTINCT ON and keeps per-day ranking", func(t *testing.T) {
+		got := BuildDailyModelThroughputQuery("postgres", "UTC", 0, 10, ThroughputModeDistinctOn)
+
+		assert.Contains(t, got, "SELECT DISTINCT ON (request_id)",
+			"request dedup must use DISTINCT ON (request_id)")
+		assert.Contains(t, got, "WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= $1",
+			"DISTINCT ON must apply the same eligibility filter as ROW_NUMBER mode")
+		assert.Contains(t, got, "ORDER BY request_id, created_at DESC, id DESC",
+			"DISTINCT ON must select the latest execution with the deterministic tie break")
+		assert.Contains(t, got,
+			"ROW_NUMBER() OVER (PARTITION BY to_char(se.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') ",
+			"per-day ranking window must be retained in DISTINCT ON mode")
+		assert.Contains(t, got, "daily_rn <= 10", "per-day limit must be retained")
+		assert.NotContains(t, got, "ROW_NUMBER() OVER (PARTITION BY request_id", "request-level window dedup must be replaced")
+		assert.NotContains(t, got, "WHERE se.rn = 1", "request-level rn filter must be removed")
+	})
+
+	t.Run("channel query postgres placeholder is placed in CTE filter", func(t *testing.T) {
+		got := BuildDailyChannelThroughputQuery("postgres", "UTC", 0, 5, ThroughputModeDistinctOn)
+		assert.Contains(t, got, "created_at >= $1", "postgreSQL placeholder must bind the filter")
+		assert.Contains(t, got, "WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= $1")
+		assert.Contains(t, got, "SELECT DISTINCT ON (request_id)")
+		assert.Contains(t, got, "ROW_NUMBER() OVER (PARTITION BY to_char(se.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') ")
+		assert.Contains(t, got, "daily_rn <= 5")
+	})
+
+	t.Run("non-postgresql dialects fall back to ROW_NUMBER output exactly", func(t *testing.T) {
+		for _, dialect := range []string{"mysql", "sqlite", "sqlite3"} {
+			fallback := BuildDailyModelThroughputQuery(dialect, "UTC", 0, 10, ThroughputModeDistinctOn)
+			expected := BuildDailyModelThroughputQuery(dialect, "UTC", 0, 10, ThroughputModeRowNumber)
+			assert.Equal(t, expected, fallback,
+				"DISTINCT ON on a non-PostgreSQL dialect must produce exactly the ROW_NUMBER query")
+
+			fallbackChannel := BuildDailyChannelThroughputQuery(dialect, "UTC", 0, 10, ThroughputModeDistinctOn)
+			expectedChannel := BuildDailyChannelThroughputQuery(dialect, "UTC", 0, 10, ThroughputModeRowNumber)
+			assert.Equal(t, expectedChannel, fallbackChannel,
+				"channel query DISTINCT ON on a non-PostgreSQL dialect must produce exactly the ROW_NUMBER query")
+		}
+	})
+
+	t.Run("performance stats postgres uses DISTINCT ON and keeps aggregation", func(t *testing.T) {
+		got := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByModel, "$1", ThroughputModeDistinctOn)
+
+		assert.Contains(t, got, "SELECT DISTINCT ON (se.request_id)",
+			"request dedup must use DISTINCT ON (se.request_id)")
+		assert.Contains(t, got, "ORDER BY se.request_id, se.created_at DESC, se.id DESC",
+			"DISTINCT ON must select the latest execution with the deterministic tie break")
+		assert.Contains(t, got, "JOIN requests r ON se.request_id = r.id", "model queries must keep the requests join")
+		assert.Contains(t, got, "NULLIF(", "TTFT denominator must be retained")
+		assert.Contains(t, got, "GROUP BY exec_date, se.model_id", "day-level grouping must be retained")
+		assert.Contains(t, got, "WHERE daily.throughput IS NOT NULL", "positive-throughput post filter must be retained")
+		assert.NotContains(t, got, "ROW_NUMBER() OVER (PARTITION BY se.request_id", "request-level window dedup must be replaced")
+		assert.NotContains(t, got, "WHERE se.rn = 1", "request-level rn filter must be removed")
+	})
+
+	t.Run("performance stats non-postgresql falls back to ROW_NUMBER output exactly", func(t *testing.T) {
+		for _, dialect := range []string{"mysql", "sqlite3"} {
+			fallback := BuildDailyPerformanceStatsQuery(dialect, "UTC", 0, DailyThroughputByModel, "?", ThroughputModeDistinctOn)
+			expected := BuildDailyPerformanceStatsQuery(dialect, "UTC", 0, DailyThroughputByModel, "?", ThroughputModeRowNumber)
+			assert.Equal(t, expected, fallback,
+				"performance stats DISTINCT ON on a non-PostgreSQL dialect must produce exactly the ROW_NUMBER query")
+		}
+	})
 }

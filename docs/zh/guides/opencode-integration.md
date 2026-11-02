@@ -22,6 +22,8 @@ AxonHub 可以作为 Anthropic 端点的无缝替代方案，让 OpenCode 通过
 
 ## 配置 OpenCode
 
+OpenCode V1 和 V2 使用不同的插件 API 与配置键。请根据您的 OpenCode 版本选择对应配置，然后按照下方对应版本的章节配置追踪插件。
+
 ### 1. 创建 OpenCode 配置文件
 
 在 `~/.config/opencode/opencode.json` 创建或编辑您的 OpenCode 配置文件：
@@ -29,9 +31,6 @@ AxonHub 可以作为 Anthropic 端点的无缝替代方案，让 OpenCode 通过
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": [
-    "opencode-axonhub-tracing"
-  ],
   "provider": {
     "axonhub": {
       "npm": "@ai-sdk/anthropic",
@@ -167,34 +166,49 @@ AxonHub 模型配置可以将传入的模型名称重映射为特定提供商的
 
 `opencode-axonhub-tracing` 插件为每个 LLM 请求注入追踪头部（trace headers），实现在 AxonHub 中的请求聚合和追踪。
 
+OpenCode V1 和 V2 使用不同的插件 API。请根据您的 OpenCode 版本选择对应章节；两个版本的插件不能互换使用。
+
 ### 默认 Headers
 
-| Header Key | 来源 | 描述 |
-|------------|------|------|
-| `AH-Thread-Id` | OpenCode `sessionID` | 将同一会话的请求分组 |
-| `AH-Trace-Id` | OpenCode `message.id` | 每条消息的唯一标识符 |
+| Header Key     | OpenCode V1 来源          | OpenCode V2 来源           | 描述                              |
+| -------------- | ------------------------- | -------------------------- | --------------------------------- |
+| `AH-Thread-Id` | OpenCode `sessionID`       | OpenCode `sessionID`        | 将同一会话的请求分组              |
+| `AH-Trace-Id`  | OpenCode `message.id`      | OpenCode prompt `messageID` | 标识当前消息或最近一次 prompt     |
 
 ### 启用插件
 
-在 `opencode.json` 中添加插件：
+#### OpenCode V1
+
+OpenCode V1 使用旧版插件 API。请使用 V1 插件版本，并固定为 `1.1.0`，避免加载不兼容的 V2 插件：
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-axonhub-tracing"]
+  "plugin": ["opencode-axonhub-tracing@1.1.0"]
 }
 ```
 
-OpenCode 会在需要时自动安装插件。
+#### OpenCode V2
+
+OpenCode V2 使用 `@opencode/plugin` 和 `plugins` 配置键。请使用 `opencode-axonhub-tracing` `2.0.0` 或后续版本：
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["opencode-axonhub-tracing@2.0.0"]
+}
+```
+
+OpenCode 会在需要时自动安装配置的插件。
 
 ### 自定义 Header 配置（可选）
 
 默认情况下，插件使用 `AH-Thread-Id` 和 `AH-Trace-Id` 作为 header key。您可以通过环境变量覆盖：
 
-| 环境变量 | 默认值 | 描述 |
-|----------|--------|------|
+| 环境变量                                 | 默认值         | 描述                  |
+| ---------------------------------------- | -------------- | --------------------- |
 | `OPENCODE_AXONHUB_TRACING_THREAD_HEADER` | `AH-Thread-Id` | 自定义线程 header key |
-| `OPENCODE_AXONHUB_TRACING_TRACE_HEADER` | `AH-Trace-Id` | 自定义追踪 header key |
+| `OPENCODE_AXONHUB_TRACING_TRACE_HEADER`  | `AH-Trace-Id`  | 自定义追踪 header key |
 
 示例：
 
@@ -207,9 +221,18 @@ export OPENCODE_AXONHUB_TRACING_TRACE_HEADER="X-Trace-Id"
 
 ### 行为说明
 
+#### OpenCode V1
+
 - **Thread ID**：使用 OpenCode 的 `sessionID` 对相关请求进行分组
-- **Trace ID**：使用 OpenCode 当前用户消息的 `message.id` 进行唯一标识
+- **Trace ID**：使用当前用户消息的 `message.id` 进行唯一标识
 - 如果当前消息没有 `id`，则仅注入 thread header
+
+#### OpenCode V2
+
+- **Thread ID**：使用 OpenCode 的 `sessionID` 对相关请求进行分组
+- **Trace ID**：记录当前会话最近一次 prompt 的 `messageID`
+- 如果当前会话还没有 prompt，或请求没有对应的消息 ID，则仅注入 thread header
+- 使用 `session.hook("prompt")` 和 `session.hook("model.request")` 注入请求 header
 
 ### 收益
 

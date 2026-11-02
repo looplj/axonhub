@@ -288,7 +288,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		MaxOutputTokens:      llmReq.MaxCompletionTokens,
 		TopLogprobs:          llmReq.TopLogprobs,
 		TopP:                 llmReq.TopP,
-		ToolChoice:           convertToolChoice(llmReq.ToolChoice),
+		ToolChoice:           convertToolChoice(llmReq.ToolChoice, llmReq.Tools),
 		StreamOptions:        convertStreamOptions(llmReq.StreamOptions, llmReq.TransformerMetadata),
 		Reasoning:            convertReasoning(llmReq),
 		PromptCacheKey:       llmReq.PromptCacheKey,
@@ -297,6 +297,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		MaxToolCalls:         xmap.GetInt64Ptr(llmReq.TransformerMetadata, "max_tool_calls"),
 		PromptCacheRetention: xmap.GetStringPtr(llmReq.TransformerMetadata, "prompt_cache_retention"),
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
+	}
+
+	// Anthropic clients expect search result links, not just an answer's citations.
+	// Ask Responses backends for their full source list whenever it is available.
+	if llmReq.APIFormat == llm.APIFormatAnthropicMessage && lo.ContainsBy(llmReq.Tools, func(tool llm.Tool) bool { return tool.Type == llm.ToolTypeWebSearch }) && !lo.Contains(payload.Include, "web_search_call.action.sources") {
+		payload.Include = append(append([]string(nil), payload.Include...), "web_search_call.action.sources")
 	}
 
 	if lo.FromPtr(payload.PromptCacheKey) == "" {

@@ -728,6 +728,66 @@ func TestThinking_AdaptiveOutbound(t *testing.T) {
 			},
 		},
 		{
+			name: "metadata thinking_type=between_tools -> Thinking{Type: between_tools}",
+			chatReq: &llm.Request{
+				Model:     "claude-sonnet-5-5",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				ReasoningEffort: "none",
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyThinkingType: "between_tools",
+				},
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.NotNil(t, anthropicReq.Thinking)
+				require.Equal(t, "between_tools", anthropicReq.Thinking.Type)
+
+				thinkingJSON, err := json.Marshal(anthropicReq.Thinking)
+				require.NoError(t, err)
+				require.JSONEq(t, `{"type":"between_tools"}`, string(thinkingJSON))
+			},
+		},
+		{
+			name: "metadata thinking_type=between_tools -> Thinking{Type: between_tools} and keep output_config.effort",
+			chatReq: &llm.Request{
+				Model:     "claude-sonnet-5-5",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Hello"),
+						},
+					},
+				},
+				ReasoningEffort: "none",
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyThinkingType:       "between_tools",
+					TransformerMetadataKeyOutputConfigEffort: "high",
+				},
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.NotNil(t, anthropicReq.Thinking)
+				require.Equal(t, "between_tools", anthropicReq.Thinking.Type)
+
+				thinkingJSON, err := json.Marshal(anthropicReq.Thinking)
+				require.NoError(t, err)
+				require.JSONEq(t, `{"type":"between_tools"}`, string(thinkingJSON))
+
+				require.NotNil(t, anthropicReq.OutputConfig)
+				require.Equal(t, "high", anthropicReq.OutputConfig.Effort)
+			},
+		},
+		{
 			name: "ReasoningEffort=none without TransformerMetadata -> Thinking{Type: disabled}",
 			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",

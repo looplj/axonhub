@@ -19,17 +19,17 @@ export const ChannelsErrorBanner = memo(function ChannelsErrorBanner({ errorCoun
   }
 
   return (
-    <Alert className='mb-4 items-center border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200 [&>svg]:translate-y-0'>
-      <AlertCircle className='h-4 w-4' />
-      <AlertDescription className='flex items-center justify-between'>
-        <div>
+    <Alert className='mb-2 sm:mb-4 border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200 [&>svg]:translate-y-0'>
+      <AlertCircle className='h-4 w-4 shrink-0' />
+      <AlertDescription className='flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='min-w-0'>
           {showErrorOnly ? (
             <span>{t('channels.errorBanner.errorOnlyMode')}</span>
           ) : (
             <span>{t('channels.errorBanner.message', { count: errorCount })}</span>
           )}
         </div>
-        <div className='flex items-center space-x-2'>
+        <div className='flex items-center space-x-2 self-start sm:self-auto'>
           {showErrorOnly && onExitErrorOnlyMode && (
             <Button
               variant='outline'

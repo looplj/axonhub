@@ -88,7 +88,11 @@ func (DataStorage) Annotations() []schema.Annotation {
 func (DataStorage) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
-			scopes.APIKeyScopeQueryRule(scopes.ScopeWriteRequests),
+			// Data storages hold system-wide credentials (DSN, S3 keys, WebDAV
+			// passwords), so only keys explicitly granted the system-level data
+			// storage scope may read them. Internal lookups by request go through
+			// DataStorageService, which bypasses this policy.
+			scopes.APIKeyScopeQueryRule(scopes.ScopeReadDataStorages),
 			scopes.UserReadScopeRule(scopes.ScopeReadDataStorages),
 			scopes.OwnerRule(),
 		},

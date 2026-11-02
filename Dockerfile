@@ -1,7 +1,8 @@
-FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:26-alpine AS frontend-builder
 
 WORKDIR /build
-RUN corepack enable && corepack prepare pnpm@10 --activate
+RUN npm install --global corepack@0.36.0 \
+    && corepack enable
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
@@ -14,7 +15,7 @@ RUN pnpm build
 FROM alpine AS frontend-dist
 COPY --from=frontend-builder /build/dist /dist
 
-FROM golang:alpine AS backend-builder
+FROM golang:1.27.3-alpine3.24 AS backend-builder
 
 WORKDIR /build
 

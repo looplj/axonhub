@@ -193,8 +193,23 @@ func (t *OutboundTransformer) TransformRequest(
 	//      and intentionally skip our own breakpoint optimization pipeline.
 	//   2. Explicit cache breakpoints: per-block cache_control fields. We run
 	//      our optimization pipeline only in this mode.
-	if anthropicReq.CacheControl == nil && countCacheControls(anthropicReq) > 0 {
-		optimizeCacheControl(anthropicReq)
+	//   3. Converted requests without cache metadata: opt into Anthropic's
+	//      automatic caching because non-Anthropic protocols have no equivalent
+	//      cache-control field to carry through the unified request.
+	if anthropicReq.CacheControl == nil {
+		if countCacheControls(anthropicReq) > 0 {
+			optimizeCacheControl(anthropicReq)
+		} else if shouldEnableAutomaticCacheControl(llmReq) {
+			anthropicReq.CacheControl = &CacheControl{Type: "ephemeral"}
+		}
+	}
+
+	//nolint:exhaustive // Checked.
+	switch t.config.Type {
+	case PlatformVertex, PlatformBedrock:
+		if !moveTopLevelCacheControlToLastBlock(anthropicReq) {
+			return nil, fmt.Errorf("%w: cannot safely place top-level cache control on managed Anthropic platform", transformer.ErrInvalidRequest)
+		}
 	}
 
 	// Determine endpoint based on platform
@@ -271,6 +286,14 @@ func (t *OutboundTransformer) TransformRequest(
 		APIFormat: string(llm.APIFormatAnthropicMessage),
 		Metadata:  nil,
 	}, nil
+}
+
+func shouldEnableAutomaticCacheControl(req *llm.Request) bool {
+	if req == nil {
+		return false
+	}
+
+	return req.APIFormat != "" && req.APIFormat != llm.APIFormatAnthropicMessage
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.
