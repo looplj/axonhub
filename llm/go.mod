@@ -1,6 +1,6 @@
 module github.com/looplj/axonhub/llm
 
-go 1.26.0
+go 1.26.4
 
 require (
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8
@@ -9,7 +9,7 @@ require (
 	github.com/google/jsonschema-go v0.4.3
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/kaptinlin/jsonrepair v0.2.4
+	github.com/kaptinlin/jsonrepair v0.4.10
 	github.com/klauspost/compress v1.18.7
 	github.com/samber/lo v1.52.0
 	github.com/spf13/cast v1.10.0
@@ -30,6 +30,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/go-json-experiment/json v0.0.0-20260601182631-00ed12fed2a6 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
