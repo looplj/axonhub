@@ -571,6 +571,7 @@ type Retryable interface {
 - `APIFormatOpenAIImageGeneration` - OpenAI 图像生成
 - `APIFormatOpenAIEmbedding` - OpenAI 嵌入
 - `APIFormatGeminiContents` - Gemini 内容 API
+- `APIFormatGeminiInteractions` - Gemini Interactions API（无状态 JSON/SSE）
 - `APIFormatAnthropicMessage` - Anthropic 消息 API
 - `APIFormatAiSDKText` - AI SDK 文本流
 - `APIFormatAiSDKDataStream` - AI SDK 数据流
