@@ -61,14 +61,105 @@ func NewSSEDecoderWithMaxEventSize(ctx context.Context, rc io.ReadCloser, maxEve
 		maxEventSize = defaultMaxSSEEventBytes
 	}
 
+	reader := newNewlineTerminatingReader(rc)
+
 	return &defaultSSEDecoder{
 		ctx:    ctx,
-		reader: rc,
-		sseStream: sse.NewStreamWithConfig(rc, &sse.StreamConfig{
+		reader: reader,
+		sseStream: sse.NewStreamWithConfig(reader, &sse.StreamConfig{
 			MaxEventSize: maxEventSize,
 		}),
 		maxEventSize: maxEventSize,
 	}
+}
+
+// newlineTerminatingReader guarantees the wrapped body ends with a newline.
+//
+// SSE fields are terminated by a newline; go-sse's field parser reports
+// ErrUnexpectedEOF and drops the field when the final buffered line has no
+// terminator, so a body whose last line is "data: [DONE]" (no trailing
+// newline, as sent by synthetic.new) loses its terminal event entirely. The
+// parser can only yield that field once the line is terminated, so this wrapper
+// synthesizes the missing newline at EOF. It is purely a framing repair: the
+// decoder consumes the bytes and emits decoded events, and no raw-pass-through
+// path forwards upstream bytes verbatim, so the synthesized newline never
+// reaches a client payload.
+type newlineTerminatingReader struct {
+	rc io.ReadCloser
+
+	// sawByte records whether the body produced any byte, so empty bodies stay empty.
+	sawByte bool
+	// lastByte is the final byte observed from the underlying reader.
+	lastByte byte
+	// pendingNewline is set when EOF arrived on a non-empty body whose last byte
+	// was not a newline; the newline is emitted before io.EOF is reported.
+	pendingNewline bool
+	// finished records that the synthesized newline was delivered and the next
+	// Read must report io.EOF.
+	finished bool
+}
+
+func newNewlineTerminatingReader(rc io.ReadCloser) io.ReadCloser {
+	return &newlineTerminatingReader{rc: rc}
+}
+
+func (r *newlineTerminatingReader) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+
+	if r.pendingNewline {
+		r.pendingNewline = false
+		r.finished = true
+		p[0] = '\n'
+
+		return 1, nil
+	}
+
+	if r.finished {
+		return 0, io.EOF
+	}
+
+	n, err := r.rc.Read(p)
+	if n > 0 {
+		r.sawByte = true
+		r.lastByte = p[n-1]
+	}
+
+	if err == nil {
+		return n, nil
+	}
+
+	if !errors.Is(err, io.EOF) {
+		return n, err
+	}
+
+	// The body ended. If it was non-empty and its last byte was not a newline
+	// ('\n' or '\r'; both terminate an SSE line), the final SSE field is
+	// unterminated: emit the missing newline before EOF.
+	if r.sawByte && r.lastByte != '\n' && r.lastByte != '\r' {
+		if n > 0 {
+			r.pendingNewline = true
+
+			return n, nil
+		}
+
+		r.finished = true
+		p[0] = '\n'
+
+		return 1, nil
+	}
+
+	if n > 0 {
+		// Let the caller consume the final bytes before observing EOF.
+		return n, nil
+	}
+
+	return 0, io.EOF
+}
+
+func (r *newlineTerminatingReader) Close() error {
+	return r.rc.Close()
 }
 
 // Ensure defaultSSEDecoder implements StreamDecoder.

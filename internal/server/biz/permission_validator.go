@@ -8,6 +8,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	entuser "github.com/looplj/axonhub/internal/ent/user"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 // PermissionValidator provides methods to validate permission hierarchies.
@@ -128,6 +129,29 @@ func (v *PermissionValidator) CanGrantScopes(ctx context.Context, scopesToGrant 
 	}
 
 	return nil
+}
+
+// CanGrantAPIKeyScopes checks whether user may attach scopesToGrant to a
+// service-account API key that belongs to projectID.
+//
+// API key scopes are evaluated at authorization time without a project
+// dimension, so a project-level grant becomes a system-wide grant once it is
+// carried by a key. System-only scopes therefore require a system-level grant;
+// project-capable scopes follow the regular CanGrantScopes rule. Without this
+// split a project owner (or any member holding a project role) could mint a key
+// with scopes they never held at system level.
+func (v *PermissionValidator) CanGrantAPIKeyScopes(ctx context.Context, user *ent.User, scopesToGrant []string, projectID int) error {
+	for _, scope := range scopesToGrant {
+		if !scopes.IsValidScope(scope) {
+			return fmt.Errorf("invalid scope '%s'", scope)
+		}
+
+		if scopes.IsSystemOnlyScope(scope) && !scopes.HasSystemScope(user, scopes.ScopeSlug(scope)) {
+			return fmt.Errorf("insufficient permissions: cannot grant system scope '%s' that you don't possess at system level", scope)
+		}
+	}
+
+	return v.CanGrantScopes(contexts.WithUser(ctx, user), scopesToGrant, &projectID)
 }
 
 // CanGrantRole checks if the current user can grant a role with the specified scopes.

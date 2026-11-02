@@ -41,6 +41,7 @@
   "requests.columns.readCache": "Read Cache",
   "requests.columns.writeCache": "Write Cache",
   "requests.columns.cacheHitRate": "{{rate}}% hit",
+  "requests.columns.cacheRate": "Cache: {{rate}}%",
   "requests.columns.writeCacheRate": "{{rate}}% write",
   "requests.columns.unknown": "Unknown",
   "requests.columns.requestBody": "Request Body",

@@ -230,8 +230,9 @@ type ChannelSettings struct {
 	RateLimit *ChannelRateLimit `json:"rateLimit,omitempty"`
 
 	// RetryableStatusCodes configures additional HTTP status codes that should
-	// trigger retry for this channel. Default retryable codes (429 and 5xx) are
-	// always handled by the retry policy even when this list is empty.
+	// trigger retry for this channel. 5xx codes are retried by default; 429 is
+	// not, because a rate limit normally switches to another channel — listing
+	// 429 here asks for a same-channel retry instead.
 	RetryableStatusCodes []int `json:"retryableStatusCodes,omitempty"`
 
 	// RetryableErrorPatterns configures additional error text patterns that should
@@ -239,11 +240,36 @@ type ChannelSettings struct {
 	// case-sensitive substring of the error text.
 	RetryableErrorPatterns []RetryableErrorPattern `json:"retryableErrorPatterns,omitempty"`
 
+	// MaxSingleChannelRetries overrides the global "max single channel retries"
+	// for this channel. When nil, the channel inherits the global retry policy.
+	// Pointer so GQL emits null instead of 0 for channels that never set it.
+	MaxSingleChannelRetries *int `json:"maxSingleChannelRetries,omitempty"`
+
+	// ResponseTimeout overrides the global retry policy response timeouts for
+	// this channel. When nil (or mode inherit), the channel follows the global
+	// system settings. When mode is custom, the non-nil fields override the
+	// corresponding global values and a nil field still inherits.
+	ResponseTimeout *ChannelResponseTimeoutSettings `json:"responseTimeout,omitempty"`
+
 	// ModelProtocols force-specifies the outbound protocols for specific models of
 	// this channel. Each entry's apiFormats must reference api_formats the channel
 	// already has endpoints for. When set for a model, endpoint selection is
 	// restricted to those formats; otherwise all channel endpoints are eligible.
 	ModelProtocols []ModelProtocol `json:"modelProtocols,omitempty"`
+
+	// APIKeyStrategy selects how an API key is chosen when a channel has multiple
+	// enabled keys. Nil defaults to APIKeyStrategySticky (trace affinity + random
+	// fallback), preserving the historical behavior. Pointer so GQL emits null
+	// instead of a zero-value string for channels saved before the field existed.
+	APIKeyStrategy *string `json:"apiKeyStrategy,omitempty"`
+
+	// APIKeyRoundRobinSwitchAfter is the number of times a key is reused before
+	// round-robin advances to the next key. Only meaningful for the two
+	// round-robin strategies: APIKeyStrategyRoundRobin counts every request,
+	// APIKeyStrategyRoundRobinSuccess counts only successful ones. Values below 1
+	// are treated as 1 (switch immediately). Pointer so GQL emits null instead of
+	// 0 for legacy channels.
+	APIKeyRoundRobinSwitchAfter *int `json:"apiKeyRoundRobinSwitchAfter,omitempty"`
 
 	// ProviderQuota holds provider-specific quota collection credentials and
 	// options. Fields are sensitive (e.g. auth cookies) and only exposed to
@@ -251,6 +277,47 @@ type ChannelSettings struct {
 	ProviderQuota *ChannelProviderQuotaSettings `json:"providerQuota,omitempty"`
 
 	QuotaRoutingMode QuotaRoutingMode `json:"quotaRoutingMode,omitempty"`
+}
+
+// API key selection strategies for channels with multiple enabled keys.
+const (
+	// APIKeyStrategySticky keeps the same key for a given trace and picks randomly
+	// when there is no trace. This is the default / historical behavior.
+	APIKeyStrategySticky = "sticky"
+	// APIKeyStrategyRandom picks a key at random regardless of trace.
+	APIKeyStrategyRandom = "random"
+	// APIKeyStrategyRoundRobin advances through keys in order, reusing each key for
+	// APIKeyRoundRobinSwitchAfter consecutive requests before moving on. Every
+	// request counts, whatever its outcome.
+	APIKeyStrategyRoundRobin = "round_robin"
+	// APIKeyStrategyRoundRobinSuccess is round-robin that only counts successful
+	// calls: each key is reused until it has served APIKeyRoundRobinSwitchAfter
+	// successful requests, then the cursor moves on to the next key. Failed and
+	// canceled requests do not advance it.
+	//
+	//nolint:gosec // G101 - a strategy identifier, not a credential.
+	APIKeyStrategyRoundRobinSuccess = "round_robin_success"
+	// APIKeyStrategyPriority always uses the first selectable key. This is the
+	// historical "fixed" behavior under a new name: every call re-reads the first
+	// key, so a disabled leading key hands over to the next one immediately.
+	APIKeyStrategyPriority = "priority"
+	// APIKeyStrategyFixed remembers the key currently in use and keeps using it
+	// until that key stops being selectable (disabled or removed from the
+	// channel). It then walks the full key array forward from the remembered
+	// position, skipping disabled keys and wrapping around at the end.
+	APIKeyStrategyFixed = "fixed"
+)
+
+// IsValidAPIKeyStrategy reports whether value is a known strategy (empty is valid
+// and means the default sticky behavior).
+func IsValidAPIKeyStrategy(value string) bool {
+	switch value {
+	case "", APIKeyStrategySticky, APIKeyStrategyRandom, APIKeyStrategyRoundRobin,
+		APIKeyStrategyRoundRobinSuccess, APIKeyStrategyPriority, APIKeyStrategyFixed:
+		return true
+	default:
+		return false
+	}
 }
 
 // ChannelProviderQuotaSettings groups per-provider quota collection settings.
@@ -298,6 +365,78 @@ func (s OllamaQuotaSettings) String() string {
 type RetryableErrorPattern struct {
 	Pattern string `json:"pattern"`
 	Regex   bool   `json:"regex,omitempty"`
+}
+
+// ChannelResponseTimeoutMode selects whether a channel follows the global retry
+// policy response timeouts or overrides them with its own values.
+type ChannelResponseTimeoutMode string
+
+const (
+	// ChannelResponseTimeoutModeInherit keeps the global retry policy timeouts.
+	// It is the zero value so channels saved before this setting existed inherit.
+	ChannelResponseTimeoutModeInherit ChannelResponseTimeoutMode = ""
+
+	// ChannelResponseTimeoutModeCustom overrides the global timeouts with the
+	// values configured on the channel.
+	ChannelResponseTimeoutModeCustom ChannelResponseTimeoutMode = "custom"
+)
+
+// MarshalGQL writes the GraphQL enum value. The zero value maps to INHERIT.
+func (m ChannelResponseTimeoutMode) MarshalGQL(w io.Writer) {
+	value := "INHERIT"
+	if m == ChannelResponseTimeoutModeCustom {
+		value = "CUSTOM"
+	}
+
+	_, _ = io.WriteString(w, strconv.Quote(value))
+}
+
+// UnmarshalGQL reads the GraphQL enum value. INHERIT maps to the zero value.
+// The GraphQL input declares mode as nullable, so an explicit null is accepted
+// and means INHERIT rather than being rejected.
+func (m *ChannelResponseTimeoutMode) UnmarshalGQL(v any) error {
+	if v == nil {
+		*m = ChannelResponseTimeoutModeInherit
+
+		return nil
+	}
+
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("ChannelResponseTimeoutMode must be a string")
+	}
+
+	switch str {
+	case "INHERIT":
+		*m = ChannelResponseTimeoutModeInherit
+	case "CUSTOM":
+		*m = ChannelResponseTimeoutModeCustom
+	default:
+		return fmt.Errorf("invalid ChannelResponseTimeoutMode: %s", str)
+	}
+
+	return nil
+}
+
+// ChannelResponseTimeoutSettings overrides the global retry policy response
+// timeouts for a single channel.
+type ChannelResponseTimeoutSettings struct {
+	// Mode selects whether the channel inherits the global timeouts or uses the
+	// overrides below. An empty mode is treated as inherit.
+	Mode ChannelResponseTimeoutMode `json:"mode,omitempty"`
+
+	// StreamFirstEventTimeoutSeconds overrides the timeout for the first
+	// streaming response event. nil inherits the global value; 0 disables it.
+	StreamFirstEventTimeoutSeconds *int `json:"streamFirstEventTimeoutSeconds,omitempty"`
+
+	// NonStreamResponseTimeoutSeconds overrides the timeout for non-streaming
+	// responses. nil inherits the global value; 0 disables it.
+	NonStreamResponseTimeoutSeconds *int `json:"nonStreamResponseTimeoutSeconds,omitempty"`
+}
+
+// IsCustom reports whether the channel overrides the global timeouts.
+func (s *ChannelResponseTimeoutSettings) IsCustom() bool {
+	return s != nil && s.Mode == ChannelResponseTimeoutModeCustom
 }
 
 type ChannelRateLimit struct {

@@ -13,6 +13,7 @@ import { useModels } from '../context/models-context';
 import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants';
 import { useBulkCreateModels } from '../data/models';
 import { useDevelopersData } from '../data/providers';
+import { isSuggestedModel, withMiniMaxFlash } from '../data/model-suggestions';
 import { type Provider, type ProviderModel, resolveVision } from '../data/providers.schema';
 import { deriveReasoningEfforts } from '../data/reasoning-efforts';
 import { CreateModelInput, ModelCard, ModelType, modelTypeSchema } from '../data/schema';
@@ -65,7 +66,7 @@ export function ModelsBatchCreateDialog() {
       .map(([key, provider]: [string, Provider]) => ({
         id: key,
         name: provider.display_name || provider.name,
-        models: provider.models || [],
+        models: withMiniMaxFlash(provider.models || [], key),
       }));
   }, [developersData]);
 
@@ -319,10 +320,12 @@ export function ModelsBatchCreateDialog() {
     (developer: string) => {
       const provider = providers.find((p) => p.id === developer);
       if (!provider) return [];
-      return provider.models.map((m: ProviderModel) => ({
-        value: m.id,
-        label: m.id,
-      }));
+      return provider.models
+        .filter((model) => isSuggestedModel(model.id))
+        .map((m: ProviderModel) => ({
+          value: m.id,
+          label: m.id,
+        }));
     },
     [providers]
   );

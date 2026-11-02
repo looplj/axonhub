@@ -202,14 +202,16 @@ func parseAntigravityQuota(body []byte) (QuotaData, error) {
 		}
 		window := pool + "_5h"
 		if current, exists := poolLimits[window]; !exists || usageRatio > current.UsageRatio {
-			poolLimits[window] = NewTokenLimitStatus(status, usageRatio, resetAt).WithWindow(window, 5*time.Hour)
+			limit := NewTokenLimitStatus(status, usageRatio, resetAt).WithWindow(window, 5*time.Hour)
+			limit.AvailabilityGroup = antigravityPoolAvailabilityGroup(pool)
+			poolLimits[window] = limit
 		}
 	}
 
 	if len(models) == 0 {
 		return QuotaData{}, fmt.Errorf("Antigravity quota response has no quota data")
 	}
-	for _, pool := range []string{"gemini", "claude_gpt"} {
+	for _, pool := range []string{"gemini", "claude_gpt", "argon"} {
 		if limit, ok := poolLimits[pool+"_5h"]; ok {
 			limits = append(limits, limit)
 			maxRemaining = max(maxRemaining, 1-limit.UsageRatio)

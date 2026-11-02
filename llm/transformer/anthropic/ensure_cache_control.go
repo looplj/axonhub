@@ -39,6 +39,176 @@ func optimizeCacheControl(req *MessageRequest) {
 	injectPlannedMessageCacheControls(refs, messageAnchors)
 }
 
+func moveTopLevelCacheControlToLastBlock(req *MessageRequest) bool {
+	cacheControl := req.CacheControl
+	req.CacheControl = nil
+	if cacheControl == nil {
+		return true
+	}
+	refs := normalizeAndCollectCacheControlRefs(req)
+	if len(refs) > 0 {
+		last := refs[len(refs)-1].get()
+		if last != nil && isOneHourCacheControl(last) == isOneHourCacheControl(cacheControl) {
+			return true
+		}
+	}
+	if countCacheControls(req) >= maxCacheControlBreakpoints {
+		return false
+	}
+	if isOneHourCacheControl(cacheControl) {
+		for i, ref := range refs {
+			if existing := ref.get(); existing != nil && !isOneHourCacheControl(existing) {
+				for j := i - 1; j >= 0; j-- {
+					if refs[j].get() == nil {
+						refs[j].set(cacheControl)
+						return true
+					}
+				}
+
+				return false
+			}
+		}
+	}
+
+	lastOneHour := -1
+	for i, ref := range refs {
+		if isOneHourCacheControl(ref.get()) {
+			lastOneHour = i
+		}
+	}
+	for i := len(refs) - 1; i > lastOneHour; i-- {
+		if refs[i].get() == nil {
+			refs[i].set(cacheControl)
+			return true
+		}
+	}
+
+	return false
+}
+
+func normalizeAndCollectCacheControlRefs(req *MessageRequest) []cacheControlSlot {
+	normalizeMessageContents(req)
+	refs := make([]cacheControlSlot, 0, len(req.Tools)+len(req.Messages)+1)
+	for i := range req.Tools {
+		cacheControl := &req.Tools[i].CacheControl
+		refs = append(refs, newCacheControlSlot(cacheControl))
+	}
+
+	if req.System != nil {
+		if len(req.System.MultiplePrompts) > 0 {
+			for i := range req.System.MultiplePrompts {
+				cacheControl := &req.System.MultiplePrompts[i].CacheControl
+				refs = append(refs, newCacheControlSlot(cacheControl))
+			}
+		}
+		if len(req.System.MultiplePrompts) == 0 && req.System.Prompt != nil && *req.System.Prompt != "" {
+			text := *req.System.Prompt
+			req.System.Prompt = nil
+			req.System.MultiplePrompts = []SystemPromptPart{{
+				Type: "text",
+				Text: text,
+			}}
+			cacheControl := &req.System.MultiplePrompts[0].CacheControl
+			refs = append(refs, newCacheControlSlot(cacheControl))
+		}
+	}
+
+	for i := range req.Messages {
+		refs = appendCacheControlSlots(refs, &req.Messages[i].Content)
+	}
+	return refs
+}
+
+type cacheControlSlot struct {
+	ref **CacheControl
+	get func() *CacheControl
+	set func(*CacheControl)
+}
+
+func newCacheControlSlot(ref **CacheControl) cacheControlSlot {
+	return cacheControlSlot{
+		ref: ref,
+		get: func() *CacheControl { return *ref },
+		set: func(value *CacheControl) { *ref = value },
+	}
+}
+
+func appendCacheControlSlots(refs []cacheControlSlot, content *MessageContent) []cacheControlSlot {
+	if len(content.Raw) > 0 {
+		return appendRawCacheControlSlots(refs, content)
+	}
+
+	for i := range content.MultipleContent {
+		block := &content.MultipleContent[i]
+		if isCacheableMessageBlock(*block) {
+			cacheControl := &block.CacheControl
+			refs = append(refs, newCacheControlSlot(cacheControl))
+		}
+		if block.Content != nil {
+			refs = appendCacheControlSlots(refs, block.Content)
+		}
+	}
+
+	return refs
+}
+
+func appendRawCacheControlSlots(refs []cacheControlSlot, content *MessageContent) []cacheControlSlot {
+	decoded, err := decodeRawContent(content.Raw)
+	if err != nil {
+		return refs
+	}
+
+	walkRawContent(decoded, func(block map[string]any) bool {
+		if !isCacheableRawBlock(block) {
+			return false
+		}
+		refs = append(refs, cacheControlSlot{
+			get: func() *CacheControl { return rawCacheControl(block["cache_control"]) },
+			set: func(value *CacheControl) {
+				if value == nil {
+					delete(block, "cache_control")
+				} else {
+					block["cache_control"] = value
+				}
+				content.Raw, _ = json.Marshal(decoded)
+			},
+		})
+		return false
+	})
+	return refs
+}
+
+func isCacheableRawBlock(block map[string]any) bool {
+	typeName, ok := block["type"].(string)
+	if !ok || typeName == "thinking" || typeName == "redacted_thinking" {
+		return false
+	}
+	if typeName != "text" {
+		return true
+	}
+	text, ok := block["text"].(string)
+	return ok && text != ""
+}
+
+func rawCacheControl(value any) *CacheControl {
+	if value == nil {
+		return nil
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil
+	}
+	var cacheControl CacheControl
+	if err := json.Unmarshal(data, &cacheControl); err != nil {
+		return nil
+	}
+	return &cacheControl
+}
+
+func isOneHourCacheControl(cacheControl *CacheControl) bool {
+	return cacheControl != nil && cacheControl.TTL == "1h"
+}
+
 // countMessageBreakpoints 统计 messages 上已存在的 cache_control 断点数（不含 tools/system）。
 func countMessageBreakpoints(req *MessageRequest) int {
 	count := 0
@@ -293,32 +463,19 @@ func pickWindowAnchorIndex(refs []**CacheControl, window int) int {
 }
 
 // collectMessageBlockRefs 收集所有消息中可缓存块的 CacheControl 指针引用。
-// 调用前必须先执行 normalizeMessageContents，本函数不做结构改写。
 func collectMessageBlockRefs(req *MessageRequest) []**CacheControl {
-	refs := make([]**CacheControl, 0)
-
+	normalizeMessageContents(req)
+	slots := make([]cacheControlSlot, 0, len(req.Messages))
 	for i := range req.Messages {
-		refs = appendCacheControlRefs(refs, &req.Messages[i].Content)
+		slots = appendCacheControlSlots(slots, &req.Messages[i].Content)
 	}
 
-	return refs
-}
-
-func appendCacheControlRefs(refs []**CacheControl, content *MessageContent) []**CacheControl {
-	if len(content.Raw) > 0 {
-		return refs
-	}
-
-	for i := range content.MultipleContent {
-		block := &content.MultipleContent[i]
-		if isCacheableMessageBlock(*block) {
-			refs = append(refs, &block.CacheControl)
-		}
-		if block.Content != nil {
-			refs = appendCacheControlRefs(refs, block.Content)
+	refs := make([]**CacheControl, 0)
+	for _, slot := range slots {
+		if slot.ref != nil {
+			refs = append(refs, slot.ref)
 		}
 	}
-
 	return refs
 }
 

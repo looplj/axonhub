@@ -54,6 +54,12 @@ const (
 	QuotaLimitTypeImage             QuotaLimitType = "image"
 	QuotaLimitTypeToken             QuotaLimitType = "token"
 	QuotaLimitTypeSubscriptionCycle QuotaLimitType = "subscription_cycle"
+	// QuotaLimitTypeSearch marks counters for capabilities AxonHub does not
+	// route (Synthetic's hourly search requests). No request modality maps to
+	// it, so EvaluateQuotaRouting/EffectiveStatus already ignore it, and
+	// normalization.go keeps it out of the channel status and channel reset:
+	// it is listed for the operator, never enforced.
+	QuotaLimitTypeSearch QuotaLimitType = "search"
 )
 
 // ApertisDefaultBaseURL is the default base URL for the Apertis API.
@@ -89,13 +95,15 @@ type QuotaLimitStatus struct {
 	// aggregation below possible.
 	PeriodStart *time.Time `json:"period_start,omitempty"`
 
-	// PeriodCost is the cost accumulated in [PeriodStart, now) on this channel
-	// according to AxonHub usage logs. Filled by the quota service, not by the
-	// checkers.
+	// PeriodCost is the money spent in the period on this channel: either the
+	// cost accumulated in [PeriodStart, now) according to AxonHub usage logs
+	// (filled by the quota service) or the provider's own figure for the
+	// period (Synthetic's weekly credits), set by the checker.
 	PeriodCost *float64 `json:"period_cost,omitempty"`
 
-	// PeriodQuota is the estimated total money quota of the period, derived
-	// from PeriodCost and UsageRatio. See EstimatePeriodQuota.
+	// PeriodQuota is the total money quota of the period: either derived from
+	// PeriodCost and UsageRatio (see EstimatePeriodQuota) or reported directly
+	// by providers that bill in money (Synthetic's maxCredits).
 	PeriodQuota *float64 `json:"period_quota,omitempty"`
 }
 

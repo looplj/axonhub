@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type InputHTMLAttributes } from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,8 @@ type Props<T extends string> = {
   portalContainer?: HTMLElement | null;
   /** 自定义输入框的 className */
   inputClassName?: string;
+  /** 透传给输入框的属性（如表单 a11y：id / aria-invalid / aria-describedby） */
+  inputProps?: InputHTMLAttributes<HTMLInputElement>;
   searchValue?: string;
   onSearchValueChange?: (value: string) => void;
   hasMore?: boolean;
@@ -37,6 +39,7 @@ export function AutoCompleteSelect<T extends string>({
   placeholder = 'Search...',
   portalContainer,
   inputClassName,
+  inputProps,
   searchValue: controlledSearchValue,
   onSearchValueChange,
   hasMore = false,
@@ -77,9 +80,14 @@ export function AutoCompleteSelect<T extends string>({
 
   const onInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     // Strict mode: on blur, revert input text to the selected label
-    // unless focus moves within the list
+    // unless focus moves within the list. When a value is selected but its label
+    // is not (yet) resolvable in `items` (e.g. server-searched options), leave the
+    // text as-is so the resolved label is never clobbered to the placeholder.
     if (!e.relatedTarget?.hasAttribute('cmdk-list')) {
-      setSearchValue(labels[selectedValue] ?? '');
+      const label = labels[selectedValue];
+      if (!selectedValue || label !== undefined) {
+        setSearchValue(label ?? '');
+      }
     }
   };
 
@@ -93,8 +101,15 @@ export function AutoCompleteSelect<T extends string>({
   };
 
   // Keep the closed input synchronized with the selection without overwriting an active server search.
+  // Skip the sync when the value's label is not resolvable in `items` (server-searched options may be
+  // an empty page after the selected label briefly drove the search term) — writing '' here would
+  // flip the input to the placeholder and re-trigger the search, loop.
   useEffect(() => {
-    if (!open) setSearchValue(labels[selectedValue] ?? '');
+    if (open) return;
+    const label = labels[selectedValue];
+    if (!selectedValue || label !== undefined) {
+      setSearchValue(label ?? '');
+    }
   }, [labels, open, selectedValue]);
 
   return (
@@ -113,10 +128,9 @@ export function AutoCompleteSelect<T extends string>({
                   handleOpenChange(true);
                 }
               }}
-              onFocus={() => handleOpenChange(true)}
               onBlur={onInputBlur}
             >
-              <Input placeholder={placeholder} className={cn('w-full', inputClassName)} />
+              <Input placeholder={placeholder} className={cn('w-full', inputClassName)} {...inputProps} />
             </CommandPrimitive.Input>
           </PopoverAnchor>
           {!open && <CommandList aria-hidden='true' className='hidden' />}

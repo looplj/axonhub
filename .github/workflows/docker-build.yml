@@ -1,0 +1,147 @@
+# Shared reusable Docker build workflow
+# Used by docker-publish.yml (mode: release), docker-unstable.yml
+# (mode: unstable), and docker-pr.yml (mode: test).
+# Owns the native-architecture matrix, checkout, VERSION materialization,
+# Docker Buildx setup, optional Docker Hub login/metadata, mode-specific tags,
+# and the single build-push step. Callers pass credentials explicitly and
+# keep their own manifest jobs.
+
+name: Docker build (shared)
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: 'Build mode: release, unstable, or test'
+        required: true
+        type: string
+      ref:
+        description: Commit SHA or ref to build
+        required: true
+        type: string
+      tag:
+        description: 'Release tag (mode: release)'
+        required: false
+        type: string
+      base_version:
+        description: 'Base version (mode: unstable)'
+        required: false
+        type: string
+      build_date:
+        description: 'Build date (mode: unstable)'
+        required: false
+        type: string
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: false
+      DOCKERHUB_TOKEN:
+        required: false
+
+jobs:
+  build:
+    name: Docker build (${{ matrix.arch }}) [native]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out (shallow)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Resolve tag & write VERSION
+        if: inputs.mode == 'release'
+        env:
+          TAG: ${{ inputs.tag }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          echo "$TAG" > internal/build/VERSION
+          echo "Building tag: $TAG for $ARCH"
+
+      - name: Write VERSION
+        if: inputs.mode == 'unstable'
+        env:
+          BASE_VERSION: ${{ inputs.base_version }}
+          BUILD_DATE: ${{ inputs.build_date }}
+        run: printf '%s\n' "${BASE_VERSION}-unstable.${BUILD_DATE}" > internal/build/VERSION
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to Docker Hub
+        if: inputs.mode != 'test'
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (labels)
+        id: meta
+        if: inputs.mode != 'test'
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: |
+            looplj/axonhub
+
+      - name: Resolve image tags
+        id: tags
+        if: inputs.mode != 'test'
+        env:
+          MODE: ${{ inputs.mode }}
+          TAG: ${{ inputs.tag }}
+          BUILD_DATE: ${{ inputs.build_date }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          case "$MODE" in
+            release)
+              printf -v TAGS '%s\n%s' \
+                "looplj/axonhub:${TAG}-${ARCH}" \
+                "looplj/axonhub:latest-${ARCH}"
+              ;;
+            unstable)
+              printf -v TAGS '%s\n%s' \
+                "looplj/axonhub:unstable-${ARCH}" \
+                "looplj/axonhub:unstable-${BUILD_DATE}-${ARCH}"
+              ;;
+            *)
+              echo "Unknown mode: $MODE" >&2
+              exit 1
+              ;;
+          esac
+          {
+            echo 'tags<<EOF'
+            printf '%s\n' "$TAGS"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          push: ${{ inputs.mode != 'test' }}
+          pull: ${{ inputs.mode == 'test' }}
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: |
+            type=gha,scope=axonhub-${{ matrix.arch }}
+            type=gha,scope=axonhub-pr-${{ matrix.arch }}
+          cache-to: type=gha,mode=${{ inputs.mode == 'test' && 'min' || 'max' }},scope=${{ inputs.mode == 'test' && 'axonhub-pr' || 'axonhub' }}-${{ matrix.arch }}
+          provenance: false
+          sbom: false

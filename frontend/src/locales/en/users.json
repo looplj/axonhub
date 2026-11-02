@@ -71,7 +71,6 @@
   "users.form.selectUserPlaceholder": "Select a user to add to project",
   "users.form.selectProject": "Select Project",
   "users.form.selectProjectPlaceholder": "Select a project",
-  "users.form.searchUsers": "Search users...",
   "users.form.invitationLink": "Registration link",
   "users.form.invitationExpiry": "Link expiration",
   "users.form.invitationUseLimit": "Registration limit",

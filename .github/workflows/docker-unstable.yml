@@ -17,7 +17,7 @@ jobs:
       base_version: ${{ steps.pin.outputs.base_version }}
     steps:
       - name: Check out unstable
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: unstable
           fetch-depth: 1
@@ -43,68 +43,20 @@ jobs:
           printf 'base_version=%s\n' "$BASE_VERSION" >> "$GITHUB_OUTPUT"
 
   build_single_arch:
-    name: Build & push (${{ matrix.arch }}) [native]
+    name: Build & push (unstable)
     needs: [prepare]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: amd64
-            platform: linux/amd64
-            runner: ubuntu-latest
-          - arch: arm64
-            platform: linux/arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
-
+    uses: ./.github/workflows/docker-build.yml
+    with:
+      mode: unstable
+      ref: ${{ needs.prepare.outputs.commit_sha }}
+      base_version: ${{ needs.prepare.outputs.base_version }}
+      build_date: ${{ needs.prepare.outputs.build_date }}
     permissions:
-      packages: write
       contents: read
-
-    steps:
-      - name: Check out pinned commit
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.prepare.outputs.commit_sha }}
-          fetch-depth: 1
-          persist-credentials: false
-
-      - name: Write VERSION
-        env:
-          BASE_VERSION: ${{ needs.prepare.outputs.base_version }}
-          BUILD_DATE: ${{ needs.prepare.outputs.build_date }}
-        run: printf '%s\n' "${BASE_VERSION}-unstable.${BUILD_DATE}" > internal/build/VERSION
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract metadata (labels)
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: |
-            looplj/axonhub
-
-      - name: Build & push single-arch
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          platforms: ${{ matrix.platform }}
-          push: true
-          tags: |
-            looplj/axonhub:unstable-${{ matrix.arch }}
-            looplj/axonhub:unstable-${{ needs.prepare.outputs.build_date }}-${{ matrix.arch }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
-          sbom: false
+      packages: write
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   create_manifests:
     name: Create multi-arch manifest (Docker Hub)
@@ -112,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Log in to Docker Hub
-        uses: docker/login-action@v4
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}

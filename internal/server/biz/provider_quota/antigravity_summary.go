@@ -29,7 +29,7 @@ type antigravitySummary struct {
 	} `json:"groups"`
 }
 
-// antigravityModelPool identifies the two provider quota pools without merging their percentages.
+// antigravityModelPool identifies the provider quota pools without merging their percentages.
 func antigravityModelPool(id string) string {
 	id = strings.ToLower(id)
 	if strings.Contains(id, "argon") {
@@ -42,6 +42,27 @@ func antigravityModelPool(id string) string {
 		return "claude_gpt"
 	}
 	return ""
+}
+
+// antigravityPoolAvailabilityGroupPrefix names the capacity source behind each
+// Antigravity pool. Gemini and Claude/GPT are metered against separate provider
+// quotas that reset independently, so a model of one pool must stay routable
+// while only a limit of the other pool is exhausted. Tagging each pool's limits
+// with its own group lets EvaluateQuotaRouting apply OR semantics inside a pool
+// while keeping the two pools independent. Without it every ungrouped pool
+// window collapses into one implicit group where a single exhausted window (for
+// example a spent Claude/GPT weekly bucket) poisons the whole channel, including
+// Gemini models.
+const antigravityPoolAvailabilityGroupPrefix = "antigravity_pool:"
+
+// antigravityPoolAvailabilityGroup returns the availability group of a pool. It
+// returns an empty string for an unknown pool so such limits keep the legacy
+// ungrouped evaluation instead of joining a pool they do not belong to.
+func antigravityPoolAvailabilityGroup(pool string) string {
+	if pool == "" {
+		return ""
+	}
+	return antigravityPoolAvailabilityGroupPrefix + pool
 }
 
 // antigravityCadenceTokens splits a provider-supplied cadence, bucket ID or
@@ -118,7 +139,9 @@ func parseAntigravityQuotaSummary(body []byte) (QuotaData, error) {
 			key := pool + "_" + window
 			usage := 1 - *remaining
 			if existing, ok := byWindow[key]; !ok || usage > existing.UsageRatio {
-				byWindow[key] = NewTokenLimitStatus(antigravityQuotaStatus(usage), usage, parseAntigravityResetTime(bucket.ResetTime)).WithWindow(key, duration)
+				limit := NewTokenLimitStatus(antigravityQuotaStatus(usage), usage, parseAntigravityResetTime(bucket.ResetTime)).WithWindow(key, duration)
+				limit.AvailabilityGroup = antigravityPoolAvailabilityGroup(pool)
+				byWindow[key] = limit
 			}
 		}
 	}

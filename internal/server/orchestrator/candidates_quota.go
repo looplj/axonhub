@@ -124,15 +124,55 @@ func (g *QuotaRoutingGate) evaluate(
 		return decision
 	}
 
-	decision.state, decision.reason = provider_quota.EvaluateQuotaRouting(
-		status.Limits,
-		string(status.Status),
-		limitType,
-		time.Now(),
-	)
-	if decision.state == provider_quota.RoutingExhausted {
-		decision.reason = "exhausted"
-		return decision
+	now := time.Now()
+	if len(candidate.Models) > 0 {
+		usableModels := make([]biz.ChannelModelEntry, 0, len(candidate.Models))
+		usableStates := make([]provider_quota.RoutingState, 0, len(candidate.Models))
+		usableReasons := make([]string, 0, len(candidate.Models))
+		var usableFormats []string
+		hasFormats := len(candidate.modelAPIFormats) == len(candidate.Models)
+
+		for i, entry := range candidate.Models {
+			limits := provider_quota.FilterLimitsForModel(status.Limits, entry.ActualModel)
+			state, reason := provider_quota.EvaluateQuotaRouting(
+				limits,
+				string(status.Status),
+				limitType,
+				now,
+			)
+			if state != provider_quota.RoutingExhausted {
+				usableModels = append(usableModels, entry)
+				usableStates = append(usableStates, state)
+				usableReasons = append(usableReasons, reason)
+				if hasFormats {
+					usableFormats = append(usableFormats, candidate.modelAPIFormats[i])
+				}
+			}
+		}
+
+		if len(usableModels) == 0 {
+			decision.state = provider_quota.RoutingExhausted
+			decision.reason = "exhausted"
+			return decision
+		}
+
+		candidate.Models = usableModels
+		if hasFormats {
+			candidate.modelAPIFormats = usableFormats
+		}
+		decision.state = usableStates[0]
+		decision.reason = usableReasons[0]
+	} else {
+		decision.state, decision.reason = provider_quota.EvaluateQuotaRouting(
+			status.Limits,
+			string(status.Status),
+			limitType,
+			now,
+		)
+		if decision.state == provider_quota.RoutingExhausted {
+			decision.reason = "exhausted"
+			return decision
+		}
 	}
 
 	switch mode {

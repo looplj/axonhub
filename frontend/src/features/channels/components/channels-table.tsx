@@ -272,91 +272,93 @@ export function ChannelsTable({
         showErrorOnly={showErrorOnly}
         onExitErrorOnlyMode={onExitErrorOnlyMode}
       />
-      <div className='shadow-soft relative mt-4 min-w-0 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
-        <Table
-          data-testid='channels-table'
-          className='w-full table-fixed border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'
-        >
-          <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className='group/row border-0'>
-                {headerGroup.headers.map((header) => {
-                  const isAction = header.column.id === 'action';
+      <div className='shadow-soft relative mt-2 sm:mt-4 min-w-0 min-h-48 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+        <div className='min-w-max'>
+          <Table
+            data-testid='channels-table'
+            className='w-full border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'
+          >
+            <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className='group/row border-0'>
+                  {headerGroup.headers.map((header) => {
+                    const isAction = header.column.id === 'action';
+                    return (
+                      <TableHead
+                        key={header.id}
+                        colSpan={header.colSpan}
+                        className={`${header.column.columnDef.meta?.className ?? ''} ${isAction ? 'overflow-visible whitespace-nowrap' : 'overflow-hidden whitespace-nowrap'} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
+                      >
+                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody className='!bg-[var(--table-background)]'>
+              {loading ? (
+                <TableSkeleton rows={pageSize} columns={columns.length} />
+              ) : table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => {
+                  const channel = row.original;
                   return (
-                    <TableHead
-                      key={header.id}
-                      colSpan={header.colSpan}
-                      className={`${header.column.columnDef.meta?.className ?? ''} ${isAction ? 'overflow-visible whitespace-nowrap' : 'overflow-hidden whitespace-normal'} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
-                    >
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody className='!bg-[var(--table-background)]'>
-            {loading ? (
-              <TableSkeleton rows={pageSize} columns={columns.length} />
-            ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => {
-                const channel = row.original;
-                return (
-                  <React.Fragment key={row.id}>
-                    <MotionTableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() && 'selected'}
-                      className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)]'
-                    >
-                      {row.getVisibleCells().map((cell) => {
-                        const isAction = cell.column.id === 'action';
-                        return (
-                          <TableCell
-                            key={cell.id}
-                            className={`${cell.column.columnDef.meta?.className ?? ''} ${isAction ? 'overflow-visible whitespace-nowrap' : 'overflow-hidden whitespace-normal'} border-0 bg-inherit px-2 py-3 transition-colors duration-200`}
-                          >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        );
-                      })}
-                    </MotionTableRow>
-                    <AnimatePresence initial={false}>
-                      {row.getIsExpanded() && (
-                        <MotionExpandedRow
-                          key={`${row.id}-expanded`}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className='border-0'
-                        >
-                          <TableCell colSpan={columns.length} className='border-0 p-0 whitespace-normal'>
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2, ease: 'easeInOut' }}
-                              className='overflow-hidden'
+                    <React.Fragment key={row.id}>
+                      <MotionTableRow
+                        key={row.id}
+                        data-state={row.getIsSelected() && 'selected'}
+                        className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)]'
+                      >
+                        {row.getVisibleCells().map((cell) => {
+                          const isAction = cell.column.id === 'action';
+                          return (
+                            <TableCell
+                              key={cell.id}
+                              className={`${cell.column.columnDef.meta?.className ?? ''} ${isAction ? 'overflow-visible whitespace-nowrap' : 'overflow-hidden'} border-0 bg-inherit px-2 py-3 transition-colors duration-200`}
                             >
-                              <ChannelExpandedRow channel={channel} columnsLength={columns.length} getApiFormatLabel={getApiFormatLabel} />
-                            </motion.div>
-                          </TableCell>
-                        </MotionExpandedRow>
-                      )}
-                    </AnimatePresence>
-                  </React.Fragment>
-                );
-              })
-            ) : (
-              <TableRow className='!bg-[var(--table-background)]'>
-                <TableCell colSpan={columns.length} className='h-24 !bg-[var(--table-background)] text-center'>
-                  {t('common.noData')}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                          );
+                        })}
+                      </MotionTableRow>
+                      <AnimatePresence initial={false}>
+                        {row.getIsExpanded() && (
+                          <MotionExpandedRow
+                            key={`${row.id}-expanded`}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className='border-0'
+                          >
+                            <TableCell colSpan={columns.length} className='border-0 p-0 whitespace-normal'>
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                className='overflow-hidden'
+                              >
+                                <ChannelExpandedRow channel={channel} columnsLength={columns.length} getApiFormatLabel={getApiFormatLabel} />
+                              </motion.div>
+                            </TableCell>
+                          </MotionExpandedRow>
+                        )}
+                      </AnimatePresence>
+                    </React.Fragment>
+                  );
+                })
+              ) : (
+                <TableRow className='!bg-[var(--table-background)]'>
+                  <TableCell colSpan={columns.length} className='h-24 !bg-[var(--table-background)] text-center'>
+                    {t('common.noData')}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
-      <div className='mt-4 flex-shrink-0'>
+      <div className='mt-2 sm:mt-4 flex-shrink-0'>
         <ServerSidePagination
           pageInfo={pageInfo}
           pageSize={pageSize}

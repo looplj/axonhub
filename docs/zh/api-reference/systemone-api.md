@@ -2,7 +2,7 @@
 
 ## 概述
 
-AxonHub 原生支持 **System One** 决策推理 API，并首发支持 **TypeSafe Jev** 决策模型。
+AxonHub 原生支持 **System One** 决策推理 API。首发支持 **TypeSafe Jev** 决策模型，同时也通过同一套 API 服务 **Cloudflare Workers AI** 的决策模型（`@cf/cloudflare/clef` 系列）。
 
 System One 源于认知心理学中的“系统一”（快速、直觉、确定性决策）概念。不同于逐字生成自由文本的传统生成式大语言模型（LLM），System One 专注于在给定状态（State）上下文下进行快速、高置信度、带校准概率的离散决策与评估。
 
@@ -290,14 +290,31 @@ func main() {
 - **默认模型**：系统预设包含 `jev-latest`、`jev-preview`、`jev-1.13.0`。
 - **API 密钥**：支持配置单个或多个 API Key（系统支持轮询与粘性重试）。
 
-### 2. 模型映射（Model Mapping）
+### 2. Cloudflare Workers AI 渠道配置
+Workers AI 以账号级 Base URL 提供决策模型，一个渠道同时覆盖它的两个面：面向 LLM 与嵌入流量的 OpenAI 兼容 API，以及面向决策模型的原生 `/run/{model}` 路由。响应会被自动解包，客户端拿到的 System One 负载与 TypeSafe 一致。
+
+在 AxonHub 管理控制台中添加渠道：
+- **渠道服务商**：选择 `Cloudflare`。
+- **基础 URL**：`https://api.cloudflare.com/client/v4/accounts/<account_id>/ai`，把 `<account_id>` 换成你的 Cloudflare 账号 ID；保存时仍含占位符的地址会被拒绝。
+- **协议端点**：默认启用 chat completions 与 embeddings；需要同时服务决策模型时手动添加 `typesafe/systemone`。
+- **模型协议（Model Protocols）**：为每个模型固定它真正实现的端点，否则请求会打到该模型并不提供的面上：
+  - `@cf/cloudflare/clef`、`@cf/cloudflare/clef-flash`、`@cf/cloudflare/clef-omni` -> `typesafe/systemone`
+  - `@cf/baai/bge-m3` -> `openai/embeddings`
+
+  该固定项同时决定「渠道测试」使用的协议，被固定的模型会在自己的端点上测试，而不是走 chat completions。
+- **模型**：需手动添加。Workers AI 的 OpenAI 兼容面没有 `GET /models`，因此无法拉取模型列表。
+- **API 密钥**：具备 Workers AI 权限的 Cloudflare API Token。
+
+该渠道类型里配置的端点路径是**路由前缀**（默认 `/run`），模型 ID 会自动追加，因此一个端点即可服务全部决策模型；不要把模型 ID 写进路径。
+
+### 3. 模型映射（Model Mapping）
 客户端请求可通过 AxonHub 的模型重定向能力无缝路由：
 - 客户端请求通用别名：`"model": "jev"`
 - 在渠道中配置模型映射：`jev -> jev-latest`
 - AxonHub 会在向上游转发时自动通过轻量级字节重写替换顶层 `model`，同时 100% 保留 `state` 和 `questions` 的原始 Pass-Through 负载。
 
-### 3. 故障转移与重试（Failover）
-- **429（限流）/ 529（上游过载）**：AxonHub 自动识别并触发渠道重试或故障转移到备用 TypeSafe 渠道。
+### 4. 故障转移与重试（Failover）
+- **429（限流）/ 529（上游过载）**：AxonHub 自动识别并触发渠道重试或故障转移到备用 System One 渠道。
 - **401（鉴权失败）/ 422（参数校验错误）**：精准透传上游错误信息，不进行无效的无限重试。
 
 ---

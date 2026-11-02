@@ -31,6 +31,15 @@ const (
 
 	// ThroughputModeMaxID uses MAX(id) subquery approach for older SQLite compatibility.
 	ThroughputModeMaxID
+
+	// ThroughputModeDistinctOn uses PostgreSQL's DISTINCT ON (request_id) clause
+	// to select one latest successful execution per request, ordered exactly by
+	// request_id, created_at DESC, id DESC.
+	//
+	// PostgreSQL-only: when this mode is requested with a non-PostgreSQL dialect
+	// (question-mark placeholders in BuildThroughputQuery; mysql/sqlite dialects
+	// in the daily builders), the builder falls back to the ROW_NUMBER behavior.
+	ThroughputModeDistinctOn
 )
 
 // QueryFragmentConfig holds the SQL fragments for a specific query type.
@@ -73,7 +82,9 @@ var AllowedQueryConfigs = map[ThroughputQueryType]QueryFragmentConfig{
 //   - useDollarPlaceholders: if true, uses $1, $2, etc. for PostgreSQL; otherwise uses ?
 //   - queryType: determines which SQL pattern (by channel or by model)
 //   - limit: maximum number of results to return
-//   - mode: which SQL pattern to use (ROW_NUMBER or MAX_ID)
+//   - mode: which SQL pattern to use (ROW_NUMBER, MAX_ID, or DISTINCT ON);
+//     ThroughputModeDistinctOn is PostgreSQL-only and falls back to ROW_NUMBER
+//     when useDollarPlaceholders is false
 //
 // Returns: SQL query string with placeholders for the since timestamp
 func BuildThroughputQuery(useDollarPlaceholders bool, queryType ThroughputQueryType, limit int, mode ThroughputQueryMode) string {
@@ -99,6 +110,12 @@ func BuildThroughputQuery(useDollarPlaceholders bool, queryType ThroughputQueryT
 		return buildMaxIDQuery(placeholder, config, limit)
 	}
 
+	// DISTINCT ON is PostgreSQL-only; dollar placeholders are the marker for
+	// PostgreSQL. Fall back to ROW_NUMBER for other dialects.
+	if mode == ThroughputModeDistinctOn && useDollarPlaceholders {
+		return buildDistinctOnQuery(placeholder, config, limit)
+	}
+
 	return buildRowNumberQuery(placeholder, config, limit)
 }
 
@@ -113,7 +130,7 @@ WITH successful_execs AS (
         metrics_latency_ms,
         metrics_first_token_latency_ms,
         stream,
-        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn
+        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC, id DESC) as rn
     FROM request_executions
     WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= ` + placeholder + `
 )
@@ -185,6 +202,55 @@ WHERE se.status = 'completed'
             AND re2.metrics_latency_ms > 0
             AND re2.created_at >= ` + placeholder + `
     )
+GROUP BY ` + config.GroupBy + `
+ORDER BY throughput DESC
+LIMIT ` + fmt.Sprintf("%d", limit)
+}
+
+// buildDistinctOnQuery constructs a PostgreSQL query using DISTINCT ON
+// (request_id) to select one latest successful execution per request, with
+// exact ordering request_id, created_at DESC, id DESC. PostgreSQL requires the
+// DISTINCT ON expression to lead the ORDER BY of the select it appears in, so
+// the deduplication happens inside the CTE; the outer aggregation, grouping,
+// ordering, and limit are identical to the ROW_NUMBER mode. This deterministic
+// ordering (created_at DESC, id DESC) matches the ROW_NUMBER ordering so the
+// two modes select the same latest execution per request, while avoiding a
+// window function.
+func buildDistinctOnQuery(placeholder string, config QueryFragmentConfig, limit int) string {
+	return `
+WITH successful_execs AS (
+    SELECT DISTINCT ON (request_id)
+        request_id,
+        channel_id,
+        metrics_latency_ms,
+        metrics_first_token_latency_ms,
+        stream
+    FROM request_executions
+    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= ` + placeholder + `
+    ORDER BY request_id, created_at DESC, id DESC
+)
+SELECT
+    ` + config.SelectColumns + `
+    SUM(ul.completion_tokens) as tokens_count,
+    SUM(se.metrics_latency_ms) as latency_ms,
+    COUNT(DISTINCT se.request_id) as request_count,
+    CASE
+        WHEN SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+                 THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
+                      THEN 0
+                      ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
+                 ELSE se.metrics_latency_ms END) > 0
+        THEN SUM(ul.completion_tokens) * 1000.0
+             / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+                   THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
+                        THEN 0
+                        ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
+                   ELSE se.metrics_latency_ms END)
+        ELSE 0
+    END as throughput
+FROM successful_execs se
+JOIN usage_logs ul ON se.request_id = ul.request_id
+` + config.JoinClause + `
 GROUP BY ` + config.GroupBy + `
 ORDER BY throughput DESC
 LIMIT ` + fmt.Sprintf("%d", limit)

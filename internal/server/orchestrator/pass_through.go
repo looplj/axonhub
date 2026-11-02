@@ -285,6 +285,15 @@ func (p *PersistentOutboundTransformer) allowPassThroughBody(ctx context.Context
 	return policy.AllowPassThroughBody(ctx, llmReq, providerReq)
 }
 
+func (p *PersistentOutboundTransformer) allowPassThroughResponse(ctx context.Context) bool {
+	policy, ok := p.wrapped.(transformer.PassThroughResponsePolicy)
+	if !ok {
+		return true
+	}
+
+	return policy.AllowPassThroughResponse(ctx, p.state.LlmRequest, p.state.RawProviderRequest)
+}
+
 // applyPassThroughRequestHeaders forwards Codex identity metadata paired with
 // a pass-through body. Protocol-selection headers such as Responses Lite are
 // deliberately excluded: the Codex transformer decides whether they apply.
@@ -458,10 +467,15 @@ func captureRawProviderResponse(outbound *PersistentOutboundTransformer, systemS
 }
 
 // applyPassThroughResponse replaces the transformed response with the raw provider response
-// when PassThroughBody is enabled and the inbound/outbound API formats match.
+// when PassThroughBody is enabled and the inbound/outbound API formats match, unless the
+// outbound transformer vetoes it via transformer.PassThroughResponsePolicy.
 func applyPassThroughResponse(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnInboundRawResponse("pass-through-response", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
 		if !outbound.isPassThroughEnabled(ctx, systemService) && !responsesTransportAdaptationEnabled(ctx, outbound, systemService) && !responsesIdentityPreservationEnabled(outbound) {
+			return response, nil
+		}
+
+		if !outbound.allowPassThroughResponse(ctx) {
 			return response, nil
 		}
 

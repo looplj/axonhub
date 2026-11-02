@@ -682,6 +682,347 @@ func TestOutboundTransformer_TopLevelCacheControlPassthrough(t *testing.T) {
 	require.Equal(t, 0, countCacheControls(&anthropicReq))
 }
 
+func TestOutboundTransformer_AutomaticCacheControlForConvertedRequests(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name               string
+		apiFormat          llm.APIFormat
+		expectCacheControl bool
+	}{
+		{
+			name:               "non-Anthropic inbound format",
+			apiFormat:          llm.APIFormatOpenAIChatCompletion,
+			expectCacheControl: true,
+		},
+		{
+			name:               "Anthropic inbound format",
+			apiFormat:          llm.APIFormatAnthropicMessage,
+			expectCacheControl: false,
+		},
+		{
+			name:               "unknown inbound format",
+			apiFormat:          llm.APIFormat("unknown/protocol"),
+			expectCacheControl: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+				APIFormat: tt.apiFormat,
+				Model:     "claude-opus-4-6",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello"; return &s }(),
+						},
+					},
+				},
+			})
+			require.NoError(t, err)
+
+			var raw map[string]any
+			require.NoError(t, json.Unmarshal(result.Body, &raw))
+			cacheControl, hasCacheControl := raw["cache_control"]
+			require.Equal(t, tt.expectCacheControl, hasCacheControl)
+			if tt.expectCacheControl {
+				require.Equal(t, map[string]any{"type": "ephemeral"}, cacheControl)
+			}
+		})
+	}
+}
+
+func TestShouldEnableAutomaticCacheControl(t *testing.T) {
+	tests := []struct {
+		name      string
+		apiFormat llm.APIFormat
+		want      bool
+	}{
+		{
+			name:      "direct OpenAI conversion",
+			apiFormat: llm.APIFormatOpenAIChatCompletion,
+			want:      true,
+		},
+		{
+			name:      "other non-Anthropic protocol",
+			apiFormat: llm.APIFormat("unknown/protocol"),
+			want:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, shouldEnableAutomaticCacheControl(&llm.Request{APIFormat: tt.apiFormat}))
+		})
+	}
+}
+
+func TestManagedAnthropicPlatformsUseBlockLevelCacheControl(t *testing.T) {
+	for _, platform := range []PlatformType{PlatformVertex, PlatformBedrock} {
+		t.Run(string(platform), func(t *testing.T) {
+			transformer := &OutboundTransformer{
+				config: &Config{
+					Type:      platform,
+					BaseURL:   "https://example.test",
+					ProjectID: "project",
+					Region:    "us-central1",
+				},
+			}
+
+			result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+				APIFormat: llm.APIFormatOpenAIChatCompletion,
+				Model:     "claude-opus-4-6",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello"; return &s }(),
+						},
+					},
+				},
+			})
+			require.NoError(t, err)
+
+			var request MessageRequest
+			require.NoError(t, json.Unmarshal(result.Body, &request))
+			require.Nil(t, request.CacheControl)
+			require.Len(t, request.Messages, 1)
+			require.Len(t, request.Messages[0].Content.MultipleContent, 1)
+			require.Equal(t, &CacheControl{Type: "ephemeral"}, request.Messages[0].Content.MultipleContent[0].CacheControl)
+		})
+	}
+}
+
+func TestManagedAnthropicPlatformsNormalizeNativeTopLevelCacheControl(t *testing.T) {
+	for _, platform := range []PlatformType{PlatformVertex, PlatformBedrock} {
+		t.Run(string(platform), func(t *testing.T) {
+			transformer := &OutboundTransformer{
+				config: &Config{
+					Type:      platform,
+					BaseURL:   "https://example.test",
+					ProjectID: "project",
+					Region:    "us-central1",
+				},
+			}
+
+			result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+				APIFormat: llm.APIFormatAnthropicMessage,
+				Model:     "claude-opus-4-6",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello"; return &s }(),
+						},
+					},
+				},
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyCacheControl: &CacheControl{Type: "ephemeral"},
+				},
+			})
+			require.NoError(t, err)
+
+			var request MessageRequest
+			require.NoError(t, json.Unmarshal(result.Body, &request))
+			require.Nil(t, request.CacheControl)
+			require.Equal(t, &CacheControl{Type: "ephemeral"}, request.Messages[0].Content.MultipleContent[0].CacheControl)
+		})
+	}
+}
+
+func TestManagedAnthropicPlatformsPreserveExplicitAndTopLevelCacheControls(t *testing.T) {
+	for _, platform := range []PlatformType{PlatformVertex, PlatformBedrock} {
+		t.Run(string(platform), func(t *testing.T) {
+			transformer := &OutboundTransformer{
+				config: &Config{
+					Type:      platform,
+					BaseURL:   "https://example.test",
+					ProjectID: "project",
+					Region:    "us-central1",
+				},
+			}
+
+			firstText := "Earlier"
+			lastText := "Latest"
+			result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+				APIFormat: llm.APIFormatAnthropicMessage,
+				Model:     "claude-opus-4-6",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{
+									Type:         "text",
+									Text:         &firstText,
+									CacheControl: &llm.CacheControl{Type: "ephemeral"},
+								},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: &lastText,
+						},
+					},
+				},
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyCacheControl: &CacheControl{Type: "ephemeral"},
+				},
+			})
+			require.NoError(t, err)
+
+			var request MessageRequest
+			require.NoError(t, json.Unmarshal(result.Body, &request))
+			require.Nil(t, request.CacheControl)
+			require.Len(t, request.Messages, 2)
+			require.Equal(t, &CacheControl{Type: "ephemeral"}, request.Messages[0].Content.MultipleContent[0].CacheControl)
+			require.Equal(t, &CacheControl{Type: "ephemeral"}, request.Messages[1].Content.MultipleContent[0].CacheControl)
+		})
+	}
+}
+
+func TestManagedAnthropicPlatformsAcceptFullMatchingBreakpointSet(t *testing.T) {
+	for _, platform := range []PlatformType{PlatformVertex, PlatformBedrock} {
+		t.Run(string(platform), func(t *testing.T) {
+			transformer := &OutboundTransformer{
+				config: &Config{
+					Type:      platform,
+					BaseURL:   "https://example.test",
+					ProjectID: "project",
+					Region:    "us-central1",
+				},
+			}
+
+			messages := make([]llm.Message, maxCacheControlBreakpoints)
+			for i := range messages {
+				text := "cached"
+				messages[i] = llm.Message{
+					Role: "user",
+					Content: llm.MessageContent{
+						MultipleContent: []llm.MessageContentPart{{
+							Type:         "text",
+							Text:         &text,
+							CacheControl: &llm.CacheControl{Type: "ephemeral"},
+						}},
+					},
+				}
+			}
+
+			result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+				APIFormat: llm.APIFormatAnthropicMessage,
+				Model:     "claude-opus-4-6",
+				Messages:  messages,
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyCacheControl: &CacheControl{Type: "ephemeral"},
+				},
+			})
+			require.NoError(t, err)
+
+			var request MessageRequest
+			require.NoError(t, json.Unmarshal(result.Body, &request))
+			require.Nil(t, request.CacheControl)
+			require.Len(t, request.Messages, maxCacheControlBreakpoints)
+			for _, message := range request.Messages {
+				require.Equal(t, &CacheControl{Type: "ephemeral"}, message.Content.MultipleContent[0].CacheControl)
+			}
+		})
+	}
+}
+
+func TestMoveTopLevelOneHourCacheControlBeforeExistingShortBreakpoint(t *testing.T) {
+	short := &CacheControl{Type: "ephemeral"}
+	req := &MessageRequest{
+		System: &SystemPrompt{
+			MultiplePrompts: []SystemPromptPart{{Type: "text", Text: "system"}},
+		},
+		Messages: []MessageParam{
+			{
+				Role: "user",
+				Content: MessageContent{MultipleContent: []MessageContentBlock{{
+					Type:         "text",
+					Text:         func() *string { s := "earlier"; return &s }(),
+					CacheControl: short,
+				}}},
+			},
+		},
+		CacheControl: &CacheControl{Type: "ephemeral", TTL: "1h"},
+	}
+
+	require.True(t, moveTopLevelCacheControlToLastBlock(req))
+
+	require.Nil(t, req.CacheControl)
+	require.Equal(t, &CacheControl{Type: "ephemeral", TTL: "1h"}, req.System.MultiplePrompts[0].CacheControl)
+	require.Same(t, short, req.Messages[0].Content.MultipleContent[0].CacheControl)
+}
+
+func TestMoveTopLevelOneHourCacheControlPreservesExistingBreakpointWhenUnsafe(t *testing.T) {
+	short := &CacheControl{Type: "ephemeral"}
+	req := &MessageRequest{
+		Messages: []MessageParam{
+			{
+				Role: "user",
+				Content: MessageContent{MultipleContent: []MessageContentBlock{{
+					Type:         "text",
+					Text:         func() *string { s := "earlier"; return &s }(),
+					CacheControl: short,
+				}}},
+			},
+		},
+		CacheControl: &CacheControl{Type: "ephemeral", TTL: "1h"},
+	}
+
+	require.False(t, moveTopLevelCacheControlToLastBlock(req))
+
+	require.Nil(t, req.CacheControl)
+	require.Same(t, short, req.Messages[0].Content.MultipleContent[0].CacheControl)
+}
+
+func TestMoveTopLevelCacheControlPreservesRawBlockFields(t *testing.T) {
+	req := &MessageRequest{
+		Messages: []MessageParam{{
+			Role:    "user",
+			Content: MessageContent{Raw: json.RawMessage(`[{"type":"text","text":"raw","vendor_field":"keep"}]`)},
+		}},
+		CacheControl: &CacheControl{Type: "ephemeral"},
+	}
+
+	require.True(t, moveTopLevelCacheControlToLastBlock(req))
+
+	var blocks []map[string]any
+	require.NoError(t, json.Unmarshal(req.Messages[0].Content.Raw, &blocks))
+	require.Len(t, blocks, 1)
+	require.Equal(t, "keep", blocks[0]["vendor_field"])
+	require.Equal(t, "ephemeral", blocks[0]["cache_control"].(map[string]any)["type"])
+}
+
+func TestMoveTopLevelCacheControlReusesMatchingLastBreakpoint(t *testing.T) {
+	for _, ttl := range []string{"", "1h"} {
+		t.Run(ttl, func(t *testing.T) {
+			last := &CacheControl{Type: "ephemeral", TTL: ttl}
+			req := &MessageRequest{
+				Messages: []MessageParam{{
+					Role: "user",
+					Content: MessageContent{MultipleContent: []MessageContentBlock{{
+						Type:         "text",
+						Text:         func() *string { s := "last"; return &s }(),
+						CacheControl: last,
+					}}},
+				}},
+				CacheControl: &CacheControl{Type: "ephemeral", TTL: ttl},
+			}
+
+			require.True(t, moveTopLevelCacheControlToLastBlock(req))
+			require.Nil(t, req.CacheControl)
+			require.Same(t, last, req.Messages[0].Content.MultipleContent[0].CacheControl)
+		})
+	}
+}
+
 // TestAnthropicInboundOutbound_TopLevelCacheControlEndToEnd verifies the
 // regression reported in https://github.com/looplj/axonhub/issues/1484:
 // Anthropic-in & Anthropic-out flows used to drop the top-level

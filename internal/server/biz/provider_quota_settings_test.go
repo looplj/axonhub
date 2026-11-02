@@ -101,6 +101,33 @@ func TestSystemService_ProviderQuotaCollectionSettings_UpdateMergesProviders(t *
 	require.True(t, settings.Providers["zhipu"])
 }
 
+func TestSystemService_IsProviderQuotaCollectionEnabled(t *testing.T) {
+	service, client := setupProviderQuotaSettingsTest(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+
+	// A supported provider type keeps normal settings behavior: enabled by
+	// default, and IsProviderQuotaCollectionEnabled must not treat it as
+	// retired data.
+	enabled, err := service.IsProviderQuotaCollectionEnabled(ctx, "minimax")
+	require.NoError(t, err)
+	require.True(t, enabled)
+
+	// A retired provider type from a surviving row must be distinguishable
+	// from a supported one by the exported helper, so the read path can
+	// surface "no status" instead of an error.
+	require.False(t, IsSupportedProviderQuotaType("wafer"))
+	require.False(t, IsSupportedProviderQuotaType("typo-wafer"))
+	require.True(t, IsSupportedProviderQuotaType("minimax"))
+
+	// An unsupported (e.g. typo) provider type must not be silently
+	// accepted as enabled.
+	enabled, err = service.IsProviderQuotaCollectionEnabled(ctx, "wafer")
+	require.False(t, enabled)
+	require.ErrorContains(t, err, "unsupported provider quota type")
+}
+
 func TestSystemService_ProviderQuotaCollectionSettings_RejectsInvalidProviderUpdates(t *testing.T) {
 	service, client := setupProviderQuotaSettingsTest(t)
 	defer client.Close()

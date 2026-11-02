@@ -128,10 +128,10 @@ func extractChannelIDsFromStats(statsMap map[string]map[int]*probeStats) []int {
 	return lo.Keys(channelIDSet)
 }
 
-func (r *queryResolver) fetchChannelNames(ctx context.Context, channelIDs []int) map[int]string {
+func (r *queryResolver) fetchChannelNames(ctx context.Context, channelIDs []int) (map[int]string, error) {
 	channelNames := make(map[int]string)
 	if len(channelIDs) == 0 {
-		return channelNames
+		return channelNames, nil
 	}
 
 	queriedChannels, err := r.client.Channel.Query().
@@ -143,14 +143,17 @@ func (r *queryResolver) fetchChannelNames(ctx context.Context, channelIDs []int)
 			log.Any("channelIDs", channelIDs),
 			log.Cause(err))
 
-		return channelNames
+		// Never return success with fallback labels: the caller caches this
+		// result, and a transient lookup failure would keep the placeholders
+		// visible for the cache TTL.
+		return nil, fmt.Errorf("failed to query channel names: %w", err)
 	}
 
 	for _, ch := range queriedChannels {
 		channelNames[ch.ID] = ch.Name
 	}
 
-	return channelNames
+	return channelNames, nil
 }
 
 func buildChannelPerformanceResponse(
@@ -213,10 +216,10 @@ func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(ctx context.C
 		placeholder = "$1"
 	}
 
+	// The bundled SQLite driver is far newer than 3.25, so window functions are
+	// available. ROW_NUMBER avoids the correlated MAX(id) scan that made these
+	// aggregates roughly three times slower on SQLite.
 	queryMode := qb.ThroughputModeRowNumber
-	if !useDollarPlaceholders {
-		queryMode = qb.ThroughputModeMaxID
-	}
 
 	query := qb.BuildDailyPerformanceStatsQuery(
 		dialectName,
@@ -315,21 +318,9 @@ func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(ctx context.C
 		validChannelIDs = append(validChannelIDs, chID)
 	}
 
-	channelNames := make(map[int]string)
-	if len(validChannelIDs) > 0 {
-		queriedChannels, err := r.client.Channel.Query().
-			Where(channel.IDIn(validChannelIDs...)).
-			Select(channel.FieldID, channel.FieldName).
-			All(ctx)
-		if err != nil {
-			log.Error(ctx, "failed to query channel names for performance stats",
-				log.Any("channelIDs", validChannelIDs),
-				log.Cause(err))
-		} else {
-			for _, ch := range queriedChannels {
-				channelNames[ch.ID] = ch.Name
-			}
-		}
+	channelNames, err := r.fetchChannelNames(ctx, validChannelIDs)
+	if err != nil {
+		return nil, err
 	}
 
 	response := make([]*ChannelPerformanceStat, 0)

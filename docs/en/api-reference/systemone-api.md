@@ -2,7 +2,7 @@
 
 ## Overview
 
-AxonHub natively supports the **System One** decision inference API, launched initially with support for the **TypeSafe Jev** decision model.
+AxonHub natively supports the **System One** decision inference API. It launched with the **TypeSafe Jev** decision model, and also serves the **Cloudflare Workers AI** decision models (`@cf/cloudflare/clef` family) through the same API.
 
 System One is rooted in cognitive psychology's "System 1" thinking (fast, intuitive, and deterministic decision-making). Unlike conventional generative Large Language Models (LLMs) that produce free text token-by-token, System One focuses on making fast, highly calibrated, probabilistic judgments and classifications over a structured input state.
 
@@ -290,14 +290,31 @@ Add a channel in AxonHub:
 - **Default Models**: Preset with `jev-latest`, `jev-preview`, and `jev-1.13.0`.
 - **API Keys**: Supports single or multiple API keys with sticky / round-robin selection.
 
-### 2. Model Mapping
+### 2. Cloudflare Workers AI Channel Configuration
+Workers AI serves decision models from an account-scoped base URL, and one channel covers both of its surfaces: the OpenAI-compatible API for LLM and embedding traffic, and the native `/run/{model}` route for decision models. Responses are unwrapped, so clients receive the same System One payload as with TypeSafe.
+
+Add a channel in AxonHub:
+- **Provider**: Select `Cloudflare`.
+- **Base URL**: `https://api.cloudflare.com/client/v4/accounts/<account_id>/ai`, with `<account_id>` replaced by your Cloudflare account id. A base URL that still contains a placeholder is rejected on save.
+- **Protocol Endpoints**: Chat completions and embeddings are enabled by default. Add `typesafe/systemone` when the channel should also serve decision models.
+- **Model Protocols**: Pin each model to the endpoint it actually implements, otherwise a request reaches a surface the model does not serve:
+  - `@cf/cloudflare/clef`, `@cf/cloudflare/clef-flash`, `@cf/cloudflare/clef-omni` -> `typesafe/systemone`
+  - `@cf/baai/bge-m3` -> `openai/embeddings`
+
+  The pin also selects the protocol used by the channel test, so a pinned model is tested on its own endpoint instead of on chat completions.
+- **Models**: Add them manually. Workers AI's OpenAI-compatible surface does not expose `GET /models`, so the model list cannot be fetched.
+- **API Keys**: A Cloudflare API token with Workers AI access.
+
+For this channel type the configured endpoint path is a **route prefix** (`/run` by default) and the model id is always appended, so a single endpoint serves every decision model. Do not put a model id in the path.
+
+### 3. Model Mapping
 Client requests can use abstracted aliases via model mapping:
 - Request model: `"model": "jev"`
 - Channel mapping rule: `jev -> jev-latest`
 - AxonHub modifies only the `"model"` byte segment while keeping `"state"` and `"questions"` in pass-through mode.
 
-### 3. Failover and Retries
-- **429 (Rate Limit) / 529 (Overloaded)**: AxonHub triggers retry or failover to alternative TypeSafe channels.
+### 4. Failover and Retries
+- **429 (Rate Limit) / 529 (Overloaded)**: AxonHub triggers retry or failover to alternative System One channels.
 - **401 (Auth Failed) / 422 (Unprocessable Entity)**: Pass through immediately without redundant retries.
 
 ---

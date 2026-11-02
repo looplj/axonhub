@@ -51,6 +51,10 @@ type Function struct {
 	// including const, enum, and other advanced features. This field is mutually exclusive with Parameters.
 	ParametersJsonSchema json.RawMessage `json:"parametersJsonSchema,omitempty"`
 	Strict               *bool           `json:"strict,omitempty"`
+	// AllowedCallers restricts which callers may invoke this function tool,
+	// e.g. ["direct"] or ["code_execution_20250825"]. Anthropic-only today;
+	// other providers have no equivalent and keep dropping it.
+	AllowedCallers []string `json:"allowed_callers,omitempty"`
 }
 
 // FunctionCall represents a function call (deprecated).

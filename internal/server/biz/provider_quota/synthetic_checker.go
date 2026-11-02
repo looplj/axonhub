@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,7 +19,9 @@ import (
 type SyntheticUsageResponse struct {
 	Subscription         *SyntheticSubscription         `json:"subscription,omitempty"`
 	Search               *SyntheticSearch               `json:"search,omitempty"`
+	FreeToolCalls        *SyntheticFreeToolCalls        `json:"freeToolCalls,omitempty"`
 	WeeklyTokenLimit     *SyntheticWeeklyTokenLimit     `json:"weeklyTokenLimit,omitempty"`
+	PlanWeeklyLimit      *SyntheticPlanWeeklyLimit      `json:"planWeeklyLimit,omitempty"`
 	RollingFiveHourLimit *SyntheticRollingFiveHourLimit `json:"rollingFiveHourLimit,omitempty"`
 }
 
@@ -32,8 +36,15 @@ type SyntheticSearch struct {
 }
 
 type SyntheticSearchHourly struct {
-	Limit    *int64 `json:"limit,omitempty"`
-	Requests *int64 `json:"requests,omitempty"`
+	Limit    *int64  `json:"limit,omitempty"`
+	Requests *int64  `json:"requests,omitempty"`
+	RenewsAt *string `json:"renewsAt,omitempty"`
+}
+
+type SyntheticFreeToolCalls struct {
+	Limit    *int64  `json:"limit,omitempty"`
+	Requests *int64  `json:"requests,omitempty"`
+	RenewsAt *string `json:"renewsAt,omitempty"`
 }
 
 type SyntheticWeeklyTokenLimit struct {
@@ -41,6 +52,15 @@ type SyntheticWeeklyTokenLimit struct {
 	PercentRemaining *float64 `json:"percentRemaining,omitempty"`
 	MaxCredits       *string  `json:"maxCredits,omitempty"`
 	RemainingCredits *string  `json:"remainingCredits,omitempty"`
+}
+
+// SyntheticPlanWeeklyLimit is the weekly pool shape reported by big/pro
+// new-version plans: a percentage and the next regeneration tick, with no
+// credit amounts.
+type SyntheticPlanWeeklyLimit struct {
+	NextRegenAt      *string  `json:"nextRegenAt,omitempty"`
+	PercentRemaining *float64 `json:"percentRemaining,omitempty"`
+	NextRegenPercent *float64 `json:"nextRegenPercent,omitempty"`
 }
 
 type SyntheticRollingFiveHourLimit struct {
@@ -104,8 +124,10 @@ func (c *SyntheticQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		return QuotaData{}, fmt.Errorf("failed to parse synthetic usage response: %w", err)
 	}
 
+	weekly := response.weeklyLimit()
+
 	normalizedStatus := "unknown"
-	limits := buildSyntheticLimitStatuses(response.WeeklyTokenLimit, response.RollingFiveHourLimit)
+	limits := buildSyntheticLimitStatuses(weekly, response.RollingFiveHourLimit)
 
 	if len(limits) > 0 {
 		normalizedStatus = "available"
@@ -120,9 +142,17 @@ func (c *SyntheticQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		}
 	}
 
+	// The search counter is displayed but never gates the channel: it is
+	// appended after the blocking limits and stays out of the escalation above.
+	if response.Search != nil {
+		if searchLimit, ok := searchHourlyLimitStatus(response.Search.Hourly); ok {
+			limits = append(limits, searchLimit)
+		}
+	}
+
 	nextResetAt := findEarliestSyntheticResetAt(
 		response.Subscription,
-		response.WeeklyTokenLimit,
+		weekly,
 		response.RollingFiveHourLimit,
 	)
 
@@ -136,8 +166,16 @@ func (c *SyntheticQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		rawData["search"] = convertSyntheticSearchToMap(response.Search)
 	}
 
+	if response.FreeToolCalls != nil {
+		rawData["freeToolCalls"] = convertSyntheticFreeToolCallsToMap(response.FreeToolCalls)
+	}
+
 	if response.WeeklyTokenLimit != nil {
 		rawData["weeklyTokenLimit"] = convertSyntheticWeeklyTokenLimitToMap(response.WeeklyTokenLimit)
+	}
+
+	if response.PlanWeeklyLimit != nil {
+		rawData["planWeeklyLimit"] = convertSyntheticPlanWeeklyLimitToMap(response.PlanWeeklyLimit)
 	}
 
 	if response.RollingFiveHourLimit != nil {
@@ -152,6 +190,33 @@ func (c *SyntheticQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		Ready:        IsReadyStatus(normalizedStatus),
 		Limits:       limits,
 	}), nil
+}
+
+// weeklyLimit folds the two weekly pool shapes into the carrier the limit
+// builder and the reset aggregation already use. Regular new-version plans
+// report weeklyTokenLimit with credit amounts; big/pro plans report
+// planWeeklyLimit with percentages only. When both are present planWeeklyLimit
+// wins the shared fields and the credits still come from weeklyTokenLimit.
+func (r *SyntheticUsageResponse) weeklyLimit() *SyntheticWeeklyTokenLimit {
+	if r.WeeklyTokenLimit == nil && r.PlanWeeklyLimit == nil {
+		return nil
+	}
+
+	merged := SyntheticWeeklyTokenLimit{}
+	if r.WeeklyTokenLimit != nil {
+		merged = *r.WeeklyTokenLimit
+	}
+
+	if plan := r.PlanWeeklyLimit; plan != nil {
+		if plan.NextRegenAt != nil {
+			merged.NextRegenAt = plan.NextRegenAt
+		}
+		if plan.PercentRemaining != nil {
+			merged.PercentRemaining = plan.PercentRemaining
+		}
+	}
+
+	return &merged
 }
 
 func (c *SyntheticQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
@@ -224,6 +289,47 @@ func buildSyntheticLimitStatuses(weekly *SyntheticWeeklyTokenLimit, fiveHour *Sy
 	return limits
 }
 
+// syntheticSearchHourlyWindow labels Synthetic's hourly search-request quota.
+// Like antigravity's gemini_5h windows it names the counter, not a bare period.
+const syntheticSearchHourlyWindow = "search_hourly"
+
+// searchHourlyLimitStatus converts the hourly search-request counter into a
+// limit the quota surfaces list. It is never blocking: RequestModality never
+// returns QuotaLimitTypeSearch, the limit carries no AvailabilityGroup, and
+// normalization.go keeps display-only limits out of the channel status and
+// reset. It carries no period money either — search is not billed in money and
+// the plan's credits are reported on the weekly limit.
+func searchHourlyLimitStatus(hourly *SyntheticSearchHourly) (QuotaLimitStatus, bool) {
+	if hourly == nil || hourly.Limit == nil || hourly.Requests == nil || *hourly.Limit <= 0 {
+		return QuotaLimitStatus{}, false
+	}
+
+	usageRatio := float64(*hourly.Requests) / float64(*hourly.Limit)
+
+	status := "available"
+	if usageRatio >= 1.0 {
+		status = "exhausted"
+	} else if usageRatio >= WarningThresholdRatio {
+		status = "warning"
+	}
+
+	var resetAt *time.Time
+	if hourly.RenewsAt != nil {
+		if t, err := time.Parse(time.RFC3339, *hourly.RenewsAt); err == nil {
+			resetAt = &t
+		}
+	}
+
+	return QuotaLimitStatus{
+		Type:        QuotaLimitTypeSearch,
+		Status:      status,
+		UsageRatio:  usageRatio,
+		Ready:       IsReadyStatus(status),
+		NextResetAt: resetAt,
+		Window:      syntheticSearchHourlyWindow,
+	}, true
+}
+
 func weeklyTokenLimitStatus(weekly *SyntheticWeeklyTokenLimit) QuotaLimitStatus {
 	status := "available"
 	usageRatio := 0.0
@@ -248,7 +354,7 @@ func weeklyTokenLimitStatus(weekly *SyntheticWeeklyTokenLimit) QuotaLimitStatus 
 
 	// NextRegenAt marks the next incremental regeneration of the weekly pool
 	// rather than a hard window boundary, so it cannot anchor a period start.
-	return QuotaLimitStatus{
+	limit := QuotaLimitStatus{
 		Type:        QuotaLimitTypeToken,
 		Status:      status,
 		UsageRatio:  usageRatio,
@@ -256,6 +362,49 @@ func weeklyTokenLimitStatus(weekly *SyntheticWeeklyTokenLimit) QuotaLimitStatus 
 		NextResetAt: resetAt,
 		Window:      QuotaWindowWeekly,
 	}
+
+	// Synthetic bills this pool in its own credits and regenerates it in ticks
+	// instead of resetting on a window boundary, so the provider's figures are
+	// the only honest period money: maxCredits is what the window is worth,
+	// maxCredits-remainingCredits what it has spent. provider_quota_cost.go
+	// keeps these for "synthetic" instead of pricing the period from usage logs.
+	if maxCredits, ok := parseSyntheticCredits(weekly.MaxCredits); ok && maxCredits > 0 {
+		if remainingCredits, ok := parseSyntheticCredits(weekly.RemainingCredits); ok {
+			// Two finite, individually valid amounts can still overflow the
+			// subtraction (e.g. max 1e308 with remaining -1e308); the derived
+			// money must stay finite or the quota payload stops being
+			// JSON-serializable.
+			usedCredits := maxCredits - remainingCredits
+			if !math.IsInf(usedCredits, 0) {
+				cost := max(usedCredits, 0.0)
+
+				limit.PeriodCost = &cost
+				limit.PeriodQuota = &maxCredits
+			}
+		}
+	}
+
+	return limit
+}
+
+// parseSyntheticCredits reads the "$10.50" amounts Synthetic reports for the
+// weekly credit pool.
+func parseSyntheticCredits(value *string) (float64, bool) {
+	if value == nil {
+		return 0, false
+	}
+
+	trimmed := strings.TrimPrefix(strings.TrimSpace(*value), "$")
+	if trimmed == "" {
+		return 0, false
+	}
+
+	credits, err := strconv.ParseFloat(trimmed, 64)
+	if err != nil || math.IsNaN(credits) || math.IsInf(credits, 0) {
+		return 0, false
+	}
+
+	return credits, true
 }
 
 func findEarliestSyntheticResetAt(
@@ -263,6 +412,10 @@ func findEarliestSyntheticResetAt(
 	weeklyTokenLimit *SyntheticWeeklyTokenLimit,
 	rollingFiveHourLimit *SyntheticRollingFiveHourLimit,
 ) *time.Time {
+	// The search and free-tool-call counters renew hourly/daily, so reporting
+	// them as the channel reset would mask the plan quota the status is driven
+	// by. (nextCheckAt comes from the status, not from limit resets, so nothing
+	// starts polling more often.)
 	var earliest *time.Time
 
 	if subscription != nil && subscription.RenewsAt != nil {
@@ -329,6 +482,28 @@ func convertSyntheticSearchHourlyToMap(hourly *SyntheticSearchHourly) map[string
 		result["requests"] = *hourly.Requests
 	}
 
+	if hourly.RenewsAt != nil {
+		result["renewsAt"] = *hourly.RenewsAt
+	}
+
+	return result
+}
+
+func convertSyntheticFreeToolCallsToMap(ftc *SyntheticFreeToolCalls) map[string]any {
+	result := make(map[string]any)
+
+	if ftc.Limit != nil {
+		result["limit"] = *ftc.Limit
+	}
+
+	if ftc.Requests != nil {
+		result["requests"] = *ftc.Requests
+	}
+
+	if ftc.RenewsAt != nil {
+		result["renewsAt"] = *ftc.RenewsAt
+	}
+
 	return result
 }
 
@@ -349,6 +524,24 @@ func convertSyntheticWeeklyTokenLimitToMap(wtl *SyntheticWeeklyTokenLimit) map[s
 
 	if wtl.RemainingCredits != nil {
 		result["remainingCredits"] = *wtl.RemainingCredits
+	}
+
+	return result
+}
+
+func convertSyntheticPlanWeeklyLimitToMap(pwl *SyntheticPlanWeeklyLimit) map[string]any {
+	result := make(map[string]any)
+
+	if pwl.NextRegenAt != nil {
+		result["nextRegenAt"] = *pwl.NextRegenAt
+	}
+
+	if pwl.PercentRemaining != nil {
+		result["percentRemaining"] = *pwl.PercentRemaining
+	}
+
+	if pwl.NextRegenPercent != nil {
+		result["nextRegenPercent"] = *pwl.NextRegenPercent
 	}
 
 	return result

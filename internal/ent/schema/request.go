@@ -194,13 +194,15 @@ func (Request) Annotations() []schema.Annotation {
 func (Request) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
-			scopes.APIKeyScopeQueryRule(scopes.ScopeWriteRequests),
+			// API key principals stay inside the key's project: a project-level
+			// write_requests grant must not become a system-wide read.
+			scopes.APIKeyProjectScopeReadRule(scopes.ScopeWriteRequests),
 			scopes.UserProjectScopeReadRequestsRule(scopes.ScopeReadRequests),
 			scopes.OwnerRule(),
 			scopes.UserReadScopeRule(scopes.ScopeReadRequests),
 		},
 		Mutation: scopes.MutationPolicy{
-			scopes.APIKeyScopeMutationRule(scopes.ScopeWriteRequests),
+			scopes.APIKeyProjectScopeWriteRule(scopes.ScopeWriteRequests),
 			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteRequests),
 			scopes.OwnerRule(),
 			scopes.UserWriteScopeRule(scopes.ScopeWriteRequests),

@@ -163,3 +163,44 @@ func TestNormalizeQuotaData_ExplicitStatusContributesReadyState(t *testing.T) {
 	require.Equal(t, "warning", quota.Status)
 	require.True(t, quota.Ready)
 }
+
+func TestQuotaCheckers_DisplayOnlyLimitsKeepTheirRowButNotTheChannel(t *testing.T) {
+	now := time.Date(2026, 9, 4, 10, 0, 0, 0, time.UTC)
+	weeklyReset := now.Add(72 * time.Hour)
+	searchReset := now.Add(30 * time.Minute)
+
+	for _, search := range []struct {
+		name   string
+		status string
+		ratio  float64
+	}{
+		{name: "exhausted", status: "exhausted", ratio: 1},
+		{name: "warning", status: "warning", ratio: 0.9},
+	} {
+		quota := normalizeQuotaDataAt(QuotaData{
+			Status: "unknown",
+			Limits: []QuotaLimitStatus{
+				{Type: QuotaLimitTypeToken, Window: QuotaWindowWeekly, Status: "available", UsageRatio: 0.2, NextResetAt: &weeklyReset},
+				{Type: QuotaLimitTypeSearch, Window: "search_hourly", Status: search.status, UsageRatio: search.ratio, NextResetAt: &searchReset},
+			},
+		}, now)
+
+		require.Len(t, quota.Limits, 2)
+		require.Equal(t, search.status, quota.Limits[1].Status, search.name)
+		require.Equal(t, "available", quota.Status, search.name)
+		require.True(t, quota.Ready, search.name)
+		require.Equal(t, weeklyReset, *quota.NextResetAt, search.name)
+	}
+
+	// A search-only payload must not report the channel as exhausted either.
+	onlySearch := normalizeQuotaDataAt(QuotaData{
+		Status: "unknown",
+		Limits: []QuotaLimitStatus{
+			{Type: QuotaLimitTypeSearch, Window: "search_hourly", Status: "exhausted", UsageRatio: 1},
+		},
+	}, now)
+
+	require.Equal(t, "unknown", onlySearch.Status)
+	require.False(t, onlySearch.Ready)
+	require.Nil(t, onlySearch.NextResetAt)
+}

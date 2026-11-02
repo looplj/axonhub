@@ -33,7 +33,7 @@ export default function AnalyticsPage() {
       <Button onClick={() => navigate({ to: '/' })} variant='outline' className='self-start'>
         {t('dashboard.channelSuccessRates.backToDashboard')}
       </Button>
-      <AnalyticsFilterBar earliestDate={metadata?.earliestDate} />
+      <AnalyticsFilterBar earliestTime={metadata?.earliestTime} />
       <OverviewCards overview={overview} isLoading={isOverviewLoading} />
       <CombinedTrendChart data={dailyStats || []} isLoading={isDailyLoading} currencyCode={currencyCode} />
       <DimensionPieCharts

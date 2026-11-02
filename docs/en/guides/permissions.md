@@ -19,6 +19,11 @@ AxonHub provides role-based access control (RBAC) so that organizations can tail
 - Use service accounts with minimal scopes for automation pipelines and CI/CD flows.
 - Enable auditing to capture every administrative change for compliance investigations.
 
+## Service Account Key Scopes
+- A service account key can only carry scopes its creator can grant: project-level scopes held in the key's project, and system-only scopes held at system level. System owners can grant any scope.
+- Keys stay inside their project: requests, threads, and traces are filtered to the key's project, and data storage settings require the system-level `read_data_storages` scope.
+- Rotating a key requires the same grant ability, so a project member cannot rotate a key that carries system scopes.
+
 ## Related Resources
 - [OpenAI API](../api-reference/openai-api.md)
 - [Anthropic API](../api-reference/anthropic-api.md)
