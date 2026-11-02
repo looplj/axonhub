@@ -1087,3 +1087,77 @@ func mustMarshal(v any) []byte {
 
 // Ensure lo is used to satisfy linter.
 var _ = lo.ToPtr[string]
+
+func TestOutboundTransformer_PreservesMultipartThoughts(t *testing.T) {
+	body := []byte(`{
+		"responseId":"multipart-thoughts",
+		"modelVersion":"gemini-2.5-pro",
+		"candidates":[
+			{"index":0,"content":{"role":"model","parts":[
+				{"thought":true,"text":"First step.\n"},
+				{"text":"The answer is 42."},
+				{"thought":true,"text":"第二步。"},
+				{"thought":true,"text":""}
+			]},"finishReason":"STOP"},
+			{"index":1,"content":{"role":"model","parts":[
+				{"text":"Alternative answer."}
+			]},"finishReason":"STOP"}
+		],
+		"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":5,"thoughtsTokenCount":3,"totalTokenCount":18}
+	}`)
+
+	for _, mode := range []string{"response", "stream"} {
+		t.Run(mode, func(t *testing.T) {
+			transformer, err := NewOutboundTransformer("", "")
+			require.NoError(t, err)
+
+			var resp *llm.Response
+			if mode == "response" {
+				resp, err = transformer.TransformResponse(context.Background(), &httpclient.Response{
+					StatusCode: 200,
+					Body:       body,
+				})
+				require.NoError(t, err)
+			} else {
+				input := streams.SliceStream([]*httpclient.StreamEvent{
+					{Data: body},
+					{Data: []byte(`{"candidates":[{"index":0,"content":{"role":"model","parts":[{"thought":true,"text":"Next chunk."}]}}]}`)},
+				})
+				output, err := transformer.TransformStream(context.Background(), nil, input)
+				require.NoError(t, err)
+				defer output.Close()
+
+				var responses []*llm.Response
+				for output.Next() {
+					responses = append(responses, output.Current())
+				}
+				require.NoError(t, output.Err())
+				require.Len(t, responses, 3)
+				require.NotNil(t, responses[1].Choices[0].Delta.ReasoningContent)
+				require.Equal(t, "Next chunk.", *responses[1].Choices[0].Delta.ReasoningContent)
+				require.Equal(t, llm.DoneResponse, responses[2])
+				resp = responses[0]
+			}
+
+			require.Len(t, resp.Choices, 2)
+			message := resp.Choices[0].Message
+			alternative := resp.Choices[1].Message
+			if mode == "stream" {
+				message = resp.Choices[0].Delta
+				alternative = resp.Choices[1].Delta
+			}
+			require.NotNil(t, message)
+			require.NotNil(t, message.ReasoningContent)
+			require.Equal(t, "First step.\n第二步。", *message.ReasoningContent)
+			require.Equal(t, lo.ToPtr("The answer is 42."), message.Content.Content)
+			require.NotNil(t, alternative)
+			require.Nil(t, alternative.ReasoningContent)
+			require.Equal(t, lo.ToPtr("Alternative answer."), alternative.Content.Content)
+			require.Equal(t, lo.ToPtr("stop"), resp.Choices[0].FinishReason)
+			require.NotNil(t, resp.Usage)
+			require.Equal(t, int64(10), resp.Usage.PromptTokens)
+			require.Equal(t, int64(8), resp.Usage.CompletionTokens)
+			require.Equal(t, int64(18), resp.Usage.TotalTokens)
+		})
+	}
+}
