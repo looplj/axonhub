@@ -122,7 +122,7 @@
     "prettier": "^3.6.0",
     "prettier-plugin-tailwindcss": "^0.6.13",
     "typescript": "~5.8.3",
-    "typescript-eslint": "^8.35.0",
+    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.4"
   },
   "pnpm": {
