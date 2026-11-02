@@ -72,7 +72,7 @@
     "framer-motion": "^11.18.2",
     "i18next": "^26.5.5",
     "i18next-browser-languagedetector": "^8.2.0",
-    "js-cookie": "^3.0.7",
+    "js-cookie": "^3.0.8",
     "lucide-react": "^1.63.0",
     "motion": "^12.23.24",
     "nanoid": "^6.0.2",
