@@ -78,6 +78,7 @@ func supportsAutoAggregateRequest(req *llm.Request) bool {
 			llm.APIFormatOpenAIResponse,
 			llm.APIFormatAnthropicMessage,
 			llm.APIFormatGeminiContents,
+			llm.APIFormatGeminiInteractions,
 			llm.APIFormatOllamaChat:
 			return true
 		default:

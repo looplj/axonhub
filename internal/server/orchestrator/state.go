@@ -94,7 +94,8 @@ type PersistenceState struct {
 	RawProviderResponse *httpclient.Response
 
 	// RawProviderRequest stores the actual outbound provider request for pass-through checks.
-	RawProviderRequest *httpclient.Request
+	RawProviderRequest         *httpclient.Request
+	OutboundRequestBodyWritten bool
 
 	// RawStreamCh receives raw provider stream events for stream response pass-through
 	// once the pass-through consumer is attached; earlier events are held on
