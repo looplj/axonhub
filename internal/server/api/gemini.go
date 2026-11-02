@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/gemini"
 )
 
@@ -40,27 +41,35 @@ type GeminiHandlers struct {
 	ChannelService         *biz.ChannelService
 	ModelService           *biz.ModelService
 	ChatCompletionHandlers *ChatCompletionHandlers
+	InteractionsHandlers   *ChatCompletionHandlers
 }
 
 func NewGeminiHandlers(params GeminiHandlersParams) *GeminiHandlers {
+	newOrchestrator := func(inbound transformer.Inbound) *orchestrator.ChatCompletionOrchestrator {
+		return orchestrator.NewChatCompletionOrchestrator(
+			params.ChannelService,
+			params.DefaultSelector,
+			params.RequestService,
+			params.HttpClient,
+			inbound,
+			params.SystemService,
+			params.UsageLogService,
+			params.PromptService,
+			params.QuotaService,
+			params.PromptProtectionRuleService,
+			params.LiveStreamRegistry,
+			params.ChannelLimiterManager,
+			params.ProviderQuotaStatusProvider,
+		)
+	}
+
 	return &GeminiHandlers{
 		ChatCompletionHandlers: NewChatCompletionHandlers(
-			orchestrator.NewChatCompletionOrchestrator(
-				params.ChannelService,
-				params.DefaultSelector,
-				params.RequestService,
-				params.HttpClient,
-				gemini.NewInboundTransformer(),
-				params.SystemService,
-				params.UsageLogService,
-				params.PromptService,
-				params.QuotaService,
-				params.PromptProtectionRuleService,
-				params.LiveStreamRegistry,
-				params.ChannelLimiterManager,
-				params.ProviderQuotaStatusProvider,
-			),
+			newOrchestrator(gemini.NewInboundTransformer()),
 		),
+		InteractionsHandlers: NewChatCompletionHandlers(
+			newOrchestrator(gemini.NewInteractionsInboundTransformer()),
+		).WithStreamWriter(WriteSSEStream),
 		ChannelService: params.ChannelService,
 		ModelService:   params.ModelService,
 	}
@@ -74,6 +83,10 @@ func (handlers *GeminiHandlers) GenerateContent(c *gin.Context) {
 	default:
 		handlers.ChatCompletionHandlers.WithStreamWriter(WriteGeminiStream).ChatCompletion(c)
 	}
+}
+
+func (handlers *GeminiHandlers) Interactions(c *gin.Context) {
+	handlers.InteractionsHandlers.ChatCompletion(c)
 }
 
 func WriteGeminiStream(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent]) {
