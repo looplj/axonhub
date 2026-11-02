@@ -61,7 +61,8 @@ func TestFetchVersion_ReleaseManifest(t *testing.T) {
 	for _, tc := range []struct{ name, manifest, expected string }{
 		{"official manifest wins", `{"version":"1.4.0","url":"https://example.invalid/agy.exe"}`, "1.4.0"},
 		{"malformed manifest uses CLI changelog", `{"version":"not-a-version"}`, "1.5.0"},
-		{"stale manifest keeps supported fallback", `{"version":"1.0.0"}`, UserAgentVersionFallback},
+		{"stale manifest uses CLI changelog", `{"version":"1.0.0"}`, "1.5.0"},
+		{"overflowing manifest uses CLI changelog", `{"version":"99999999999999999999999.0.0"}`, "1.5.0"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resetVersionState(t)
@@ -124,5 +125,54 @@ func TestNewerVersionMalformedInputs(t *testing.T) {
 		{"2.23.0", "2.5.5", "2.23.0"},
 	} {
 		t.Run(tc.current+"/"+tc.candidate, func(t *testing.T) { require.Equal(t, tc.expected, newerVersion(tc.current, tc.candidate)) })
+	}
+}
+
+func TestFetchVersion_StaleManifestAndUnavailableChangelog(t *testing.T) {
+	resetVersionState(t)
+	var changelogCalls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/manifest" {
+			fmt.Fprint(w, `{"version":"1.0.0"}`)
+			return
+		}
+		changelogCalls.Add(1)
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+	(&versionFetcher{manifestURL: srv.URL + "/manifest", changelogURL: srv.URL + "/changelog", httpClient: srv.Client()}).init(t.Context())
+	require.EqualValues(t, 1, changelogCalls.Load())
+	require.Equal(t, UserAgentVersionFallback, GetVersion())
+}
+
+func TestSetClientHeaders_ConsistentVersionDuringUpdates(t *testing.T) {
+	resetVersionState(t)
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+	wg.Go(func() {
+		defer func() {
+			if err := recover(); err != nil {
+				t.Errorf("version writer panicked: %v", err)
+			}
+		}()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				setVersion("1.4.0")
+				setVersion("1.5.0")
+			}
+		}
+	})
+	defer func() {
+		close(stop)
+		wg.Wait()
+	}()
+	for range 10000 {
+		headers := http.Header{}
+		SetClientHeaders(headers)
+		version := headers.Get("X-Client-Version")
+		require.Equal(t, fmt.Sprintf("antigravity/cli/%s (aidev_client; os_type=%s; arch=%s; auth_method=consumer)", version, runtime.GOOS, runtime.GOARCH), headers.Get("User-Agent"))
 	}
 }
