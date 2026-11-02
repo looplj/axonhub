@@ -54,6 +54,7 @@ const (
 	APIFormatOpenAIModeration    APIFormat = "openai/moderations"
 	APIFormatOpenAIAlphaSearch   APIFormat = "openai/alpha_search"
 	APIFormatGeminiContents      APIFormat = "gemini/contents"
+	APIFormatGeminiInteractions  APIFormat = "gemini/interactions"
 	APIFormatAnthropicMessage    APIFormat = "anthropic/messages"
 	APIFormatAiSDKText           APIFormat = "aisdk/text"
 	APIFormatAiSDKDataStream     APIFormat = "aisdk/datastream"

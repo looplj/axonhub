@@ -13,6 +13,7 @@ func CapableAPIFormats(requestType RequestType) map[string]struct{} {
 			APIFormatOpenAIResponseWebSocket.String(): {},
 			APIFormatAnthropicMessage.String():        {},
 			APIFormatGeminiContents.String():          {},
+			APIFormatGeminiInteractions.String():      {},
 			APIFormatOllamaChat.String():              {},
 		}
 	case RequestTypeCompact:
