@@ -13,9 +13,6 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/samber/lo"
-	"github.com/vektah/gqlparser/v2/gqlerror"
-
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -28,6 +25,8 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
+	"github.com/samber/lo"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // DashboardOverview is the resolver for the dashboardOverview field.
@@ -701,6 +700,30 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 	)
 
 	return cachedDashboardQuery(ctx, key, dashboardSlowCacheTTL, r.channelPerformanceStats)
+}
+
+// ChannelModelPerformanceStats is the resolver for the channelModelPerformanceStats field.
+// Returns aggregated performance statistics per channel-model pair, where model_id is the
+// actual model the channel invoked (usage_log.model_id, sourced from request_execution.model_id
+// after model mapping) — not the client-requested model. This lets callers compare the same
+// model across channels or different models within one channel.
+// Success/failed counts come from request_executions.status (same source as ChannelSuccessRates);
+// throughput/ttft come from the latest completed execution per request/channel pair (same
+// algorithm as queryDimensionPerformanceStats).
+func (r *queryResolver) ChannelModelPerformanceStats(ctx context.Context, timeWindow *string, limit *int) ([]*ChannelModelPerformanceStat, error) {
+	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+
+	normalizedWindow, normalizedLimit := normalizeChannelSuccessRatesParams(timeWindow, limit)
+	key := fmt.Sprintf("channelModelPerformanceStats:%p:%s:%s:%d",
+		r.client,
+		r.systemService.TimeLocation(ctx).String(),
+		lo.FromPtr(normalizedWindow),
+		lo.FromPtr(normalizedLimit),
+	)
+
+	return cachedDashboardQuery(ctx, key, dashboardSlowCacheTTL, func(ctx context.Context) ([]*ChannelModelPerformanceStat, error) {
+		return r.channelModelPerformanceStats(ctx, normalizedWindow, normalizedLimit)
+	})
 }
 
 // TokenStatsByChannel is the resolver for the tokenStatsByChannel field.

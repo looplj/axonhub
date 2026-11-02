@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Header } from '@/components/layout/header';
 import { TimePeriodSelector, type TimePeriod } from '@/components/time-period-selector';
 import { ChannelPerformanceStats } from './components/channel-performance-stats';
+import { ChannelModelPerformanceTable } from './components/channel-model-performance-table';
 import { ChannelSuccessRate } from './components/channel-success-rate';
 import { DailyRequestStats } from './components/daily-requests-stats';
 import { FastestChannelsCard } from './components/fastest-channels-card';
@@ -129,6 +130,7 @@ export default function DashboardPage() {
   const [apiKeyTimePeriod, setApiKeyTimePeriod] = useState<TimePeriod>('allTime');
   const [apiKeyTokensTimePeriod, setApiKeyTokensTimePeriod] = useState<TimePeriod>('allTime');
   const [userTokensTimePeriod, setUserTokensTimePeriod] = useState<TimePeriod>('day');
+  const [channelModelTimePeriod, setChannelModelTimePeriod] = useState<TimePeriod>('allTime');
 
   const modelPerformanceDescription = useMemo(() => {
     return t('dashboard.charts.performanceDescription', { count: formatNumber(modelTotalRequests) });
@@ -374,6 +376,10 @@ export default function DashboardPage() {
             <FastestChannelsCard />
           </div>
         </div>
+        <ChannelModelPerformanceTable
+          timePeriod={channelModelTimePeriod}
+          onTimePeriodChange={setChannelModelTimePeriod}
+        />
       </CollapsibleSection>
     </div>
   );
