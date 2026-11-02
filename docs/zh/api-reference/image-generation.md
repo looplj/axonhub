@@ -104,7 +104,7 @@ JSON 响应会保留上游返回的 `created`、`data[].b64_json`、`data[].url`
 | `model` | string | 用于图像生成的模型。 | `dall-e-2` |
 | `n` | integer | 要生成的图像数量。 | 1 |
 | `quality` | string | 图像质量：`"standard"`、`"hd"`、`"high"`、`"medium"`、`"low"` 或 `"auto"`。 | `"auto"` |
-| `response_format` | string | 返回图像的格式：`"url"` 或 `"b64_json"`。 | `"b64_json"` |
+| `response_format` | string | 返回图像的格式：`"url"` 或 `"b64_json"`。未指定时 AxonHub 不发送该字段，由上游模型决定默认格式。 | - |
 | `size` | string | 生成图像的尺寸：`"256x256"`、`"512x512"` 或 `"1024x1024"`。 | `"1024x1024"` |
 | `style` | string | 生成图像的风格（仅 DALL-E 3）：`"vivid"` 或 `"natural"`。 | - |
 | `user` | string | 代表最终用户的唯一标识符。 | - |
@@ -167,7 +167,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | `model` | string | 要使用的模型。 | `dall-e-2` |
 | `n` | integer | 要生成的图像数量。 | 1 |
 | `size` | string | 生成图像的尺寸。 | `"1024x1024"` |
-| `response_format` | string | 格式：`"url"` 或 `"b64_json"`。 | `"b64_json"` |
+| `response_format` | string | 格式：`"url"` 或 `"b64_json"`。未指定时 AxonHub 不发送该字段，由上游模型决定默认格式。 | - |
 | `user` | string | 最终用户的唯一标识符。 | - |
 | `background` | string | 背景样式：`"opaque"` 或 `"transparent"`。 | - |
 | `output_format` | string | 图像格式：`"png"`、`"webp"` 或 `"jpeg"`。 | `"png"` |
