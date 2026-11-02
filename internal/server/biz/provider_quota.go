@@ -130,6 +130,15 @@ type QuotaChannelStatus struct {
 	Status       providerquotastatus.Status
 	Ready        bool
 	Limits       []provider_quota.QuotaLimitStatus
+
+	// LastKnownStatus is the newest non-unknown status persisted by this
+	// service for the channel: the status itself when it is not `unknown`,
+	// otherwise the `_previous_status` carried in the persisted quota_data.
+	// Every save records it, so it stays monotonically fresh — which is what
+	// a failed-reload refresh resolves its webhook transition from when the
+	// selected previous status is `unknown` (the stale pre-reset channel
+	// edge's carry must not win).
+	LastKnownStatus string
 }
 
 func cloneQuotaLimitStatus(limit provider_quota.QuotaLimitStatus) provider_quota.QuotaLimitStatus {
@@ -335,6 +344,7 @@ type ProviderQuotaServiceParams struct {
 	Ent                       *ent.Client
 	SystemService             *SystemService
 	HttpClient                *httpclient.HttpClient
+	WebhookNotifier           *WebhookNotifier
 	CheckInterval             time.Duration `name:"provider_quota_check_interval" optional:"true"`
 	WarningCheckIntervalRatio int           `name:"provider_quota_warning_check_interval_ratio" optional:"true"`
 }
@@ -343,6 +353,7 @@ type ProviderQuotaService struct {
 	*AbstractService
 
 	SystemService             *SystemService
+	WebhookNotifier           *WebhookNotifier
 	checkInterval             time.Duration
 	warningCheckIntervalRatio int
 	httpClient                *httpclient.HttpClient
@@ -362,6 +373,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 		checkInterval:             params.CheckInterval,
 		warningCheckIntervalRatio: params.WarningCheckIntervalRatio,
 		httpClient:                params.HttpClient,
+		WebhookNotifier:           params.WebhookNotifier,
 	}
 
 	svc.registerProviderQuotaSupport()
@@ -548,10 +560,11 @@ func (svc *ProviderQuotaService) loadQuotaCache(ctx context.Context) {
 
 	for _, r := range records {
 		svc.quotaCache.Store(r.ChannelID, &QuotaChannelStatus{
-			ProviderType: r.ProviderType.String(),
-			Status:       r.Status,
-			Ready:        r.Ready,
-			Limits:       cloneLimits(extractLimitsFromQuotaData(r.QuotaData)),
+			ProviderType:    r.ProviderType.String(),
+			Status:          r.Status,
+			Ready:           r.Ready,
+			Limits:          cloneLimits(extractLimitsFromQuotaData(r.QuotaData)),
+			LastKnownStatus: lastKnownQuotaStatusFromEntry(r.Status, r.QuotaData),
 		})
 	}
 
@@ -576,19 +589,24 @@ func (svc *ProviderQuotaService) GetQuotaStatus(ctx context.Context, channelID i
 	}
 
 	return &QuotaChannelStatus{
-		ProviderType: status.ProviderType,
-		Status:       status.Status,
-		Ready:        status.Ready,
-		Limits:       cloneLimits(status.Limits),
+		ProviderType:    status.ProviderType,
+		Status:          status.Status,
+		Ready:           status.Ready,
+		Limits:          cloneLimits(status.Limits),
+		LastKnownStatus: status.LastKnownStatus,
 	}
 }
 
-func (svc *ProviderQuotaService) updateQuotaCache(channelID int, providerType string, status providerquotastatus.Status, ready bool, limits []provider_quota.QuotaLimitStatus) {
+// updateQuotaCache records the channel's newest known status (lastKnown: the
+// newest non-unknown status, see QuotaChannelStatus.LastKnownStatus)
+// alongside the raw status.
+func (svc *ProviderQuotaService) updateQuotaCache(channelID int, providerType string, status providerquotastatus.Status, ready bool, lastKnown string, limits []provider_quota.QuotaLimitStatus) {
 	svc.quotaCache.Store(channelID, &QuotaChannelStatus{
-		ProviderType: providerType,
-		Status:       status,
-		Ready:        ready,
-		Limits:       cloneLimits(limits),
+		ProviderType:    providerType,
+		Status:          status,
+		Ready:           ready,
+		Limits:          cloneLimits(limits),
+		LastKnownStatus: lastKnown,
 	})
 }
 
@@ -663,7 +681,9 @@ func (svc *ProviderQuotaService) ListResets(ctx context.Context, channelID int) 
 
 // ResetChannelQuotaNow attempts to redeem a provider-managed reset for a channel.
 func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, channelID int) error {
-	ch, err := svc.db.Channel.Query().Where(channel.IDEQ(channelID)).Only(ctx)
+	// The quota edge gives saveQuotaStatus the pre-reset previous status for
+	// webhook transition detection without an extra query.
+	ch, err := svc.db.Channel.Query().Where(channel.IDEQ(channelID)).WithProviderQuotaStatus().Only(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to load channel: %w", err)
 	}
@@ -697,10 +717,38 @@ func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, chann
 	// Hold the service mutex to keep the in-memory cache consistent with the DB
 	// in case a scheduled quota check is running concurrently.
 	svc.mu.Lock()
+	// A scheduled check may have saved a fresh status while the provider
+	// reset was in flight; reload the edge under the lock so saveQuotaStatus
+	// computes the webhook transition against that status, not the
+	// pre-reset snapshot loaded before the reset call.
+	reloadFailed := false
+	reloaded, err := svc.db.Channel.Query().Where(channel.IDEQ(channelID)).WithProviderQuotaStatus().Only(ctx)
+	if err != nil {
+		// The provider reset already succeeded upstream; a transient DB read
+		// failure here must not report the mutation as failed. Proceed with
+		// the pre-reset channel snapshot, whose (stale) quota edge still
+		// gives saveQuotaStatus a best-effort previous status. The failed
+		// reload's refresh compares against the newest known status (cache
+		// over stale edge) to avoid replaying an already-emitted transition.
+		reloadFailed = true
+		log.Error(ctx, "Failed to reload channel after quota reset; refreshing with stale channel",
+			log.Int("channel_id", ch.ID),
+			log.String("provider", providerType),
+			log.Cause(err))
+	} else {
+		ch = reloaded
+	}
+
 	now := time.Now()
 	svc.checkChannelQuota(ctx, quotaCheckGroup{
 		channels:   []*ent.Channel{ch},
 		accountKey: quotaAccountKey(providerType, ch),
+		// On a failed reload, the refresh's previous status is the stale
+		// pre-reset edge, which would re-emit a transition (e.g. exhausted →
+		// available) that already fired. Suppression only drops duplicate
+		// events; a genuine transition away from the last-known status is
+		// still emitted (see quotaCheckGroup.suppressWebhooks).
+		suppressWebhooks: reloadFailed,
 	}, now)
 	svc.mu.Unlock()
 
@@ -852,8 +900,12 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 	for _, member := range group.channels {
 		memberQuotaData := quotaData
 		memberQuotaData.Limits = cloneLimits(quotaData.Limits)
+		// saveQuotaStatus may write _previous_status into RawData, which is a
+		// shared map across the account group; clone it so each member's
+		// persisted row carries only its own carried status.
+		memberQuotaData.RawData = lo.Assign(map[string]any{}, quotaData.RawData)
 		svc.fillPeriodQuotas(ctx, member.ID, &memberQuotaData, now)
-		svc.saveQuotaStatus(ctx, member.ID, providerType, group.accountKey, memberQuotaData, now)
+		svc.saveQuotaStatus(ctx, member, providerType, group.accountKey, memberQuotaData, now, group.suppressWebhooks)
 
 		log.Debug(ctx, "Updated quota status",
 			log.Int("channel_id", member.ID),
@@ -863,19 +915,101 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 	}
 }
 
+// suppressWebhooks persists the fresh status while dropping a duplicate
+// transition notification: the notification is skipped only when there is no
+// genuine transition from the channel's last-known status (see
+// quotaCheckGroup.suppressWebhooks).
 func (svc *ProviderQuotaService) saveQuotaStatus(
 	ctx context.Context,
-	channelID int,
+	ch *ent.Channel,
 	providerType string,
 	accountKey string,
 	quotaData provider_quota.QuotaData,
 	now time.Time,
+	suppressWebhooks bool,
 ) {
 	nextCheck := now.Add(svc.nextCheckIntervalForStatus(providerquotastatus.Status(quotaData.Status)))
 	pt := providerquotastatus.ProviderType(providerType)
 
+	// The previous status is read from the channel's loaded edge (or the
+	// in-memory cache, which every save/updateQuotaCache keeps in sync with the
+	// DB) before the upsert, so no extra query is needed. It drives webhook
+	// transition detection after a successful write. It is only usable when it
+	// belongs to the same provider: a channel that switched providers must not
+	// report a transition (e.g. the old provider's exhausted as "recovered")
+	// against the new provider's first status — same rule saveQuotaError applies.
+	//
+	// On a failed-reload refresh (suppressWebhooks), the in-memory cache wins
+	// over the loaded edge: the edge in the pre-reset snapshot may be stale,
+	// while a scheduled check that ran concurrently may have saved the channel's
+	// newest status to the cache. Comparing against that (the newest known
+	// status) keeps a refresh that merely re-reports it silent; comparing
+	// against the stale edge instead would replay the transition the scheduled
+	// check already emitted. The cache is kept in sync under the service mutex,
+	// which both the scheduled check and the reset refresh hold.
+	var previous providerquotastatus.Status
+	havePrevious := false
+	var rawPrevious string
+	var previousFromCache bool
+	var previousCache *QuotaChannelStatus
+	if suppressWebhooks {
+		// Cache first: the freshest last-known status any in-flight scheduled
+		// check saved. Fall back to the (stale) edge only when the cache holds
+		// no entry for this provider, so at least a best-effort previous status
+		// survives an empty cache.
+		if cached := svc.GetQuotaStatus(ctx, ch.ID); cached != nil && providerquotastatus.ProviderType(cached.ProviderType) == pt {
+			previous = cached.Status
+			havePrevious = true
+			previousFromCache = true
+			previousCache = cached
+		} else if existing := ch.Edges.ProviderQuotaStatus; existing != nil && existing.ProviderType == pt {
+			previous = existing.Status
+			havePrevious = true
+		}
+	} else if existing := ch.Edges.ProviderQuotaStatus; existing != nil && existing.ProviderType == pt {
+		previous = existing.Status
+		havePrevious = true
+	} else if cached := svc.GetQuotaStatus(ctx, ch.ID); cached != nil && providerquotastatus.ProviderType(cached.ProviderType) == pt {
+		previous = cached.Status
+		havePrevious = true
+		previousFromCache = true
+		previousCache = cached
+	}
+	if havePrevious && !previousFromCache {
+		// An edge-sourced previous yields its own persisted carry.
+		previousCache = &QuotaChannelStatus{
+			Status:          previous,
+			LastKnownStatus: lastKnownQuotaStatus(ch, previous),
+		}
+	}
+	if havePrevious {
+		rawPrevious = previous.String()
+	}
+
+	// _previous_status carries the last known non-unknown status in the
+	// persisted quota_data across interstitial `unknown` rows. The write is
+	// idempotent, so the carry survives any number of consecutive `unknown`
+	// polls; a fresh known status explicitly drops the key so known rows never
+	// carry a stale one. The carry is resolved from the source `previous`
+	// came from: a cached `unknown` has no persisted quota_data of its own,
+	// so its LastKnownStatus (recorded by every save) is monotonically
+	// fresher than the stale pre-reset channel edge's carried value.
+	newStatus := providerquotastatus.Status(quotaData.Status)
+	cacheLastKnown := ""
+	if previousCache != nil {
+		cacheLastKnown = previousCache.LastKnownStatus
+	}
+	if havePrevious && newStatus == providerquotastatus.StatusUnknown && cacheLastKnown != "" {
+		if quotaData.RawData == nil {
+			quotaData.RawData = map[string]any{}
+		}
+		quotaData.RawData["_previous_status"] = cacheLastKnown
+	} else if quotaData.RawData != nil {
+		delete(quotaData.RawData, "_previous_status")
+	}
+
 	create := svc.db.ProviderQuotaStatus.Create().
-		SetChannelID(channelID).
+		SetChannelID(ch.ID).
 		SetProviderType(pt).
 		SetAccountKey(accountKey).
 		SetStatus(providerquotastatus.Status(quotaData.Status)).
@@ -902,12 +1036,190 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 	err := upsert.Exec(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to save quota status",
-			log.Int("channel_id", channelID),
+			log.Int("channel_id", ch.ID),
 			log.Cause(err))
 		return
 	}
 
-	svc.updateQuotaCache(channelID, providerType, providerquotastatus.Status(quotaData.Status), quotaData.Ready, quotaData.Limits)
+	svc.updateQuotaCache(ch.ID, providerType, newStatus, quotaData.Ready, lastKnownQuotaStatusFromEntry(newStatus, quotaData.RawData), quotaData.Limits)
+
+	// The transition is selected against the last known status of the source
+	// `previous` came from: the cache's monotonically fresh LastKnownStatus
+	// when the cache won, the loaded edge's own persisted carry otherwise —
+	// never the stale pre-reset channel edge's carry, so a failed-reload
+	// refresh compares against the freshest carried status.
+	freshLastKnown := ""
+	if previousCache != nil {
+		freshLastKnown = previousCache.LastKnownStatus
+	}
+	if havePrevious && (!suppressWebhooks || quotaStatusTransitionEvent(freshLastKnown, newStatus) != "") {
+		svc.notifyQuotaStatusChange(ctx, ch, rawPrevious, freshLastKnown, quotaData)
+	}
+}
+
+// quotaStatusTransitionEvent selects the webhook event a status transition
+// would fire, for callers that pre-gate (and may suppress) the notification
+// before reaching notifyQuotaStatusChange. It mirrors that function's event
+// selection exactly.
+func quotaStatusTransitionEvent(lastKnown string, newStatus providerquotastatus.Status) string {
+	if lastKnown == "" || lastKnown == newStatus.String() {
+		return ""
+	}
+
+	switch {
+	case newStatus == providerquotastatus.StatusWarning &&
+		(lastKnown == providerquotastatus.StatusAvailable.String() ||
+			lastKnown == providerquotastatus.StatusWarning.String()):
+		return EventProviderQuotaWarning
+	case newStatus == providerquotastatus.StatusExhausted &&
+		(lastKnown == providerquotastatus.StatusAvailable.String() ||
+			lastKnown == providerquotastatus.StatusWarning.String()):
+		return EventProviderQuotaExhausted
+	case newStatus == providerquotastatus.StatusAvailable &&
+		(lastKnown == providerquotastatus.StatusWarning.String() ||
+			lastKnown == providerquotastatus.StatusExhausted.String()):
+		return EventProviderQuotaRecovered
+	}
+	return ""
+}
+
+// lastKnownQuotaStatus returns the channel's last known non-unknown quota
+// status as a string: the status last observed (edge or cache) when it is not
+// `unknown`, otherwise the `_previous_status` carried in the persisted
+// quota_data of the loaded edge, and finally "" for a channel that never
+// produced a status. This is what makes `warning → unknown (check failed) →
+// available` emit provider.quota.recovered, which a plain status comparison
+// would drop.
+// lastKnownQuotaStatusFromEntry resolves the last known non-unknown status
+// for one persisted quota row: a status that is not `unknown` is itself,
+// otherwise the `_previous_status` carried in its persisted quota_data
+// (empty when none).
+func lastKnownQuotaStatusFromEntry(status providerquotastatus.Status, quotaData map[string]any) string {
+	if status != providerquotastatus.StatusUnknown {
+		return status.String()
+	}
+
+	if raw, ok := quotaData["_previous_status"]; ok {
+		if s, ok := raw.(string); ok {
+			return s
+		}
+	}
+
+	return ""
+}
+
+func lastKnownQuotaStatus(ch *ent.Channel, lastSeen providerquotastatus.Status) string {
+	if lastSeen != providerquotastatus.StatusUnknown {
+		return lastSeen.String()
+	}
+
+	if ch.Edges.ProviderQuotaStatus != nil && ch.Edges.ProviderQuotaStatus.QuotaData != nil {
+		if raw, ok := ch.Edges.ProviderQuotaStatus.QuotaData["_previous_status"]; ok {
+			if s, ok := raw.(string); ok {
+				return s
+			}
+		}
+	}
+
+	return ""
+}
+
+// notifyQuotaStatusChange emits the webhook event for a quota status
+// transition, if the transition is one that fires an event:
+//
+//   - available|warning → warning   = provider.quota.warning
+//   - available|warning → exhausted = provider.quota.exhausted (never also a warning)
+//   - warning|exhausted → available = provider.quota.recovered
+//
+// Same-status saves, the first-ever status, and transitions involving
+// `unknown` as the fresh status are silent.
+func (svc *ProviderQuotaService) notifyQuotaStatusChange(
+	ctx context.Context,
+	ch *ent.Channel,
+	rawPrevious string,
+	previousLastKnown string,
+	quotaData provider_quota.QuotaData,
+) {
+	// previousLastKnown == "" means the channel has no previous status of any
+	// kind (first-ever detection): nothing fires.
+	newStatus := providerquotastatus.Status(quotaData.Status)
+	eventName := quotaStatusTransitionEvent(previousLastKnown, newStatus)
+	if eventName == "" {
+		return
+	}
+
+	// rawPrevious is the raw pre-save status (edge or cache), captured in
+	// saveQuotaStatus before the upsert and cache update, so it is not the
+	// fresh status on the edge-less ResetChannelQuotaNow path.
+
+	usageRatio := -1.0
+	if len(quotaData.Limits) > 0 {
+		usageRatio = quotaData.Limits[0].UsageRatio
+		for _, limit := range quotaData.Limits[1:] {
+			if limit.UsageRatio > usageRatio {
+				usageRatio = limit.UsageRatio
+			}
+		}
+	}
+
+	var nextResetAt string
+	if quotaData.NextResetAt != nil {
+		nextResetAt = quotaData.NextResetAt.Format(time.RFC3339)
+	}
+
+	// Providers report several windows of the same limit type (e.g. Synthetic
+	// emits both a 5h and a weekly token window), so each window gets its own
+	// line; identical duplicates are dropped by full-line identity. Multi-account
+	// channels append the account label so the same window from two accounts
+	// stays distinct; single-account limits keep the plain line byte-identical
+	// to the account-less format.
+	limits := make([]string, 0, len(quotaData.Limits))
+	seenLines := make(map[string]struct{}, len(quotaData.Limits))
+	for _, limit := range quotaData.Limits {
+		line := fmt.Sprintf(
+			"%s (%s) %.2f %s", limit.Type, limit.Window, limit.UsageRatio, limit.Status,
+		)
+		if limit.Account != "" {
+			line = fmt.Sprintf("%s [account: %s]", line, limit.Account)
+		}
+		if _, ok := seenLines[line]; ok {
+			continue
+		}
+		seenLines[line] = struct{}{}
+		limits = append(limits, line)
+	}
+
+	event := QuotaStatusChangedEvent{
+		ChannelID:       ch.ID,
+		ChannelName:     ch.Name,
+		ChannelProvider: ch.Type.String(),
+		ChannelBaseURL:  ch.BaseURL,
+		ChannelStatus:   ch.Status.String(),
+		PreviousStatus:  rawPrevious,
+		NewStatus:       newStatus.String(),
+		UsageRatio:      usageRatio,
+		NextResetAt:     nextResetAt,
+		Limits:          limits,
+		OccurredAt:      time.Now(),
+	}
+
+	notifyCtx := context.WithoutCancel(ctx)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error(notifyCtx, "provider quota webhook notification panicked", log.Any("panic", r))
+			}
+		}()
+
+		switch eventName {
+		case EventProviderQuotaWarning:
+			svc.WebhookNotifier.NotifyProviderQuotaWarning(notifyCtx, event)
+		case EventProviderQuotaExhausted:
+			svc.WebhookNotifier.NotifyProviderQuotaExhausted(notifyCtx, event)
+		case EventProviderQuotaRecovered:
+			svc.WebhookNotifier.NotifyProviderQuotaRecovered(notifyCtx, event)
+		}
+	}()
 }
 
 func (svc *ProviderQuotaService) saveQuotaError(
@@ -934,8 +1246,27 @@ func (svc *ProviderQuotaService) saveQuotaError(
 				"error_count": 1,
 			}
 
-			// A provider change or invalid credentials makes the previous
-			// status and limits untrustworthy, so persist only the error.
+			// A provider change makes the previous status and limits
+			// untrustworthy, so the row carries only the error. For invalid
+			// credentials alone the
+			// provider identity is unchanged and the last known status is
+			// re-usable after re-authentication, so preserve the carried
+			// _previous_status and let webhook recovery detection keep
+			// working.
+			lastKnown := ""
+			if !providerChanged {
+				lastKnown = existing.Status.String()
+				if lastKnown == providerquotastatus.StatusUnknown.String() {
+					lastKnown, _ = existing.QuotaData["_previous_status"].(string)
+				}
+				if lastKnown == providerquotastatus.StatusUnknown.String() || lastKnown == "" {
+					lastKnown = ""
+				}
+				if lastKnown != "" {
+					quotaData["_previous_status"] = lastKnown
+				}
+			}
+
 			err := svc.db.ProviderQuotaStatus.UpdateOne(existing).
 				SetProviderType(pt).
 				SetAccountKey(accountKey).
@@ -954,7 +1285,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 				return
 			}
 
-			svc.updateQuotaCache(ch.ID, providerType, providerquotastatus.StatusUnknown, false, nil)
+			svc.updateQuotaCache(ch.ID, providerType, providerquotastatus.StatusUnknown, false, lastKnown, nil)
 			return
 		}
 
@@ -982,7 +1313,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		}
 
 		existingLimits := extractLimitsFromQuotaData(existing.QuotaData)
-		svc.updateQuotaCache(ch.ID, providerType, existing.Status, existing.Ready, existingLimits)
+		svc.updateQuotaCache(ch.ID, providerType, existing.Status, existing.Ready, lastKnownQuotaStatusFromEntry(existing.Status, merged), existingLimits)
 
 		return
 	}
@@ -1000,13 +1331,13 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		SetNextCheckAt(nextCheck).
 		Exec(ctx)
 	if err != nil {
-		log.Error(ctx, "Failed to save quota error",
+		log.Error(ctx, "Failed to save quota status",
 			log.Int("channel_id", ch.ID),
 			log.Cause(err))
 		return
 	}
 
-	svc.updateQuotaCache(ch.ID, providerType, providerquotastatus.StatusUnknown, false, nil)
+	svc.updateQuotaCache(ch.ID, providerType, providerquotastatus.StatusUnknown, false, "", nil)
 }
 
 func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
