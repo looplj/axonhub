@@ -58,6 +58,7 @@ type Request struct {
 	// inbound request from being merged into this request during MergeInboundRequest.
 	SkipInboundQueryMerge bool                               `json:"-"`
 	OnResponseHeaders     func(context.Context, http.Header) `json:"-"`
+	OnRequestBodyWritten  func()                             `json:"-"`
 }
 
 func (r *Request) ObserveResponseHeaders(ctx context.Context, headers http.Header) {
