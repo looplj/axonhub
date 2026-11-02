@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -18,6 +19,37 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 )
+
+// expectQuotaWebhooksSet asserts that exactly the expected set of
+// {event, prev, new} bodies arrives now, in any order. Each quota alert is
+// dispatched in its own goroutine, so arrival order on the channel is
+// timing-dependent; comparing sequentially (via expectQuotaWebhook) is the
+// documented flake.
+func expectQuotaWebhooksSet(t *testing.T, notifications chan string, want ...[3]string) {
+	t.Helper()
+
+	wantBodies := make(map[string]struct{}, len(want))
+	for _, w := range want {
+		wantBodies[fmt.Sprintf(`{"event":"%s","prev":"%s","new":"%s"}`, w[0], w[1], w[2])] = struct{}{}
+	}
+
+	seen := make(map[string]struct{}, len(wantBodies))
+	for range len(wantBodies) {
+		select {
+		case body := <-notifications:
+			if _, ok := wantBodies[body]; !ok {
+				t.Fatalf("unexpected quota webhook: %s", body)
+			}
+			seen[body] = struct{}{}
+		case <-time.After(time.Second):
+			t.Fatalf("timed out waiting for quota webhooks; missing %d of %d expected", len(wantBodies)-len(seen), len(wantBodies))
+		}
+	}
+
+	if len(seen) != len(wantBodies) {
+		t.Fatalf("expected quota webhooks contained duplicates; wanted %d distinct bodies", len(wantBodies))
+	}
+}
 
 type countingQuotaChecker struct {
 	calls        atomic.Int32
@@ -782,8 +814,12 @@ func TestProviderQuotaService_ResetChannelQuotaNow_FailedReloadPrefersCacheOverS
 
 		require.NoError(t, svc.ResetChannelQuotaNow(ctx, ch2.ID))
 
-		expectQuotaWebhook(t, notifications, EventProviderQuotaRecovered, "exhausted", "available")
-		expectQuotaWebhook(t, notifications, EventProviderQuotaExhausted, "available", "exhausted")
+		// The two alerts are dispatched in separate goroutines, so their
+		// arrival order on the channel is timing-dependent: compare as a set.
+		expectQuotaWebhooksSet(t, notifications,
+			[3]string{EventProviderQuotaRecovered, "exhausted", "available"},
+			[3]string{EventProviderQuotaExhausted, "available", "exhausted"},
+		)
 		expectNoQuotaWebhook(t, notifications)
 	})
 }
@@ -902,10 +938,14 @@ func TestProviderQuotaService_ResetChannelQuotaNow_FailedReloadUnknownCacheUsesF
 
 		require.NoError(t, svc.ResetChannelQuotaNow(ctx, ch2.ID))
 
-		expectQuotaWebhook(t, notifications, EventProviderQuotaRecovered, "unknown", "available")
 		// Exactly one event against the FRESH carry (available → exhausted)
 		// — not a replay of the same recovery the in-flight check emitted.
-		expectQuotaWebhook(t, notifications, EventProviderQuotaExhausted, "unknown", "exhausted")
+		// The two alerts are dispatched in separate goroutines, so their
+		// arrival order on the channel is timing-dependent: compare as a set.
+		expectQuotaWebhooksSet(t, notifications,
+			[3]string{EventProviderQuotaRecovered, "unknown", "available"},
+			[3]string{EventProviderQuotaExhausted, "unknown", "exhausted"},
+		)
 		expectNoQuotaWebhook(t, notifications)
 	})
 }

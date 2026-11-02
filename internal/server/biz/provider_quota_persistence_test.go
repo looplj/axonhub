@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -186,6 +187,85 @@ func TestProviderQuotaService_SaveQuotaError_ResetsChangedProviderIdentity(t *te
 	require.Equal(t, providerquotastatus.StatusUnknown, reloaded.Status)
 	require.False(t, reloaded.Ready)
 	require.Empty(t, reloaded.Limits)
+}
+
+func TestProviderQuotaService_SaveQuotaError_ProviderChangeDropsForcedCarryFromCache(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	channelEntity, err := client.Channel.Create().
+		SetName("OpenAI compatible").
+		SetType(channel.TypeOpenai).
+		SetBaseURL("https://api.synthetic.new/v1").
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"test-model"}).
+		SetDefaultTestModel("test-model").
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Carried status: the old provider's check failed while its row was
+	// unknown, leaving the last non-unknown status (exhausted) in quota_data.
+	_, err = client.ProviderQuotaStatus.Create().
+		SetChannelID(channelEntity.ID).
+		SetProviderType(providerquotastatus.ProviderTypeNeuralwatt).
+		SetStatus(providerquotastatus.StatusUnknown).
+		SetReady(false).
+		SetQuotaData(map[string]any{
+			"error_code":       "check_failed",
+			"error_count":      1,
+			"_previous_status": string(providerquotastatus.StatusExhausted),
+		}).
+		SetNextCheckAt(time.Now().Add(-time.Minute)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelWithStatus, err := client.Channel.Query().
+		Where(channel.IDEQ(channelEntity.ID)).
+		WithProviderQuotaStatus().
+		Only(ctx)
+	require.NoError(t, err)
+
+	service := &ProviderQuotaService{
+		AbstractService: &AbstractService{db: client},
+		checkInterval:   5 * time.Minute,
+	}
+	// The channel switched providers, and the new provider's first check
+	// fails with invalid credentials: the provider change forces the reset
+	// path, so the old provider's carried status must be dropped everywhere.
+	service.saveQuotaError(ctx, channelWithStatus, "synthetic", "",
+		fmt.Errorf("bad key: %w", provider_quota.ErrInvalidCredentials), 1, time.Now())
+
+	persisted, err := client.ProviderQuotaStatus.Query().
+		Where(providerquotastatus.ChannelIDEQ(channelEntity.ID)).
+		Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, providerquotastatus.ProviderTypeSynthetic, persisted.ProviderType)
+	require.Equal(t, providerquotastatus.StatusUnknown, persisted.Status)
+	require.False(t, persisted.Ready)
+	require.EqualValues(t, 1, persisted.QuotaData["error_count"])
+	require.NotContains(t, persisted.QuotaData, "_previous_status",
+		"a provider change must not carry the old provider's last known status into the row")
+
+	cachedValue, ok := service.quotaCache.Load(channelEntity.ID)
+	require.True(t, ok)
+	cached, ok := cachedValue.(*QuotaChannelStatus)
+	require.True(t, ok)
+	require.Equal(t, "synthetic", cached.ProviderType)
+	require.Equal(t, providerquotastatus.StatusUnknown, cached.Status)
+	require.Empty(t, cached.LastKnownStatus,
+		"the provider change must clear the carry from the cache entry too")
+
+	// The new provider's status must start first-ever: a fresh save with an
+	// unknown row behind it has no previous status to transition from.
+	reloaded := &ProviderQuotaService{AbstractService: &AbstractService{db: client}}
+	reloaded.loadQuotaCache(ctx)
+	reloadedValue, ok := reloaded.quotaCache.Load(channelEntity.ID)
+	require.True(t, ok)
+	reloadedCached, ok := reloadedValue.(*QuotaChannelStatus)
+	require.True(t, ok)
+	require.Empty(t, reloadedCached.LastKnownStatus)
 }
 
 func TestProviderQuotaService_SaveQuotaStatus_ReplacesStaleClinePassDataWhenUnavailable(t *testing.T) {

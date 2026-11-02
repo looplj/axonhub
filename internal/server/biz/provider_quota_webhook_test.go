@@ -422,6 +422,83 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 	})
 }
 
+// TestProviderQuotaService_CredentialResetAfterFailedReloadEmitsRecoveryOnce is
+// the end-to-end credential-expiry path for the hardened transition detection:
+// a known (exhausted) status is persisted and cached, an invalid-credentials
+// failure resets the row to unknown carrying the last known status to both the
+// persisted row and the cache entry, and only then a failed-reload refresh
+// (the channel is gone when the post-reset reload re-queries) reports
+// available. The entry's recorded carry is what the suppressed refresh
+// resolves its previous status from, so the genuine exhausted → available
+// recovery is emitted exactly once.
+func TestProviderQuotaService_CredentialResetAfterFailedReloadEmitsRecoveryOnce(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	ch := createProviderQuotaCollectionChannel(t, ctx, client, "Codex", channel.TypeCodex)
+	require.NoError(t, client.Channel.UpdateOne(ch).
+		SetCredentials(objects.ChannelCredentials{APIKey: "{\"access_token\":\"test-token\"}"}).
+		Exec(ctx))
+
+	// Known status before the credential expiry: the persisted row and the
+	// service cache (seeded by the initial load and refreshed by the save)
+	// both record exhausted.
+	seedQuotaRow(t, ctx, client, ch.ID, providerquotastatus.ProviderTypeCodex, providerquotastatus.StatusExhausted, map[string]any{})
+
+	svc, notifications, requery := newTestQuotaWebhookHarness(t, client)
+	ch = requery(ch)
+	svc.saveQuotaStatus(ctx, ch, "codex", "", provider_quota.QuotaData{
+		ProviderType: "codex",
+		Status:       string(providerquotastatus.StatusExhausted),
+		Ready:        false,
+	}, time.Now(), false)
+	expectNoQuotaWebhook(t, notifications)
+
+	// The failed check with invalid credentials resets the row to unknown
+	// and records the last known status in the cache entry.
+	ch = requery(ch)
+	svc.saveQuotaError(ctx, ch, "codex", "", fmt.Errorf("expired token: %w", provider_quota.ErrInvalidCredentials), 1, time.Now())
+	expectNoQuotaWebhook(t, notifications)
+
+	persisted, err := client.ProviderQuotaStatus.Query().
+		Where(providerquotastatus.ChannelIDEQ(ch.ID)).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, providerquotastatus.StatusUnknown, persisted.Status)
+	require.Equal(t, "exhausted", persisted.QuotaData["_previous_status"])
+
+	cached := svc.GetQuotaStatus(ctx, ch.ID)
+	require.NotNil(t, cached)
+	require.Equal(t, providerquotastatus.StatusUnknown, cached.Status)
+	require.Equal(t, "exhausted", cached.LastKnownStatus,
+		"the cache entry must record the last known status for the post-reload resolution")
+
+	// After the re-authentication the channel no longer loads: the
+	// post-reset reload fails and the refresh proceeds on the stale
+	// pre-reset snapshot (mimicked by the resetter's soft-delete).
+	svc.checkers["codex"] = &resettingQuotaResetter{
+		countingQuotaResetter: countingQuotaResetter{
+			countingQuotaChecker: countingQuotaChecker{providerType: "codex"},
+			resets:               provider_quota.ResetList{Supported: true},
+		},
+		client: client,
+	}
+	require.NoError(t, svc.ResetChannelQuotaNow(ctx, ch.ID))
+
+	// The failed-reload refresh resolved its previous status from the
+	// recorded carry (exhausted): the genuine exhausted → available
+	// transition is emitted exactly once, with the raw pre-reset status
+	// (unknown) in the payload like every unknown-interlude event.
+	expectQuotaWebhook(t, notifications, EventProviderQuotaRecovered, "unknown", "available")
+	expectNoQuotaWebhook(t, notifications)
+
+	persisted, err = client.ProviderQuotaStatus.Query().
+		Where(providerquotastatus.ChannelIDEQ(ch.ID)).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, providerquotastatus.StatusAvailable, persisted.Status)
+	require.True(t, persisted.Ready)
+}
+
 // newTestQuotaWebhookLimitsHarness is newTestQuotaWebhookHarness with a body
 // template that captures the rendered {{.Quota.Limits | json}} array.
 func newTestQuotaWebhookLimitsHarness(t *testing.T, client *ent.Client) (*ProviderQuotaService, chan string) {

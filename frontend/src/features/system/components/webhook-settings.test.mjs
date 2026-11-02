@@ -42,7 +42,7 @@ function extractStatement(source, name) {
 function assertRenameRewritesRawAndTrimmedNames(handlerSource, label) {
   assert.match(
     handlerSource,
-    /targetName === previousName\s*\|\|\s*targetName === rawPreviousName\s*\?\s*trimmedName\s*:\s*targetName/,
+    /targetName\.trim\(\) === previousName \? trimmedName : targetName/,
     `${label}: a rename must rewrite subscription entries carrying the raw untrimmed previous name as well as the trimmed one`
   );
 }
@@ -160,6 +160,32 @@ test('removing the sole owner of a trimmed name drops that name and empty subscr
   );
 });
 
+test('renaming one of two targets sharing the same trimmed name keeps the shared name and adds the new one once', () => {
+  const next = apply(
+    'shared trimmed name',
+    {
+      targets: [{ name: 'Prod' }, { name: 'Prod ' }],
+      subscriptions: [
+        { event: 'provider.quota.warning', targetNames: ['Prod', 'staging'] },
+        { event: 'provider.quota.exhausted', targetNames: ['Prod'] },
+      ],
+    },
+    'handleTargetNameChange',
+    0,
+    'Staging 2'
+  );
+  assert.deepEqual(
+    next.subscriptions,
+    [
+      { event: 'provider.quota.warning', targetNames: ['Prod', 'staging', 'Staging 2'] },
+      { event: 'provider.quota.exhausted', targetNames: ['Prod', 'Staging 2'] },
+    ],
+    'the sibling keeps its shared-name coverage and the renamed target gains the new name exactly once'
+  );
+  assert.equal(next.targets[0].name, 'Staging 2');
+  assert.equal(next.targets[1].name, 'Prod ');
+});
+
 test('the rename branch rewrites the raw untrimmed previous name as well as the trimmed one', () => {
   assertRenameRewritesRawAndTrimmedNames(extractStatement(source, 'handleTargetNameChange'), 'handleTargetNameChange');
 });
@@ -181,7 +207,7 @@ test('sandbox regression: stripping the raw-name match from a copy makes this su
     const componentPath = join(sandbox, 'features/system/components/webhook-settings.tsx');
     const original = read('features/system/components/webhook-settings.tsx');
     const stripped = original.replace(
-      /targetName === previousName\s*\|\|\s*targetName === rawPreviousName\s*\?\s*trimmedName\s*:\s*targetName/,
+      /targetName\.trim\(\) === previousName \? trimmedName : targetName/,
       'targetName === previousName ? trimmedName : targetName'
     );
     assert.notEqual(stripped, original, 'sandbox mutation did not change the fixture');

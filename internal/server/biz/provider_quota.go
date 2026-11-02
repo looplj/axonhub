@@ -1124,18 +1124,6 @@ func lastKnownQuotaStatus(ch *ent.Channel, lastSeen providerquotastatus.Status) 
 	return ""
 }
 
-// lastKnownFromCarry reads the `_previous_status` carried in persisted
-// quota_data, or "" when absent.
-func lastKnownFromCarry(quotaData map[string]any) string {
-	if raw, ok := quotaData["_previous_status"]; ok {
-		if s, ok := raw.(string); ok {
-			return s
-		}
-	}
-
-	return ""
-}
-
 // notifyQuotaStatusChange emits the webhook event for a quota status
 // transition, if the transition is one that fires an event:
 //
@@ -1265,8 +1253,9 @@ func (svc *ProviderQuotaService) saveQuotaError(
 			// re-usable after re-authentication, so preserve the carried
 			// _previous_status and let webhook recovery detection keep
 			// working.
+			lastKnown := ""
 			if !providerChanged {
-				lastKnown := existing.Status.String()
+				lastKnown = existing.Status.String()
 				if lastKnown == providerquotastatus.StatusUnknown.String() {
 					lastKnown, _ = existing.QuotaData["_previous_status"].(string)
 				}
@@ -1296,7 +1285,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 				return
 			}
 
-			svc.updateQuotaCache(ch.ID, providerType, providerquotastatus.StatusUnknown, false, lastKnownFromCarry(existing.QuotaData), nil)
+			svc.updateQuotaCache(ch.ID, providerType, providerquotastatus.StatusUnknown, false, lastKnown, nil)
 			return
 		}
 

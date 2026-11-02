@@ -195,21 +195,49 @@ export function WebhookSettings() {
     setFormData((prev) => {
       // Keep the raw entered value in state so multiword names can be typed
       // without the cursor fighting trailing whitespace. Subscription entries
-      // are compared and persisted by trimmed name. Entries loaded from an
-      // older saved config may still carry the raw untrimmed name, so both
-      // the raw and the trimmed previous name are rewritten.
-      const rawPreviousName = prev.targets[index]?.name || '';
-      const previousName = rawPreviousName.trim();
+      // are compared and persisted by trimmed name; entries loaded from an
+      // older saved config may still carry raw untrimmed names, so all
+      // name comparisons trim both sides.
+      const previousName = (prev.targets[index]?.name || '').trim();
       const trimmedName = value.trim();
       const renameOccurred = previousName !== trimmedName;
       const nextTargets = prev.targets.map((target, i) => (i === index ? { ...target, name: value } : target));
+      // Subscriptions are keyed by trimmed name, and the UI only flags
+      // duplicate names via aria-invalid — targets sharing a trimmed name can
+      // coexist. A rename rewrites the previous name onto the new one only
+      // when this target was its sole owner; when a remaining target still
+      // uses that name, the previous name stays in targetNames and the
+      // renamed target gains coverage under the new name, mirroring how
+      // removeTarget keeps shared names via remainingNames.
+      const nameUsedElsewhere =
+        renameOccurred && prev.targets.some((target, i) => i !== index && (target.name || '').trim() === previousName);
       const nextSubscriptions = renameOccurred
-        ? prev.subscriptions.map((subscription) => ({
-            ...subscription,
-            targetNames: subscription.targetNames.map((targetName) =>
-              targetName === previousName || targetName === rawPreviousName ? trimmedName : targetName
-            ),
-          }))
+        ? prev.subscriptions.map((subscription) => {
+            const hasPreviousName = subscription.targetNames.some((targetName) => targetName.trim() === previousName);
+            if (!hasPreviousName) {
+              return subscription;
+            }
+
+            if (!nameUsedElsewhere) {
+              return {
+                ...subscription,
+                targetNames: subscription.targetNames.map((targetName) => (targetName.trim() === previousName ? trimmedName : targetName)),
+              };
+            }
+
+            // The previous name stays — a remaining target is still
+            // subscribed under it — and the renamed target gains coverage
+            // under the new name, added once if absent.
+            const nextTargetNames = [...subscription.targetNames];
+            if (!nextTargetNames.some((targetName) => targetName.trim() === trimmedName)) {
+              nextTargetNames.push(trimmedName);
+            }
+
+            return {
+              ...subscription,
+              targetNames: nextTargetNames,
+            };
+          })
         : prev.subscriptions;
 
       return {
