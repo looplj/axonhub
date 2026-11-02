@@ -45,3 +45,25 @@ func TestGeminiChannel_BuildChannelWithOutbounds(t *testing.T) {
 	_, ok := embeddingOutbound.(*geminitransformer.OutboundTransformer)
 	require.True(t, ok)
 }
+
+func TestGeminiChannel_BuildsExplicitInteractionsEndpoint(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+	entChannel := client.Channel.Create().
+		SetName("Gemini Interactions Channel").
+		SetType(channel.TypeGemini).
+		SetBaseURL("https://generativelanguage.googleapis.com").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gemini-2.5-pro"}).
+		SetDefaultTestModel("gemini-2.5-pro").
+		SetEndpoints([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatGeminiInteractions.String(), Path: "/v1beta/interactions"}}).
+		SaveX(ctx)
+
+	built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entChannel)
+	require.NoError(t, err)
+	interactionsOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatGeminiInteractions.String())
+	require.NoError(t, err)
+	require.Equal(t, llm.APIFormatGeminiInteractions, interactionsOutbound.APIFormat())
+}

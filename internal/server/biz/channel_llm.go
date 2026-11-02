@@ -587,6 +587,15 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			PlatformType:    ch.platformTypeForGeminiEndpoint(),
 			BaseURLProvider: vertexEndpointBaseURLProvider(c, ch, baseURL),
 		})
+	case llm.APIFormatGeminiInteractions.String():
+		if c.Type == channel.TypeGeminiVertex {
+			return nil, fmt.Errorf("api_format %q is not supported by Vertex Gemini channels", ep.APIFormat)
+		}
+		return gemini.NewInteractionsOutboundTransformerWithConfig(gemini.Config{
+			BaseURL:        baseURL,
+			APIKeyProvider: apiKeyProvider(),
+			EndpointPath:   ep.Path,
+		})
 	case llm.APIFormatGeminiEmbedding.String():
 		return gemini.NewOutboundTransformerWithConfig(gemini.Config{
 			BaseURL:         baseURL,
