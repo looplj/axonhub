@@ -46,6 +46,24 @@ func TestGeminiChannel_BuildChannelWithOutbounds(t *testing.T) {
 	require.True(t, ok)
 }
 
+func TestGeminiVertexChannel_BuildRejectsEmptyCredentials(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file=ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+	entChannel := client.Channel.Create().
+		SetName(t.Name()).
+		SetType(channel.TypeGeminiVertex).
+		SetBaseURL("https://aiplatform.googleapis.com/v1").
+		SetCredentials(objects.ChannelCredentials{}).
+		SetSupportedModels([]string{"gemini-3.8-flash"}).
+		SetDefaultTestModel("gemini-3.8-flash").
+		SaveX(ctx)
+
+	_, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entChannel)
+	require.ErrorContains(t, err, "missing api key")
+}
+
 func TestValidateGeminiVertexCredentials(t *testing.T) {
 	t.Run("accepts service account credentials with ADC fallback", func(t *testing.T) {
 		err := validateGeminiVertexCredentials(objects.ChannelCredentials{

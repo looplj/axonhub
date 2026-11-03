@@ -731,6 +731,9 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		if err := validateGeminiVertexCredentials(c.Credentials); err != nil {
 			return nil, fmt.Errorf("channel %s: %w", c.Name, err)
 		}
+		if !hasGCPCredential(c.Credentials.GCP) && len(enabledKeys) == 0 && overrideAPIKey == "" {
+			return nil, fmt.Errorf("missing api key for channel %s", c.Name)
+		}
 	case channel.TypeCodex, channel.TypeClaudecode:
 		if !c.Credentials.IsOAuth() && len(enabledKeys) == 0 {
 			return nil, fmt.Errorf("missing credentials: oauth or api key required for channel %s", c.Name)

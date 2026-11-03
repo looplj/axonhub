@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -27,6 +28,9 @@ func gcpTokenSource(ctx context.Context, credential *objects.GCPCredential) (oau
 		err         error
 	)
 	if jsonData := strings.TrimSpace(credential.JSONData); jsonData != "" {
+		if err := validateServiceAccountJSON(jsonData); err != nil {
+			return nil, err
+		}
 		credentials, err = google.CredentialsFromJSON(ctx, []byte(jsonData), gcpCloudPlatformScope)
 	} else {
 		credentials, err = google.FindDefaultCredentials(ctx, gcpCloudPlatformScope)
@@ -41,9 +45,25 @@ func gcpTokenSource(ctx context.Context, credential *objects.GCPCredential) (oau
 	return credentials.TokenSource, nil
 }
 
+func validateServiceAccountJSON(jsonData string) error {
+	var document struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal([]byte(jsonData), &document); err != nil {
+		return fmt.Errorf("invalid GCP credentials JSON: %w", err)
+	}
+	if document.Type != "service_account" {
+		return fmt.Errorf("GCP credentials JSON must have type service_account")
+	}
+	return nil
+}
+
 func validateGCPJSON(credential *objects.GCPCredential) error {
 	if credential == nil || strings.TrimSpace(credential.JSONData) == "" {
 		return nil
+	}
+	if err := validateServiceAccountJSON(strings.TrimSpace(credential.JSONData)); err != nil {
+		return err
 	}
 	if _, err := google.CredentialsFromJSON(context.Background(), []byte(credential.JSONData), gcpCloudPlatformScope); err != nil {
 		return fmt.Errorf("invalid GCP credentials JSON: %w", err)

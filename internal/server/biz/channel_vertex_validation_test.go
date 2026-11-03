@@ -138,6 +138,45 @@ func TestValidateVertexAPIKeys(t *testing.T) {
 	}
 }
 
+func TestValidateGeminiVertexCredentialsEdgeCases(t *testing.T) {
+	validGCP := func(jsonData string) objects.ChannelCredentials {
+		return objects.ChannelCredentials{GCP: &objects.GCPCredential{
+			ProjectID: "miguo-vertex-prod-1",
+			Region:    "global",
+			JSONData:  jsonData,
+		}}
+	}
+
+	tests := []struct {
+		name        string
+		credentials objects.ChannelCredentials
+		wantErr     string
+	}{
+		{
+			name:        "accepts ADC credentials with empty JSON",
+			credentials: validGCP(""),
+		},
+		{
+			name:        "rejects non service account JSON",
+			credentials: validGCP(`{"type":"authorized_user"}`),
+			wantErr:     "type service_account",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateGeminiVertexCredentials(tt.credentials)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}
+
 // Deleting a disabled Vertex key must remove its triple, not just its disable
 // record: GetAllAPIKeys surfaces Vertex keys, so a surviving triple becomes
 // immediately selectable again while its disable record is gone.
