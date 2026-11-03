@@ -99,7 +99,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
-    "@playwright/test": "^1.54.1",
+    "@playwright/test": "^1.64.1",
     "@tanstack/eslint-plugin-query": "^5.81.2",
     "@tanstack/react-query-devtools": "^5.81.2",
     "@tanstack/react-router-devtools": "^1.121.34",
