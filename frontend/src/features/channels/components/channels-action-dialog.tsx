@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -1004,6 +1005,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   });
 
   const vertexApiKeyFields = useFieldArray({ control: form.control, name: 'credentials.vertexApiKeys' });
+  const vertexCredentialIdPrefix = useId();
   const vertexApiKeys = form.watch('credentials.vertexApiKeys') || [];
   const vertexGcp = form.watch('credentials.gcp');
   const hasVertexGcp = Boolean(vertexGcp && (vertexGcp.projectID?.trim() || vertexGcp.region?.trim() || vertexGcp.jsonData?.trim()));
@@ -1767,13 +1769,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         const apiKeys = values.credentials?.apiKeys || [];
         const hasApiKeys = apiKeys.length > 0 && apiKeys.some((k) => k.trim() !== '');
         const hasManagementApiKey = (values.credentials?.managementApiKey || '').trim().length > 0;
-        const hasGcpCredentials =
-          values.credentials?.gcp?.region &&
-          values.credentials.gcp.region.trim() !== '' &&
-          values.credentials?.gcp?.projectID &&
-          values.credentials.gcp.projectID.trim() !== '' &&
-          values.credentials?.gcp?.jsonData &&
-          values.credentials.gcp.jsonData.trim() !== '';
+        const hasGcpCredentials = Boolean(
+          values.credentials?.gcp?.region?.trim() && values.credentials.gcp.projectID?.trim()
+        );
         const hasVertexApiKeys =
           values.credentials?.vertexApiKeys && values.credentials.vertexApiKeys.some((binding) => binding.apiKey.trim() !== '');
 
@@ -2020,6 +2018,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
     const vertexApiKeys = form.watch('credentials.vertexApiKeys');
     const hasVertexApiKey = vertexApiKeys?.some((credential) => credential.apiKey.trim().length > 0);
+    const gcp = form.watch('credentials.gcp');
+    const hasGcpCredential = Boolean(gcp?.projectID?.trim() && gcp.region?.trim());
 
     if (isCodexType || isAntigravityType || isClineType || isXAISubscriptionType) {
       return !!baseURL;
@@ -2035,7 +2035,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       return !!baseURL;
     }
 
-    return !!baseURL && (isGeminiVertex ? hasVertexApiKey : hasApiKey);
+    return !!baseURL && (isGeminiVertex ? hasVertexApiKey || hasGcpCredential : hasApiKey);
   };
   // Memoize quick models to avoid re-evaluating on every render
   const currentType = form.watch('type');
@@ -4172,16 +4172,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           </DialogHeader>
           <div className='space-y-4'>
             <div className='space-y-2'>
-              <FormLabel>{t('channels.dialogs.fields.vertexApiKey.projectIDLabel')}</FormLabel>
-              <Input value={vertexApiKeyDraft.projectID} onChange={(event) => setVertexApiKeyDraft((draft) => ({ ...draft, projectID: event.target.value }))} placeholder={t('channels.dialogs.fields.vertexApiKey.projectIDPlaceholder')} />
+              <Label htmlFor={`${vertexCredentialIdPrefix}-express-project-id`}>{t('channels.dialogs.fields.vertexApiKey.projectIDLabel')}</Label>
+              <Input id={`${vertexCredentialIdPrefix}-express-project-id`} value={vertexApiKeyDraft.projectID} onChange={(event) => setVertexApiKeyDraft((draft) => ({ ...draft, projectID: event.target.value }))} placeholder={t('channels.dialogs.fields.vertexApiKey.projectIDPlaceholder')} />
             </div>
             <div className='space-y-2'>
-              <FormLabel>{t('channels.dialogs.fields.vertexApiKey.regionLabel')}</FormLabel>
-              <Input value={vertexApiKeyDraft.region} onChange={(event) => setVertexApiKeyDraft((draft) => ({ ...draft, region: event.target.value }))} placeholder='global' />
+              <Label htmlFor={`${vertexCredentialIdPrefix}-express-region`}>{t('channels.dialogs.fields.vertexApiKey.regionLabel')}</Label>
+              <Input id={`${vertexCredentialIdPrefix}-express-region`} value={vertexApiKeyDraft.region} onChange={(event) => setVertexApiKeyDraft((draft) => ({ ...draft, region: event.target.value }))} placeholder='global' />
             </div>
             <div className='space-y-2'>
-              <FormLabel>{t('channels.dialogs.fields.vertexApiKey.apiKeyLabel')}</FormLabel>
-              <Input type='password' value={vertexApiKeyDraft.apiKey} onChange={(event) => setVertexApiKeyDraft((draft) => ({ ...draft, apiKey: event.target.value }))} placeholder={t('channels.dialogs.fields.vertexApiKey.apiKeyPlaceholder')} />
+              <Label htmlFor={`${vertexCredentialIdPrefix}-express-api-key`}>{t('channels.dialogs.fields.vertexApiKey.apiKeyLabel')}</Label>
+              <Input id={`${vertexCredentialIdPrefix}-express-api-key`} type='password' value={vertexApiKeyDraft.apiKey} onChange={(event) => setVertexApiKeyDraft((draft) => ({ ...draft, apiKey: event.target.value }))} placeholder={t('channels.dialogs.fields.vertexApiKey.apiKeyPlaceholder')} />
             </div>
             {vertexCredentialError && <p className='text-destructive text-sm'>{vertexCredentialError}</p>}
           </div>
@@ -4207,16 +4207,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           </DialogHeader>
           <div className='space-y-4'>
             <div className='space-y-2'>
-              <FormLabel>{t('channels.dialogs.fields.vertexGcp.projectIDLabel')}</FormLabel>
-              <Input value={vertexGcpDraft.projectID} onChange={(event) => setVertexGcpDraft((draft) => ({ ...draft, projectID: event.target.value }))} placeholder={t('channels.dialogs.fields.vertexGcp.projectIDPlaceholder')} />
+              <Label htmlFor={`${vertexCredentialIdPrefix}-json-project-id`}>{t('channels.dialogs.fields.vertexGcp.projectIDLabel')}</Label>
+              <Input id={`${vertexCredentialIdPrefix}-json-project-id`} value={vertexGcpDraft.projectID} onChange={(event) => setVertexGcpDraft((draft) => ({ ...draft, projectID: event.target.value }))} placeholder={t('channels.dialogs.fields.vertexGcp.projectIDPlaceholder')} />
             </div>
             <div className='space-y-2'>
-              <FormLabel>{t('channels.dialogs.fields.vertexGcp.regionLabel')}</FormLabel>
-              <Input value={vertexGcpDraft.region} onChange={(event) => setVertexGcpDraft((draft) => ({ ...draft, region: event.target.value }))} placeholder='global' />
+              <Label htmlFor={`${vertexCredentialIdPrefix}-json-region`}>{t('channels.dialogs.fields.vertexGcp.regionLabel')}</Label>
+              <Input id={`${vertexCredentialIdPrefix}-json-region`} value={vertexGcpDraft.region} onChange={(event) => setVertexGcpDraft((draft) => ({ ...draft, region: event.target.value }))} placeholder='global' />
             </div>
             <div className='space-y-2'>
-              <FormLabel>{t('channels.dialogs.fields.vertexGcp.jsonDataLabel')}</FormLabel>
-              <Input ref={vertexGcpFileRef} type='file' accept='.json,application/json' onChange={async (event) => {
+              <Label htmlFor={`${vertexCredentialIdPrefix}-json-credentials`}>{t('channels.dialogs.fields.vertexGcp.jsonDataLabel')}</Label>
+              <Input id={`${vertexCredentialIdPrefix}-json-credentials`} ref={vertexGcpFileRef} type='file' accept='.json,application/json' onChange={async (event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
                 const jsonData = await file.text();
