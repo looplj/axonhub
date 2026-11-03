@@ -24,6 +24,9 @@ autobind:
 
 # This section declares type mapping between the GraphQL and Go type systems.
 models:
+  APIKeyStatus:
+    model:
+      - github.com/looplj/axonhub/internal/ent/apikey.Status
   # Defines the ID field as Go 'int'.
   ID:
     model:

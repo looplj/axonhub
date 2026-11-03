@@ -10,8 +10,22 @@ import (
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 )
+
+// DisableAPIKey is the resolver for the disableAPIKey field.
+func (r *mutationResolver) DisableAPIKey(ctx context.Context, id objects.GUID) (*APIKey, error) {
+	keyID, err := guidID(&id, ent.TypeAPIKey)
+	if err != nil {
+		return nil, err
+	}
+	key, err := r.apiKeyService.DisableAPIKey(ctx, *keyID)
+	if err != nil {
+		return nil, err
+	}
+	return toOpenAPIAPIKey(key), nil
+}
 
 // CreateLLMAPIKey is the resolver for the createLLMAPIKey field.
 func (r *mutationResolver) CreateLLMAPIKey(ctx context.Context, name string) (*APIKey, error) {

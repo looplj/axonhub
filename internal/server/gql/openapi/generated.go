@@ -15,6 +15,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/shopspring/decimal"
 	gqlparser "github.com/vektah/gqlparser/v2"
@@ -50,11 +51,13 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	APIKey struct {
-		ID       func(childComplexity int) int
-		Key      func(childComplexity int) int
-		Name     func(childComplexity int) int
-		Profiles func(childComplexity int) int
-		Scopes   func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Key       func(childComplexity int) int
+		Name      func(childComplexity int) int
+		Profiles  func(childComplexity int) int
+		ProjectID func(childComplexity int) int
+		Scopes    func(childComplexity int) int
+		Status    func(childComplexity int) int
 	}
 
 	APIKeyProfile struct {
@@ -121,6 +124,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		CreateLLMAPIKey           func(childComplexity int, name string) int
+		DisableAPIKey             func(childComplexity int, id objects.GUID) int
 		LoadAPIKeyProfileTemplate func(childComplexity int, input LoadAPIKeyProfileTemplateInput) int
 		UpdateAPIKeyProfiles      func(childComplexity int, id *objects.GUID, name *string, input objects.APIKeyProfiles) int
 	}
@@ -132,6 +136,7 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
+	DisableAPIKey(ctx context.Context, id objects.GUID) (*APIKey, error)
 	CreateLLMAPIKey(ctx context.Context, name string) (*APIKey, error)
 	UpdateAPIKeyProfiles(ctx context.Context, id *objects.GUID, name *string, input objects.APIKeyProfiles) (*APIKey, error)
 	LoadAPIKeyProfileTemplate(ctx context.Context, input LoadAPIKeyProfileTemplateInput) (*APIKey, error)
@@ -184,12 +189,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.APIKey.Profiles(childComplexity), true
+	case "APIKey.projectID":
+		if e.complexity.APIKey.ProjectID == nil {
+			break
+		}
+
+		return e.complexity.APIKey.ProjectID(childComplexity), true
 	case "APIKey.scopes":
 		if e.complexity.APIKey.Scopes == nil {
 			break
 		}
 
 		return e.complexity.APIKey.Scopes(childComplexity), true
+	case "APIKey.status":
+		if e.complexity.APIKey.Status == nil {
+			break
+		}
+
+		return e.complexity.APIKey.Status(childComplexity), true
 
 	case "APIKeyProfile.channelIDs":
 		if e.complexity.APIKeyProfile.ChannelIDs == nil {
@@ -404,6 +421,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CreateLLMAPIKey(childComplexity, args["name"].(string)), true
+	case "Mutation.disableAPIKey":
+		if e.complexity.Mutation.DisableAPIKey == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_disableAPIKey_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DisableAPIKey(childComplexity, args["id"].(objects.GUID)), true
 	case "Mutation.loadApiKeyProfileTemplate":
 		if e.complexity.Mutation.LoadAPIKeyProfileTemplate == nil {
 			break
@@ -593,6 +621,17 @@ func (ec *executionContext) field_Mutation_createLLMAPIKey_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_disableAPIKey_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_loadApiKeyProfileTemplate_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -754,6 +793,64 @@ func (ec *executionContext) fieldContext_APIKey_id(_ context.Context, field grap
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKey_projectID(ctx context.Context, field graphql.CollectedField, obj *APIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKey_projectID,
+		func(ctx context.Context) (any, error) {
+			return obj.ProjectID, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKey_projectID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKey_status(ctx context.Context, field graphql.CollectedField, obj *APIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKey_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNAPIKeyStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKey_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type APIKeyStatus does not have child fields")
 		},
 	}
 	return fc, nil
@@ -1887,6 +1984,63 @@ func (ec *executionContext) fieldContext_ModelMapping_to(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_disableAPIKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_disableAPIKey,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().DisableAPIKey(ctx, fc.Args["id"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋopenapiᚐAPIKey,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_disableAPIKey(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_APIKey_id(ctx, field)
+			case "projectID":
+				return ec.fieldContext_APIKey_projectID(ctx, field)
+			case "status":
+				return ec.fieldContext_APIKey_status(ctx, field)
+			case "key":
+				return ec.fieldContext_APIKey_key(ctx, field)
+			case "name":
+				return ec.fieldContext_APIKey_name(ctx, field)
+			case "scopes":
+				return ec.fieldContext_APIKey_scopes(ctx, field)
+			case "profiles":
+				return ec.fieldContext_APIKey_profiles(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type APIKey", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_disableAPIKey_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createLLMAPIKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1914,6 +2068,10 @@ func (ec *executionContext) fieldContext_Mutation_createLLMAPIKey(ctx context.Co
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_APIKey_id(ctx, field)
+			case "projectID":
+				return ec.fieldContext_APIKey_projectID(ctx, field)
+			case "status":
+				return ec.fieldContext_APIKey_status(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
@@ -1967,6 +2125,10 @@ func (ec *executionContext) fieldContext_Mutation_updateAPIKeyProfiles(ctx conte
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_APIKey_id(ctx, field)
+			case "projectID":
+				return ec.fieldContext_APIKey_projectID(ctx, field)
+			case "status":
+				return ec.fieldContext_APIKey_status(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
@@ -2020,6 +2182,10 @@ func (ec *executionContext) fieldContext_Mutation_loadApiKeyProfileTemplate(ctx 
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_APIKey_id(ctx, field)
+			case "projectID":
+				return ec.fieldContext_APIKey_projectID(ctx, field)
+			case "status":
+				return ec.fieldContext_APIKey_status(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
@@ -2073,6 +2239,10 @@ func (ec *executionContext) fieldContext_Query_apiKey(ctx context.Context, field
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_APIKey_id(ctx, field)
+			case "projectID":
+				return ec.fieldContext_APIKey_projectID(ctx, field)
+			case "status":
+				return ec.fieldContext_APIKey_status(ctx, field)
 			case "key":
 				return ec.fieldContext_APIKey_key(ctx, field)
 			case "name":
@@ -4077,6 +4247,16 @@ func (ec *executionContext) _APIKey(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "projectID":
+			out.Values[i] = ec._APIKey_projectID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._APIKey_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "key":
 			out.Values[i] = ec._APIKey_key(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -4585,6 +4765,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
+		case "disableAPIKey":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_disableAPIKey(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createLLMAPIKey":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createLLMAPIKey(ctx, field)
@@ -5238,6 +5425,16 @@ func (ec *executionContext) marshalNAPIKeyQuotaWindow2ᚖgithubᚗcomᚋlooplj�
 		return graphql.Null
 	}
 	return ec._APIKeyQuotaWindow(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNAPIKeyStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐStatus(ctx context.Context, v any) (apikey.Status, error) {
+	var res apikey.Status
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAPIKeyStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋapikeyᚐStatus(ctx context.Context, sel ast.SelectionSet, v apikey.Status) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {

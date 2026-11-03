@@ -137,6 +137,7 @@ func NewIndexedCache[K comparable, V any](opts IndexedOptions[K, V]) *IndexedCac
 	}
 
 	refreshFunc := func(ctx context.Context, _ struct{}, lastUpdate time.Time) (struct{}, time.Time, bool, error) {
+		expiresAt := ic.calcExpireAt()
 		items, newUpdateTime, err := opts.LoadSinceFunc(ctx, lastUpdate)
 		if err != nil {
 			return struct{}{}, lastUpdate, false, err
@@ -156,7 +157,7 @@ func NewIndexedCache[K comparable, V any](opts IndexedOptions[K, V]) *IndexedCac
 			} else {
 				ic.index[key] = &cacheItem[V]{
 					value:    item,
-					expireAt: ic.calcExpireAt(),
+					expireAt: expiresAt,
 				}
 			}
 		}
@@ -293,7 +294,8 @@ func (c *IndexedCache[K, V]) loadOne(ctx context.Context, key K) (V, error) {
 
 		c.mu.RUnlock()
 
-		// Load from source
+		// Anchor freshness before the query so a slow read cannot renew an old snapshot.
+		expiresAt := c.calcExpireAt()
 		v, err := c.opts.LoadOneFunc(ctx, key)
 		if err != nil {
 			// Cache negative result for ErrKeyNotFound to prevent cache penetration
@@ -322,11 +324,15 @@ func (c *IndexedCache[K, V]) loadOne(ctx context.Context, key K) (V, error) {
 			return nil, ErrKeyNotFound
 		}
 
+		if !expiresAt.IsZero() && !time.Now().Before(expiresAt) {
+			return nil, fmt.Errorf("cache load exceeded freshness deadline: %w", context.DeadlineExceeded)
+		}
+
 		// Store in cache
 		c.mu.Lock()
 		c.index[key] = &cacheItem[V]{
 			value:    v,
-			expireAt: c.calcExpireAt(),
+			expireAt: expiresAt,
 		}
 		c.mu.Unlock()
 
@@ -417,6 +423,7 @@ func (c *IndexedCache[K, V]) Len() int {
 // Load performs a full synchronous load using LoadSinceFunc with zero time.
 // This is typically called during initialization.
 func (c *IndexedCache[K, V]) Load(ctx context.Context) error {
+	expiresAt := c.calcExpireAt()
 	items, updateTime, err := c.opts.LoadSinceFunc(ctx, time.Time{})
 	if err != nil {
 		return err
@@ -431,7 +438,7 @@ func (c *IndexedCache[K, V]) Load(ctx context.Context) error {
 		} else {
 			c.index[key] = &cacheItem[V]{
 				value:    item,
-				expireAt: c.calcExpireAt(),
+				expireAt: expiresAt,
 			}
 		}
 	}

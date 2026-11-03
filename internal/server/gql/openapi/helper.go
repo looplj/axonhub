@@ -60,10 +60,12 @@ func toOpenAPIAPIKey(k *ent.APIKey) *APIKey {
 	}
 
 	return &APIKey{
-		ID:       objects.GUID{Type: "APIKey", ID: k.ID},
-		Key:      k.Key,
-		Name:     k.Name,
-		Scopes:   k.Scopes,
-		Profiles: k.Profiles,
+		ID:        objects.GUID{Type: "APIKey", ID: k.ID},
+		ProjectID: k.ProjectID,
+		Status:    k.Status,
+		Key:       k.Key,
+		Name:      k.Name,
+		Scopes:    k.Scopes,
+		Profiles:  k.Profiles,
 	}
 }
