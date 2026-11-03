@@ -707,7 +707,7 @@ function validateVertexAPIKeys(
   credentials:
     | {
         vertexApiKeys?: { projectID: string; apiKey: string; region?: string }[] | null;
-        gcp?: { projectID: string; region: string; jsonData: string } | null;
+        gcp?: { projectID?: string; region?: string; jsonData?: string } | null;
       }
     | undefined,
   ctx: z.RefinementCtx
@@ -719,7 +719,10 @@ function validateVertexAPIKeys(
   const rowSchema = vertexAPIKeyCredentialSchema('global');
   const rows = credentials?.vertexApiKeys;
   const gcp = credentials?.gcp;
-  const hasGCP = Boolean(gcp && (gcp.projectID.trim() || gcp.region.trim() || gcp.jsonData.trim()));
+  const projectID = gcp?.projectID?.trim() ?? '';
+  const region = gcp?.region?.trim() ?? '';
+  const jsonData = gcp?.jsonData?.trim() ?? '';
+  const hasGCP = Boolean(gcp && (projectID || region || jsonData));
   if (hasGCP && gcp) {
     if (rows?.length) {
       ctx.addIssue({
@@ -728,14 +731,14 @@ function validateVertexAPIKeys(
         path: ['credentials', 'vertexApiKeys'],
       });
     }
-    if (!vertexAPIKeyProjectIDPattern.test(gcp.projectID.trim())) {
+    if (!vertexAPIKeyProjectIDPattern.test(projectID)) {
       ctx.addIssue({
         code: 'custom' as const,
         message: 'GCP Project ID contains invalid characters',
         path: ['credentials', 'gcp', 'projectID'],
       });
     }
-    if (!vertexAPIKeyRegionPattern.test(gcp.region.trim())) {
+    if (!vertexAPIKeyRegionPattern.test(region)) {
       ctx.addIssue({
         code: 'custom' as const,
         message: 'GCP region contains invalid characters',
