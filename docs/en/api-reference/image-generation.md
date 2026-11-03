@@ -104,7 +104,7 @@ The JSON response preserves upstream `created`, `data[].b64_json`, `data[].url`,
 | `model` | string | The model to use for image generation. | `dall-e-2` |
 | `n` | integer | The number of images to generate. | 1 |
 | `quality` | string | The quality of the image: `"standard"`, `"hd"`, `"high"`, `"medium"`, `"low"`, or `"auto"`. | `"auto"` |
-| `response_format` | string | The format in which to return the images: `"url"` or `"b64_json"`. | `"b64_json"` |
+| `response_format` | string | The format in which to return the images: `"url"` or `"b64_json"`. For OpenAI-compatible channels, if omitted, AxonHub leaves the field out and the upstream model determines the default; provider-specific channels may apply their own defaults. | - |
 | `size` | string | The size of the generated images: `"256x256"`, `"512x512"`, or `"1024x1024"`. | `"1024x1024"` |
 | `style` | string | The style of the generated images (DALL-E 3 only): `"vivid"` or `"natural"`. | - |
 | `user` | string | A unique identifier representing your end-user. | - |
@@ -168,7 +168,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | `model` | string | The model to use. | `dall-e-2` |
 | `n` | integer | The number of images to generate. | 1 |
 | `size` | string | The size of the generated images. | `"1024x1024"` |
-| `response_format` | string | The format: `"url"` or `"b64_json"`. | `"b64_json"` |
+| `response_format` | string | The format: `"url"` or `"b64_json"`. For OpenAI-compatible channels, if omitted, AxonHub leaves the field out and the upstream model determines the default; provider-specific channels may apply their own defaults. Image edits sent to a JSON upstream reject a non-empty value, including Codex edits and edits with remote image references. | - |
 | `user` | string | A unique identifier for your end-user. | - |
 | `background` | string | Background style: `"opaque"` or `"transparent"`. | - |
 | `output_format` | string | Image format: `"png"`, `"webp"`, or `"jpeg"`. | `"png"` |

@@ -71,7 +71,6 @@
   "users.form.selectUserPlaceholder": "选择要添加到项目的用户",
   "users.form.selectProject": "选择项目",
   "users.form.selectProjectPlaceholder": "选择一个项目",
-  "users.form.searchUsers": "搜索用户...",
   "users.form.invitationLink": "注册链接",
   "users.form.invitationExpiry": "链接有效期",
   "users.form.invitationUseLimit": "注册人数限制",

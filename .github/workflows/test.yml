@@ -26,6 +26,9 @@ jobs:
         with:
           go-version: stable
 
+      - name: Generate GraphQL and Ent code
+        run: make generate
+
       - name: Test
         run: make test-backend-all
 

@@ -200,7 +200,9 @@ func parseAntigravityQuota(body []byte) (QuotaData, error) {
 		}
 		window := pool + "_5h"
 		if current, exists := poolLimits[window]; !exists || usageRatio > current.UsageRatio {
-			poolLimits[window] = NewTokenLimitStatus(status, usageRatio, resetAt).WithWindow(window, 5*time.Hour)
+			limit := NewTokenLimitStatus(status, usageRatio, resetAt).WithWindow(window, 5*time.Hour)
+			limit.AvailabilityGroup = antigravityPoolAvailabilityGroup(pool)
+			poolLimits[window] = limit
 		}
 	}
 

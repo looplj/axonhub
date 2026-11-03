@@ -138,6 +138,66 @@ func TestApplyPassThroughResponse_Enabled_ReturnsRaw(t *testing.T) {
 	assert.Equal(t, rawResp, result)
 }
 
+func TestApplyPassThroughResponse_ResponsePolicy(t *testing.T) {
+	tests := []struct {
+		name       string
+		allow      bool
+		expectBody string
+	}{
+		{name: "allowed restores raw response", allow: true, expectBody: "raw"},
+		{name: "vetoed keeps transformed response", allow: false, expectBody: "transformed"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			channel := &biz.Channel{
+				Channel: &ent.Channel{
+					ID:   1,
+					Name: "test",
+					Settings: &objects.ChannelSettings{
+						PassThroughBody: lo.ToPtr(true),
+					},
+				},
+			}
+			llmReq := &llm.Request{
+				APIFormat: llm.APIFormatTypeSafeSystemOne,
+				RawRequest: &httpclient.Request{
+					APIFormat: string(llm.APIFormatTypeSafeSystemOne),
+					Body:      []byte(`{"model":"@cf/cloudflare/clef","questions":{}}`),
+				},
+			}
+			rawProviderReq := &httpclient.Request{
+				APIFormat: string(llm.APIFormatTypeSafeSystemOne),
+			}
+			state := &PersistenceState{
+				CurrentCandidate:   &ChannelModelsCandidate{Channel: channel},
+				LlmRequest:         llmReq,
+				RawProviderRequest: rawProviderReq,
+				RawProviderResponse: &httpclient.Response{
+					StatusCode: http.StatusOK,
+					Body:       []byte("raw"),
+				},
+			}
+			policy := &passthroughResponsePolicyOutbound{
+				passthroughOutbound: passthroughOutbound{format: llm.APIFormatTypeSafeSystemOne},
+				allow:               tt.allow,
+			}
+			outbound := &PersistentOutboundTransformer{
+				wrapped: policy,
+				state:   state,
+			}
+
+			transformed := &httpclient.Response{StatusCode: http.StatusOK, Body: []byte("transformed")}
+			result, err := applyPassThroughResponse(outbound, nil).OnInboundRawResponse(ctx, transformed)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectBody, string(result.Body))
+			assert.Same(t, llmReq, policy.gotLlmReq)
+			assert.Same(t, rawProviderReq, policy.gotProviderReq)
+		})
+	}
+}
+
 func TestApplyPassThroughResponse_MismatchedAPIFormat(t *testing.T) {
 	ctx := context.Background()
 	channel := &biz.Channel{
@@ -1484,6 +1544,21 @@ func (t *passthroughOutbound) AggregateStreamChunks(ctx context.Context, _ *http
 }
 
 func (t *passthroughPolicyOutbound) AllowPassThroughBody(ctx context.Context, llmReq *llm.Request, providerReq *httpclient.Request) bool {
+	return t.allow
+}
+
+type passthroughResponsePolicyOutbound struct {
+	passthroughOutbound
+
+	allow          bool
+	gotLlmReq      *llm.Request
+	gotProviderReq *httpclient.Request
+}
+
+func (t *passthroughResponsePolicyOutbound) AllowPassThroughResponse(ctx context.Context, llmReq *llm.Request, providerReq *httpclient.Request) bool {
+	t.gotLlmReq = llmReq
+	t.gotProviderReq = providerReq
+
 	return t.allow
 }
 

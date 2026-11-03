@@ -162,6 +162,8 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 		req.Thinking = &Thinking{Type: "disabled"}
 	case "adaptive":
 		req.Thinking = &Thinking{Type: "adaptive"}
+	case "between_tools":
+		req.Thinking = &Thinking{Type: "between_tools"}
 	case "enabled":
 		// Native budget client: round-trip budget_tokens verbatim. buildThinking
 		// prefers ReasoningBudget, so no level-to-budget conversion happens here.
@@ -287,11 +289,12 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 			}
 
 			anthropicTools = append(anthropicTools, Tool{
-				Name:         tool.Function.Name,
-				Description:  tool.Function.Description,
-				InputSchema:  inputSchema,
-				Strict:       tool.Function.Strict,
-				CacheControl: convertToAnthropicCacheControl(tool.CacheControl),
+				Name:           tool.Function.Name,
+				Description:    tool.Function.Description,
+				InputSchema:    inputSchema,
+				Strict:         tool.Function.Strict,
+				AllowedCallers: tool.Function.AllowedCallers,
+				CacheControl:   convertToAnthropicCacheControl(tool.CacheControl),
 			})
 		case llm.ToolTypeWebSearch:
 			// Already transformed Anthropic native tool type

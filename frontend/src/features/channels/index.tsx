@@ -332,7 +332,7 @@ export default function ChannelsManagement() {
     <ChannelsProvider>
       <PageHeader title={t('channels.title')} description={t('channels.description')} actions={<ChannelsPrimaryButtons />} actionLayout='scroll' />
 
-      <Main fixed>
+      <Main fixed className='py-2 sm:py-6 [--page-body-min-height:34rem]'>
         <ChannelsContent />
       </Main>
       <Suspense fallback={null}>

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
@@ -135,11 +136,69 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("failed to unmarshal systemone response: invalid json")
 	}
 
+	body := httpResp.Body
+
+	// Some deployments (e.g. Cloudflare Workers AI) wrap the SystemOne payload
+	// in their own universal envelope: {"success": true, "result": {...}}.
+	// The envelope keys do not collide with the SystemOne fields, so decoding
+	// the raw body directly would silently yield a zero-valued response.
+	var envelope systemOneWireEnvelope
+	if err := json.Unmarshal(httpResp.Body, &envelope); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal systemone response envelope: %w", err)
+	}
+
+	// The success flag decides whether the body is an envelope at all. Checking
+	// presence rather than the decoded value keeps "success": null an envelope,
+	// so it is rejected instead of falling through to the plain SystemOne path
+	// and silently returning an empty answer.
+	envelopePresent := len(envelope.Success) > 0
+	if envelopePresent {
+		success, ok := systemOneEnvelopeSuccess(envelope.Success)
+		if !ok {
+			return nil, systemOneEnvelopeError(
+				http.StatusBadGateway,
+				"systemone response envelope has an invalid success flag",
+			)
+		}
+
+		if !success {
+			msg := systemOneEnvelopeErrorMessage(&envelope)
+			if msg == "" {
+				msg = "upstream request failed"
+			}
+
+			return nil, systemOneEnvelopeError(http.StatusBadGateway, msg)
+		}
+
+		if systemOneIsEmptyJSON(envelope.Result) {
+			return nil, systemOneEnvelopeError(
+				http.StatusBadGateway,
+				"systemone response envelope is missing result",
+			)
+		}
+
+		if !json.Valid(envelope.Result) {
+			return nil, fmt.Errorf("failed to unmarshal systemone response: invalid result json")
+		}
+
+		body = envelope.Result
+	}
+
 	var wireResp systemOneWireResponse
-	decoder := json.NewDecoder(bytes.NewReader(httpResp.Body))
+	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.UseNumber()
 	if err := decoder.Decode(&wireResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal systemone response: %w", err)
+	}
+
+	// An envelope that reports success still has to carry a SystemOne payload;
+	// an empty or unrelated result would otherwise surface as an empty answer
+	// instead of an upstream failure.
+	if envelopePresent && wireResp.Model == "" && len(wireResp.Answers) == 0 {
+		return nil, systemOneEnvelopeError(
+			http.StatusBadGateway,
+			"systemone response envelope result is empty",
+		)
 	}
 
 	llmResp := &llm.Response{
@@ -160,6 +219,99 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	return llmResp, nil
+}
+
+// systemOneIsEmptyJSON reports whether a raw JSON value is absent or explicitly null.
+func systemOneIsEmptyJSON(raw json.RawMessage) bool {
+	trimmed := strings.TrimSpace(string(raw))
+
+	return trimmed == "" || trimmed == "null"
+}
+
+// systemOneEnvelopeSuccess decodes the envelope success flag. ok is false when
+// the flag is not a JSON boolean, including an explicit null or a string, so a
+// malformed envelope can be rejected instead of read as a plain response.
+func systemOneEnvelopeSuccess(raw json.RawMessage) (success bool, ok bool) {
+	if systemOneIsEmptyJSON(raw) {
+		return false, false
+	}
+
+	if err := json.Unmarshal(raw, &success); err != nil {
+		return false, false
+	}
+
+	return success, true
+}
+
+// systemOneEnvelopeErrorMessage extracts a human-readable message from an error
+// envelope, supporting string, object-with-message and array-of-objects shapes.
+func systemOneEnvelopeErrorMessage(env *systemOneWireEnvelope) string {
+	for _, raw := range []json.RawMessage{env.Error, env.Errors, env.Messages} {
+		if systemOneIsEmptyJSON(raw) {
+			continue
+		}
+
+		var value any
+		if err := json.Unmarshal(raw, &value); err != nil {
+			if msg := strings.TrimSpace(string(raw)); msg != "" {
+				return msg
+			}
+
+			continue
+		}
+
+		if msg := systemOneMessageFromValue(value); msg != "" {
+			return msg
+		}
+	}
+
+	return ""
+}
+
+func systemOneMessageFromValue(value any) string {
+	switch v := value.(type) {
+	case string:
+		return v
+	case map[string]any:
+		if msg, ok := v["message"].(string); ok && msg != "" {
+			return msg
+		}
+
+		if msg, ok := v["detail"].(string); ok && msg != "" {
+			return msg
+		}
+	case []any:
+		messages := make([]string, 0, len(v))
+		for _, item := range v {
+			if msg := systemOneMessageFromValue(item); msg != "" {
+				messages = append(messages, msg)
+			}
+		}
+
+		return strings.Join(messages, "; ")
+	}
+
+	return ""
+}
+
+func systemOneEnvelopeError(statusCode int, message string) *llm.ResponseError {
+	if statusCode == 0 {
+		statusCode = http.StatusBadGateway
+	}
+	if message == "" {
+		message = http.StatusText(statusCode)
+	}
+	if message == "" {
+		message = "systemone upstream error"
+	}
+
+	return &llm.ResponseError{
+		StatusCode: statusCode,
+		Detail: llm.ErrorDetail{
+			Message: message,
+			Type:    "api_error",
+		},
+	}
 }
 
 func (t *OutboundTransformer) TransformError(

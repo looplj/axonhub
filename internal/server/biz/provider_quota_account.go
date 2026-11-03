@@ -14,6 +14,17 @@ import (
 type quotaCheckGroup struct {
 	channels   []*ent.Channel
 	accountKey string
+
+	// suppressWebhooks skips the quota state transition webhook for this
+	// group's refresh, saving the status as-is. ResetChannelQuotaNow sets
+	// it when the reload of the channel after the reset fails: the previous
+	// edge from before the reset is stale, so a re-emit of a transition
+	// (e.g. exhausted → available) that has already been fired would be
+	// a duplicate. The guard is only against duplicates — saveQuotaStatus
+	// recomputes the transition against that last known status, and it
+	// fires when there genuinely is one (e.g. the new check reports a
+	// transition away from the stale status).
+	suppressWebhooks bool
 }
 
 type quotaCheckGroupKey struct {

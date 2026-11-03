@@ -21,7 +21,7 @@ func SafeJSONRawMessage(s string) json.RawMessage {
 		return json.RawMessage(s)
 	}
 
-	repaired, err := jsonrepair.JSONRepair(s)
+	repaired, err := jsonrepair.Repair(s)
 	if err == nil && json.Valid([]byte(repaired)) {
 		return json.RawMessage(repaired)
 	}

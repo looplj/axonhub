@@ -782,6 +782,12 @@ func TestOutboundTransformer_TransformStreamChunk_FinishReasons(t *testing.T) {
 		{"MAX_TOKENS to length", "MAX_TOKENS", "length"},
 		{"SAFETY to content_filter", "SAFETY", "content_filter"},
 		{"RECITATION to content_filter", "RECITATION", "content_filter"},
+		{"BLOCKLIST to content_filter", "BLOCKLIST", "content_filter"},
+		{"PROHIBITED_CONTENT to content_filter", "PROHIBITED_CONTENT", "content_filter"},
+		{"SPII to content_filter", "SPII", "content_filter"},
+		{"IMAGE_SAFETY to content_filter", "IMAGE_SAFETY", "content_filter"},
+		{"IMAGE_PROHIBITED_CONTENT to content_filter", "IMAGE_PROHIBITED_CONTENT", "content_filter"},
+		{"IMAGE_RECITATION to content_filter", "IMAGE_RECITATION", "content_filter"},
 		{"unknown to stop", "UNKNOWN", "stop"},
 	}
 
@@ -808,6 +814,86 @@ func TestOutboundTransformer_TransformStreamChunk_FinishReasons(t *testing.T) {
 			require.NotNil(t, resp)
 			require.NotNil(t, resp.Choices[0].FinishReason)
 			require.Equal(t, tt.expectedFinishReason, *resp.Choices[0].FinishReason)
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformStream_FinishReasonAfterEarlierToolCall(t *testing.T) {
+	transformer := &OutboundTransformer{
+		config: Config{
+			BaseURL:    DefaultBaseURL,
+			APIVersion: DefaultAPIVersion,
+		},
+	}
+
+	functionCall := func(name string) *Content {
+		return &Content{
+			Role:  "model",
+			Parts: []*Part{{FunctionCall: &FunctionCall{ID: "call-" + name, Name: name, Args: map[string]any{}}}},
+		}
+	}
+	text := &Content{Role: "model", Parts: []*Part{{Text: "Hello"}}}
+
+	tests := []struct {
+		name     string
+		chunks   [][]*Candidate
+		expected map[int]string
+	}{
+		{
+			// Shape of testdata/gemini-tool2.stream.jsonl: STOP arrives in a chunk without parts.
+			name: "STOP in a later chunk than the function call",
+			chunks: [][]*Candidate{
+				{{Index: 0, Content: functionCall("get_weather")}},
+				{{Index: 0, FinishReason: "STOP"}},
+			},
+			expected: map[int]string{0: "tool_calls"},
+		},
+		{
+			name: "each candidate keeps its own finish reason",
+			chunks: [][]*Candidate{
+				{{Index: 0, Content: functionCall("get_weather")}, {Index: 1, Content: text}},
+				{{Index: 0, FinishReason: "STOP"}, {Index: 1, FinishReason: "STOP"}},
+			},
+			expected: map[int]string{0: "tool_calls", 1: "stop"},
+		},
+		{
+			name: "MAX_TOKENS after a function call stays length",
+			chunks: [][]*Candidate{
+				{{Index: 0, Content: functionCall("get_weather")}},
+				{{Index: 0, FinishReason: "MAX_TOKENS"}},
+			},
+			expected: map[int]string{0: "length"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			events := make([]*httpclient.StreamEvent, 0, len(tt.chunks))
+			for _, candidates := range tt.chunks {
+				events = append(events, &httpclient.StreamEvent{
+					Data: mustMarshal(&GenerateContentResponse{ResponseID: "resp-split-finish", Candidates: candidates}),
+				})
+			}
+
+			stream, err := transformer.TransformStream(context.Background(), nil, streams.SliceStream(events))
+			require.NoError(t, err)
+
+			finishReasons := map[int]string{}
+			for stream.Next() {
+				resp := stream.Current()
+				if resp == nil {
+					continue
+				}
+
+				for _, choice := range resp.Choices {
+					if choice.FinishReason != nil {
+						finishReasons[choice.Index] = *choice.FinishReason
+					}
+				}
+			}
+
+			require.NoError(t, stream.Err())
+			require.Equal(t, tt.expected, finishReasons)
 		})
 	}
 }
@@ -1007,3 +1093,77 @@ func mustMarshal(v any) []byte {
 
 // Ensure lo is used to satisfy linter.
 var _ = lo.ToPtr[string]
+
+func TestOutboundTransformer_PreservesMultipartThoughts(t *testing.T) {
+	body := []byte(`{
+		"responseId":"multipart-thoughts",
+		"modelVersion":"gemini-2.5-pro",
+		"candidates":[
+			{"index":0,"content":{"role":"model","parts":[
+				{"thought":true,"text":"First step.\n"},
+				{"text":"The answer is 42."},
+				{"thought":true,"text":"第二步。"},
+				{"thought":true,"text":""}
+			]},"finishReason":"STOP"},
+			{"index":1,"content":{"role":"model","parts":[
+				{"text":"Alternative answer."}
+			]},"finishReason":"STOP"}
+		],
+		"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":5,"thoughtsTokenCount":3,"totalTokenCount":18}
+	}`)
+
+	for _, mode := range []string{"response", "stream"} {
+		t.Run(mode, func(t *testing.T) {
+			transformer, err := NewOutboundTransformer("", "")
+			require.NoError(t, err)
+
+			var resp *llm.Response
+			if mode == "response" {
+				resp, err = transformer.TransformResponse(context.Background(), &httpclient.Response{
+					StatusCode: 200,
+					Body:       body,
+				})
+				require.NoError(t, err)
+			} else {
+				input := streams.SliceStream([]*httpclient.StreamEvent{
+					{Data: body},
+					{Data: []byte(`{"candidates":[{"index":0,"content":{"role":"model","parts":[{"thought":true,"text":"Next chunk."}]}}]}`)},
+				})
+				output, err := transformer.TransformStream(context.Background(), nil, input)
+				require.NoError(t, err)
+				defer output.Close()
+
+				var responses []*llm.Response
+				for output.Next() {
+					responses = append(responses, output.Current())
+				}
+				require.NoError(t, output.Err())
+				require.Len(t, responses, 3)
+				require.NotNil(t, responses[1].Choices[0].Delta.ReasoningContent)
+				require.Equal(t, "Next chunk.", *responses[1].Choices[0].Delta.ReasoningContent)
+				require.Equal(t, llm.DoneResponse, responses[2])
+				resp = responses[0]
+			}
+
+			require.Len(t, resp.Choices, 2)
+			message := resp.Choices[0].Message
+			alternative := resp.Choices[1].Message
+			if mode == "stream" {
+				message = resp.Choices[0].Delta
+				alternative = resp.Choices[1].Delta
+			}
+			require.NotNil(t, message)
+			require.NotNil(t, message.ReasoningContent)
+			require.Equal(t, "First step.\n第二步。", *message.ReasoningContent)
+			require.Equal(t, lo.ToPtr("The answer is 42."), message.Content.Content)
+			require.NotNil(t, alternative)
+			require.Nil(t, alternative.ReasoningContent)
+			require.Equal(t, lo.ToPtr("Alternative answer."), alternative.Content.Content)
+			require.Equal(t, lo.ToPtr("stop"), resp.Choices[0].FinishReason)
+			require.NotNil(t, resp.Usage)
+			require.Equal(t, int64(10), resp.Usage.PromptTokens)
+			require.Equal(t, int64(8), resp.Usage.CompletionTokens)
+			require.Equal(t, int64(18), resp.Usage.TotalTokens)
+		})
+	}
+}

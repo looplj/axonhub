@@ -16,7 +16,7 @@ import (
 
 // buildImageGenerationRequest builds the HTTP request for Gemini image generation/editing.
 // Gemini uses the generateContent endpoint with responseModalities: ["TEXT", "IMAGE"].
-func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
+func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, llmReq *llm.Request, apiKey string) (*httpclient.Request, error) {
 	if llmReq.Image == nil {
 		return nil, fmt.Errorf("%w: image request is required", transformer.ErrInvalidRequest)
 	}
@@ -75,10 +75,10 @@ func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, l
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 
-	// Prepare authentication
+	// Prepare authentication. The key is selected once per outbound attempt by
+	// TransformRequest; looking it up again would consume a second round-robin slot.
 	var auth *httpclient.AuthConfig
 
-	apiKey := t.config.APIKeyProvider.Get(ctx)
 	if apiKey != "" {
 		auth = &httpclient.AuthConfig{
 			Type:      "api_key",

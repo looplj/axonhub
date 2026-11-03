@@ -19,6 +19,8 @@ AxonHub can act as a drop-in replacement for Anthropic endpoints, letting OpenCo
 
 ## Configure OpenCode
 
+OpenCode V1 and V2 use different plugin APIs and configuration keys. Keep the configuration that matches your OpenCode version, then configure the tracing plugin in the version-specific section below.
+
 ### 1. Create OpenCode Configuration File
 
 Create or edit your OpenCode configuration file at `~/.config/opencode/opencode.json`:
@@ -26,9 +28,6 @@ Create or edit your OpenCode configuration file at `~/.config/opencode/opencode.
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": [
-    "opencode-axonhub-tracing"
-  ],
   "provider": {
     "axonhub": {
       "npm": "@ai-sdk/anthropic",
@@ -162,34 +161,49 @@ Route to specialized models:
 
 The `opencode-axonhub-tracing` plugin injects trace headers for every LLM request, enabling request aggregation and tracing in AxonHub.
 
+OpenCode V1 and V2 use different plugin APIs. Choose the section that matches your OpenCode version; the two plugin versions are not interchangeable.
+
 ### Default Headers
 
-| Header Key | Source | Description |
-|------------|--------|-------------|
-| `AH-Thread-Id` | OpenCode `sessionID` | Groups requests from the same session |
-| `AH-Trace-Id` | OpenCode `message.id` | Unique identifier for each message |
+| Header Key     | OpenCode V1 Source       | OpenCode V2 Source        | Description                                      |
+| -------------- | ------------------------ | ------------------------- | ------------------------------------------------ |
+| `AH-Thread-Id` | OpenCode `sessionID`      | OpenCode `sessionID`       | Groups requests from the same session            |
+| `AH-Trace-Id`  | OpenCode `message.id`     | OpenCode prompt `messageID` | Identifies the current message or latest prompt |
 
 ### Enable the Plugin
 
-Add the plugin to your `opencode.json`:
+#### OpenCode V1
+
+OpenCode V1 uses the legacy plugin API. Use the V1 plugin version, and pin it to `1.1.0` to avoid loading the incompatible V2 plugin:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-axonhub-tracing"]
+  "plugin": ["opencode-axonhub-tracing@1.1.0"]
 }
 ```
 
-OpenCode will automatically install the plugin when needed.
+#### OpenCode V2
+
+OpenCode V2 uses `@opencode/plugin` and the `plugins` configuration key. Use `opencode-axonhub-tracing` version `2.0.0` or later:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["opencode-axonhub-tracing@2.0.0"]
+}
+```
+
+OpenCode will automatically install the configured plugin when needed.
 
 ### Custom Header Configuration (Optional)
 
 By default, the plugin uses `AH-Thread-Id` and `AH-Trace-Id` header keys. You can override these with environment variables:
 
-| Environment Variable | Default Value | Description |
-|---------------------|---------------|-------------|
+| Environment Variable                     | Default Value  | Description              |
+| ---------------------------------------- | -------------- | ------------------------ |
 | `OPENCODE_AXONHUB_TRACING_THREAD_HEADER` | `AH-Thread-Id` | Custom thread header key |
-| `OPENCODE_AXONHUB_TRACING_TRACE_HEADER` | `AH-Trace-Id` | Custom trace header key |
+| `OPENCODE_AXONHUB_TRACING_TRACE_HEADER`  | `AH-Trace-Id`  | Custom trace header key  |
 
 Example:
 
@@ -202,9 +216,18 @@ export OPENCODE_AXONHUB_TRACING_TRACE_HEADER="X-Trace-Id"
 
 ### Behavior Details
 
+#### OpenCode V1
+
 - **Thread ID**: Uses OpenCode's `sessionID` to group related requests
-- **Trace ID**: Uses OpenCode's current user message `message.id` for unique identification
+- **Trace ID**: Uses the current user message's `message.id` for unique identification
 - If the current message has no `id`, only the thread header is injected
+
+#### OpenCode V2
+
+- **Thread ID**: Uses OpenCode's `sessionID` to group related requests
+- **Trace ID**: Records the `messageID` from the latest prompt in the session
+- If the session has no prompt yet, or the request has no corresponding message ID, only the thread header is injected
+- Uses `session.hook("prompt")` and `session.hook("model.request")` to inject request headers
 
 ### Benefits
 

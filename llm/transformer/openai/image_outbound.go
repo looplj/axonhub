@@ -73,18 +73,6 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context
 	return rawReq, nil
 }
 
-func supportsImageGenerationResponseFormat(model string) bool {
-	return model == "dall-e-2" || model == "dall-e-3"
-}
-
-func supportsImageEditResponseFormat(model string) bool {
-	return model == "dall-e-2"
-}
-
-func supportsImageVariationResponseFormat(model string) bool {
-	return model == "" || model == "dall-e-2"
-}
-
 // buildImageGenerateRequest builds request for Image Generation API (images/generations).
 func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, apiKey string) (*httpclient.Request, error) {
 	model := chatReq.Model
@@ -153,14 +141,8 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, ap
 		reqBody["partial_images"] = *img.PartialImages
 	}
 
-	if img.ResponseFormat != "" && supportsImageGenerationResponseFormat(model) {
+	if img.ResponseFormat != "" {
 		reqBody["response_format"] = img.ResponseFormat
-	}
-
-	if supportsImageGenerationResponseFormat(chatReq.Model) {
-		if _, ok := reqBody["response_format"]; !ok {
-			reqBody["response_format"] = "b64_json"
-		}
 	}
 
 	body, err := json.Marshal(reqBody)
@@ -354,22 +336,12 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 			jsonBody["partial_images"] = *img.PartialImages
 		}
 
-		if img.ResponseFormat != "" && supportsImageEditResponseFormat(model) {
+		if img.ResponseFormat != "" {
 			if err := writer.WriteField("response_format", img.ResponseFormat); err != nil {
 				return nil, fmt.Errorf("failed to write response_format field: %w", err)
 			}
 
 			jsonBody["response_format"] = img.ResponseFormat
-		}
-	}
-
-	if supportsImageEditResponseFormat(model) {
-		if _, ok := jsonBody["response_format"]; !ok {
-			if err := writer.WriteField("response_format", "b64_json"); err != nil {
-				return nil, fmt.Errorf("failed to write response_format field: %w", err)
-			}
-
-			jsonBody["response_format"] = "b64_json"
 		}
 	}
 
@@ -481,22 +453,12 @@ func (t *OutboundTransformer) buildImageVariationRequest(chatReq *llm.Request, a
 			jsonBody["size"] = img.Size
 		}
 
-		if img.ResponseFormat != "" && supportsImageVariationResponseFormat(model) {
+		if img.ResponseFormat != "" {
 			if err := writer.WriteField("response_format", img.ResponseFormat); err != nil {
 				return nil, fmt.Errorf("failed to write response_format field: %w", err)
 			}
 
 			jsonBody["response_format"] = img.ResponseFormat
-		}
-	}
-
-	if supportsImageVariationResponseFormat(model) {
-		if _, ok := jsonBody["response_format"]; !ok {
-			if err := writer.WriteField("response_format", "b64_json"); err != nil {
-				return nil, fmt.Errorf("failed to write response_format field: %w", err)
-			}
-
-			jsonBody["response_format"] = "b64_json"
 		}
 	}
 

@@ -573,6 +573,37 @@ func TestInboundTransformer_TransformRequest_ThinkingValidation(t *testing.T) {
 		require.Nil(t, got.ReasoningBudget)
 	})
 
+	t.Run("thinking between_tools is accepted", func(t *testing.T) {
+		req := mkReq(`{
+			"model": "claude-sonnet-5-5",
+			"max_tokens": 1024,
+			"messages": [{"role": "user", "content": "Hello"}],
+			"thinking": {"type": "between_tools"}
+		}`)
+
+		got, err := transformer.TransformRequest(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.Equal(t, "none", got.ReasoningEffort)
+		require.Nil(t, got.ReasoningBudget)
+		require.Equal(t, "between_tools", got.TransformerMetadata[TransformerMetadataKeyThinkingType])
+	})
+
+	t.Run("thinking between_tools keeps none when output_config.effort is set", func(t *testing.T) {
+		req := mkReq(`{
+			"model": "claude-sonnet-5-5",
+			"max_tokens": 1024,
+			"messages": [{"role": "user", "content": "Hello"}],
+			"thinking": {"type": "between_tools"},
+			"output_config": {"effort": "high"}
+		}`)
+
+		got, err := transformer.TransformRequest(t.Context(), req)
+		require.NoError(t, err)
+		require.Equal(t, "none", got.ReasoningEffort)
+		require.Equal(t, "high", got.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort])
+	})
+
 	t.Run("thinking enabled without budget_tokens defaults to medium", func(t *testing.T) {
 		for _, thinking := range []string{`{"type": "enabled"}`, `{"type": "enabled", "budget_tokens": 0}`} {
 			req := mkReq(`{
@@ -1979,14 +2010,16 @@ func TestConvertToAnthropicResponse_NormalizesOpenAIWebSearchCitationType(t *tes
 
 	resp := convertToAnthropicResponse(chatResp)
 	require.NotNil(t, resp)
-	require.Len(t, resp.Content, 1)
-	require.Equal(t, "text", resp.Content[0].Type)
-	require.Len(t, resp.Content[0].Citations, 1)
+	require.Len(t, resp.Content, 3)
+	require.Equal(t, "server_tool_use", resp.Content[0].Type)
+	require.Equal(t, "web_search_tool_result", resp.Content[1].Type)
+	require.Equal(t, "text", resp.Content[2].Type)
+	require.Len(t, resp.Content[2].Citations, 1)
 	require.Equal(t, TextCitation{
 		Type:  "web_search_result_location",
 		URL:   "https://example.com/search",
 		Title: "Search Result",
-	}, resp.Content[0].Citations[0])
+	}, resp.Content[2].Citations[0])
 }
 
 func TestInboundTransformer_ValidationEdgeCases(t *testing.T) {

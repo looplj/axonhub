@@ -387,6 +387,48 @@ func TestImageTask_ReusesSubmissionKey(t *testing.T) {
 		"polling must reuse the submitting key, not resolve a new one")
 }
 
+// TestTransformImageResponse_DoesNotConsumeASecondKey pins the round-robin fix:
+// converting the task response must reuse the stored submission key instead of
+// asking the provider again, which would advance the key cursor for every image
+// and starve the alternate keys.
+func TestTransformImageResponse_DoesNotConsumeASecondKey(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mux.HandleFunc("/v1/tasks/task-once", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"task_id":"task-once","task_status":"SUCCEED","output_images":[]}`))
+	})
+
+	transformer := newImageTransformer(t, server.URL+"/v1")
+	provider := &rotatingKeyProvider{keys: []string{"key-a", "key-b", "key-c"}}
+	transformer.apiKeyProvider = provider
+
+	built, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model:       "Qwen/Qwen-Image-2.1",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageGeneration,
+		Image:       &llm.ImageRequest{Prompt: "a fox"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, provider.next, "submitting the task resolves exactly one key")
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       []byte(`{"task_id":"task-once","task_status":"PENDING"}`),
+		Request:    built,
+	}
+
+	_, err = transformer.TransformResponse(context.Background(), httpResp)
+	// The stub returns no output images, so an error is expected; the assertion
+	// that matters is how many keys the round trip resolved.
+	require.Error(t, err)
+	require.Equal(t, 1, provider.next,
+		"converting the response must reuse the stored key, not resolve another one")
+}
+
 // TestTransformImageResponse_BoundsEachPollRequest pins the second review point:
 // an individual task query must be cut off by the same deadline the loop uses,
 // including when that deadline comes from the transformer's own budget rather

@@ -863,6 +863,39 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 			require.True(t, outbound.CanRetry(retryErr))
 		}
 	})
+
+	// A channel that lists 429 asks for a same-channel retry on a rate limit. The
+	// candidate keeps a single mapped model so the decision is about the 429
+	// branch itself — with a second model the retry is also allowed for "try the
+	// next mapped model".
+	t.Run("a channel that lists 429 opts a rate limit into same-channel retry", func(t *testing.T) {
+		optInChannel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:       2,
+				Name:     "opt-in-channel",
+				Settings: &objects.ChannelSettings{RetryableStatusCodes: []int{http.StatusTooManyRequests}},
+			},
+			Outbound: &mockTransformer{},
+		}
+		newOutbound := func(ch *biz.Channel) *PersistentOutboundTransformer {
+			return &PersistentOutboundTransformer{
+				wrapped: &mockTransformer{},
+				state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{
+						Channel: ch,
+						Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+					},
+				},
+			}
+		}
+
+		require.True(t, newOutbound(optInChannel).CanRetry(&httpclient.Error{StatusCode: http.StatusTooManyRequests}))
+		require.True(t, newOutbound(optInChannel).CanRetry(&llm.ResponseError{StatusCode: http.StatusTooManyRequests}))
+
+		// Without 429 in the list a rate limit still switches channels.
+		require.False(t, newOutbound(channel).CanRetry(&httpclient.Error{StatusCode: http.StatusTooManyRequests}))
+		require.False(t, newOutbound(channel).CanRetry(&llm.ResponseError{StatusCode: http.StatusTooManyRequests}))
+	})
 }
 
 func TestShouldForceStreamingForCandidate(t *testing.T) {
