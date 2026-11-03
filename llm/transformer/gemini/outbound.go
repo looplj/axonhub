@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
+	"golang.org/x/oauth2"
 )
 
 const (
@@ -35,6 +36,8 @@ type Config struct {
 
 	// APIKeyProvider provides API keys for authentication.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
+
+	TokenSource oauth2.TokenSource `json:"-"`
 
 	// EndpointPath is an optional custom path override for this endpoint.
 	// When set, it replaces the default API path.
@@ -110,17 +113,17 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("request is nil")
 	}
 
-	var apiKey string
-	if t.config.APIKeyProvider != nil {
-		apiKey = t.config.APIKeyProvider.Get(ctx)
+	authConfig, err := t.authConfig(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
 	case llm.RequestTypeEmbedding:
-		return t.transformEmbeddingRequest(ctx, llmReq, apiKey)
+		return t.transformEmbeddingRequest(ctx, llmReq, authConfig)
 	case llm.RequestTypeImage:
-		return t.buildImageGenerationRequest(ctx, llmReq, apiKey)
+		return t.buildImageGenerationRequest(ctx, llmReq, authConfig)
 	case llm.RequestTypeChat, "":
 		// continue
 	case llm.RequestTypeCompact:
@@ -165,16 +168,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	headers.Set("Accept", "application/json")
 
 	// Prepare authentication
-	var authConfig *httpclient.AuthConfig
-
-	if apiKey != "" {
-		authConfig = &httpclient.AuthConfig{
-			Type:      "api_key",
-			APIKey:    apiKey,
-			HeaderKey: "x-goog-api-key",
-		}
-	}
-
 	if llmReq.RawRequest != nil {
 		// We need to remove the alt query parameter to avoid passing through to the backend.
 		llmReq.RawRequest.Query = nil
@@ -193,6 +186,25 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		SkipInboundQueryMerge: true,
 		Metadata:              nil,
 	}, nil
+}
+
+func (t *OutboundTransformer) authConfig(ctx context.Context) (*httpclient.AuthConfig, error) {
+	if t.config.TokenSource != nil {
+		token, err := t.config.TokenSource.Token()
+		if err != nil {
+			return nil, fmt.Errorf("failed to obtain OAuth2 access token")
+		}
+		if token == nil || token.AccessToken == "" {
+			return nil, fmt.Errorf("OAuth2 token source returned an empty access token")
+		}
+		return &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: token.AccessToken}, nil
+	}
+	if t.config.APIKeyProvider != nil {
+		if key := t.config.APIKeyProvider.Get(ctx); key != "" {
+			return &httpclient.AuthConfig{Type: httpclient.AuthTypeAPIKey, APIKey: key, HeaderKey: "x-goog-api-key"}, nil
+		}
+	}
+	return nil, nil
 }
 
 // resolveBaseURL returns the base URL for a request. A per-request provider, when
