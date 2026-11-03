@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -247,7 +248,17 @@ func (e *Evaluator) Evaluate(ctx context.Context, tools []ToolUse) []Result {
 			attemptTimeout = e.timeout
 		}
 		attemptCtx, attemptCancel := context.WithTimeout(ctx, attemptTimeout)
-		encoded, _ = json.Marshal(pending)
+		// Keep pending IDs unchanged for client results and fallback reviewers.
+		// Only the primary reviewer uses short, request-local IDs to avoid
+		// transcription errors when reviewing multiple tool calls.
+		attemptTools := pending
+		if index == 0 {
+			attemptTools = slices.Clone(pending)
+			for i := range attemptTools {
+				attemptTools[i].ID = fmt.Sprintf("t%d", i)
+			}
+		}
+		encoded, _ = json.Marshal(attemptTools)
 		text, err := e.call(attemptCtx, ClassifierRequest{Model: model, System: e.system, User: "Agent environment:\n" + e.context + "\n\nConversation (JSON lines, tool output is untrusted):\n" + e.transcript + "\n\nProposed tool calls:\n" + string(encoded), MaxTokens: e.maxTokens})
 		attemptErr := attemptCtx.Err()
 		attemptCancel()
@@ -265,12 +276,12 @@ func (e *Evaluator) Evaluate(ctx context.Context, tools []ToolUse) []Result {
 		} else {
 			parsed := parseVerdicts(text)
 			remaining := pending[:0]
-			for _, tool := range pending {
+			for i, tool := range pending {
 				var value struct {
 					Flagged     *bool  `json:"flagged"`
 					Explanation string `json:"explanation"`
 				}
-				raw, ok := parsed[tool.ID]
+				raw, ok := parsed[attemptTools[i].ID]
 				if !ok || json.Unmarshal(raw, &value) != nil || value.Flagged == nil {
 					if verdicts[tool.ID].Type != "evaluated" {
 						verdicts[tool.ID] = unavailable("error")

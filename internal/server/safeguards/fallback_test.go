@@ -45,6 +45,9 @@ func TestFallbackRecoversFailures(t *testing.T) {
 			e := fallbackEvaluator(t, Config{ClassifierModel: "primary", FallbackModels: []string{"backup"}, Timeout: time.Second, AttemptTimeout: 10 * time.Millisecond}, func(ctx context.Context, r ClassifierRequest) (string, error) {
 				called = append(called, r.Model)
 				if r.Model == "primary" {
+					if !reflect.DeepEqual(proposedIDs(t, r), []string{"t0", "t1"}) {
+						t.Fatal("primary did not receive short IDs")
+					}
 					switch failure {
 					case "error":
 						return "", errors.New("upstream failed")
@@ -55,11 +58,14 @@ func TestFallbackRecoversFailures(t *testing.T) {
 						return "", ctx.Err()
 					case "late_success":
 						<-ctx.Done()
-						return `{"verdicts":{"safe":{"flagged":true},"danger":{"flagged":false}}}`, nil
+						return `{"verdicts":{"t0":{"flagged":true},"t1":{"flagged":false}}}`, nil
 					}
 				}
 				if ctx.Err() != nil {
 					t.Fatal("backup inherits attempt cancellation")
+				}
+				if !reflect.DeepEqual(proposedIDs(t, r), []string{"safe", "danger"}) {
+					t.Fatal("backup did not receive original IDs")
 				}
 				return `{"verdicts":{"safe":{"flagged":false},"danger":{"flagged":true}}}`, nil
 			})
@@ -78,10 +84,10 @@ func TestFallbackOnlyReviewsUnresolvedTools(t *testing.T) {
 			e := fallbackEvaluator(t, Config{ClassifierModel: " primary ", FallbackModels: []string{"", "primary", " backup ", "backup", "unused"}}, func(_ context.Context, r ClassifierRequest) (string, error) {
 				called = append(called, r.Model)
 				if r.Model == "primary" {
-					if !reflect.DeepEqual(proposedIDs(t, r), []string{"safe", "danger"}) {
+					if !reflect.DeepEqual(proposedIDs(t, r), []string{"t0", "t1"}) {
 						t.Fatal("missing primary tools")
 					}
-					encoded, _ := json.Marshal(map[string]any{"verdicts": map[string]any{"safe": map[string]any{"flagged": flagged}, "danger": map[string]any{"flagged": "false"}}})
+					encoded, _ := json.Marshal(map[string]any{"verdicts": map[string]any{"t0": map[string]any{"flagged": flagged}, "t1": map[string]any{"flagged": "false"}}})
 					return string(encoded), nil
 				}
 				if !reflect.DeepEqual(proposedIDs(t, r), []string{"danger"}) {
@@ -107,7 +113,7 @@ func TestFallbackDoesNotRetryCompleteVerdicts(t *testing.T) {
 	calls := 0
 	e := fallbackEvaluator(t, Config{ClassifierModel: "primary", FallbackModels: []string{"backup"}}, func(context.Context, ClassifierRequest) (string, error) {
 		calls++
-		return `{"verdicts":{"safe":{"flagged":false},"danger":{"flagged":true}}}`, nil
+		return `{"verdicts":{"t0":{"flagged":false},"t1":{"flagged":true}}}`, nil
 	})
 	e.Evaluate(t.Context(), tools())
 	if calls != 1 {
@@ -120,7 +126,7 @@ func TestFallbackExhaustionPreservesEvaluatedVerdicts(t *testing.T) {
 	e := fallbackEvaluator(t, Config{ClassifierModel: "primary", FallbackModels: []string{"backup", "last"}}, func(_ context.Context, r ClassifierRequest) (string, error) {
 		calls++
 		if r.Model == "primary" {
-			return `{"verdicts":{"safe":{"flagged":true}}}`, nil
+			return `{"verdicts":{"t0":{"flagged":true}}}`, nil
 		}
 		return "", errors.New("unavailable")
 	})
@@ -183,15 +189,19 @@ func TestFallbackSkipsInvalidTools(t *testing.T) {
 	calls := 0
 	e := fallbackEvaluator(t, Config{ClassifierModel: "primary", FallbackModels: []string{"backup"}}, func(_ context.Context, r ClassifierRequest) (string, error) {
 		calls++
-		if !reflect.DeepEqual(proposedIDs(t, r), []string{"valid"}) {
+		expectedID := "valid"
+		if r.Model == "primary" {
+			expectedID = "t0"
+		}
+		if !reflect.DeepEqual(proposedIDs(t, r), []string{expectedID}) {
 			t.Fatal("reviewed invalid tools")
 		}
 		return `{"verdicts":{}}`, nil
 	})
 	uses := []ToolUse{
-		{ID: "valid", Name: "Bash", Input: json.RawMessage(`{}`)},
 		{ID: "truncated", Name: "Bash", Input: json.RawMessage(`{}`), Truncated: true},
 		{ID: "invalid", Name: "Bash", Input: json.RawMessage(`null`)},
+		{ID: "valid", Name: "Bash", Input: json.RawMessage(`{}`)},
 	}
 	got := e.Evaluate(t.Context(), uses)[0].Status.ToolUses
 	if calls != 2 || got["truncated"].Reason != "truncated" || got["invalid"].Type != "unavailable" {
@@ -213,7 +223,10 @@ func TestDenialEscalation(t *testing.T) {
 			e := fallbackEvaluator(t, cfg, func(ctx context.Context, r ClassifierRequest) (string, error) {
 				calls++
 				if r.Model == "primary" {
-					return `{"verdicts":{"safe":{"flagged":false},"danger":{"flagged":true,"explanation":"original denial"}}}`, nil
+					if !reflect.DeepEqual(proposedIDs(t, r), []string{"t0", "t1"}) {
+						t.Fatal("primary did not receive short IDs")
+					}
+					return `{"verdicts":{"t0":{"flagged":false},"t1":{"flagged":true,"explanation":"original denial"}}}`, nil
 				}
 				if !reflect.DeepEqual(proposedIDs(t, r), []string{"danger"}) {
 					t.Fatal("approval was re-reviewed")
