@@ -19,6 +19,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useUpdateChannel } from '../data/channels';
 import { Channel, ModelMapping } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
+import { useChannelModelPreview } from '../data/use-channel-model-preview';
+import { ChannelModelPreview } from './channel-model-preview';
 
 interface Props {
   open: boolean;
@@ -114,6 +116,9 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       lowercaseModelId: currentRow.settings?.lowercaseModelId || false,
     },
   });
+
+  const previewSettings = form.watch();
+  const preview = useChannelModelPreview(currentRow.supportedModels, previewSettings, open);
 
   const handleAutoExtractAllPrefixes = useCallback(() => {
     if (prefixSuggestions.length === 0) {
@@ -340,15 +345,16 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
   return (
     <TooltipProvider>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-[800px]'>
-          <DialogHeader>
+        <DialogContent className='flex h-[min(90dvh,900px)] max-h-[90dvh] flex-col overflow-hidden sm:max-w-6xl'>
+          <DialogHeader className='shrink-0'>
             <DialogTitle>{t('channels.dialogs.settings.modelMapping.title')}</DialogTitle>
             <DialogDescription>{t('channels.dialogs.settings.modelMapping.description', { name: currentRow.name })}</DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <div className='space-y-6'>
+            <form onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col overflow-hidden'>
+              <div className='grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] sm:grid-rows-1'>
+              <div className='min-h-0 space-y-6 overflow-y-auto pr-2' data-testid='model-alias-settings-scroll'>
               <Card>
                 <CardHeader>
                   <CardTitle className='text-lg'>{t('channels.dialogs.settings.modelMapping.hideOriginalModels.label')}</CardTitle>
@@ -653,11 +659,21 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
               </Card>
             </div>
 
-              <DialogFooter className='mt-6'>
+              <aside className='flex min-h-0 flex-col border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4'>
+                <ChannelModelPreview
+                  models={currentRow.supportedModels}
+                  entries={preview.data ?? []}
+                  isUpdating={preview.isUpdating}
+                  isError={preview.isError}
+                />
+              </aside>
+              </div>
+
+              <DialogFooter className='mt-4 shrink-0 border-t pt-4'>
                 <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
                   {t('common.buttons.cancel')}
                 </Button>
-                <Button type='submit' disabled={updateChannel.isPending}>
+                <Button type='submit' disabled={updateChannel.isPending || editingIndex !== null}>
                   {updateChannel.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
                 </Button>
               </DialogFooter>
