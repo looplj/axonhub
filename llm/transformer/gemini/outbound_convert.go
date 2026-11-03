@@ -529,6 +529,7 @@ func renameReservedRefKeys(v any) {
 			delete(val, "$ref")
 
 			if _, exists := val["_ref"]; !exists {
+				renameReservedRefKeys(ref)
 				val["_ref"] = ref
 			}
 		}
