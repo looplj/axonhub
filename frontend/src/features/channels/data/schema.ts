@@ -704,7 +704,12 @@ const vertexAPIKeyShapeSchema = z.object({
 // clears vertexApiKeys for the non-Vertex type.
 function validateVertexAPIKeys(
   channelType: string | undefined,
-  credentials: { vertexApiKeys?: { projectID: string; apiKey: string; region?: string }[] | null } | undefined,
+  credentials:
+    | {
+        vertexApiKeys?: { projectID: string; apiKey: string; region?: string }[] | null;
+        gcp?: { projectID: string; region: string; jsonData: string } | null;
+      }
+    | undefined,
   ctx: z.RefinementCtx
 ) {
   if (channelType !== 'gemini_vertex') {
@@ -713,6 +718,32 @@ function validateVertexAPIKeys(
 
   const rowSchema = vertexAPIKeyCredentialSchema('global');
   const rows = credentials?.vertexApiKeys;
+  const gcp = credentials?.gcp;
+  const hasGCP = Boolean(gcp && (gcp.projectID.trim() || gcp.region.trim() || gcp.jsonData.trim()));
+  if (hasGCP && gcp) {
+    if (rows?.length) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'Vertex API keys cannot be combined with GCP credentials',
+        path: ['credentials', 'vertexApiKeys'],
+      });
+    }
+    if (!vertexAPIKeyProjectIDPattern.test(gcp.projectID.trim())) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'GCP Project ID contains invalid characters',
+        path: ['credentials', 'gcp', 'projectID'],
+      });
+    }
+    if (!vertexAPIKeyRegionPattern.test(gcp.region.trim())) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'GCP region contains invalid characters',
+        path: ['credentials', 'gcp', 'region'],
+      });
+    }
+    return;
+  }
 
   // An empty list is itself an error: create always materialises the field, and an
   // update that sends one is clearing the last binding.
@@ -806,13 +837,7 @@ export const createChannelInputSchema = z
 
     // Validate that at least one credential type is provided. A Vertex key only counts
     // on a gemini_vertex channel, so it must not satisfy an ordinary channel.
-    if (
-      !hasApiKey &&
-      !hasApiKeys &&
-      data.type !== 'anthropic_aws' &&
-      data.type !== 'anthropic_gcp' &&
-      data.type !== 'gemini_vertex'
-    ) {
+    if (!hasApiKey && !hasApiKeys && data.type !== 'anthropic_aws' && data.type !== 'anthropic_gcp' && data.type !== 'gemini_vertex') {
       ctx.addIssue({
         code: 'custom' as const,
         message: 'At least one API Key is required',
