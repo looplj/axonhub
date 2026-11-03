@@ -451,7 +451,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			input.BaseURL = ch.BaseURL
 		}
 
-		if ch.Type == channel.TypeGeminiVertex {
+		if ch.Type == channel.TypeGeminiVertex && vertexGCP != nil {
 			if hasGCPCredential(ch.Credentials.GCP) {
 				vertexGCP = ch.Credentials.GCP
 				if input.ProjectID == nil || strings.TrimSpace(*input.ProjectID) == "" {
