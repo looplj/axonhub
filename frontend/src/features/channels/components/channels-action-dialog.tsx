@@ -265,18 +265,6 @@ function getResponsesTransportFromChannel(channel?: Pick<Channel, 'type' | 'base
   return getResponsesTransportFromBaseURL(channel?.baseURL);
 }
 
-// Vertex credentials are project-bound triples; the form keeps the same shape as
-// the backend contract so project/region stay attached to their key.
-type VertexAPIKeyCredential = NonNullable<NonNullable<Channel['credentials']>['vertexApiKeys']>[number];
-
-function isVertexChannelType(channelType: ChannelType | undefined): boolean {
-  return channelType === 'gemini_vertex';
-}
-
-function emptyVertexAPIKey(): VertexAPIKeyCredential {
-  return { projectID: '', apiKey: '', region: 'global' };
-}
-
 function getResponsesWebSocketBaseURL(channelType: ChannelType): string | undefined {
   if (channelType === 'openai_responses') return OPENAI_RESPONSES_WEBSOCKET_BASE_URL;
   return undefined;
@@ -1325,12 +1313,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         const newChannelType = checked ? 'gemini_vertex' : 'gemini';
         form.setValue('type', newChannelType);
 
-        // Switching into Vertex mode needs a row to edit: an empty list would
-        // reject the submit with no visible field to fill in.
-        if (checked && !(form.getValues('credentials.vertexApiKeys') ?? []).length) {
-          form.setValue('credentials.vertexApiKeys', [emptyVertexAPIKey()]);
-        }
-
         if (!isEdit) {
           const baseURLFieldState = form.getFieldState('baseURL', form.formState);
           if (!baseURLFieldState.isDirty && !isDuplicate) {
@@ -1633,7 +1615,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                   region: credential.region.trim() || 'global',
                 })),
               }
-            : { ...submittedCredentials, vertexApiKeys: undefined }
+            : {
+                ...submittedCredentials,
+                apiKey: undefined,
+                apiKeys: undefined,
+                vertexApiKeys: undefined,
+              }
           : { ...submittedCredentials, vertexApiKeys: undefined };
 
       // A third-party Codex channel authenticates with a plain API key: reject an

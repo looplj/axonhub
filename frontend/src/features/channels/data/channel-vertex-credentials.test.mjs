@@ -99,7 +99,13 @@ test('a Vertex channel accepts ADC credentials with empty JSON', () => {
   const result = createChannelInputSchema.safeParse({
     ...baseChannel,
     type: 'gemini_vertex',
-    credentials: { gcp: { projectID: 'miguo-vertex-prod-1', region: 'global', jsonData: '' } },
+    credentials: {
+      gcp: {
+        projectID: 'miguo-vertex-prod-1',
+        region: 'global',
+        jsonData: '',
+      },
+    },
   });
 
   assert.equal(result.success, true, JSON.stringify(result.error?.issues));
@@ -109,7 +115,12 @@ test('a Vertex update accepts optional GCP credential fields', () => {
   const result = updateChannelInputSchema.safeParse({
     id: 'gid://axonhub/Channel/1',
     type: 'gemini_vertex',
-    credentials: { gcp: { projectID: 'miguo-vertex-prod-1', region: 'global' } },
+    credentials: {
+      gcp: {
+        projectID: 'miguo-vertex-prod-1',
+        region: 'global',
+      },
+    },
   });
 
   assert.equal(result.success, true, JSON.stringify(result.error?.issues));
