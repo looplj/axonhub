@@ -1013,9 +1013,21 @@ func (r *queryResolver) channelModelPerformanceStats(ctx context.Context, timeWi
 		limitCount = *limit
 	}
 
-	// Order by request count (descending), then apply limit.
+	// Order by request count (descending) with a deterministic tie-breaker so a
+	// positive limit that cuts through rows with equal request count is stable
+	// across refreshes.
 	sort.Slice(response, func(i, j int) bool {
-		return response[i].RequestCount > response[j].RequestCount
+		a, b := response[i], response[j]
+		if a.RequestCount != b.RequestCount {
+			return a.RequestCount > b.RequestCount
+		}
+		if a.ChannelName != b.ChannelName {
+			return a.ChannelName < b.ChannelName
+		}
+		if a.ChannelID != b.ChannelID {
+			return a.ChannelID < b.ChannelID
+		}
+		return a.ModelID < b.ModelID
 	})
 	if limitCount > 0 && len(response) > limitCount {
 		response = response[:limitCount]
@@ -1066,9 +1078,14 @@ func (r *queryResolver) queryChannelModelUsageStats(ctx context.Context, since t
 			executionTable := sql.Table(requestexecution.Table).As("cm_execution")
 			latestExecutionTable := sql.Table(requestexecution.Table).As("latest_cm_execution")
 
-			// Join the single latest execution for each request/channel pair so
+			// LEFT join the single latest execution for each request/channel pair so
 			// retried attempts cannot inflate throughput/ttft or be double-counted.
-			s.Join(executionTable).On(
+			// It is a LEFT join because requests and usage logs have independent
+			// retention: when the GC deletes a request's executions before its usage
+			// log, the usage row (its tokens and cost) must still be reported. A
+			// missing execution simply leaves the execution columns NULL, so
+			// throughput/ttft degrade to NULL while the token/cost totals survive.
+			s.LeftJoin(executionTable).On(
 				s.C(usagelog.FieldRequestID),
 				executionTable.C(requestexecution.FieldRequestID),
 			)
@@ -1083,7 +1100,10 @@ func (r *queryResolver) queryChannelModelUsageStats(ctx context.Context, since t
 					sql.ColumnsEQ(latestExecutionTable.C(requestexecution.FieldRequestID), s.C(usagelog.FieldRequestID)),
 					sql.ColumnsEQ(latestExecutionTable.C(requestexecution.FieldChannelID), s.C(usagelog.FieldChannelID)),
 				))
-			s.Where(sql.EQ(executionTable.C(requestexecution.FieldID), latestExecutionID))
+			s.Where(sql.Or(
+				sql.IsNull(executionTable.C(requestexecution.FieldID)),
+				sql.EQ(executionTable.C(requestexecution.FieldID), latestExecutionID),
+			))
 
 			s.Where(sql.NotNull(s.C(usagelog.FieldChannelID)))
 			s.Where(sql.NEQ(s.C(usagelog.FieldModelID), ""))

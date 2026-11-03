@@ -2,9 +2,11 @@ package gql
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/objects"
@@ -214,16 +216,23 @@ func TestChannelModelPerformanceStatsCountsFailures(t *testing.T) {
 }
 
 // TestChannelModelPerformanceStatsUsageOnlyByStatus verifies that a usage_log
-// written for a failed stream (no in-window execution) is counted by the
-// joined execution's status, not as an automatic success.
+// whose execution lies outside the time window (e.g. a stream that started
+// before the window and finished inside it, or one whose request was already
+// cleaned up) still lands in the table. mergeChannelModelStats keeps these
+// usage-only pairs, and their success/failed counts come from the joined
+// execution's status — a failed stream with usage must NOT be counted as a
+// success.
 func TestChannelModelPerformanceStatsUsageOnlyByStatus(t *testing.T) {
 	resolver, ctx := newDashboardUsageTestResolver(t)
 	client := resolver.client
 
 	ch := createDashboardUsageChannel(t, ctx, client, "channel-a")
 
-	// A usage_log whose joined execution is failed. This simulates a stream that
-	// reported usage but ended in failure.
+	// A failed request/execution whose timestamps sit well before the day window
+	// (a 2020 date is always older than "today"), while the usage_log is written
+	// now. The execution is therefore excluded from the execution aggregate but
+	// its usage row is inside the window, forcing the usage-only merge branch.
+	oldTime := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 	req, err := client.Request.Create().
 		SetModelID("gpt-4o").
 		SetRequestBody(objects.JSONRawMessage(`{}`)).
@@ -234,7 +243,7 @@ func TestChannelModelPerformanceStatsUsageOnlyByStatus(t *testing.T) {
 	_, err = client.RequestExecution.Create().
 		SetRequestID(req.ID).SetChannelID(ch.ID).SetModelID("gpt-4o").
 		SetRequestBody(objects.JSONRawMessage(`{}`)).SetStatus(requestexecution.StatusFailed).SetStream(true).
-		SetMetricsLatencyMs(1000).
+		SetCreatedAt(oldTime).
 		Save(ctx)
 	require.NoError(t, err)
 	_, err = client.UsageLog.Create().
@@ -243,15 +252,83 @@ func TestChannelModelPerformanceStatsUsageOnlyByStatus(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	allTime := "allTime"
-	stats, err := resolver.ChannelModelPerformanceStats(ctx, &allTime, nil)
+	day := "day"
+	stats, err := resolver.ChannelModelPerformanceStats(ctx, &day, nil)
 	require.NoError(t, err)
 	rows := toChannelModelRows(t, stats)
-	require.Len(t, rows, 1)
+	require.Len(t, rows, 1, "usage-only pair must be retained via the merge")
 	row := rows[0]
-	// The usage_log exists but the execution is failed, so it must NOT be
+	// The usage_log exists but the joined execution is failed, so it must NOT be
 	// counted as a success.
 	require.Equal(t, 0, row.success, "failed stream with usage must not count as success")
 	require.Equal(t, 1, row.failed)
 	require.Equal(t, 60, row.totalTokens, "tokens still reported from the usage_log")
+}
+
+// TestChannelModelPerformanceStatsKeepsUsageWithoutExecution verifies the P1
+// cleanup scenario: when the request's executions have been deleted but the
+// usage_log (which has a longer retention) remains, the usage totals are still
+// reported and performance metrics degrade gracefully.
+func TestChannelModelPerformanceStatsKeepsUsageWithoutExecution(t *testing.T) {
+	resolver, ctx := newDashboardUsageTestResolver(t)
+	client := resolver.client
+
+	ch := createDashboardUsageChannel(t, ctx, client, "channel-a")
+
+	// A usage_log with no request execution at all (the execution was cleaned up
+	// by the GC before the usage log).
+	_, err := client.UsageLog.Create().
+		SetRequestID(999).SetChannelID(ch.ID).SetModelID("gpt-4o").
+		SetPromptTokens(10).SetCompletionTokens(50).SetTotalTokens(60).
+		Save(ctx)
+	require.NoError(t, err)
+
+	allTime := "allTime"
+	stats, err := resolver.ChannelModelPerformanceStats(ctx, &allTime, nil)
+	require.NoError(t, err)
+	rows := toChannelModelRows(t, stats)
+	require.Len(t, rows, 1, "usage without an execution must still be reported")
+	row := rows[0]
+	require.Equal(t, 60, row.totalTokens, "tokens must survive without the execution")
+	require.Equal(t, 0, row.success, "no execution -> no success count")
+	require.Equal(t, 0, row.failed, "no execution -> no failed count")
+	require.Nil(t, row.throughput, "no execution -> no throughput")
+	require.Nil(t, row.ttftMs, "no execution -> no TTFT")
+}
+
+// TestChannelModelPerformanceStatsStableSortTieBreaker verifies that rows with
+// equal request count are ordered deterministically (by channel name, then
+// model id) so a limit cutting through a tie is stable across refreshes.
+func TestChannelModelPerformanceStatsStableSortTieBreaker(t *testing.T) {
+	resolver, ctx := newDashboardUsageTestResolver(t)
+	client := resolver.client
+
+	chB := createDashboardUsageChannel(t, ctx, client, "channel-b")
+	chA := createDashboardUsageChannel(t, ctx, client, "channel-a")
+
+	// Both pairs have exactly one completed request -> tied on request_count.
+	for _, ch := range []*ent.Channel{chA, chB} {
+		req, err := client.Request.Create().
+			SetModelID("gpt-4o").
+			SetRequestBody(objects.JSONRawMessage(`{}`)).
+			SetStatus(request.StatusCompleted).
+			SetChannelID(ch.ID).SetStream(false).
+			Save(ctx)
+		require.NoError(t, err)
+		_, err = client.RequestExecution.Create().
+			SetRequestID(req.ID).SetChannelID(ch.ID).SetModelID("gpt-4o").
+			SetRequestBody(objects.JSONRawMessage(`{}`)).SetStatus(requestexecution.StatusCompleted).SetStream(false).
+			SetMetricsLatencyMs(1000).
+			Save(ctx)
+		require.NoError(t, err)
+	}
+
+	allTime := "allTime"
+	stats, err := resolver.ChannelModelPerformanceStats(ctx, &allTime, nil)
+	require.NoError(t, err)
+	require.Len(t, stats, 2)
+	// Tied on request count -> the channel with the lexicographically smaller name
+	// (channel-a) must come first, deterministically.
+	require.Equal(t, "channel-a", stats[0].ChannelName)
+	require.Equal(t, "channel-b", stats[1].ChannelName)
 }
