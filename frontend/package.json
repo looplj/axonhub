@@ -71,7 +71,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^14.9.0",
     "i18next": "^26.5.5",
-    "i18next-browser-languagedetector": "^8.2.0",
+    "i18next-browser-languagedetector": "^8.2.4",
     "js-cookie": "^3.0.8",
     "lucide-react": "^1.63.0",
     "motion": "^12.23.24",
