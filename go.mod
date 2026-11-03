@@ -1,6 +1,6 @@
 module github.com/looplj/axonhub
 
-go 1.26.4
+go 1.26.10
 
 require (
 	github.com/go-openapi/inflect v0.21.4 // indirect
@@ -34,7 +34,7 @@ require (
 	github.com/expr-lang/expr v1.17.8
 	github.com/gin-contrib/cors v1.7.9
 	github.com/gin-contrib/sse v1.1.1
-	github.com/gin-contrib/static v1.1.8
+	github.com/gin-contrib/static v1.1.9
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/go-viper/mapstructure/v2 v2.5.0

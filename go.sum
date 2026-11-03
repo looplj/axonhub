@@ -260,8 +260,8 @@ github.com/getsentry/raven-go v0.2.0/go.mod h1:KungGk8q33+aIAZUIVWZDr2OfAEBsO49P
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/gin-contrib/cors v1.7.9 h1:69rz5YU6PW7XlQ4VPXacl77ldFiUvR0E0bmEqmbq86w=
 github.com/gin-contrib/cors v1.7.9/go.mod h1:KTqiTA5HzlWPgVz7p4tolzAuptzGO7DEJn/CbklG0nU=
-github.com/gin-contrib/static v1.1.8 h1:5heoI9Bya1A4GrX/qWXAYfrQj5ejJe1dbyOWc2UBx00=
-github.com/gin-contrib/static v1.1.8/go.mod h1:iLFZejDjIpTtkLnWshlLsuR8L+K3xFoc7vpZmOrNRWI=
+github.com/gin-contrib/static v1.1.9 h1:XuxuTaRKGjR3AuHsZUboYgD7uprF7VTF9weGFjamx3Q=
+github.com/gin-contrib/static v1.1.9/go.mod h1:XpvMEoBW5hbC5YxJZ7Al4PiOB1TgUrxBucfDnYwsZhw=
 github.com/gin-gonic/gin v1.12.0 h1:b3YAbrZtnf8N//yjKeU2+MQsh2mY5htkZidOM7O0wG8=
 github.com/gin-gonic/gin v1.12.0/go.mod h1:VxccKfsSllpKshkBWgVgRniFFAzFb9csfngsqANjnLc=
 github.com/go-errors/errors v1.0.1/go.mod h1:f4zRHt4oKfwPJE5k8C9vpYG+aDHdBFUsgrm6/TyX73Q=
