@@ -192,7 +192,7 @@ func (t *OutboundTransformer) authConfig(ctx context.Context) (*httpclient.AuthC
 	if t.config.TokenSource != nil {
 		token, err := t.config.TokenSource.Token()
 		if err != nil {
-			return nil, fmt.Errorf("failed to obtain OAuth2 access token")
+			return nil, fmt.Errorf("failed to obtain OAuth2 access token: %w", err)
 		}
 		if token == nil || token.AccessToken == "" {
 			return nil, fmt.Errorf("OAuth2 token source returned an empty access token")
