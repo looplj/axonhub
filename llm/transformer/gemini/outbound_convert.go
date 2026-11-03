@@ -494,6 +494,8 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 
 	if responseData == nil {
 		responseData = map[string]any{"result": lo.FromPtrOr(msg.Content.Content, "")}
+	} else {
+		renameReservedRefKeys(responseData)
 	}
 
 	toolCallID := lo.FromPtr(msg.ToolCallID)
@@ -515,6 +517,30 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 	}
 
 	return content
+}
+
+// renameReservedRefKeys renames "$ref" keys to "_ref" in place, recursively.
+// Gemini reserves "$ref" inside functionResponse.response as a pointer to a
+// functionResponse part, so JSON Schema references in tool output are rejected with HTTP 400.
+func renameReservedRefKeys(v any) {
+	switch val := v.(type) {
+	case map[string]any:
+		if ref, ok := val["$ref"]; ok {
+			delete(val, "$ref")
+
+			if _, exists := val["_ref"]; !exists {
+				val["_ref"] = ref
+			}
+		}
+
+		for _, child := range val {
+			renameReservedRefKeys(child)
+		}
+	case []any:
+		for _, child := range val {
+			renameReservedRefKeys(child)
+		}
+	}
 }
 
 func findToolNameByToolCallID(contents []*Content, id string) string {
