@@ -43,7 +43,7 @@ func TestSafeguardsCompletedUpstreamStaysOpen(t *testing.T) {
 				w.Header().Set("Content-Type", "application/json")
 				if !body.Stream {
 					reviewCalls.Add(1)
-					_, _ = io.WriteString(w, `{"id":"review","type":"message","role":"assistant","model":"gpt-test","content":[{"type":"text","text":"{\"verdicts\":{\"tool1\":{\"flagged\":false}}}"}],"stop_reason":"end_turn","usage":{"input_tokens":12,"output_tokens":34}}`)
+					_, _ = io.WriteString(w, `{"id":"review","type":"message","role":"assistant","model":"gpt-test","content":[{"type":"text","text":"{\"verdicts\":{\"t0\":{\"flagged\":false}}}"}],"stop_reason":"end_turn","usage":{"input_tokens":12,"output_tokens":34}}`)
 					return
 				}
 				w.Header().Set("Content-Type", "text/event-stream")

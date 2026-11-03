@@ -97,7 +97,12 @@ func TestSafeguardsHTTP(t *testing.T) {
 					<-ctx.Done()
 					return "", ctx.Err()
 				}
-				return `{"verdicts":{"tool1":{"flagged":false}}}`, nil
+				if req.Model == "backup" {
+					require.Contains(t, req.User, `"id":"tool1"`)
+					return `{"verdicts":{"tool1":{"flagged":false}}}`, nil
+				}
+				require.Contains(t, req.User, `"id":"t0"`)
+				return `{"verdicts":{"t0":{"flagged":false}}}`, nil
 			}
 			engine := gin.New()
 			engine.Use(f.testContext)
@@ -122,6 +127,8 @@ func TestSafeguardsHTTP(t *testing.T) {
 			} else {
 				require.Contains(t, recorder.Body.String(), `"outcome":"not_flagged"`)
 			}
+			require.Contains(t, recorder.Body.String(), `"tool_uses":{"tool1":`)
+			require.NotContains(t, recorder.Body.String(), `"t0"`)
 			if tc.stream {
 				require.Less(t, strings.Index(recorder.Body.String(), `"safeguard_results"`), strings.Index(recorder.Body.String(), "event:message_stop"))
 			}
@@ -138,7 +145,7 @@ func TestSafeguardsTerminalTailRejectsIncompleteStream(t *testing.T) {
 		calls := 0
 		evaluator, err := safeguards.New([]byte(`{"safeguards":[{"type":"dangerous_tool_use"}]}`), safeguards.Config{ClassifierModel: "reviewer"}, func(context.Context, safeguards.ClassifierRequest) (string, error) {
 			calls++
-			return `{"verdicts":{"tool1":{"flagged":false}}}`, nil
+			return `{"verdicts":{"t0":{"flagged":false}}}`, nil
 		})
 		require.NoError(t, err)
 		events := []*httpclient.StreamEvent{
@@ -174,7 +181,7 @@ func TestClaudeCodeSafeguardsRuntimeSettings(t *testing.T) {
 		reviews++
 		require.Equal(t, config.ClassifierModel, req.Model)
 		require.Contains(t, req.System, config.Policy)
-		return `{"verdicts":{"tool1":{"flagged":false}}}`, nil
+		return `{"verdicts":{"t0":{"flagged":false}}}`, nil
 	}
 	engine := gin.New()
 	engine.Use(f.testContext)
