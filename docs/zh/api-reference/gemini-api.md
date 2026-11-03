@@ -162,6 +162,13 @@ Gemini API 格式使用以下认证方式：
 
 API 密钥通过 AxonHub 的 API 密钥管理系统进行管理，无论使用哪种 API 格式，都提供相同的权限。
 
+对于 `gemini_vertex` 渠道，Vertex API Key 绑定和 GCP 凭证二选一，不能同时配置。GCP 凭证包含项目 ID、区域以及可选的 Service Account JSON；JSON 留空时使用服务端 Application Default Credentials。GCP 凭证使用 OAuth Bearer 认证，并通过项目级路径访问模型：
+
+```text
+POST https://aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/publishers/google/models/{model}:generateContent
+Authorization: Bearer <access-token>
+```
+
 ## 流式支持
 
 Gemini API 格式支持流式响应以进行实时内容生成。
