@@ -624,8 +624,14 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		}
 	}
 
-	if err := ValidateVertexAPIKeys(input.Type, input.Credentials); err != nil {
-		return nil, err
+	var credentialErr error
+	if input.Type == channel.TypeGeminiVertex {
+		credentialErr = validateGeminiVertexCredentials(input.Credentials)
+	} else {
+		credentialErr = ValidateVertexAPIKeys(input.Type, input.Credentials)
+	}
+	if credentialErr != nil {
+		return nil, credentialErr
 	}
 
 	createBuilder := svc.entFromContext(ctx).Channel.Create().
