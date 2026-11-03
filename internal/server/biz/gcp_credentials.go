@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/looplj/axonhub/internal/objects"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 const gcpCloudPlatformScope = "https://www.googleapis.com/auth/cloud-platform"

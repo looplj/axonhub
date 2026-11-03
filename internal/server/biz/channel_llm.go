@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/oauth2"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -53,7 +55,6 @@ import (
 	xaisubscription "github.com/looplj/axonhub/llm/transformer/xai/subscription"
 	"github.com/looplj/axonhub/llm/transformer/zai"
 	zenmuxtransformer "github.com/looplj/axonhub/llm/transformer/zenmux"
-	"golang.org/x/oauth2"
 )
 
 const (
