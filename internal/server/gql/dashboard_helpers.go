@@ -21,7 +21,6 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
-	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
 )
 
@@ -1071,99 +1070,109 @@ func (r *queryResolver) queryChannelModelExecutionStats(ctx context.Context, sin
 // queryDimensionPerformanceStats: only completion_tokens count, streaming requests
 // exclude TTFT, and generation time is clamped to biz.MinLatencyMs so cache hits
 // cannot contribute a zero duration.
+//
+// A CTE precomputes the latest execution id per (request_id, channel_id) so the
+// per-row lookup uses an indexed join rather than a correlated subquery (which is
+// too slow on SQLite with the (request_id, channel_id) composite).
 func (r *queryResolver) queryChannelModelUsageStats(ctx context.Context, since time.Time, applyFilter bool) ([]usageStat, error) {
-	var results []usageStat
-	err := r.client.UsageLog.Query().
-		Modify(func(s *sql.Selector) {
-			executionTable := sql.Table(requestexecution.Table).As("cm_execution")
-			latestExecutionTable := sql.Table(requestexecution.Table).As("latest_cm_execution")
+	dbDriver := r.client.Driver()
+	sqlDB, ok := dbDriver.(*sql.Driver)
+	if !ok {
+		return nil, fmt.Errorf("failed to get underlying SQL driver")
+	}
+	dialectName := sqlDB.Dialect()
+	useDollar := dialectName == dialect.Postgres
 
-			// LEFT join the single latest execution for each request/channel pair so
-			// retried attempts cannot inflate throughput/ttft or be double-counted.
-			// It is a LEFT join because requests and usage logs have independent
-			// retention: when the GC deletes a request's executions before its usage
-			// log, the usage row (its tokens and cost) must still be reported. A
-			// missing execution simply leaves the execution columns NULL, so
-			// throughput/ttft degrade to NULL while the token/cost totals survive.
-			s.LeftJoin(executionTable).On(
-				s.C(usagelog.FieldRequestID),
-				executionTable.C(requestexecution.FieldRequestID),
-			)
-			s.OnP(sql.ColumnsEQ(
-				s.C(usagelog.FieldChannelID),
-				executionTable.C(requestexecution.FieldChannelID),
-			))
+	ph := "?"
+	if useDollar {
+		ph = "$1"
+	}
 
-			latestExecutionID := sql.Select(sql.Max(latestExecutionTable.C(requestexecution.FieldID))).
-				From(latestExecutionTable).
-				Where(sql.And(
-					sql.ColumnsEQ(latestExecutionTable.C(requestexecution.FieldRequestID), s.C(usagelog.FieldRequestID)),
-					sql.ColumnsEQ(latestExecutionTable.C(requestexecution.FieldChannelID), s.C(usagelog.FieldChannelID)),
-				))
-			s.Where(sql.Or(
-				sql.IsNull(executionTable.C(requestexecution.FieldID)),
-				sql.EQ(executionTable.C(requestexecution.FieldID), latestExecutionID),
-			))
+	timeFilter := ""
+	args := []any{}
+	if applyFilter {
+		timeFilter = fmt.Sprintf(" AND u.created_at >= %s", ph)
+		args = append(args, since.UTC())
+	}
 
-			s.Where(sql.NotNull(s.C(usagelog.FieldChannelID)))
-			s.Where(sql.NEQ(s.C(usagelog.FieldModelID), ""))
+	query := fmt.Sprintf(`
+WITH latest_exec AS (
+    SELECT request_id, channel_id, MAX(id) AS max_id
+    FROM %s
+    WHERE channel_id IS NOT NULL
+    GROUP BY request_id, channel_id
+)
+SELECT
+    u.channel_id,
+    u.model_id,
+    COUNT(u.id) AS request_count,
+    SUM(CASE WHEN e.status = '%s' THEN 1 ELSE 0 END) AS success_count,
+    SUM(CASE WHEN e.status = '%s' THEN 1 ELSE 0 END) AS failed_count,
+    COALESCE(SUM(u.prompt_tokens), 0)        AS input_tokens,
+    COALESCE(SUM(u.completion_tokens), 0)    AS output_tokens,
+    COALESCE(SUM(u.total_tokens), 0)         AS total_tokens,
+    COALESCE(SUM(u.total_cost), 0)           AS total_cost,
+    CASE
+        WHEN SUM(CASE WHEN e.metrics_latency_ms IS NOT NULL
+                      THEN CASE WHEN e.stream AND e.metrics_first_token_latency_ms IS NOT NULL
+                                THEN e.metrics_latency_ms - e.metrics_first_token_latency_ms
+                                ELSE e.metrics_latency_ms END
+                      ELSE 0 END) > 0
+        THEN SUM(CASE WHEN e.metrics_latency_ms IS NOT NULL THEN u.completion_tokens ELSE 0 END) * 1000.0
+             / SUM(CASE WHEN e.metrics_latency_ms IS NOT NULL
+                        THEN CASE WHEN e.stream AND e.metrics_first_token_latency_ms IS NOT NULL
+                                  THEN e.metrics_latency_ms - e.metrics_first_token_latency_ms
+                                  ELSE e.metrics_latency_ms END
+                        ELSE 0 END)
+        ELSE NULL
+    END AS throughput,
+    AVG(CASE WHEN e.stream AND e.metrics_first_token_latency_ms IS NOT NULL
+             AND e.metrics_first_token_latency_ms > 0
+             THEN e.metrics_first_token_latency_ms END) AS ttft_ms
+FROM %s u
+LEFT JOIN %s e ON e.id = (
+    SELECT le.max_id FROM latest_exec le
+    WHERE le.request_id = u.request_id AND le.channel_id = u.channel_id
+)
+WHERE u.channel_id IS NOT NULL AND u.model_id != ''%s
+GROUP BY u.channel_id, u.model_id
+`,
+		requestexecution.Table,
+		requestexecution.StatusCompleted,
+		requestexecution.StatusFailed,
+		usagelog.Table,
+		requestexecution.Table,
+		timeFilter,
+	)
 
-			if applyFilter {
-				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
-			}
-
-			generationLatency := fmt.Sprintf(
-				"CASE WHEN %s AND %s IS NOT NULL THEN %s - %s ELSE %s END",
-				executionTable.C(requestexecution.FieldStream),
-				executionTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs),
-				executionTable.C(requestexecution.FieldMetricsLatencyMs),
-				executionTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs),
-				executionTable.C(requestexecution.FieldMetricsLatencyMs),
-			)
-			effectiveLatency := fmt.Sprintf(
-				"CASE WHEN %[1]s < %[2]d THEN %[2]d ELSE %[1]s END",
-				generationLatency,
-				biz.MinLatencyMs,
-			)
-			// Only count completion_tokens for rows that actually have a measured
-			// latency; missing latency (e.g. interrupted streams) must not inflate
-			// throughput by contributing tokens over a zero/NULL duration.
-			throughput := fmt.Sprintf(
-				"CASE WHEN SUM(%[1]s) > 0 THEN SUM(CASE WHEN %[3]s IS NOT NULL THEN %[2]s ELSE 0 END) * 1000.0 / SUM(%[1]s) ELSE NULL END",
-				effectiveLatency,
-				s.C(usagelog.FieldCompletionTokens),
-				executionTable.C(requestexecution.FieldMetricsLatencyMs),
-			)
-			ttft := fmt.Sprintf(
-				"AVG(CASE WHEN %s AND %s IS NOT NULL AND %s > 0 THEN %s END)",
-				executionTable.C(requestexecution.FieldStream),
-				executionTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs),
-				executionTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs),
-				executionTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs),
-			)
-
-			s.Select(
-				sql.As(s.C(usagelog.FieldChannelID), "channel_id"),
-				sql.As(s.C(usagelog.FieldModelID), "model_id"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
-				// Success/failed come from the joined execution's status, not from the
-				// presence of a usage_log row: a failed or canceled stream can still
-				// report usage and write a usage_log, so counting every usage row as a
-				// success would overstate the success rate.
-				sql.As(fmt.Sprintf("SUM(CASE WHEN %s = '%s' THEN 1 ELSE 0 END)", executionTable.C(requestexecution.FieldStatus), requestexecution.StatusCompleted), "success_count"),
-				sql.As(fmt.Sprintf("SUM(CASE WHEN %s = '%s' THEN 1 ELSE 0 END)", executionTable.C(requestexecution.FieldStatus), requestexecution.StatusFailed), "failed_count"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
-				sql.As(throughput, "throughput"),
-				sql.As(ttft, "ttft_ms"),
-			).
-				GroupBy(s.C(usagelog.FieldChannelID), s.C(usagelog.FieldModelID))
-		}).
-		Scan(ctx, &results)
+	rows, err := sqlDB.DB().QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get channel-model usage stats: %w", err)
+		return nil, fmt.Errorf("failed to query channel-model usage stats: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var results []usageStat
+	for rows.Next() {
+		var stat usageStat
+		if err := rows.Scan(
+			&stat.ChannelID,
+			&stat.ModelID,
+			&stat.RequestCount,
+			&stat.SuccessCount,
+			&stat.FailedCount,
+			&stat.InputTokens,
+			&stat.OutputTokens,
+			&stat.TotalTokens,
+			&stat.TotalCost,
+			&stat.Throughput,
+			&stat.TtftMs,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan channel-model usage stat: %w", err)
+		}
+		results = append(results, stat)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate channel-model usage stats: %w", err)
 	}
 	return results, nil
 }
