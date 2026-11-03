@@ -1,6 +1,6 @@
 module github.com/looplj/axonhub/cmd/schema
 
-go 1.26.4
+go 1.26.10
 
 replace github.com/looplj/axonhub => ../../
 
@@ -85,7 +85,7 @@ require (
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
-	github.com/gin-contrib/cors v1.7.9 // indirect
+	github.com/gin-contrib/cors v1.7.10 // indirect
 	github.com/gin-contrib/sse v1.1.1 // indirect
 	github.com/gin-contrib/static v1.1.8 // indirect
 	github.com/gin-gonic/gin v1.12.0 // indirect
