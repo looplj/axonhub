@@ -419,3 +419,71 @@ func TestConvertStreamTransformer_TransformStream_ToolCalls(t *testing.T) {
 	assert.True(t, hasFinish, "Should have finish event")
 	assert.True(t, hasDone, "Should have [DONE] event")
 }
+
+// Continuation deltas of an OpenAI-style stream carry only the tool call index (no ID).
+// They must extend the call opened by the first delta instead of opening a new one.
+func TestConvertStreamTransformer_TransformStream_ToolCallContinuationWithoutID(t *testing.T) {
+	transformer := NewConvertStreamTransformer()
+	ctx := context.Background()
+
+	delta := func(index int, id, name, args string) *llm.Response {
+		return &llm.Response{
+			ID:     "msg_idx",
+			Object: "chat.completion.chunk",
+			Choices: []llm.Choice{
+				{
+					Delta: &llm.Message{
+						ToolCalls: []llm.ToolCall{
+							{
+								ID:       id,
+								Type:     "function",
+								Index:    index,
+								Function: llm.FunctionCall{Name: name, Arguments: args},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	mockStream := &mockLLMStream{responses: []*llm.Response{
+		delta(0, "call_a", "get_weather", `{"location":`),
+		delta(0, "", "", `"Paris"}`),
+		delta(1, "call_b", "get_time", `{"tz":`),
+		delta(1, "", "", `"UTC"}`),
+	}}
+
+	resultStream, err := transformer.TransformStream(ctx, mockStream)
+	require.NoError(t, err)
+
+	starts := map[string]string{}
+	deltas := map[string]string{}
+
+	for resultStream.Next() {
+		event := resultStream.Current()
+		if string(event.Data) == "[DONE]" {
+			continue
+		}
+
+		var streamEvent StreamEvent
+		require.NoError(t, json.Unmarshal(event.Data, &streamEvent))
+
+		switch streamEvent.Type {
+		case "tool-input-start":
+			_, dup := starts[streamEvent.ToolCallID]
+			assert.False(t, dup, "duplicate tool-input-start for %s", streamEvent.ToolCallID)
+			starts[streamEvent.ToolCallID] = streamEvent.ToolName
+		case "tool-input-delta":
+			deltas[streamEvent.ToolCallID] += streamEvent.InputTextDelta
+		}
+	}
+
+	require.NoError(t, resultStream.Err())
+
+	assert.Equal(t, map[string]string{"call_a": "get_weather", "call_b": "get_time"}, starts)
+	assert.Equal(t, map[string]string{
+		"call_a": `{"location":"Paris"}`,
+		"call_b": `{"tz":"UTC"}`,
+	}, deltas)
+}
