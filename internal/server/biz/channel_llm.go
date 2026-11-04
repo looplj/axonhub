@@ -1209,9 +1209,22 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		ch.Outbound = transformer
 
 		return ch, nil
-	case channel.TypeBailianAnthropic, channel.TypeMoonshotCoding:
+	case channel.TypeBailianAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:           anthropic.PlatformDirect,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
+	case channel.TypeMoonshotCoding:
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:           anthropic.PlatformMoonshot,
 			BaseURL:        c.BaseURL,
 			APIKeyProvider: getAPIKeyProvider(ch),
 		})
