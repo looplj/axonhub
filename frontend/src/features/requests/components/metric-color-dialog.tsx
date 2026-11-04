@@ -133,14 +133,21 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
     if (!band) return;
     event.preventDefault();
 
+    // A second finger must not stack another set of window listeners on the first.
+    cleanupRef.current?.();
+
     const rect = band.getBoundingClientRect();
     // Capture the range once: it grows with the last cut, so re-reading it on
     // every move would let a boundary near the right edge chase its own tail
     // (150 → 165 → 182 for throughput while the pointer sits still).
     const { min, max } = metricColorRange(key, getMetricColorSettingsSnapshot()[key]);
+    const pointerId = event.pointerId;
     setDragging({ key, index });
 
     const move = (pointer: PointerEvent) => {
+      // Only the pointer that started this drag may move it.
+      if (pointer.pointerId !== pointerId) return;
+
       const ratio = Math.min(1, Math.max(0, (pointer.clientX - rect.left) / rect.width));
       const latest = getMetricColorSettingsSnapshot();
       const raw = min + ratio * (max - min);
@@ -148,7 +155,10 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
       setMetricColorSettings({ ...latest, [key]: { ...latest[key], cuts } });
     };
 
-    const finish = () => {
+    const finish = (event?: Event) => {
+      // Ignore the end of a different finger's gesture.
+      if (event instanceof PointerEvent && event.pointerId !== pointerId) return;
+
       setDragging(null);
       cleanupRef.current = null;
       window.removeEventListener('pointermove', move);
