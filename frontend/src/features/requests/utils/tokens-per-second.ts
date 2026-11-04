@@ -71,13 +71,20 @@ export function getTotalTimeTokensPerSecondValue(request: Request): number | nul
   // and one request can log more than once. The list query currently asks for
   // `usageLogs(first: 1)`, so this is a single entry in practice — summing keeps
   // the rate correct if that query or a request-level aggregate widens later.
-  const completionTokens = usageLogs.reduce((sum, edge) => sum + (edge?.node?.completionTokens || 0), 0);
+  //
+  // A missing token count and a measured zero are different: the former means we
+  // know nothing (renders "-"), the latter is a real 0 tok/s we can colour red.
+  const counts = usageLogs
+    .map((edge) => edge?.node?.completionTokens)
+    .filter((count): count is number => count !== null && count !== undefined);
 
-  if (completionTokens === 0) {
+  if (counts.length === 0) {
     return null;
   }
 
+  const completionTokens = counts.reduce((sum, count) => sum + count, 0);
   const latencySeconds = request.metricsLatencyMs / 1000;
+
   return completionTokens / latencySeconds;
 }
 
