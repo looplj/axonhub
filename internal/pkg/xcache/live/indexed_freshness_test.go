@@ -28,6 +28,7 @@ func TestIndexedCacheSlowLoadCannotRenewSnapshot(t *testing.T) {
 		defer cache.Stop()
 		ctx := context.Background()
 		_, err := cache.Get(ctx, "key")
+		require.ErrorIs(t, err, ErrLoadExpired)
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 		require.ErrorIs(t, cache.Load(ctx), context.DeadlineExceeded)
 		require.ErrorIs(t, cache.inner.Load(ctx, true), context.DeadlineExceeded)

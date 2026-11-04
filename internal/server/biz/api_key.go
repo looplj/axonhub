@@ -109,7 +109,11 @@ func NewAPIKeyService(params APIKeyServiceParams) *APIKeyService {
 	})
 
 	if err := svc.APIKeyCache.Load(context.Background()); err != nil {
-		panic(fmt.Errorf("api key cache initial load failed: %w", err))
+		if !errors.Is(err, live.ErrLoadExpired) {
+			svc.Stop()
+			panic(fmt.Errorf("api key cache initial load failed: %w", err))
+		}
+		log.Warn(context.Background(), "api key cache warmup expired; keys will load on demand", log.Cause(err))
 	}
 
 	return svc

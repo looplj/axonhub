@@ -13,6 +13,9 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/watcher"
 )
 
+// ErrLoadExpired means a source snapshot exhausted the cache freshness budget.
+var ErrLoadExpired = fmt.Errorf("cache load exceeded freshness deadline: %w", context.DeadlineExceeded)
+
 // cacheItem wraps a value with its expiration time.
 // When isEmpty is true, value is zero value and represents a "not found" cache entry.
 type cacheItem[V any] struct {
@@ -146,7 +149,7 @@ func NewIndexedCache[K comparable, V any](opts IndexedOptions[K, V]) *IndexedCac
 		ic.mu.Lock()
 		if !expiresAt.IsZero() && !time.Now().Before(expiresAt) {
 			ic.mu.Unlock()
-			return struct{}{}, lastUpdate, false, fmt.Errorf("cache refresh exceeded freshness deadline: %w", context.DeadlineExceeded)
+			return struct{}{}, lastUpdate, false, ErrLoadExpired
 		}
 
 		if len(items) == 0 {
@@ -333,7 +336,7 @@ func (c *IndexedCache[K, V]) loadOne(ctx context.Context, key K) (V, error) {
 		c.mu.Lock()
 		if !expiresAt.IsZero() && !time.Now().Before(expiresAt) {
 			c.mu.Unlock()
-			return nil, fmt.Errorf("cache load exceeded freshness deadline: %w", context.DeadlineExceeded)
+			return nil, ErrLoadExpired
 		}
 		c.index[key] = &cacheItem[V]{
 			value:    v,
@@ -437,7 +440,7 @@ func (c *IndexedCache[K, V]) Load(ctx context.Context) error {
 	c.mu.Lock()
 	if !expiresAt.IsZero() && !time.Now().Before(expiresAt) {
 		c.mu.Unlock()
-		return fmt.Errorf("cache load exceeded freshness deadline: %w", context.DeadlineExceeded)
+		return ErrLoadExpired
 	}
 
 	for _, item := range items {
