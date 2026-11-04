@@ -1097,6 +1097,17 @@ func TestWithTraceID_ThreadWithoutTraceHeaderCreatesTrace(t *testing.T) {
 	require.True(t, ok)
 	require.LessOrEqual(t, len(boundedSessionID), 64)
 	require.NotEmpty(t, boundedSessionID)
+
+	// Verify session-ID stability across repeated requests on the same thread
+	req3 := httptest.NewRequest(http.MethodGet, "/test-long", nil)
+	w3 := httptest.NewRecorder()
+	router2.ServeHTTP(w3, req3)
+	require.Equal(t, http.StatusOK, w3.Code)
+
+	var resp3 map[string]any
+	err = json.Unmarshal(w3.Body.Bytes(), &resp3)
+	require.NoError(t, err)
+	require.Equal(t, boundedSessionID, resp3["session_id"])
 }
 
 func TestWithTraceID_NoHeader(t *testing.T) {
