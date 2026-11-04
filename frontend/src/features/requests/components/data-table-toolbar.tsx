@@ -1,7 +1,7 @@
 ﻿import { useMemo, useState } from 'react';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { Table } from '@tanstack/react-table';
-import { Filter, GripVertical, X } from 'lucide-react';
+import { Filter, GripVertical, Palette, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
@@ -22,6 +22,7 @@ import { useMe } from '@/features/auth/data/auth';
 import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { RequestStatus } from '../data/schema';
 import { DataTableViewOptions } from './data-table-view-options';
+import { MetricColorDialog } from './metric-color-dialog';
 import { MODEL_ID_COLUMN } from './requests-columns';
 
 interface DataTableToolbarProps<TData> {
@@ -34,6 +35,7 @@ interface DataTableToolbarProps<TData> {
   autoRefreshInterval?: AutoRefreshInterval;
   onAutoRefreshIntervalChange?: (interval: AutoRefreshInterval) => void;
   enableColumnOrdering?: boolean;
+  enableMetricColors?: boolean;
   getColumnLabel?: (columnId: string) => string;
 }
 
@@ -212,6 +214,7 @@ export function DataTableToolbar<TData>({
   autoRefreshInterval = null,
   onAutoRefreshIntervalChange,
   enableColumnOrdering,
+  enableMetricColors,
   getColumnLabel,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
@@ -220,6 +223,7 @@ export function DataTableToolbar<TData>({
   const [showArchivedChannels, setShowArchivedChannels] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [columnOrderOpen, setColumnOrderOpen] = useState(false);
+  const [metricColorOpen, setMetricColorOpen] = useState(false);
   const debouncedApiKeySearch = useDebounce(apiKeySearch, 300);
   const hasDateRange = !!dateRange?.from || !!dateRange?.to;
   const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange;
@@ -471,6 +475,15 @@ export function DataTableToolbar<TData>({
               onOpenChange={setColumnOrderOpen}
               getColumnLabel={getColumnLabel}
             />
+          </>
+        )}
+        {enableMetricColors && (
+          <>
+            <Button variant='outline' size='sm' className='h-8' onClick={() => setMetricColorOpen(true)}>
+              <Palette className='mr-2 h-4 w-4' />
+              {t('requests.metricColors.open')}
+            </Button>
+            <MetricColorDialog open={metricColorOpen} onOpenChange={setMetricColorOpen} />
           </>
         )}
         <DataTableViewOptions table={table} />

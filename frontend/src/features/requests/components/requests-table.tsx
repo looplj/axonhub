@@ -334,6 +334,7 @@ export function RequestsTable({
         autoRefreshInterval={autoRefreshInterval}
         onAutoRefreshIntervalChange={onAutoRefreshIntervalChange}
         enableColumnOrdering
+        enableMetricColors
         getColumnLabel={(id) => t(`requests.columns.${id}`, { defaultValue: id })}
       />
       <div className='shadow-soft relative mt-2 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)] sm:mt-4'>

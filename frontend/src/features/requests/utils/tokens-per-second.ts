@@ -57,6 +57,33 @@ export function calculateTokensPerSecond(request: Request): string {
 }
 
 /**
+ * Calculate tokens-per-second over the FULL request duration (including TTFT).
+ * This reflects the end-to-end average generation speed, in contrast to the
+ * first-token-based rate which excludes time to first token for streams.
+ */
+export function getTotalTimeTokensPerSecondValue(request: Request): number | null {
+  const usageLog = request.usageLogs?.edges?.[0]?.node;
+  if (!usageLog || request.metricsLatencyMs == null || request.metricsLatencyMs <= 0) {
+    return null;
+  }
+
+  // Use completion tokens only (reasoning tokens are not included in throughput calculation)
+  const completionTokens = usageLog.completionTokens || 0;
+
+  if (completionTokens === 0) {
+    return null;
+  }
+
+  const latencySeconds = request.metricsLatencyMs / 1000;
+  return completionTokens / latencySeconds;
+}
+
+export function calculateTotalTimeTokensPerSecond(request: Request): string {
+  const tokensPerSecond = getTotalTimeTokensPerSecondValue(request);
+  return tokensPerSecond == null ? '-' : `${Math.round(tokensPerSecond)} tok/s`;
+}
+
+/**
  * Hook to manage display mode state with localStorage persistence.
  * SSR-safe: defaults to 'latency' during server-side rendering.
  * Uses two-phase initialization to avoid hydration mismatches.
