@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
 import {
   METRIC_COLOR_KEYS,
   METRIC_COLOR_META,
@@ -22,12 +22,14 @@ import {
 } from '../utils/metric-colors';
 import { useMetricColorSettings } from '../utils/use-metric-colors';
 
+/** Tier order per metric: green sits on the left when a smaller value is better. */
 function tiersFor(key: MetricColorKey): MetricColorTier[] {
   return METRIC_COLOR_META[key].higherIsBetter
     ? ['red', 'yellow', 'neutral', 'blue', 'green']
     : ['green', 'blue', 'neutral', 'yellow', 'red'];
 }
 
+/** Draft key so an in-progress edit survives re-renders without touching the store. */
 function draftKey(key: MetricColorKey, index: number): string {
   return `${key}:${index}`;
 }
@@ -117,18 +119,30 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
     };
   }, [open, measureGuides, settings]);
 
+  // Holds the teardown of the current drag so a closed dialog cannot keep writing.
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (!open) cleanupRef.current?.();
+  }, [open]);
+
+  useEffect(() => () => cleanupRef.current?.(), []);
+
   const startDrag = (key: MetricColorKey, index: number, event: React.PointerEvent<HTMLDivElement>) => {
     const band = bandRefs.current[key];
     if (!band) return;
     event.preventDefault();
 
     const rect = band.getBoundingClientRect();
+    // Capture the range once: it grows with the last cut, so re-reading it on
+    // every move would let a boundary near the right edge chase its own tail
+    // (150 → 165 → 182 for throughput while the pointer sits still).
+    const { min, max } = metricColorRange(key, getMetricColorSettingsSnapshot()[key]);
     setDragging({ key, index });
 
     const move = (pointer: PointerEvent) => {
       const ratio = Math.min(1, Math.max(0, (pointer.clientX - rect.left) / rect.width));
       const latest = getMetricColorSettingsSnapshot();
-      const { min, max } = metricColorRange(key, latest[key]);
       const raw = min + ratio * (max - min);
       const cuts = replaceMetricColorCut(key, latest[key], index, roundCut(key, raw));
       setMetricColorSettings({ ...latest, [key]: { ...latest[key], cuts } });
@@ -136,12 +150,18 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
 
     const finish = () => {
       setDragging(null);
+      cleanupRef.current = null;
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
     };
 
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', finish);
+    // Touch gestures can end as pointercancel; without this the window listeners
+    // survive the gesture and keep writing thresholds.
+    window.addEventListener('pointercancel', finish);
+    cleanupRef.current = finish;
   };
 
   const commitDraft = (key: MetricColorKey, index: number) => {
@@ -202,8 +222,7 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
                   {rule.cuts.map((cut, index) => {
                     const isHighlighted =
                       (hoveredCut?.key === key && hoveredCut.index === index) ||
-                      (hoveredSegment?.key === key &&
-                        (hoveredSegment.index === index || hoveredSegment.index === index + 1));
+                      (hoveredSegment?.key === key && (hoveredSegment.index === index || hoveredSegment.index === index + 1));
 
                     return (
                       <div
@@ -223,9 +242,8 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
                         <input
                           value={drafts[draftKey(key, index)] ?? String(cut)}
                           disabled={!rule.enabled}
-                          onChange={(event) =>
-                            setDrafts((current) => ({ ...current, [draftKey(key, index)]: event.target.value }))
-                          }
+                          aria-label={`${t(`requests.metricColors.metrics.${key}`)} ${t('requests.metricColors.boundaryLabel', { index: index + 1 })}`}
+                          onChange={(event) => setDrafts((current) => ({ ...current, [draftKey(key, index)]: event.target.value }))}
                           onBlur={() => commitDraft(key, index)}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter') {
@@ -250,10 +268,7 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
                       y1={0}
                       x2={metricColorPercent(key, rule, rule.cuts[index])}
                       y2={20}
-                      className={cn(
-                        'text-muted-foreground',
-                        dragging?.key === key && dragging.index === index && 'text-foreground'
-                      )}
+                      className={cn('text-muted-foreground', dragging?.key === key && dragging.index === index && 'text-foreground')}
                       stroke='currentColor'
                       strokeWidth={1}
                       strokeDasharray='3 3'
@@ -262,26 +277,28 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
                   ))}
                 </svg>
 
-                <div
-                  ref={(node) => {
-                    bandRefs.current[key] = node;
-                  }}
-                  className='relative flex h-6 overflow-hidden rounded-md'
-                >
-                  {tiers.map((tier, index) => {
-                    const width = ((edges[index + 1] - edges[index]) / (max || 1)) * 100;
+                <div className='relative'>
+                  <div
+                    ref={(node) => {
+                      bandRefs.current[key] = node;
+                    }}
+                    className='flex h-6 overflow-hidden rounded-md'
+                  >
+                    {tiers.map((tier, index) => {
+                      const width = ((edges[index + 1] - edges[index]) / (max || 1)) * 100;
 
-                    return (
-                      <div
-                        key={tier}
-                        className={cn('shrink-0 grow-0', METRIC_COLOR_TIER_STYLE[tier].swatch)}
-                        style={{ flexBasis: `${Math.max(width, 0)}%` }}
-                        onMouseEnter={() => setHoveredSegment({ key, index })}
-                        onMouseLeave={() => setHoveredSegment(null)}
-                        title={t(`requests.metricColors.tiers.${tier}`)}
-                      />
-                    );
-                  })}
+                      return (
+                        <div
+                          key={tier}
+                          className={cn('shrink-0 grow-0', METRIC_COLOR_TIER_STYLE[tier].swatch)}
+                          style={{ flexBasis: `${Math.max(width, 0)}%` }}
+                          onMouseEnter={() => setHoveredSegment({ key, index })}
+                          onMouseLeave={() => setHoveredSegment(null)}
+                          title={t(`requests.metricColors.tiers.${tier}`)}
+                        />
+                      );
+                    })}
+                  </div>
                   {rule.cuts.map((cut, index) => {
                     const left = metricColorPercent(key, rule, cut);
                     const isActive = dragging?.key === key && dragging.index === index;
@@ -297,17 +314,30 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
                         aria-valuemax={index === rule.cuts.length - 1 ? max : rule.cuts[index + 1]}
                         tabIndex={rule.enabled ? 0 : -1}
                         className={cn(
-                          'absolute -top-0.5 -bottom-0.5 -ml-1.5 w-3 cursor-col-resize',
+                          'absolute -top-0.5 -bottom-0.5 -ml-1.5 w-3 cursor-col-resize touch-none',
                           !rule.enabled && 'pointer-events-none'
                         )}
                         style={{ left: `${left}%` }}
                         onPointerDown={(event) => rule.enabled && startDrag(key, index, event)}
+                        onKeyDown={(event) => {
+                          if (!rule.enabled) return;
+                          const step = event.shiftKey ? 5 : 1;
+                          const delta =
+                            event.key === 'ArrowRight' || event.key === 'ArrowUp'
+                              ? step
+                              : event.key === 'ArrowLeft' || event.key === 'ArrowDown'
+                                ? -step
+                                : 0;
+                          if (delta === 0) return;
+                          event.preventDefault();
+                          applyRule(key, replaceMetricColorCut(key, rule, index, cut + delta));
+                        }}
                         onMouseEnter={() => setHoveredCut({ key, index })}
                         onMouseLeave={() => setHoveredCut(null)}
                       >
                         <span
                           className={cn(
-                            'bg-zinc-500 dark:bg-zinc-400 absolute inset-y-0 left-1/2 w-px -translate-x-1/2',
+                            'absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-zinc-500 dark:bg-zinc-400',
                             (isActive || isHighlighted) && 'bg-foreground w-0.5'
                           )}
                         />

@@ -40,12 +40,7 @@ export interface MetricColorMeta {
   defaultEnabled: boolean;
 }
 
-export const METRIC_COLOR_KEYS: MetricColorKey[] = [
-  'cacheHitRate',
-  'firstTokenLatency',
-  'throughput',
-  'throughputIncludingFirstToken',
-];
+export const METRIC_COLOR_KEYS: MetricColorKey[] = ['cacheHitRate', 'firstTokenLatency', 'throughput', 'throughputIncludingFirstToken'];
 
 export const METRIC_COLOR_META: Record<MetricColorKey, MetricColorMeta> = {
   cacheHitRate: {
@@ -166,12 +161,7 @@ export function clampMetricColorCut(key: MetricColorKey, rule: MetricColorRule, 
   return Math.min(upper, Math.max(lower, value));
 }
 
-export function replaceMetricColorCut(
-  key: MetricColorKey,
-  rule: MetricColorRule,
-  index: number,
-  value: number
-): MetricColorCuts {
+export function replaceMetricColorCut(key: MetricColorKey, rule: MetricColorRule, index: number, value: number): MetricColorCuts {
   const next = [...rule.cuts] as MetricColorCuts;
   next[index] = clampMetricColorCut(key, rule, index, value);
 
@@ -205,11 +195,7 @@ export function metricColorTier(key: MetricColorKey, rule: MetricColorRule, valu
  * Text class for a value, or an empty string when the metric is switched off so
  * the caller keeps its own default styling.
  */
-export function metricColorTextClass(
-  settings: MetricColorSettings,
-  key: MetricColorKey,
-  value: number | null | undefined
-): string {
+export function metricColorTextClass(settings: MetricColorSettings, key: MetricColorKey, value: number | null | undefined): string {
   const rule = settings[key];
   if (!rule?.enabled || value === null || value === undefined || !Number.isFinite(value)) return '';
 
