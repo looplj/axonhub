@@ -5,8 +5,10 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"compress/zlib"
+	"math"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/klauspost/compress/zstd"
@@ -413,4 +415,31 @@ func TestMergeHTTPHeaders_UserAgentNotMerged(t *testing.T) {
 
 	merged = MergeHTTPHeaders(emptyDest, src)
 	assert.Empty(t, merged.Get("User-Agent"))
+}
+
+// TestInitMaxRequestBodySize 覆盖 MB 换算、默认值和乘法溢出，防止错误配置绕过大小限制。
+func TestInitMaxRequestBodySize(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		want  int
+	}{
+		{"", defaultMaxRequestBodySize},
+		{" ", defaultMaxRequestBodySize},
+		{"1", 1 << 20},
+		{"64", 64 << 20},
+		{"128", 128 << 20},
+		{" 256 ", 256 << 20},
+		{"0", defaultMaxRequestBodySize},
+		{"-1", defaultMaxRequestBodySize},
+		{"1.5", defaultMaxRequestBodySize},
+		{"128MB", defaultMaxRequestBodySize},
+		{"invalid", defaultMaxRequestBodySize},
+		{strconv.Itoa(math.MaxInt/(1<<20) + 1), defaultMaxRequestBodySize},
+		{"9223372036854775808", defaultMaxRequestBodySize},
+	} {
+		t.Run(tc.value, func(t *testing.T) {
+			t.Setenv("AXONHUB_MAX_REQUEST_BODY_SIZE_MB", tc.value)
+			require.Equal(t, tc.want, initMaxRequestBodySize())
+		})
+	}
 }

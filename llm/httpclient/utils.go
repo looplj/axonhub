@@ -8,16 +8,31 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/klauspost/compress/zstd"
 	"github.com/samber/lo"
 )
 
-var maxRequestBodySize = 64 * 1024 * 1024
+const defaultMaxRequestBodySize = 64 * 1024 * 1024
+
+var maxRequestBodySize = initMaxRequestBodySize()
+
+// initMaxRequestBodySize 在启动时读取整数 MB（1 MB = 1024 × 1024 字节）。
+// 未配置或非法值保留 64 MB；换算前检查溢出，避免意外解除原有大小保护。
+func initMaxRequestBodySize() int {
+	value := strings.TrimSpace(os.Getenv("AXONHUB_MAX_REQUEST_BODY_SIZE_MB"))
+	if limitMB, err := strconv.Atoi(value); err == nil && limitMB > 0 && limitMB <= math.MaxInt/(1024*1024) {
+		return limitMB * 1024 * 1024
+	}
+	return defaultMaxRequestBodySize
+}
 
 var ErrRequestBodyTooLarge = errors.New("request body too large")
 

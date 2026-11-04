@@ -118,3 +118,9 @@ These three features work together to provide defense in depth:
 | API Key IP Restriction | Per-Key | Allow only listed IPs | Restrict individual API keys |
 
 Requests are evaluated in order: IP Access Control → IP Blocklist → API Key Authentication → API Key IP Restriction.
+
+## Model API Request Body Limit
+
+Set `AXONHUB_MAX_REQUEST_BODY_SIZE_MB=128` to allow model API request bodies up to 128 MB (1 MB = 1024 × 1024 bytes). The variable accepts positive integers and is read once at startup; restart the instance after changing it. Unset, empty, invalid, non-positive, or overflowing values fall back to **64 MB**.
+
+The existing limit applies to both raw and decompressed bodies. Error handling is unchanged, including the existing HTTP 500 response for oversized Responses API requests. Bodies are buffered in memory, so size the limit for your available memory and concurrency. Proxy and upstream limits remain independent.
