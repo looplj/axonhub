@@ -143,12 +143,17 @@ func NewIndexedCache[K comparable, V any](opts IndexedOptions[K, V]) *IndexedCac
 			return struct{}{}, lastUpdate, false, err
 		}
 
+		ic.mu.Lock()
+		if !expiresAt.IsZero() && !time.Now().Before(expiresAt) {
+			ic.mu.Unlock()
+			return struct{}{}, lastUpdate, false, fmt.Errorf("cache refresh exceeded freshness deadline: %w", context.DeadlineExceeded)
+		}
+
 		if len(items) == 0 {
+			ic.mu.Unlock()
 			ic.CleanupExpired()
 			return struct{}{}, newUpdateTime, false, nil
 		}
-
-		ic.mu.Lock()
 
 		for _, item := range items {
 			key := opts.KeyFunc(item)
@@ -324,12 +329,12 @@ func (c *IndexedCache[K, V]) loadOne(ctx context.Context, key K) (V, error) {
 			return nil, ErrKeyNotFound
 		}
 
+		// Lock contention consumes the same freshness budget as the source query.
+		c.mu.Lock()
 		if !expiresAt.IsZero() && !time.Now().Before(expiresAt) {
+			c.mu.Unlock()
 			return nil, fmt.Errorf("cache load exceeded freshness deadline: %w", context.DeadlineExceeded)
 		}
-
-		// Store in cache
-		c.mu.Lock()
 		c.index[key] = &cacheItem[V]{
 			value:    v,
 			expireAt: expiresAt,
@@ -430,6 +435,10 @@ func (c *IndexedCache[K, V]) Load(ctx context.Context) error {
 	}
 
 	c.mu.Lock()
+	if !expiresAt.IsZero() && !time.Now().Before(expiresAt) {
+		c.mu.Unlock()
+		return fmt.Errorf("cache load exceeded freshness deadline: %w", context.DeadlineExceeded)
+	}
 
 	for _, item := range items {
 		key := c.opts.KeyFunc(item)

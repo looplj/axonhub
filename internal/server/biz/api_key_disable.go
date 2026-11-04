@@ -2,12 +2,14 @@ package biz
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -16,20 +18,36 @@ import (
 func (s *APIKeyService) DisableAPIKey(ctx context.Context, id int) (*ent.APIKey, error) {
 	caller, ok := contexts.GetAPIKey(ctx)
 	if !ok || caller == nil || caller.Type != apikey.TypeServiceAccount || caller.Status != apikey.StatusEnabled || caller.DeletedAt != 0 {
-		return nil, fmt.Errorf("an enabled service account is required")
+		return nil, xerrors.ForbiddenError("an enabled service account is required")
 	}
 	if err := authz.RequireScope(ctx, scopes.ScopeWriteAPIKeys); err != nil {
-		return nil, err
+		return nil, xerrors.ForbiddenError("write_api_keys scope is required").WithCause(err)
+	}
+	if err := authz.RequireScope(ctx, scopes.ScopeReadAPIKeys); err != nil {
+		return nil, xerrors.ForbiddenError("read_api_keys scope is required").WithCause(err)
 	}
 	if caller.ID == id {
-		return nil, fmt.Errorf("cannot disable the calling API key")
+		return nil, xerrors.ValidationError("cannot disable the calling API key")
 	}
 	target, err := s.GetForRead(ctx, &id, nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find API key in caller project: %w", err)
+		if errors.Is(err, privacy.Deny) {
+			return nil, xerrors.ForbiddenError("API key access denied").WithCause(err)
+		}
+		if ent.IsNotFound(err) {
+			return nil, xerrors.NotFoundError("api_key").WithCause(err)
+		}
+		return nil, xerrors.NewCodedError(xerrors.ErrCodeInternalServerError, "failed to find API key in caller project").WithCause(err)
 	}
 	if target.Type != apikey.TypeUser {
-		return nil, fmt.Errorf("only user API keys can be disabled through OpenAPI")
+		return nil, xerrors.ValidationError("only user API keys can be disabled through OpenAPI")
 	}
-	return s.UpdateAPIKeyStatus(ctx, target.ID, apikey.StatusDisabled)
+	if target.Status == apikey.StatusArchived {
+		return nil, xerrors.ValidationError("archived API keys cannot be disabled")
+	}
+	disabled, err := s.UpdateAPIKeyStatus(ctx, target.ID, apikey.StatusDisabled)
+	if err != nil {
+		return nil, xerrors.NewCodedError(xerrors.ErrCodeInternalServerError, "failed to disable API key").WithCause(err)
+	}
+	return disabled, nil
 }
