@@ -46,6 +46,10 @@ type Config struct {
 	// Platform configuration
 	Type PlatformType `json:"type"`
 
+	// NativeToolsDisabled suppresses Anthropic native server tools on an
+	// Anthropic-compatible platform that otherwise uses direct request semantics.
+	NativeToolsDisabled bool `json:"-"`
+
 	Region string `json:"region,omitempty"` // For Vertex
 
 	ProjectID string `json:"project_id,omitempty"` // For Vertex
@@ -177,6 +181,9 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Convert to Anthropic request format
 	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
+	if err := validateToolChoice(anthropicReq.ToolChoice, anthropicReq.Tools); err != nil {
+		return nil, err
+	}
 
 	// System and developer messages are extracted into the top-level system
 	// prompt. When the request carries nothing else there is no conversation

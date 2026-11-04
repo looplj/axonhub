@@ -17,71 +17,125 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
 )
 
-func TestMoonshotCodingChannelFiltersAnthropicNativeWebSearch(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
-	t.Cleanup(func() { _ = client.Close() })
-	ctx := authz.WithTestBypass(context.Background())
-
-	entity := client.Channel.Create().
-		SetName("Kimi Coding").
-		SetType(channel.TypeMoonshotCoding).
-		SetBaseURL("https://api.kimi.com/coding").
-		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
-		SetSupportedModels([]string{"k3.1-pro"}).
-		SetDefaultTestModel("k3.1-pro").
-		SaveX(ctx)
-
-	built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entity)
-	require.NoError(t, err)
-	require.IsType(t, &anthropic.OutboundTransformer{}, built.Outbound)
-	assertMoonshotCodingWebSearchFiltered(ctx, t, built.Outbound, "https://api.kimi.com/coding/v1/messages")
-}
-
-func TestMoonshotCodingCustomAnthropicEndpointFiltersNativeWebSearch(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
-	t.Cleanup(func() { _ = client.Close() })
-	ctx := authz.WithTestBypass(context.Background())
-
-	entity := client.Channel.Create().
-		SetName("Kimi Coding Custom Anthropic").
-		SetType(channel.TypeMoonshotCoding).
-		SetBaseURL("https://api.kimi.com/coding").
-		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
-		SetSupportedModels([]string{"k3.1-pro"}).
-		SetDefaultTestModel("k3.1-pro").
-		SetEndpoints([]objects.ChannelEndpoint{{
-			APIFormat: llm.APIFormatAnthropicMessage.String(),
-			BaseURL:   "https://custom-kimi.example.com/coding",
-		}}).
-		SaveX(ctx)
-
-	built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entity)
-	require.NoError(t, err)
-	outbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatAnthropicMessage.String())
-	require.NoError(t, err)
-	assertMoonshotCodingWebSearchFiltered(ctx, t, outbound, "https://custom-kimi.example.com/coding/v1/messages")
-}
-
-func assertMoonshotCodingWebSearchFiltered(ctx context.Context, t *testing.T, outbound transformer.Outbound, expectedURL string) {
-	t.Helper()
-
-	request, err := outbound.TransformRequest(ctx, &llm.Request{
-		Model:     "k3.1-pro",
-		MaxTokens: lo.ToPtr[int64](128),
-		Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}}},
-		Stream:    lo.ToPtr(false),
-		APIFormat: llm.APIFormatOpenAIResponseWebSocket,
-		Tools:     moonshotCodingTestTools(),
-	})
-	require.NoError(t, err)
-	require.Equal(t, expectedURL, request.URL)
-
-	var payload struct {
-		Tools []anthropic.Tool `json:"tools"`
+func TestMoonshotCodingFiltersNativeToolsWithoutChangingDirectReasoning(t *testing.T) {
+	tests := []struct {
+		name        string
+		endpoints   []objects.ChannelEndpoint
+		expectedURL string
+	}{
+		{
+			name:        "default endpoint",
+			expectedURL: "https://api.kimi.com/coding/v1/messages",
+		},
+		{
+			name: "custom endpoint",
+			endpoints: []objects.ChannelEndpoint{{
+				APIFormat: llm.APIFormatAnthropicMessage.String(),
+				BaseURL:   "https://custom-kimi.example.com/coding",
+			}},
+			expectedURL: "https://custom-kimi.example.com/coding/v1/messages",
+		},
 	}
-	require.NoError(t, json.Unmarshal(request.Body, &payload))
-	require.Len(t, payload.Tools, 1)
-	require.Equal(t, "get_weather", payload.Tools[0].Name)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+			t.Cleanup(func() { _ = client.Close() })
+			ctx := authz.WithTestBypass(context.Background())
+
+			create := client.Channel.Create().
+				SetName("Kimi Coding").
+				SetType(channel.TypeMoonshotCoding).
+				SetBaseURL("https://api.kimi.com/coding").
+				SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+				SetSupportedModels([]string{"k3.1-pro"}).
+				SetDefaultTestModel("k3.1-pro")
+			if tt.endpoints != nil {
+				create = create.SetEndpoints(tt.endpoints)
+			}
+			entity := create.SaveX(ctx)
+
+			built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entity)
+			require.NoError(t, err)
+			outbound := built.Outbound
+			if tt.endpoints != nil {
+				outbound, err = BuildOutboundByAPIFormat(built, llm.APIFormatAnthropicMessage.String())
+				require.NoError(t, err)
+			}
+
+			request, err := outbound.TransformRequest(ctx, moonshotCodingDirectRequest(nil, moonshotCodingTestTools()))
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedURL, request.URL)
+
+			var payload anthropic.MessageRequest
+			require.NoError(t, json.Unmarshal(request.Body, &payload))
+			require.Equal(t, int64(8192), payload.MaxTokens)
+			require.Len(t, payload.Tools, 1)
+			require.Equal(t, "get_weather", payload.Tools[0].Name)
+			require.NotNil(t, payload.OutputConfig)
+			require.Equal(t, llm.ReasoningEffortMedium, payload.OutputConfig.Effort)
+			require.NotNil(t, payload.Thinking)
+			require.Equal(t, "adaptive", payload.Thinking.Type)
+			require.Zero(t, payload.Thinking.BudgetTokens)
+		})
+	}
+}
+
+func TestMoonshotCodingRejectsForcedChoiceWhenNativeToolsFiltered(t *testing.T) {
+	tests := []struct {
+		name       string
+		toolChoice *llm.ToolChoice
+	}{
+		{
+			name:       "required",
+			toolChoice: &llm.ToolChoice{ToolChoice: lo.ToPtr("required")},
+		},
+		{
+			name: "named web search",
+			toolChoice: &llm.ToolChoice{
+				NamedToolChoice: &llm.NamedToolChoice{
+					Type:     llm.ToolTypeWebSearch,
+					Function: llm.ToolFunction{Name: anthropic.WebSearchFunctionName},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+			t.Cleanup(func() { _ = client.Close() })
+			ctx := authz.WithTestBypass(context.Background())
+
+			entity := client.Channel.Create().
+				SetName("Kimi Coding").
+				SetType(channel.TypeMoonshotCoding).
+				SetBaseURL("https://api.kimi.com/coding").
+				SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+				SetSupportedModels([]string{"k3.1-pro"}).
+				SetDefaultTestModel("k3.1-pro").
+				SaveX(ctx)
+
+			built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entity)
+			require.NoError(t, err)
+
+			_, err = built.Outbound.TransformRequest(ctx, moonshotCodingDirectRequest(tt.toolChoice, []llm.Tool{{
+				Type:      llm.ToolTypeWebSearch,
+				WebSearch: &llm.WebSearch{},
+			}}))
+			require.ErrorIs(t, err, transformer.ErrUnsupportedConversion)
+		})
+	}
+}
+
+func moonshotCodingDirectRequest(toolChoice *llm.ToolChoice, tools []llm.Tool) *llm.Request {
+	return &llm.Request{
+		Model:           "k3.1-pro",
+		ReasoningEffort: llm.ReasoningEffortMedium,
+		Messages:        []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}}},
+		Tools:           tools,
+		ToolChoice:      toolChoice,
+	}
 }
 
 func moonshotCodingTestTools() []llm.Tool {

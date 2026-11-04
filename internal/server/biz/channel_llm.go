@@ -571,14 +571,13 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 				APIKeyProvider: apiKeyProvider(),
 				EndpointPath:   ep.Path,
 			})
-		// Preserve Moonshot's native-tool and usage semantics for custom
-		// Anthropic endpoints instead of falling back to direct Anthropic.
 		case channel.TypeMoonshotCoding:
 			return anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-				Type:           anthropic.PlatformMoonshot,
-				BaseURL:        baseURL,
-				APIKeyProvider: apiKeyProvider(),
-				EndpointPath:   ep.Path,
+				Type:                anthropic.PlatformDirect,
+				NativeToolsDisabled: true,
+				BaseURL:             baseURL,
+				APIKeyProvider:      apiKeyProvider(),
+				EndpointPath:        ep.Path,
 			})
 		}
 
@@ -1218,24 +1217,12 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		ch.Outbound = transformer
 
 		return ch, nil
-	case channel.TypeBailianAnthropic:
+	case channel.TypeBailianAnthropic, channel.TypeMoonshotCoding:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-			Type:           anthropic.PlatformDirect,
-			BaseURL:        c.BaseURL,
-			APIKeyProvider: getAPIKeyProvider(ch),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
-		}
-
-		ch.Outbound = transformer
-
-		return ch, nil
-	case channel.TypeMoonshotCoding:
-		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
-			Type:           anthropic.PlatformMoonshot,
-			BaseURL:        c.BaseURL,
-			APIKeyProvider: getAPIKeyProvider(ch),
+			Type:                anthropic.PlatformDirect,
+			NativeToolsDisabled: c.Type == channel.TypeMoonshotCoding,
+			BaseURL:             c.BaseURL,
+			APIKeyProvider:      getAPIKeyProvider(ch),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)

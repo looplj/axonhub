@@ -388,6 +388,35 @@ func applyParallelToolCalls(choice *ToolChoice, parallelToolCalls *bool, hasTool
 	return choice
 }
 
+// validateToolChoice rejects forced choices whose target was removed by tool
+// conversion. This makes unsupported native tools fail closed instead of sending
+// an Anthropic request that can never satisfy its tool_choice.
+func validateToolChoice(choice *ToolChoice, tools []Tool) error {
+	if choice == nil {
+		return nil
+	}
+
+	switch choice.Type {
+	case "any":
+		if len(tools) == 0 {
+			return fmt.Errorf("%w: tool_choice \"any\" has no converted tools", transformer.ErrUnsupportedConversion)
+		}
+	case "tool":
+		name := lo.FromPtr(choice.Name)
+		if name == "" {
+			return fmt.Errorf("%w: named tool_choice has no tool name", transformer.ErrUnsupportedConversion)
+		}
+		for _, tool := range tools {
+			if tool.Name == name {
+				return nil
+			}
+		}
+		return fmt.Errorf("%w: tool_choice tool %q was removed by conversion", transformer.ErrUnsupportedConversion, name)
+	}
+
+	return nil
+}
+
 // convertStopSequences converts stop sequences.
 func convertStopSequences(stop *llm.Stop) []string {
 	if stop == nil {

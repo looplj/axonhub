@@ -61,6 +61,9 @@ func supportsAnthropicNativeTools(config *Config) bool {
 	if config == nil {
 		return true
 	}
+	if config.NativeToolsDisabled {
+		return false
+	}
 
 	//nolint:exhaustive // Only check platforms with verified native tool support.
 	switch config.Type {
