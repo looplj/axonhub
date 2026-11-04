@@ -109,7 +109,7 @@
     "@types/node": "^26.6.6",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-    "@vitejs/plugin-react": "^5.1.0",
+    "@vitejs/plugin-react": "^6.1.2",
     "@vitejs/plugin-react-swc": "^4.3.3",
     "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^9.29.0",
