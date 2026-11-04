@@ -68,6 +68,56 @@ func TestSelectAPIFormat_PrefersResponsesProtocolMatchingInboundTransport(t *tes
 	require.Equal(t, llm.APIFormatOpenAIResponseWebSocket.String(), format)
 }
 
+func TestSelectAPIFormat_PrefersResponsesTransportFamilyOverUnrelatedFormat(t *testing.T) {
+	tests := []struct {
+		name   string
+		source llm.APIFormat
+		want   llm.APIFormat
+	}{
+		{
+			name:   "websocket request uses legacy HTTP endpoint",
+			source: llm.APIFormatOpenAIResponseWebSocket,
+			want:   llm.APIFormatOpenAIResponse,
+		},
+		{
+			name:   "HTTP request uses WebSocket endpoint",
+			source: llm.APIFormatOpenAIResponse,
+			want:   llm.APIFormatOpenAIResponseWebSocket,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			endpoints := []objects.ChannelEndpoint{
+				{APIFormat: llm.APIFormatAnthropicMessage.String()},
+				{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+				{APIFormat: tt.want.String()},
+			}
+
+			format := SelectAPIFormat(endpoints, &llm.Request{
+				RequestType: llm.RequestTypeChat,
+				APIFormat:   tt.source,
+			})
+
+			require.Equal(t, tt.want.String(), format)
+		})
+	}
+}
+
+func TestSelectAPIFormat_KeepsUnrelatedFallbackWithoutResponsesFamilyEndpoint(t *testing.T) {
+	endpoints := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatAnthropicMessage.String()},
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+	}
+
+	format := SelectAPIFormat(endpoints, &llm.Request{
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatOpenAIResponseWebSocket,
+	})
+
+	require.Equal(t, llm.APIFormatAnthropicMessage.String(), format)
+}
+
 func TestResponsesEndpointProtocolMatrix(t *testing.T) {
 	tests := []struct {
 		name   string

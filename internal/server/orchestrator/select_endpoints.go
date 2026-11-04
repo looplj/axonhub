@@ -12,7 +12,9 @@ import (
 // SelectAPIFormat selects the most appropriate APIFormat from a channel's resolved endpoints
 // based on the request type and inbound API format. Prefers an endpoint whose API format
 // matches the inbound request format so that pass-through can be enabled when identical
-// formats are used. Falls back to the first capable endpoint, then the first endpoint.
+// formats are used. Responses HTTP and WebSocket are transport variants of the same
+// protocol family, so either can be preferred before falling back to an unrelated format.
+// Finally, falls back to the first capable endpoint, then the first endpoint.
 func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) string {
 	if len(endpoints) == 0 {
 		return ""
@@ -26,6 +28,14 @@ func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) stri
 			for _, ep := range endpoints {
 				if _, ok := allowed[ep.APIFormat]; ok && ep.APIFormat == preferredFormat {
 					return ep.APIFormat
+				}
+			}
+
+			if compatibleFormat := compatibleResponsesAPIFormat(req.APIFormat); compatibleFormat != "" {
+				for _, ep := range endpoints {
+					if _, ok := allowed[ep.APIFormat]; ok && ep.APIFormat == compatibleFormat {
+						return ep.APIFormat
+					}
 				}
 			}
 		}
@@ -42,6 +52,17 @@ func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) stri
 	}
 
 	return endpoints[0].APIFormat
+}
+
+func compatibleResponsesAPIFormat(format llm.APIFormat) string {
+	switch format {
+	case llm.APIFormatOpenAIResponse:
+		return llm.APIFormatOpenAIResponseWebSocket.String()
+	case llm.APIFormatOpenAIResponseWebSocket:
+		return llm.APIFormatOpenAIResponse.String()
+	default:
+		return ""
+	}
 }
 
 func requiresExplicitEndpoint(requestType llm.RequestType) bool {
