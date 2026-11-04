@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -923,9 +924,7 @@ func (u *Usage) UnmarshalJSON(data []byte) error {
 	case float64:
 		u.Cost = &v
 	case string:
-		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			u.Cost = &f
-		}
+		u.Cost = parseFiniteCost(v)
 	case map[string]any:
 		amount, ok := v["amount"]
 		if !ok {
@@ -933,15 +932,24 @@ func (u *Usage) UnmarshalJSON(data []byte) error {
 		}
 		switch a := amount.(type) {
 		case string:
-			if f, err := strconv.ParseFloat(a, 64); err == nil {
-				u.Cost = &f
-			}
+			u.Cost = parseFiniteCost(a)
 		case float64:
 			u.Cost = &a
 		}
 	}
 
 	return nil
+}
+
+// parseFiniteCost parses a numeric cost string and rejects non-finite values
+// such as "NaN" and "Infinity", which json.Marshal cannot encode.
+func parseFiniteCost(value string) *float64 {
+	f, err := strconv.ParseFloat(value, 64)
+	if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
+		return nil
+	}
+
+	return &f
 }
 
 func (u *Usage) GetCompletionTokens() *int64 {
