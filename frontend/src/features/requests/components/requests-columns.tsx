@@ -748,9 +748,13 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const tpsColor = tps !== null && tps > 500 ? '' : metricTone('throughput', tps, 'font-mono text-xs');
         const totalTpsValue = getTotalTimeTokensPerSecondValue(row.original);
         const totalTps = calculateTotalTimeTokensPerSecond(row.original);
-        // The total rate keeps the muted tone when the metric is off or neutral,
-        // which preserves the previous secondary-line look.
-        const totalTpsColor = metricTone('throughputIncludingFirstToken', totalTpsValue) || 'text-muted-foreground';
+        // The total rate keeps the muted tone when the metric is off or neutral, and
+        // stays uncoloured above the same 500 tok/s artefact threshold as the
+        // generation-rate line above.
+        const totalTpsColor =
+          totalTpsValue !== null && totalTpsValue > 500
+            ? ''
+            : metricTone('throughputIncludingFirstToken', totalTpsValue) || 'text-muted-foreground';
 
         return (
           <div className='font-mono text-xs'>
