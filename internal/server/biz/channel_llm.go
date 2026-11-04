@@ -571,6 +571,15 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 				APIKeyProvider: apiKeyProvider(),
 				EndpointPath:   ep.Path,
 			})
+		// Preserve Moonshot's native-tool and usage semantics for custom
+		// Anthropic endpoints instead of falling back to direct Anthropic.
+		case channel.TypeMoonshotCoding:
+			return anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+				Type:           anthropic.PlatformMoonshot,
+				BaseURL:        baseURL,
+				APIKeyProvider: apiKeyProvider(),
+				EndpointPath:   ep.Path,
+			})
 		}
 
 		return anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{

@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
 )
 
@@ -33,8 +34,38 @@ func TestMoonshotCodingChannelFiltersAnthropicNativeWebSearch(t *testing.T) {
 	built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entity)
 	require.NoError(t, err)
 	require.IsType(t, &anthropic.OutboundTransformer{}, built.Outbound)
+	assertMoonshotCodingWebSearchFiltered(ctx, t, built.Outbound, "https://api.kimi.com/coding/v1/messages")
+}
 
-	request, err := built.Outbound.TransformRequest(ctx, &llm.Request{
+func TestMoonshotCodingCustomAnthropicEndpointFiltersNativeWebSearch(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	t.Cleanup(func() { _ = client.Close() })
+	ctx := authz.WithTestBypass(context.Background())
+
+	entity := client.Channel.Create().
+		SetName("Kimi Coding Custom Anthropic").
+		SetType(channel.TypeMoonshotCoding).
+		SetBaseURL("https://api.kimi.com/coding").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"k3.1-pro"}).
+		SetDefaultTestModel("k3.1-pro").
+		SetEndpoints([]objects.ChannelEndpoint{{
+			APIFormat: llm.APIFormatAnthropicMessage.String(),
+			BaseURL:   "https://custom-kimi.example.com/coding",
+		}}).
+		SaveX(ctx)
+
+	built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entity)
+	require.NoError(t, err)
+	outbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatAnthropicMessage.String())
+	require.NoError(t, err)
+	assertMoonshotCodingWebSearchFiltered(ctx, t, outbound, "https://custom-kimi.example.com/coding/v1/messages")
+}
+
+func assertMoonshotCodingWebSearchFiltered(ctx context.Context, t *testing.T, outbound transformer.Outbound, expectedURL string) {
+	t.Helper()
+
+	request, err := outbound.TransformRequest(ctx, &llm.Request{
 		Model:     "k3.1-pro",
 		MaxTokens: lo.ToPtr[int64](128),
 		Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}}},
@@ -43,7 +74,7 @@ func TestMoonshotCodingChannelFiltersAnthropicNativeWebSearch(t *testing.T) {
 		Tools:     moonshotCodingTestTools(),
 	})
 	require.NoError(t, err)
-	require.Equal(t, "https://api.kimi.com/coding/v1/messages", request.URL)
+	require.Equal(t, expectedURL, request.URL)
 
 	var payload struct {
 		Tools []anthropic.Tool `json:"tools"`
