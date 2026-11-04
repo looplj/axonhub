@@ -1,6 +1,6 @@
 module github.com/looplj/axonhub
 
-go 1.26.4
+go 1.26.10
 
 require (
 	github.com/go-openapi/inflect v0.21.4 // indirect
@@ -32,9 +32,9 @@ require (
 	github.com/eko/gocache/lib/v4 v4.4.0
 	github.com/eko/gocache/store/go_cache/v4 v4.2.10
 	github.com/expr-lang/expr v1.17.8
-	github.com/gin-contrib/cors v1.7.9
+	github.com/gin-contrib/cors v1.7.10
 	github.com/gin-contrib/sse v1.1.1
-	github.com/gin-contrib/static v1.1.8
+	github.com/gin-contrib/static v1.1.9
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/go-viper/mapstructure/v2 v2.5.0
@@ -44,14 +44,14 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hokaccha/go-prettyjson v0.0.0-20211117102719-0474bc63780f
-	github.com/jackc/pgx/v5 v5.11.0
+	github.com/jackc/pgx/v5 v5.12.0
 	github.com/kaptinlin/jsonrepair v0.4.10
 	github.com/looplj/afero-s3 v0.1.0
 	github.com/looplj/afero-webdav v0.0.0-20260128073818-3f60e732e991
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/redis/go-redis/v9 v9.23.0
 	github.com/samber/lo v1.53.0
-	github.com/shopspring/decimal v1.4.0
+	github.com/shopspring/decimal v1.6.0
 	github.com/spf13/afero v1.15.0
 	github.com/spf13/afero/gcsfs v1.15.0
 	github.com/spf13/cast v1.10.0
@@ -166,7 +166,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.24.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jackc/puddle/v2 v2.2.3 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/k0kubun/pp v3.0.1+incompatible // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect

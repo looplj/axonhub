@@ -1,6 +1,6 @@
 module github.com/looplj/axonhub/cmd/schema
 
-go 1.26.4
+go 1.26.10
 
 replace github.com/looplj/axonhub => ../../
 
@@ -85,9 +85,9 @@ require (
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
-	github.com/gin-contrib/cors v1.7.9 // indirect
+	github.com/gin-contrib/cors v1.7.10 // indirect
 	github.com/gin-contrib/sse v1.1.1 // indirect
-	github.com/gin-contrib/static v1.1.8 // indirect
+	github.com/gin-contrib/static v1.1.9 // indirect
 	github.com/gin-gonic/gin v1.12.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
 	github.com/go-json-experiment/json v0.0.0-20260601182631-00ed12fed2a6 // indirect
@@ -116,8 +116,8 @@ require (
 	github.com/hashicorp/hcl/v2 v2.24.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.11.0 // indirect
-	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jackc/pgx/v5 v5.12.0 // indirect
+	github.com/jackc/puddle/v2 v2.2.3 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/k0kubun/pp v3.0.1+incompatible // indirect
 	github.com/kaptinlin/jsonrepair v0.4.10 // indirect
@@ -150,7 +150,7 @@ require (
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/samber/lo v1.53.0 // indirect
 	github.com/segmentio/fasthash v1.0.3 // indirect
-	github.com/shopspring/decimal v1.4.0 // indirect
+	github.com/shopspring/decimal v1.6.0 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/afero/gcsfs v1.15.0 // indirect
