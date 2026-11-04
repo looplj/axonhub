@@ -66,13 +66,6 @@ type Config struct {
 	// Use ReasoningFieldContent (default) for DeepSeek/Mimo/Gemini, ReasoningFieldReasoning for NanoGPT/OpenRouter,
 	// or ReasoningFieldNone to strip all reasoning fields.
 	ReasoningField ReasoningField `json:"reasoning_field,omitempty"`
-
-	// OmitReasoningEffortNone drops reasoning_effort when the unified request
-	// uses the "none" level. "none" is an AxonHub unified value, not an OpenAI
-	// standard one; many OpenAI-compatible upstreams reject it (e.g. DeepSeek
-	// only accepts low/medium/high/xhigh/max). Provider adapters that do support
-	// "none" (e.g. MiniMax) leave this false and keep the value.
-	OmitReasoningEffortNone bool `json:"omit_reasoning_effort_none,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for OpenAI format.
@@ -202,9 +195,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Convert to OpenAI Request format (this strips helper fields)
 	oaiReq := RequestFromLLM(ctx, llmReq, reasoningField)
-	if t.config.OmitReasoningEffortNone && llmReq.ReasoningEffort == llm.ReasoningEffortNone {
-		oaiReq.ReasoningEffort = ""
-	}
 	//nolint:exhaustive // Checked.
 	switch t.config.PlatformType {
 	case PlatformOpenAI:

@@ -482,11 +482,10 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		}
 
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
-			PlatformType:            openai.PlatformOpenAI,
-			BaseURL:                 baseURL,
-			APIKeyProvider:          apiKeyProvider(),
-			EndpointPath:            ep.Path,
-			OmitReasoningEffortNone: c.Type == channel.TypeOpenai,
+			PlatformType:   openai.PlatformOpenAI,
+			BaseURL:        baseURL,
+			APIKeyProvider: apiKeyProvider(),
+			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAICompletion.String():
 		return openai.NewCompletionOutboundTransformer(&openai.Config{
@@ -515,11 +514,10 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		}
 
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
-			PlatformType:            openai.PlatformOpenAI,
-			BaseURL:                 baseURL,
-			APIKeyProvider:          apiKeyProvider(),
-			EndpointPath:            ep.Path,
-			OmitReasoningEffortNone: c.Type == channel.TypeOpenai,
+			PlatformType:   openai.PlatformOpenAI,
+			BaseURL:        baseURL,
+			APIKeyProvider: apiKeyProvider(),
+			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAIDecisions.String():
 		return decisions.NewOutboundTransformerWithConfig(&decisions.Config{
@@ -545,11 +543,10 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		}
 
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
-			PlatformType:            openai.PlatformOpenAI,
-			BaseURL:                 baseURL,
-			APIKeyProvider:          apiKeyProvider(),
-			EndpointPath:            ep.Path,
-			OmitReasoningEffortNone: c.Type == channel.TypeOpenai,
+			PlatformType:   openai.PlatformOpenAI,
+			BaseURL:        baseURL,
+			APIKeyProvider: apiKeyProvider(),
+			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatZenmuxVideo.String():
 		if !isZenmuxChannelType(c.Type) {
@@ -1337,10 +1334,9 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub,
 		channel.TypeEvolink, channel.TypeGroq, channel.TypeCloudflare:
 		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
-			PlatformType:            openai.PlatformOpenAI,
-			BaseURL:                 c.BaseURL,
-			APIKeyProvider:          getAPIKeyProvider(ch),
-			OmitReasoningEffortNone: c.Type == channel.TypeOpenai,
+			PlatformType:   openai.PlatformOpenAI,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)

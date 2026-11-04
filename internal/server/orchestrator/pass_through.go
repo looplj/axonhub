@@ -226,6 +226,16 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 			return request, nil
 		}
 
+		rawBody := effectiveResponsesRequestBody(outbound.state)
+		if channel.Settings != nil && passThroughReasoningEffortMappingChanges(rawBody, channel.Settings.TransformOptions.ReasoningEffortMapping) {
+			log.Debug(ctx, "skipping pass-through body: reasoning effort mapping would be bypassed",
+				log.String("channel", channel.Name),
+				log.Int("channel_id", channel.ID),
+			)
+
+			return request, nil
+		}
+
 		// Multipart bodies cannot be reused: the outbound transformer rebuilds the
 		// multipart payload with a new boundary in Content-Type, so replaying the inbound
 		// bytes would mismatch the header, and form fields cannot be patched via sjson.
@@ -239,7 +249,7 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 		)
 
 		body, err := mergePassThroughRequestBodyWithPromptProtection(
-			effectiveResponsesRequestBody(outbound.state),
+			rawBody,
 			llmReq.APIFormat,
 			llmReq.Model,
 			outbound.state.PromptProtectionMaskRules,
@@ -274,6 +284,23 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 
 		return request, nil
 	})
+}
+
+// passThroughReasoningEffortMappingChanges reports whether the channel's reasoning
+// effort mapping would rewrite the raw client body. Raw body pass-through bypasses
+// the unified request transformations, so callers must keep the transformed body
+// when a mapping changes a field.
+func passThroughReasoningEffortMappingChanges(body []byte, mappings []llm.ReasoningEffortMapping) bool {
+	if len(body) == 0 || len(mappings) == 0 {
+		return false
+	}
+
+	value := gjson.GetBytes(body, "reasoning_effort")
+	if !value.Exists() || value.Type != gjson.String {
+		return false
+	}
+
+	return llm.ApplyReasoningEffortMapping(value.String(), mappings) != value.String()
 }
 
 func (p *PersistentOutboundTransformer) allowPassThroughBody(ctx context.Context, llmReq *llm.Request, providerReq *httpclient.Request) bool {
