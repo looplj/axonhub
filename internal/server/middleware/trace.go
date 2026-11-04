@@ -108,6 +108,12 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 		}
 
 		if traceID == "" {
+			if thread, ok := contexts.GetThread(c.Request.Context()); ok && thread != nil {
+				traceID = tracing.GenerateTraceID()
+			}
+		}
+
+		if traceID == "" {
 			// WithLoggingTracing creates an ID for log correlation, but that alone
 			// must not opt the request into persisted tracing. Only explicitly
 			// configured trace sources should create a trace record.

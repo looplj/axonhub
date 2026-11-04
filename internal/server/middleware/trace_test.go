@@ -993,6 +993,58 @@ func TestWithTraceID_WithThread(t *testing.T) {
 	require.Equal(t, testThread.ID, trace.ThreadID)
 }
 
+func TestWithTraceID_ThreadWithoutTraceHeaderCreatesTrace(t *testing.T) {
+	config := tracing.Config{}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
+	ctx = ent.NewContext(ctx, client)
+
+	// Create a test project
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create a test thread
+	testThread, err := client.Thread.Create().
+		SetThreadID("thread-auto-trace-123").
+		SetProjectID(testProject.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Setup middleware and test endpoint
+	router.Use(func(c *gin.Context) {
+		ctx := authz.WithTestBypass(c.Request.Context())
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		ctx = contexts.WithThread(ctx, testThread)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+	router.GET("/test", func(c *gin.Context) {
+		trace, ok := contexts.GetTrace(c.Request.Context())
+		if !ok {
+			c.JSON(400, gin.H{"error": "trace not found"})
+			return
+		}
+
+		c.JSON(200, gin.H{"trace_id": trace.TraceID, "thread_id": trace.ThreadID})
+	})
+
+	// Request without AH-Trace-Id header (only thread in context)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
 func TestWithTraceID_NoHeader(t *testing.T) {
 	config := tracing.Config{}
 
