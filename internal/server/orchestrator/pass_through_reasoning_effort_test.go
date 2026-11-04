@@ -87,6 +87,59 @@ func TestApplyPassThroughReasoningEffortMapping(t *testing.T) {
 	}
 }
 
+func TestResponsesTransportAppliesReasoningEffortMapping(t *testing.T) {
+	tests := []struct {
+		name   string
+		source llm.APIFormat
+		target llm.APIFormat
+	}{
+		{name: "http to http", source: llm.APIFormatOpenAIResponse, target: llm.APIFormatOpenAIResponse},
+		{name: "websocket to websocket", source: llm.APIFormatOpenAIResponseWebSocket, target: llm.APIFormatOpenAIResponseWebSocket},
+		{name: "websocket to http", source: llm.APIFormatOpenAIResponseWebSocket, target: llm.APIFormatOpenAIResponse},
+		{name: "http to websocket", source: llm.APIFormatOpenAIResponse, target: llm.APIFormatOpenAIResponseWebSocket},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			channel := &biz.Channel{Channel: &ent.Channel{
+				ID:   1,
+				Name: "responses-reasoning-effort",
+				Settings: &objects.ChannelSettings{
+					PassThroughBody: lo.ToPtr(true),
+					TransformOptions: objects.TransformOptions{
+						ReasoningEffortMapping: []llm.ReasoningEffortMapping{{From: llm.ReasoningEffortNone, To: ""}},
+					},
+				},
+			}}
+			state := &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+				LlmRequest: &llm.Request{
+					APIFormat: tt.source,
+					Model:     "mapped-model",
+					RawRequest: &httpclient.Request{
+						APIFormat: tt.source.String(),
+						Body:      []byte(`{"model":"client-model","input":"hi","reasoning":{"effort":"none","summary":"auto"},"provider_canary":"keep"}`),
+					},
+				},
+				RawProviderRequest: &httpclient.Request{APIFormat: tt.target.String()},
+			}
+			outbound := &PersistentOutboundTransformer{state: state}
+			request := &httpclient.Request{APIFormat: tt.target.String()}
+
+			body, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(context.Background(), request)
+			require.NoError(t, err)
+			adapted, err := applyResponsesTransportRequestBody(outbound, nil).OnOutboundRawRequest(context.Background(), body)
+			require.NoError(t, err)
+
+			require.False(t, gjson.GetBytes(adapted.Body, "reasoning.effort").Exists())
+			require.Equal(t, "auto", gjson.GetBytes(adapted.Body, "reasoning.summary").String())
+			require.Equal(t, "keep", gjson.GetBytes(adapted.Body, "provider_canary").String())
+			require.Equal(t, "hi", gjson.GetBytes(adapted.Body, "input").String())
+			require.Equal(t, "mapped-model", gjson.GetBytes(adapted.Body, "model").String())
+		})
+	}
+}
+
 func TestPassThroughBodyAppliesReasoningEffortMapping(t *testing.T) {
 	channel := &biz.Channel{Channel: &ent.Channel{
 		ID:   1,
