@@ -318,7 +318,7 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
                       <div
                         key={index}
                         role='slider'
-                        aria-label={t('requests.metricColors.boundaryLabel', { index: index + 1 })}
+                        aria-label={`${t(`requests.metricColors.metrics.${key}`)} ${t('requests.metricColors.boundaryLabel', { index: index + 1 })}`}
                         aria-valuenow={cut}
                         aria-valuemin={index === 0 ? 0 : rule.cuts[index - 1]}
                         aria-valuemax={index === rule.cuts.length - 1 ? max : rule.cuts[index + 1]}
