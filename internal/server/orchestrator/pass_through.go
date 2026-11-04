@@ -193,6 +193,10 @@ func applyResponsesTransportRequestBody(outbound *PersistentOutboundTransformer,
 		if err != nil {
 			return nil, err
 		}
+		body, err = applyPassThroughReasoningEffortMapping(body, target, channelReasoningEffortMappings(outbound.GetCurrentChannel()))
+		if err != nil {
+			return nil, err
+		}
 
 		cloned := *request
 		cloned.Body = body
@@ -227,14 +231,6 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 		}
 
 		rawBody := effectiveResponsesRequestBody(outbound.state)
-		if channel.Settings != nil && passThroughReasoningEffortMappingChanges(rawBody, channel.Settings.TransformOptions.ReasoningEffortMapping) {
-			log.Debug(ctx, "skipping pass-through body: reasoning effort mapping would be bypassed",
-				log.String("channel", channel.Name),
-				log.Int("channel_id", channel.ID),
-			)
-
-			return request, nil
-		}
 
 		// Multipart bodies cannot be reused: the outbound transformer rebuilds the
 		// multipart payload with a new boundary in Content-Type, so replaying the inbound
@@ -267,6 +263,17 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 			return request, nil
 		}
 
+		body, err = applyPassThroughReasoningEffortMapping(body, llmReq.APIFormat, channelReasoningEffortMappings(channel))
+		if err != nil {
+			log.Warn(ctx, "failed to apply reasoning effort mapping to pass-through body, keeping outbound body",
+				log.String("channel", channel.Name),
+				log.Int("channel_id", channel.ID),
+				log.Cause(err),
+			)
+
+			return request, nil
+		}
+
 		request.Body = body
 
 		// The replayed body keeps the inbound media type: sync Content-Type so a JSON
@@ -286,21 +293,71 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 	})
 }
 
-// passThroughReasoningEffortMappingChanges reports whether the channel's reasoning
-// effort mapping would rewrite the raw client body. Raw body pass-through bypasses
-// the unified request transformations, so callers must keep the transformed body
-// when a mapping changes a field.
-func passThroughReasoningEffortMappingChanges(body []byte, mappings []llm.ReasoningEffortMapping) bool {
+func channelReasoningEffortMappings(channel *biz.Channel) []llm.ReasoningEffortMapping {
+	if channel == nil || channel.Settings == nil {
+		return nil
+	}
+
+	return channel.Settings.TransformOptions.ReasoningEffortMapping
+}
+
+// passThroughReasoningEffortPath returns the JSON path that carries the reasoning
+// effort value in a pass-through body for the given API format. Formats without a
+// native effort field return an empty path.
+func passThroughReasoningEffortPath(apiFormat llm.APIFormat) string {
+	//nolint:exhaustive // only formats with an effort field need a path.
+	switch apiFormat {
+	case llm.APIFormatOpenAIChatCompletion:
+		return "reasoning_effort"
+	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket:
+		return "reasoning.effort"
+	default:
+		return ""
+	}
+}
+
+// applyPassThroughReasoningEffortMapping rewrites the reasoning effort value in a
+// pass-through body using the channel mapping. Pass-through replaces the transformed
+// outbound body with the client body, so the mapping applied by the orchestrator to
+// the unified request would otherwise be bypassed. Applying the mapping to the raw
+// JSON instead of keeping the transformed body preserves fields the unified request
+// model does not carry. A mapping to an empty value removes the field so the upstream
+// applies its default.
+func applyPassThroughReasoningEffortMapping(body []byte, apiFormat llm.APIFormat, mappings []llm.ReasoningEffortMapping) ([]byte, error) {
 	if len(body) == 0 || len(mappings) == 0 {
-		return false
+		return body, nil
 	}
 
-	value := gjson.GetBytes(body, "reasoning_effort")
+	path := passThroughReasoningEffortPath(apiFormat)
+	if path == "" {
+		return body, nil
+	}
+
+	value := gjson.GetBytes(body, path)
 	if !value.Exists() || value.Type != gjson.String {
-		return false
+		return body, nil
 	}
 
-	return llm.ApplyReasoningEffortMapping(value.String(), mappings) != value.String()
+	mapped := llm.ApplyReasoningEffortMapping(value.String(), mappings)
+	if mapped == value.String() {
+		return body, nil
+	}
+
+	if mapped == "" {
+		next, err := sjson.DeleteBytes(body, path)
+		if err != nil {
+			return nil, fmt.Errorf("delete reasoning effort from pass-through body: %w", err)
+		}
+
+		return next, nil
+	}
+
+	next, err := sjson.SetBytes(body, path, mapped)
+	if err != nil {
+		return nil, fmt.Errorf("set reasoning effort in pass-through body: %w", err)
+	}
+
+	return next, nil
 }
 
 func (p *PersistentOutboundTransformer) allowPassThroughBody(ctx context.Context, llmReq *llm.Request, providerReq *httpclient.Request) bool {
