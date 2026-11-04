@@ -1,5 +1,7 @@
 version: 2
 
+# Batch routine updates weekly. Security updates remain independent of this schedule.
+# Only minor and patch version updates are grouped; major updates stay separate.
 updates:
   - package-ecosystem: "gomod"
     directories:
@@ -7,7 +9,8 @@ updates:
       - "/llm"
       - "/cmd/schema"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday"
       time: "03:00"
       timezone: "Asia/Shanghai"
     labels:
@@ -17,7 +20,9 @@ updates:
       include: "scope"
     groups:
       shared-go-modules:
-        group-by: "dependency-name"
+        applies-to: "version-updates"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "gomod"
     directories:
@@ -26,7 +31,8 @@ updates:
       - "/integration_test/openai"
       - "/examples/openapi"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday"
       time: "03:00"
       timezone: "Asia/Shanghai"
     labels:
@@ -36,14 +42,17 @@ updates:
       include: "scope"
     groups:
       auxiliary-go-modules:
-        group-by: "dependency-name"
+        applies-to: "version-updates"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "npm"
     directories:
       - "/frontend"
       - "/integration_test/gemini/node"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday"
       time: "03:00"
       timezone: "Asia/Shanghai"
     labels:
@@ -51,11 +60,17 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    groups:
+      npm-minor-patch:
+        applies-to: "version-updates"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday"
       time: "03:00"
       timezone: "Asia/Shanghai"
     labels:
@@ -63,11 +78,17 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    groups:
+      docker-minor-patch:
+        applies-to: "version-updates"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday"
       time: "03:00"
       timezone: "Asia/Shanghai"
     labels:
@@ -75,3 +96,8 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    groups:
+      actions-minor-patch:
+        applies-to: "version-updates"
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
