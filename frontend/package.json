@@ -117,7 +117,7 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.2.0",
     "husky": "^9.1.7",
-    "knip": "^5.61.2",
+    "knip": "^6.44.1",
     "lint-staged": "^15.4.3",
     "prettier": "^3.6.0",
     "prettier-plugin-tailwindcss": "^0.6.13",
