@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -891,6 +892,56 @@ type Usage struct {
 	// Cost is the request cost calculated by AxonHub from channel model prices.
 	// Omitted when no matching price is configured or usage-cost injection is disabled.
 	Cost *float64 `json:"cost,omitempty"`
+}
+
+// UnmarshalJSON tolerates both numeric and structured (object) cost values.
+// Some OpenAI-compatible providers (e.g. Mogick) return usage.cost as
+// {"currency":"CNY","amount":"0.001"} while AxonHub's unified Usage.Cost is a
+// plain number. Parse the amount when present and ignore unknown shapes.
+func (u *Usage) UnmarshalJSON(data []byte) error {
+	type usageAlias Usage
+	aux := struct {
+		*usageAlias
+		Cost json.RawMessage `json:"cost"`
+	}{usageAlias: (*usageAlias)(u)}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	u.Cost = nil
+	if len(aux.Cost) == 0 || string(aux.Cost) == "null" {
+		return nil
+	}
+
+	var raw any
+	if err := json.Unmarshal(aux.Cost, &raw); err != nil {
+		return nil
+	}
+
+	switch v := raw.(type) {
+	case float64:
+		u.Cost = &v
+	case string:
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			u.Cost = &f
+		}
+	case map[string]any:
+		amount, ok := v["amount"]
+		if !ok {
+			return nil
+		}
+		switch a := amount.(type) {
+		case string:
+			if f, err := strconv.ParseFloat(a, 64); err == nil {
+				u.Cost = &f
+			}
+		case float64:
+			u.Cost = &a
+		}
+	}
+
+	return nil
 }
 
 func (u *Usage) GetCompletionTokens() *int64 {
