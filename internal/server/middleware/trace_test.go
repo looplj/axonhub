@@ -1033,7 +1033,8 @@ func TestWithTraceID_ThreadWithoutTraceHeaderCreatesTrace(t *testing.T) {
 			return
 		}
 
-		c.JSON(200, gin.H{"trace_id": trace.TraceID, "thread_id": trace.ThreadID})
+		sessionID, _ := shared.GetSessionID(c.Request.Context())
+		c.JSON(200, gin.H{"trace_id": trace.TraceID, "thread_id": trace.ThreadID, "session_id": sessionID})
 	})
 
 	// Request without AH-Trace-Id header (only thread in context)
@@ -1043,6 +1044,23 @@ func TestWithTraceID_ThreadWithoutTraceHeaderCreatesTrace(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]any
+	err = json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+
+	autoTraceID, ok := resp["trace_id"].(string)
+	require.True(t, ok)
+	require.NotEmpty(t, autoTraceID)
+
+	// Verify trace was persisted and linked to the thread
+	trace, err := traceService.GetTraceByID(ctx, autoTraceID, testProject.ID)
+	require.NoError(t, err)
+	require.Equal(t, autoTraceID, trace.TraceID)
+	require.Equal(t, testThread.ID, trace.ThreadID)
+
+	// Verify shared session ID uses the stable thread identifier rather than the per-turn trace ID
+	require.Equal(t, testThread.ThreadID, resp["session_id"])
 }
 
 func TestWithTraceID_NoHeader(t *testing.T) {

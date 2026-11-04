@@ -174,7 +174,13 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 		ctx := contexts.WithTrace(c.Request.Context(), trace)
 
 		// Set session ID in context if available, to let the provider use it for cache if needed.
-		ctx = shared.WithSessionID(ctx, traceID)
+		// When a thread is present, use the thread's stable identifier so upstream prompt-cache
+		// keys remain consistent across turns instead of rotating on auto-generated trace IDs.
+		sessionID := traceID
+		if thread, ok := contexts.GetThread(c.Request.Context()); ok && thread != nil && thread.ThreadID != "" {
+			sessionID = thread.ThreadID
+		}
+		ctx = shared.WithSessionID(ctx, sessionID)
 
 		c.Request = c.Request.WithContext(ctx)
 
