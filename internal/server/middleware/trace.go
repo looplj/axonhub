@@ -88,7 +88,7 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 
 			traceID, err = tryExtractTraceIDFromClaudeCodeRequest(c, config)
 			if err != nil {
-				AbortWithError(c, http.StatusBadRequest, err)
+				abortTraceBodyReadError(c, err)
 				return
 			}
 		}
@@ -102,7 +102,7 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 
 			traceID, err = tryGetTraceIDFromBody(c, config)
 			if err != nil {
-				AbortWithError(c, http.StatusBadRequest, err)
+				abortTraceBodyReadError(c, err)
 				return
 			}
 		}

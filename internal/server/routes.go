@@ -136,6 +136,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			"/playground/chat",
 			middleware.WithTimeout(server.Config.LLMRequestTimeout),
 			middleware.WithSource(request.SourcePlayground),
+			middleware.WithRequestBodyLimit(),
 			middleware.WithResponseHeaders(services.RequestService),
 			handlers.Playground.ChatCompletion,
 		)
@@ -188,6 +189,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	apiMiddlewares := []gin.HandlerFunc{
 		middleware.WithIPBlocklist(services.SystemService),
 		middleware.WithAPIKeyConfig(services.AuthService, nil),
+		middleware.WithRequestBodyLimit(),
 		middleware.WithSource(request.SourceAPI),
 		middleware.WithResponseHeaders(services.RequestService),
 		middleware.WithThread(server.Config.Trace, services.ThreadService),
@@ -270,6 +272,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithTimeout(server.Config.LLMRequestTimeout),
 			middleware.WithIPBlocklist(services.SystemService),
 			middleware.WithGeminiKeyAuth(services.AuthService),
+			middleware.WithRequestBodyLimit(),
 			middleware.WithSource(request.SourceAPI),
 			middleware.WithResponseHeaders(services.RequestService),
 			middleware.WithThread(server.Config.Trace, services.ThreadService),
@@ -283,6 +286,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithTimeout(server.Config.LLMRequestTimeout),
 			middleware.WithIPBlocklist(services.SystemService),
 			middleware.WithGeminiKeyAuth(services.AuthService),
+			middleware.WithRequestBodyLimit(),
 			middleware.WithSource(request.SourceAPI),
 			middleware.WithResponseHeaders(services.RequestService),
 			middleware.WithThread(server.Config.Trace, services.ThreadService),

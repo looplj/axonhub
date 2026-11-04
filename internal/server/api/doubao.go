@@ -68,7 +68,7 @@ func NewDoubaoHandlers(params DoubaoHandlersParams) *DoubaoHandlers {
 func (h *DoubaoHandlers) CreateTask(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+	genericReq, err := readHTTPRequest(c.Request)
 	if err != nil {
 		httpErr := h.CreateOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))

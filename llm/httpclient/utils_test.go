@@ -269,11 +269,10 @@ func TestReadHTTPRequest_EmptyBodyWithContentEncoding(t *testing.T) {
 }
 
 func TestReadHTTPRequest_RejectsOversizedRawBody(t *testing.T) {
-	originalLimit := maxRequestBodySize
-	maxRequestBodySize = 32
-	t.Cleanup(func() { maxRequestBodySize = originalLimit })
+	const maxRequestBodySize = 32
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(bytes.Repeat([]byte("a"), maxRequestBodySize+1)))
+	req = req.WithContext(WithRequestBodyLimit(req.Context(), maxRequestBodySize))
 
 	_, err := ReadHTTPRequest(req)
 
@@ -281,9 +280,7 @@ func TestReadHTTPRequest_RejectsOversizedRawBody(t *testing.T) {
 }
 
 func TestReadHTTPRequest_RejectsOversizedDecodedBody(t *testing.T) {
-	originalLimit := maxRequestBodySize
-	maxRequestBodySize = 32
-	t.Cleanup(func() { maxRequestBodySize = originalLimit })
+	const maxRequestBodySize = 32
 
 	originalBody := bytes.Repeat([]byte("a"), maxRequestBodySize+1)
 	var compressed bytes.Buffer
@@ -294,6 +291,7 @@ func TestReadHTTPRequest_RejectsOversizedDecodedBody(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(compressed.Bytes()))
 	req.Header.Set("Content-Encoding", "gzip")
+	req = req.WithContext(WithRequestBodyLimit(req.Context(), maxRequestBodySize))
 
 	_, err = ReadHTTPRequest(req)
 
@@ -304,7 +302,7 @@ func TestDecodeRequestBody_NoEncoding(t *testing.T) {
 	body := []byte(`{"test":"data"}`)
 	headers := http.Header{}
 
-	got, err := decodeRequestBody(body, headers)
+	got, err := decodeRequestBody(body, headers, DefaultMaxRequestBodySize)
 	require.NoError(t, err)
 	assert.Equal(t, body, got)
 }
@@ -314,7 +312,7 @@ func TestDecodeRequestBody_IdentityEncoding(t *testing.T) {
 	headers := http.Header{}
 	headers.Set("Content-Encoding", "identity")
 
-	got, err := decodeRequestBody(body, headers)
+	got, err := decodeRequestBody(body, headers, DefaultMaxRequestBodySize)
 	require.NoError(t, err)
 	assert.Equal(t, body, got)
 }
@@ -332,7 +330,7 @@ func TestDecodeRequestBody_GzipEncoding(t *testing.T) {
 	headers.Set("Content-Encoding", "gzip")
 	headers.Set("Content-Length", "100")
 
-	got, err := decodeRequestBody(buf.Bytes(), headers)
+	got, err := decodeRequestBody(buf.Bytes(), headers, DefaultMaxRequestBodySize)
 	require.NoError(t, err)
 	assert.Equal(t, originalBody, got)
 	assert.Equal(t, "", headers.Get("Content-Encoding"))
@@ -352,7 +350,7 @@ func TestDecodeRequestBody_DeflateEncoding(t *testing.T) {
 	headers := http.Header{}
 	headers.Set("Content-Encoding", "deflate")
 
-	got, err := decodeRequestBody(buf.Bytes(), headers)
+	got, err := decodeRequestBody(buf.Bytes(), headers, DefaultMaxRequestBodySize)
 	require.NoError(t, err)
 	assert.Equal(t, originalBody, got)
 	assert.Equal(t, "", headers.Get("Content-Encoding"))
@@ -369,7 +367,7 @@ func TestDecodeRequestBody_ZstdEncoding(t *testing.T) {
 	headers := http.Header{}
 	headers.Set("Content-Encoding", "zstd")
 
-	got, err := decodeRequestBody(compressedBody, headers)
+	got, err := decodeRequestBody(compressedBody, headers, DefaultMaxRequestBodySize)
 	require.NoError(t, err)
 	assert.Equal(t, originalBody, got)
 	assert.Equal(t, "", headers.Get("Content-Encoding"))

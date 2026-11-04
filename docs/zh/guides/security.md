@@ -118,3 +118,17 @@ curl https://your-axonhub-instance/v1/chat/completions \
 | API Key IP 限制 | 每密钥 | 仅允许列表中的 IP | 限制单个 API 密钥 |
 
 请求按以下顺序评估：IP 访问控制 → IP 黑名单 → API 密钥认证 → API 密钥 IP 限制。
+
+## 模型 API 请求体上限
+
+通过环境变量 `AXONHUB_MAX_REQUEST_BODY_SIZE_MB` 配置模型 API 的 HTTP 请求体上限，填写正整数即可。单位为 MB，此处按 **1 MB = 1024 × 1024 字节**（MiB）计算。例如：
+
+```bash
+AXONHUB_MAX_REQUEST_BODY_SIZE_MB=128
+```
+
+默认上限为 **64 MB**。未配置、空值、格式错误、非正数或溢出值均回退到 64 MB；非空的非法值会输出警告。环境变量仅在进程启动时读取，修改后需要重启实例，无需数据库或管理页面配置。
+
+原始请求体和解压后的请求体分别受同一上限约束，支持 gzip、deflate、zstd，也覆盖模型 API 的 multipart 请求及 Playground 聊天。超限会在调用上游模型之前返回 **HTTP 413**。未知长度或 chunked 请求按实际读取字节限制，追踪中间件提前读取时也受保护。恰好等于上限的请求可以通过大小检查。
+
+请求体会缓存在内存中，请结合实际载荷、并发量和可用内存调整上限。反向代理和上游厂商可能还有独立且更低的限制。此变量不改变 WebSocket 传输层的消息大小及保留历史预算、单张图片限制，也不改变备份恢复的 multipart 内存阈值。

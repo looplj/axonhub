@@ -76,7 +76,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	// Use ReadHTTPRequest to parse the request
-	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+	genericReq, err := readHTTPRequest(c.Request)
 	if err != nil {
 		httpErr := handlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
 		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
