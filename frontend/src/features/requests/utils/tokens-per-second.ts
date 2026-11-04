@@ -62,13 +62,16 @@ export function calculateTokensPerSecond(request: Request): string {
  * first-token-based rate which excludes time to first token for streams.
  */
 export function getTotalTimeTokensPerSecondValue(request: Request): number | null {
-  const usageLog = request.usageLogs?.edges?.[0]?.node;
-  if (!usageLog || request.metricsLatencyMs == null || request.metricsLatencyMs <= 0) {
+  const usageLogs = request.usageLogs?.edges ?? [];
+  if (usageLogs.length === 0 || request.metricsLatencyMs == null || request.metricsLatencyMs <= 0) {
     return null;
   }
 
-  // Use completion tokens only (reasoning tokens are not included in throughput calculation)
-  const completionTokens = usageLog.completionTokens || 0;
+  // Sum every usage log carried by the request: latency covers the whole request,
+  // and one request can log more than once. The list query currently asks for
+  // `usageLogs(first: 1)`, so this is a single entry in practice — summing keeps
+  // the rate correct if that query or a request-level aggregate widens later.
+  const completionTokens = usageLogs.reduce((sum, edge) => sum + (edge?.node?.completionTokens || 0), 0);
 
   if (completionTokens === 0) {
     return null;
