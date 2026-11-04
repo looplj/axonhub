@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
 )
 
@@ -1074,13 +1075,12 @@ func (r *queryResolver) queryChannelModelExecutionStats(ctx context.Context, sin
 // A CTE precomputes the latest execution id per (request_id, channel_id) so the
 // per-row lookup uses an indexed join rather than a correlated subquery (which is
 // too slow on SQLite with the (request_id, channel_id) composite).
+//
+// The query is executed through the ent dialect.Driver interface (not *sql.Driver
+// directly) so read-replica deployments are routed correctly.
 func (r *queryResolver) queryChannelModelUsageStats(ctx context.Context, since time.Time, applyFilter bool) ([]usageStat, error) {
-	dbDriver := r.client.Driver()
-	sqlDB, ok := dbDriver.(*sql.Driver)
-	if !ok {
-		return nil, fmt.Errorf("failed to get underlying SQL driver")
-	}
-	dialectName := sqlDB.Dialect()
+	driver := r.client.Driver()
+	dialectName := driver.Dialect()
 	useDollar := dialectName == dialect.Postgres
 
 	ph := "?"
@@ -1095,10 +1095,24 @@ func (r *queryResolver) queryChannelModelUsageStats(ctx context.Context, since t
 		args = append(args, since.UTC())
 	}
 
+	// generation latency: total_latency - first_token_latency for streaming rows,
+	// total_latency otherwise. The CASE-when clamp applies a MinLatencyMs lower
+	// bound so a zero-duration stream cannot produce an infinite throughput value.
+	// (SQLite does not support GREATEST before 3.38, so use CASE WHEN instead.)
+	genLatency := fmt.Sprintf(
+		"CASE WHEN CASE WHEN e.stream AND e.metrics_first_token_latency_ms IS NOT NULL "+
+			"THEN e.metrics_latency_ms - e.metrics_first_token_latency_ms "+
+			"ELSE e.metrics_latency_ms END < %d THEN %d "+
+			"ELSE CASE WHEN e.stream AND e.metrics_first_token_latency_ms IS NOT NULL "+
+			"THEN e.metrics_latency_ms - e.metrics_first_token_latency_ms "+
+			"ELSE e.metrics_latency_ms END END",
+		biz.MinLatencyMs, biz.MinLatencyMs,
+	)
+
 	query := fmt.Sprintf(`
 WITH latest_exec AS (
     SELECT request_id, channel_id, MAX(id) AS max_id
-    FROM %s
+    FROM %[2]s
     WHERE channel_id IS NOT NULL
     GROUP BY request_id, channel_id
 )
@@ -1106,49 +1120,49 @@ SELECT
     u.channel_id,
     u.model_id,
     COUNT(u.id) AS request_count,
-    SUM(CASE WHEN e.status = '%s' THEN 1 ELSE 0 END) AS success_count,
-    SUM(CASE WHEN e.status = '%s' THEN 1 ELSE 0 END) AS failed_count,
+    SUM(CASE WHEN e.status = '%[3]s' THEN 1 ELSE 0 END) AS success_count,
+    SUM(CASE WHEN e.status = '%[4]s' THEN 1 ELSE 0 END) AS failed_count,
     COALESCE(SUM(u.prompt_tokens), 0)        AS input_tokens,
     COALESCE(SUM(u.completion_tokens), 0)    AS output_tokens,
     COALESCE(SUM(u.total_tokens), 0)         AS total_tokens,
     COALESCE(SUM(u.total_cost), 0)           AS total_cost,
     CASE
         WHEN SUM(CASE WHEN e.metrics_latency_ms IS NOT NULL
-                      THEN CASE WHEN e.stream AND e.metrics_first_token_latency_ms IS NOT NULL
-                                THEN e.metrics_latency_ms - e.metrics_first_token_latency_ms
-                                ELSE e.metrics_latency_ms END
+                      THEN %[1]s
                       ELSE 0 END) > 0
         THEN SUM(CASE WHEN e.metrics_latency_ms IS NOT NULL THEN u.completion_tokens ELSE 0 END) * 1000.0
              / SUM(CASE WHEN e.metrics_latency_ms IS NOT NULL
-                        THEN CASE WHEN e.stream AND e.metrics_first_token_latency_ms IS NOT NULL
-                                  THEN e.metrics_latency_ms - e.metrics_first_token_latency_ms
-                                  ELSE e.metrics_latency_ms END
+                        THEN %[1]s
                         ELSE 0 END)
         ELSE NULL
     END AS throughput,
     AVG(CASE WHEN e.stream AND e.metrics_first_token_latency_ms IS NOT NULL
              AND e.metrics_first_token_latency_ms > 0
              THEN e.metrics_first_token_latency_ms END) AS ttft_ms
-FROM %s u
-LEFT JOIN %s e ON e.id = (
+FROM %[5]s u
+LEFT JOIN %[2]s e ON e.id = (
     SELECT le.max_id FROM latest_exec le
     WHERE le.request_id = u.request_id AND le.channel_id = u.channel_id
 )
-WHERE u.channel_id IS NOT NULL AND u.model_id != ''%s
+WHERE u.channel_id IS NOT NULL AND u.model_id != ''%[6]s
 GROUP BY u.channel_id, u.model_id
 `,
+		genLatency,
 		requestexecution.Table,
 		requestexecution.StatusCompleted,
 		requestexecution.StatusFailed,
 		usagelog.Table,
-		requestexecution.Table,
 		timeFilter,
 	)
 
-	rows, err := sqlDB.DB().QueryContext(ctx, query, args...)
+	// Execute via the dialect.Driver interface so routerDriver (read-replica
+	// deployments) is used correctly. driver.Query fills a *sql.Rows value.
+	rowsPtr := &sql.Rows{}
+	err := driver.Query(ctx, query, args, rowsPtr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channel-model usage stats: %w", err)
 	}
+	rows := *rowsPtr
 	defer func() { _ = rows.Close() }()
 
 	var results []usageStat
