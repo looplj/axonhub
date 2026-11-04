@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -1061,6 +1062,41 @@ func TestWithTraceID_ThreadWithoutTraceHeaderCreatesTrace(t *testing.T) {
 
 	// Verify shared session ID uses the stable thread identifier rather than the per-turn trace ID
 	require.Equal(t, testThread.ThreadID, resp["session_id"])
+
+	// Verify overlong thread ID (> 64 chars) is bounded to a safe stable hash
+	longThread, err := client.Thread.Create().
+		SetThreadID(strings.Repeat("a", 100)).
+		SetProjectID(testProject.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router2 := gin.New()
+	router2.Use(func(c *gin.Context) {
+		ctx := authz.WithTestBypass(c.Request.Context())
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		ctx = contexts.WithThread(ctx, longThread)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router2.Use(WithTrace(config, traceService))
+	router2.GET("/test-long", func(c *gin.Context) {
+		sessionID, _ := shared.GetSessionID(c.Request.Context())
+		c.JSON(200, gin.H{"session_id": sessionID})
+	})
+
+	req2 := httptest.NewRequest(http.MethodGet, "/test-long", nil)
+	w2 := httptest.NewRecorder()
+	router2.ServeHTTP(w2, req2)
+	require.Equal(t, http.StatusOK, w2.Code)
+
+	var resp2 map[string]any
+	err = json.Unmarshal(w2.Body.Bytes(), &resp2)
+	require.NoError(t, err)
+	boundedSessionID, ok := resp2["session_id"].(string)
+	require.True(t, ok)
+	require.LessOrEqual(t, len(boundedSessionID), 64)
+	require.NotEmpty(t, boundedSessionID)
 }
 
 func TestWithTraceID_NoHeader(t *testing.T) {
