@@ -4,22 +4,27 @@ import (
 	"fmt"
 
 	"github.com/gobwas/glob"
-
-	"github.com/looplj/axonhub/internal/pkg/xmap"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
+// globPatternCacheSize bounds the compiled pattern cache so patterns derived
+// from request values cannot grow memory without limit.
+const globPatternCacheSize = 256
+
+// compiledGlob caches the outcome of compiling a glob pattern, including the
+// error, so an invalid pattern is not recompiled on every request.
 type compiledGlob struct {
 	pattern *glob.Pattern
 	err     error
 }
 
-var globPatternCache = xmap.New[string, compiledGlob]()
+var globPatternCache, _ = lru.New[string, compiledGlob](globPatternCacheSize)
 
 // globMatch matches value against a glob pattern in which only "/" separates
 // segments: "*" and "?" never cross a slash, while "**/" spans zero or more
 // whole segments.
 func globMatch(pattern, value string) (bool, error) {
-	cached, ok := globPatternCache.Load(pattern)
+	cached, ok := globPatternCache.Get(pattern)
 	if !ok {
 		compiler := glob.Compiler{
 			Separators: []rune{'/'},
@@ -32,7 +37,7 @@ func globMatch(pattern, value string) (bool, error) {
 		}
 
 		cached = compiledGlob{pattern: compiled, err: err}
-		globPatternCache.Store(pattern, cached)
+		globPatternCache.Add(pattern, cached)
 	}
 
 	if cached.err != nil {
