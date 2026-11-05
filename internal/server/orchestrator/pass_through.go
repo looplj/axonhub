@@ -293,6 +293,8 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 	})
 }
 
+// channelReasoningEffortMappings returns the channel's reasoning effort mapping,
+// or nil when the channel has no settings.
 func channelReasoningEffortMappings(channel *biz.Channel) []llm.ReasoningEffortMapping {
 	if channel == nil || channel.Settings == nil {
 		return nil
