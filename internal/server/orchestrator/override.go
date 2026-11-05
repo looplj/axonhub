@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -44,6 +45,15 @@ var overrideTemplateFuncs = template.FuncMap{
 		}
 		return string(data), nil
 	},
+	// The matched value is the last argument so these functions also work in
+	// pipelines, e.g. {{.Model | regexMatch "^claude-"}}.
+	"contains": func(substr, value string) bool {
+		return strings.Contains(value, substr)
+	},
+	"regexMatch": func(pattern, value string) (bool, error) {
+		return regexp.MatchString(pattern, value)
+	},
+	"globMatch": globMatch,
 }
 
 func buildRequestHeaderMap(llmReq *llm.Request) map[string]string {
