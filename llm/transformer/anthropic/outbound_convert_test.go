@@ -125,6 +125,39 @@ func TestConvertToolChoiceToAnthropic(t *testing.T) {
 			},
 		},
 		{
+			name: "hosted web search with empty name -> native tool name",
+			input: &llm.ToolChoice{
+				NamedToolChoice: &llm.NamedToolChoice{
+					Type: llm.ToolTypeWebSearch,
+				},
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.Equal(t, "tool", got.Type)
+				require.NotNil(t, got.Name)
+				require.Equal(t, WebSearchFunctionName, *got.Name)
+			},
+		},
+		{
+			name: "Claude Code named tool -> tool + name",
+			input: &llm.ToolChoice{
+				NamedToolChoice: &llm.NamedToolChoice{
+					Type: "tool",
+					Function: llm.ToolFunction{
+						Name: "calculator",
+					},
+				},
+			},
+			validate: func(t *testing.T, got *ToolChoice) {
+				t.Helper()
+				require.NotNil(t, got)
+				require.Equal(t, "tool", got.Type)
+				require.NotNil(t, got.Name)
+				require.Equal(t, "calculator", *got.Name)
+			},
+		},
+		{
 			name:  "nil -> nil",
 			input: nil,
 			validate: func(t *testing.T, got *ToolChoice) {

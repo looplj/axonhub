@@ -352,11 +352,24 @@ func convertToolChoiceToAnthropic(src *llm.ToolChoice) *ToolChoice {
 		}
 	}
 
-	// Named tool_choice: {type: "function", function: {name: "xxx"}}
-	if src.NamedToolChoice != nil && src.NamedToolChoice.Function.Name != "" {
-		return &ToolChoice{
-			Type: "tool",
-			Name: lo.ToPtr(src.NamedToolChoice.Function.Name),
+	if src.NamedToolChoice != nil {
+		// Hosted Responses tools are selected by type rather than by function
+		// name. Anthropic expresses the forced native tool as a named tool choice.
+		if src.NamedToolChoice.Type == llm.ToolTypeWebSearch {
+			return &ToolChoice{
+				Type: "tool",
+				Name: lo.ToPtr(WebSearchFunctionName),
+			}
+		}
+
+		// Named tool_choice: {type: "function", function: {name: "xxx"}}. Keep
+		// this path type-agnostic so Anthropic/Claude Code's "tool" form also
+		// round-trips through the unified function name.
+		if src.NamedToolChoice.Function.Name != "" {
+			return &ToolChoice{
+				Type: "tool",
+				Name: lo.ToPtr(src.NamedToolChoice.Function.Name),
+			}
 		}
 	}
 
@@ -391,7 +404,19 @@ func applyParallelToolCalls(choice *ToolChoice, parallelToolCalls *bool, hasTool
 // validateToolChoice rejects forced choices whose target was removed by tool
 // conversion. This makes unsupported native tools fail closed instead of sending
 // an Anthropic request that can never satisfy its tool_choice.
-func validateToolChoice(choice *ToolChoice, tools []Tool) error {
+func validateToolChoice(source *llm.ToolChoice, choice *ToolChoice, tools []Tool) error {
+	// A hosted Responses web_search choice must not be satisfied by an ordinary
+	// function that happens to share the native tool's name.
+	if source != nil && source.NamedToolChoice != nil && source.NamedToolChoice.Type == llm.ToolTypeWebSearch {
+		for _, tool := range tools {
+			if tool.Type == ToolTypeWebSearch20250305 && tool.Name == WebSearchFunctionName {
+				return nil
+			}
+		}
+
+		return fmt.Errorf("%w: hosted web_search tool_choice requires native web_search", transformer.ErrUnsupportedConversion)
+	}
+
 	if choice == nil {
 		return nil
 	}

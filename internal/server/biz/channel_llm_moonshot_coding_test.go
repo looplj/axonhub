@@ -85,17 +85,34 @@ func TestMoonshotCodingRejectsForcedChoiceWhenNativeToolsFiltered(t *testing.T) 
 	tests := []struct {
 		name       string
 		toolChoice *llm.ToolChoice
+		tools      []llm.Tool
 	}{
 		{
 			name:       "required",
 			toolChoice: &llm.ToolChoice{ToolChoice: lo.ToPtr("required")},
+			tools: []llm.Tool{{
+				Type:      llm.ToolTypeWebSearch,
+				WebSearch: &llm.WebSearch{},
+			}},
 		},
 		{
-			name: "named web search",
+			name: "hosted web search",
 			toolChoice: &llm.ToolChoice{
 				NamedToolChoice: &llm.NamedToolChoice{
-					Type:     llm.ToolTypeWebSearch,
-					Function: llm.ToolFunction{Name: anthropic.WebSearchFunctionName},
+					Type: llm.ToolTypeWebSearch,
+				},
+			},
+			tools: []llm.Tool{
+				{
+					Type: "function",
+					Function: llm.Function{
+						Name:       anthropic.WebSearchFunctionName,
+						Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
+					},
+				},
+				{
+					Type:      llm.ToolTypeWebSearch,
+					WebSearch: &llm.WebSearch{},
 				},
 			},
 		},
@@ -119,10 +136,7 @@ func TestMoonshotCodingRejectsForcedChoiceWhenNativeToolsFiltered(t *testing.T) 
 			built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entity)
 			require.NoError(t, err)
 
-			_, err = built.Outbound.TransformRequest(ctx, moonshotCodingDirectRequest(tt.toolChoice, []llm.Tool{{
-				Type:      llm.ToolTypeWebSearch,
-				WebSearch: &llm.WebSearch{},
-			}}))
+			_, err = built.Outbound.TransformRequest(ctx, moonshotCodingDirectRequest(tt.toolChoice, tt.tools))
 			require.ErrorIs(t, err, transformer.ErrUnsupportedConversion)
 		})
 	}

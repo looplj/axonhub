@@ -181,7 +181,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// Convert to Anthropic request format
 	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
-	if err := validateToolChoice(anthropicReq.ToolChoice, anthropicReq.Tools); err != nil {
+	if err := validateToolChoice(llmReq.ToolChoice, anthropicReq.ToolChoice, anthropicReq.Tools); err != nil {
 		return nil, err
 	}
 
