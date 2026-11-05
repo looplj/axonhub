@@ -166,6 +166,8 @@ func TestResponsesTransportAppliesReasoningEffortMapping(t *testing.T) {
 	}
 }
 
+// TestPassThroughBodyAppliesReasoningEffortMapping verifies the chat completions
+// pass-through middleware rewrites the mapped effort and keeps unmodeled fields.
 func TestPassThroughBodyAppliesReasoningEffortMapping(t *testing.T) {
 	channel := &biz.Channel{Channel: &ent.Channel{
 		ID:   1,
@@ -201,6 +203,8 @@ func TestPassThroughBodyAppliesReasoningEffortMapping(t *testing.T) {
 	require.Equal(t, int64(5), gjson.GetBytes(processed.Body, "top_k").Int())
 }
 
+// TestAnthropicPassThroughBodyAppliesReasoningEffortMapping verifies the Anthropic
+// Messages pass-through middleware rewrites output_config.effort.
 func TestAnthropicPassThroughBodyAppliesReasoningEffortMapping(t *testing.T) {
 	channel := &biz.Channel{Channel: &ent.Channel{
 		ID:   1,
