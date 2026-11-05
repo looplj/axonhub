@@ -945,16 +945,41 @@ func (s *SystemService) SetTitle(ctx context.Context, title string) error {
 	return s.setSystemValue(ctx, SystemKeyTitle, title)
 }
 
+const (
+	systemValueCachePrefix = "system:"
+	// systemValueMissingCachePrefix marks keys that have no row yet. Most settings are never
+	// saved and fall back to defaults, so without this marker every lookup on the request path
+	// queries the database again. It uses its own prefix so instances running an older version
+	// against a shared cache never read the marker as a real value.
+	systemValueMissingCachePrefix = "system:missing:"
+	// systemValueMissingCacheTTL bounds how long other instances keep serving the default after
+	// a key is saved for the first time; the saving instance invalidates the marker immediately.
+	systemValueMissingCacheTTL = time.Minute
+)
+
+// errSystemValueNotSet is returned for keys known to have no row; it satisfies ent.IsNotFound
+// so callers keep falling back to their defaults.
+var errSystemValueNotSet error = &ent.NotFoundError{}
+
 func (s *SystemService) getSystemValue(ctx context.Context, key string) (string, error) {
-	cacheKey := "system:" + key
+	cacheKey := systemValueCachePrefix + key
 	if v, err := s.Cache.Get(ctx, cacheKey); err == nil {
 		return v.Value, nil
+	}
+
+	missingKey := systemValueMissingCachePrefix + key
+	if _, err := s.Cache.Get(ctx, missingKey); err == nil {
+		return "", fmt.Errorf("failed to get system value: %w", errSystemValueNotSet)
 	}
 
 	client := s.entFromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(key)).Only(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			_ = s.Cache.Set(ctx, missingKey, ent.System{Key: key}, xcache.WithExpiration(systemValueMissingCacheTTL))
+		}
+
 		return "", fmt.Errorf("failed to get system value: %w", err)
 	}
 
@@ -1482,8 +1507,10 @@ func applySystemChannelSettingsPatch(setting *SystemChannelSettings, input Updat
 }
 
 func (s *SystemService) invalidateSystemValueCache(ctx context.Context, key string) {
-	if err := s.Cache.Delete(ctx, "system:"+key); err != nil {
-		log.Warn(ctx, "failed to invalidate cache", log.String("key", key), log.Cause(err))
+	for _, cacheKey := range []string{systemValueCachePrefix + key, systemValueMissingCachePrefix + key} {
+		if err := s.Cache.Delete(ctx, cacheKey); err != nil {
+			log.Warn(ctx, "failed to invalidate cache", log.String("key", cacheKey), log.Cause(err))
+		}
 	}
 }
 

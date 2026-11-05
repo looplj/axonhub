@@ -48,6 +48,36 @@ type RequestService struct {
 // the chat metrics deduplication.
 const recordedMetricRequestsTTL = time.Hour
 
+// Status and finalize writers only need request metadata. Loading the payload columns
+// (request/response bodies and chunks) would read and JSON-decode the whole payload again on
+// every update, which dominates the persistence cost for large prompts. The same applies to the
+// row ent reads back after UpdateOne, so writers that ignore the result select only the ID.
+var (
+	requestMetadataColumns = columnsExcept(request.Columns,
+		request.FieldRequestBody, request.FieldResponseBody, request.FieldResponseChunks)
+	requestExecutionMetadataColumns = columnsExcept(requestexecution.Columns,
+		requestexecution.FieldRequestBody, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks)
+)
+
+func columnsExcept(columns []string, excluded ...string) []string {
+	return slices.DeleteFunc(slices.Clone(columns), func(column string) bool {
+		return slices.Contains(excluded, column)
+	})
+}
+
+// getRequestMetadata loads a request without its payload columns.
+func getRequestMetadata(ctx context.Context, client *ent.Client, requestID int) (*ent.Request, error) {
+	return client.Request.Query().Where(request.ID(requestID)).Select(requestMetadataColumns...).Only(ctx)
+}
+
+// getRequestExecutionMetadata loads a request execution without its payload columns.
+func getRequestExecutionMetadata(ctx context.Context, client *ent.Client, executionID int) (*ent.RequestExecution, error) {
+	return client.RequestExecution.Query().
+		Where(requestexecution.ID(executionID)).
+		Select(requestExecutionMetadataColumns...).
+		Only(ctx)
+}
+
 // NewRequestService creates a new RequestService.
 func NewRequestService(
 	ent *ent.Client,
@@ -544,7 +574,7 @@ func (s *RequestService) UpdateRequestResponseHeaders(ctx context.Context, reque
 	if err != nil || data == nil {
 		return err
 	}
-	_, err = s.entFromContext(ctx).Request.UpdateOneID(requestID).SetResponseHeaders(data).Save(ctx)
+	_, err = s.entFromContext(ctx).Request.UpdateOneID(requestID).SetResponseHeaders(data).Select(request.FieldID).Save(ctx)
 	return err
 }
 
@@ -553,7 +583,7 @@ func (s *RequestService) UpdateRequestExecutionResponseHeaders(ctx context.Conte
 	if err != nil || data == nil {
 		return err
 	}
-	_, err = s.entFromContext(ctx).RequestExecution.UpdateOneID(executionID).SetResponseHeaders(data).Save(ctx)
+	_, err = s.entFromContext(ctx).RequestExecution.UpdateOneID(executionID).SetResponseHeaders(data).Select(requestexecution.FieldID).Save(ctx)
 	return err
 }
 
@@ -588,7 +618,7 @@ func (s *RequestService) UpdateRequestFinalized(
 	client := s.entFromContext(ctx)
 
 	// Get the request to check data storage
-	req, err := client.Request.Get(ctx, requestID)
+	req, err := getRequestMetadata(ctx, client, requestID)
 	if err != nil {
 		log.Error(ctx, "Failed to get request", log.Cause(err))
 		return err
@@ -650,7 +680,7 @@ func (s *RequestService) UpdateRequestFinalized(
 		}
 	}
 
-	_, err = upd.Save(ctx)
+	_, err = upd.Select(request.FieldID).Save(ctx)
 	if err != nil {
 		s.rollbackExternalPayload(ctx, dataStorage, savedExternalKey)
 		log.Error(ctx, "Failed to update request status to completed", log.Cause(err))
@@ -785,7 +815,7 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 
 	client := s.entFromContext(ctx)
 
-	req, err := client.Request.Get(ctx, requestID)
+	req, err := getRequestMetadata(ctx, client, requestID)
 	if err != nil {
 		log.Error(ctx, "Failed to get request", log.Cause(err))
 		return err
@@ -853,7 +883,7 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 		}
 	}
 
-	_, err = upd.Save(ctx)
+	_, err = upd.Select(request.FieldID).Save(ctx)
 	if err != nil {
 		s.rollbackExternalPayload(ctx, dataStorage, savedExternalKey)
 		log.Error(ctx, "Failed to update audio request status to completed", log.Cause(err))
@@ -886,7 +916,7 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 	client := s.entFromContext(ctx)
 
 	// Get the request to check data storage
-	req, err := client.Request.Get(ctx, requestID)
+	req, err := getRequestMetadata(ctx, client, requestID)
 	if err != nil {
 		log.Error(ctx, "Failed to get request", log.Cause(err))
 		return err
@@ -948,7 +978,7 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 		}
 	}
 
-	_, err = upd.Save(ctx)
+	_, err = upd.Select(request.FieldID).Save(ctx)
 	if err != nil {
 		s.rollbackExternalPayload(ctx, dataStorage, savedExternalKey)
 		log.Error(ctx, "Failed to update request status", log.Cause(err))
@@ -982,7 +1012,7 @@ func (s *RequestService) UpdateRequestExecutionFinalized(
 	client := s.entFromContext(ctx)
 
 	// Get the execution to check data storage
-	execution, err := client.RequestExecution.Get(ctx, executionID)
+	execution, err := getRequestExecutionMetadata(ctx, client, executionID)
 	if err != nil {
 		log.Error(ctx, "Failed to get request execution", log.Cause(err))
 		return err
@@ -1049,7 +1079,7 @@ func (s *RequestService) UpdateRequestExecutionFinalized(
 		}
 	}
 
-	_, err = upd.Save(ctx)
+	_, err = upd.Select(requestexecution.FieldID).Save(ctx)
 	if err != nil {
 		s.rollbackExternalPayload(ctx, dataStorage, savedExternalKey)
 		log.Error(ctx, "Failed to update finalized request execution", log.Cause(err), log.Any("status", status))
@@ -1136,7 +1166,7 @@ func (s *RequestService) UpdateRequestExecutionStatusWithMetrics(
 		}
 	}
 
-	_, err := upd.Save(ctx)
+	_, err := upd.Select(requestexecution.FieldID).Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request execution status", log.Cause(err), log.Any("status", status))
 		return err
@@ -1260,7 +1290,7 @@ func (s *RequestService) SaveRequestExecutionChunks(
 	client := s.entFromContext(ctx)
 
 	// Get the execution to check data storage
-	execution, err := client.RequestExecution.Get(ctx, executionID)
+	execution, err := getRequestExecutionMetadata(ctx, client, executionID)
 	if err != nil {
 		return fmt.Errorf("failed to get request execution: %w", err)
 	}
@@ -1290,6 +1320,7 @@ func (s *RequestService) SaveRequestExecutionChunks(
 
 		_, err = client.RequestExecution.UpdateOneID(executionID).
 			SetResponseChunks(ExternalResponseChunksMarker).
+			Select(requestexecution.FieldID).
 			Save(ctx)
 		if err != nil {
 			s.rollbackExternalPayload(ctx, dataStorage, key)
@@ -1299,6 +1330,7 @@ func (s *RequestService) SaveRequestExecutionChunks(
 		// Store in database
 		_, err = client.RequestExecution.UpdateOneID(executionID).
 			SetResponseChunks(chunkBytes).
+			Select(requestexecution.FieldID).
 			Save(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to save response chunks: %w", err)
@@ -1356,7 +1388,7 @@ func (s *RequestService) SaveRequestChunks(
 	client := s.entFromContext(ctx)
 
 	// Get the request to check data storage
-	req, err := client.Request.Get(ctx, requestID)
+	req, err := getRequestMetadata(ctx, client, requestID)
 	if err != nil {
 		return fmt.Errorf("failed to get request: %w", err)
 	}
@@ -1386,6 +1418,7 @@ func (s *RequestService) SaveRequestChunks(
 
 		_, err = client.Request.UpdateOneID(requestID).
 			SetResponseChunks(ExternalResponseChunksMarker).
+			Select(request.FieldID).
 			Save(ctx)
 		if err != nil {
 			s.rollbackExternalPayload(ctx, dataStorage, key)
@@ -1395,6 +1428,7 @@ func (s *RequestService) SaveRequestChunks(
 		// Store in database
 		_, err = client.Request.UpdateOneID(requestID).
 			SetResponseChunks(chunkBytes).
+			Select(request.FieldID).
 			Save(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to save response chunks: %w", err)
@@ -1423,13 +1457,14 @@ func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int,
 	// are disabled.
 	var metricReq *ent.Request
 	if metrics.Enabled() && isTerminalRequestStatus(status) {
-		if req, err := client.Request.Get(ctx, requestID); err == nil {
+		if req, err := getRequestMetadata(ctx, client, requestID); err == nil {
 			metricReq = req
 		}
 	}
 
 	_, err := client.Request.UpdateOneID(requestID).
 		SetStatus(status).
+		Select(request.FieldID).
 		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to update request status: %w", err)
@@ -1517,6 +1552,7 @@ func (s *RequestService) UpdateRequestChannelID(ctx context.Context, requestID i
 
 	req, err := client.Request.UpdateOneID(requestID).
 		SetChannelID(channelID).
+		Select(request.FieldID, request.FieldChannelID, request.FieldTraceID).
 		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to update request channel ID: %w", err)

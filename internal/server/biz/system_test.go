@@ -1435,3 +1435,54 @@ func TestSetRetryPolicy_RejectsPermanentDelete(t *testing.T) {
 	var coded *xerrors.CodedError
 	require.ErrorAs(t, err, &coded)
 }
+
+func TestSystemService_GetSystemValue_CachesMissingKey(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	key := "missing_key_cache_test"
+
+	_, err := service.getSystemValue(ctx, key)
+	require.True(t, ent.IsNotFound(err))
+
+	// A row written behind the service's back stays hidden while the missing marker is cached,
+	// which shows the second lookup did not query the database.
+	require.NoError(t, client.System.Create().SetKey(key).SetValue("direct").Exec(ctx))
+
+	value, err := service.getSystemValue(ctx, key)
+	require.True(t, ent.IsNotFound(err))
+	require.Contains(t, err.Error(), "failed to get system value")
+	require.Empty(t, value)
+
+	// Restores call InvalidateSystemValueCaches after writing rows directly.
+	service.InvalidateSystemValueCaches(ctx, key)
+
+	value, err = service.getSystemValue(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "direct", value)
+}
+
+func TestSystemService_SetSystemValue_ClearsMissingMarker(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+
+	policy, err := service.StoragePolicy(ctx)
+	require.NoError(t, err)
+	require.False(t, policy.StoreChunks)
+
+	// The cached miss must keep falling back to the default.
+	policy, err = service.StoragePolicy(ctx)
+	require.NoError(t, err)
+	require.Equal(t, defaultStoragePolicy.StoreRequestBody, policy.StoreRequestBody)
+
+	updated := defaultStoragePolicy
+	updated.StoreChunks = true
+	require.NoError(t, service.SetStoragePolicy(ctx, &updated))
+
+	policy, err = service.StoragePolicy(ctx)
+	require.NoError(t, err)
+	require.True(t, policy.StoreChunks)
+}
