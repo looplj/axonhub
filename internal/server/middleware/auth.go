@@ -275,15 +275,10 @@ func WithAdminGraphqlAuth(auth *biz.AuthService) gin.HandlerFunc {
 // https://ai.google.dev/api/generate-content?hl=zh-cn#text_gen_text_only_prompt-SHELL
 func WithGeminiKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		key := c.Query("key")
-		if key == "" {
-			var err error
-
-			key, err = ExtractAPIKeyFromRequest(c.Request, nil)
-			if err != nil {
-				AbortWithError(c, http.StatusUnauthorized, err)
-				return
-			}
+		key, err := ExtractGeminiAPIKeyFromRequest(c.Request)
+		if err != nil {
+			AbortWithError(c, http.StatusUnauthorized, err)
+			return
 		}
 
 		apiKey, err := auth.AuthenticateAPIKey(c.Request.Context(), key)
@@ -324,6 +319,21 @@ func WithGeminiKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// ExtractGeminiAPIKeyFromRequest gives configured API-key headers precedence
+// over Gemini's legacy query parameter. This prevents a decoy query key from
+// changing the identity selected by a request that already supplied a header.
+func ExtractGeminiAPIKeyFromRequest(r *http.Request) (string, error) {
+	for _, headerName := range DefaultAPIKeyConfig.Headers {
+		if r.Header.Get(headerName) != "" {
+			return ExtractAPIKeyFromRequest(r, nil)
+		}
+	}
+	if key := r.URL.Query().Get("key"); key != "" {
+		return key, nil
+	}
+	return "", ErrAPIKeyRequired
 }
 
 // WithSource 中间件用于设置请求来源到 context 中.

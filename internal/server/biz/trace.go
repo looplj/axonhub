@@ -1622,6 +1622,8 @@ func getInboundTransformer(format llm.APIFormat) (transformer.Inbound, error) {
 		return anthropic.NewInboundTransformer(), nil
 	case llm.APIFormatGeminiContents:
 		return gemini.NewInboundTransformer(), nil
+	case llm.APIFormatGeminiInteractions:
+		return gemini.NewInteractionsInboundTransformer(), nil
 	case llm.APIFormatOpenAIDecisions:
 		return decisions.NewInboundTransformer(), nil
 	default:
@@ -1660,6 +1662,11 @@ func getOutboundTransformer(format llm.APIFormat) (transformer.Outbound, error) 
 		}
 
 		return gemini.NewOutboundTransformerWithConfig(config)
+	case llm.APIFormatGeminiInteractions:
+		return gemini.NewInteractionsOutboundTransformerWithConfig(gemini.Config{
+			BaseURL:        "https://generativelanguage.googleapis.com",
+			APIKeyProvider: auth.NewStaticKeyProvider("dummy"),
+		})
 	case llm.APIFormatOpenAIDecisions:
 		return decisions.NewOutboundTransformer("https://api.openai.com/v1", "dummy")
 	default:

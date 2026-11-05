@@ -724,6 +724,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	entry := candidate.Models[p.state.CurrentModelIndex]
 
 	p.state.CurrentCandidate = candidate
+	p.state.OutboundRequestBodyWritten = false
 	p.state.StreamCompleted = false
 	p.state.OutboundStreamTerminal = streamTerminalNone
 	p.state.CleanEOFCompletionEvidence = false
@@ -786,6 +787,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	httpRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
 	if err != nil {
 		return nil, err
+	}
+	httpRequest.OnRequestBodyWritten = func() {
+		p.state.OutboundRequestBodyWritten = true
 	}
 
 	if httpRequest.APIFormat != "" {
@@ -967,6 +971,9 @@ func (p *PersistentOutboundTransformer) GetRequestedModel() string {
 // HasMoreChannels returns true if there are more candidates available for retry.
 // It implements the pipeline.Retryable interface.
 func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
+	if p.state.OutboundRequestBodyWritten && p.APIFormat() == llm.APIFormatGeminiInteractions {
+		return false
+	}
 	return p.state.CurrentCandidateIndex+1 < len(p.state.ChannelModelsCandidates)
 }
 
@@ -1034,6 +1041,9 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 // pipeline will ensure the maxSameChannelRetries is not exceeded.
 func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	if p.state.CurrentCandidate == nil {
+		return false
+	}
+	if p.state.OutboundRequestBodyWritten && p.APIFormat() == llm.APIFormatGeminiInteractions {
 		return false
 	}
 

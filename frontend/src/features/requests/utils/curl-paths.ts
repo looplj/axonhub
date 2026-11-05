@@ -18,6 +18,7 @@ const API_FORMAT_PATHS: Record<string, string> = {
   'openai/audio_translations': '/v1/audio/translations',
   'anthropic/messages': '/v1/messages',
   'gemini/contents': '/v1beta/models/{model}:generateContent',
+  'gemini/interactions': '/v1beta/interactions',
   'aisdk/text': '/api/chat',
   'aisdk/datastream': '/api/datastream',
   'jina/rerank': '/v1/rerank',

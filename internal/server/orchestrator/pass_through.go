@@ -277,6 +277,9 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 }
 
 func (p *PersistentOutboundTransformer) allowPassThroughBody(ctx context.Context, llmReq *llm.Request, providerReq *httpclient.Request) bool {
+	if llmReq != nil && llmReq.APIFormat == llm.APIFormatGeminiInteractions {
+		return false
+	}
 	policy, ok := p.wrapped.(transformer.PassThroughBodyPolicy)
 	if !ok {
 		return true
@@ -394,6 +397,7 @@ func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
 		llm.APIFormatJinaEmbedding,
 		llm.APIFormatJinaRerank,
 		llm.APIFormatAnthropicMessage,
+		llm.APIFormatGeminiInteractions,
 		// Speech (TTS) has a JSON body with a model field; transcription/translation
 		// use multipart bodies that cannot be patched via sjson, so they are excluded.
 		llm.APIFormatOpenAISpeech,

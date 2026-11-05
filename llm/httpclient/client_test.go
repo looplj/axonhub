@@ -940,3 +940,26 @@ func TestBuildHttpRequest_UserAgentPassThrough(t *testing.T) {
 		})
 	}
 }
+
+func TestHttpClient_DoReportsRequestBodyWritten(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer server.Close()
+
+	var written atomic.Bool
+	request := &Request{
+		Method:  http.MethodPost,
+		URL:     server.URL,
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    []byte(`{"model":"gemini-test"}`),
+		OnRequestBodyWritten: func() {
+			written.Store(true)
+		},
+	}
+
+	_, err := NewHttpClientWithClient(server.Client()).Do(context.Background(), request)
+	require.Error(t, err)
+	require.True(t, written.Load())
+}

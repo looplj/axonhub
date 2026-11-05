@@ -32,6 +32,7 @@ var SupportedAPIFormats = map[string]struct{}{
 	llm.APIFormatOpenAIDecisions.String():         {},
 	llm.APIFormatAnthropicMessage.String():        {},
 	llm.APIFormatGeminiContents.String():          {},
+	llm.APIFormatGeminiInteractions.String():      {},
 	llm.APIFormatGeminiEmbedding.String():         {},
 	llm.APIFormatJinaRerank.String():              {},
 	llm.APIFormatJinaEmbedding.String():           {},

@@ -11,6 +11,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strings"
 	"time"
@@ -515,6 +516,12 @@ func BuildHttpRequest(
 		}
 
 		httpReq.URL.RawQuery += request.Query.Encode()
+	}
+	if request.OnRequestBodyWritten != nil && len(request.Body) > 0 {
+		trace := &httptrace.ClientTrace{WroteRequest: func(httptrace.WroteRequestInfo) {
+			request.OnRequestBodyWritten()
+		}}
+		httpReq = httpReq.WithContext(httptrace.WithClientTrace(httpReq.Context(), trace))
 	}
 
 	return httpReq, nil

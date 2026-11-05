@@ -21,6 +21,37 @@ GenerateContent 请求也接受 `system_instruction`、`inline_data` 和 `mime_t
 - `GET /gemini/v1beta/models` - 列出可用模型
 - `GET /v1beta/models` - 列出可用模型 (可选)
 
+### Interactions API
+
+AxonHub 也通过现有的 Gemini 渠道类型提供无状态 Gemini Interactions API。
+在渠道上显式配置 `gemini/interactions` 端点后，可调用：
+
+- `POST /gemini/v1beta/interactions`
+- `POST /v1beta/interactions`
+
+请求使用官方的 `input`、`tools`、`generation_config` 和 `response_format`
+字段。`input` 可以是字符串，也可以是受支持步骤组成的无状态数组。
+AxonHub 会强制上游请求使用 `store: false`。无状态阶段暂不实现
+`previous_interaction_id`、`continuation_token`、`background`、获取、取消和删除操作。
+
+```json
+{
+  "model": "gemini-2.5-flash",
+  "input": "What is the weather?",
+  "tools": [{
+    "type": "function",
+    "name": "get_weather",
+    "parameters": {"type": "object"}
+  }],
+  "store": false
+}
+```
+
+设置 `stream: true` 可使用 SSE。流使用官方的
+`interaction.created`、`interaction.status_update`、`step.start`、`step.delta`、
+`step.stop`、`interaction.completed` 和 `error` 事件类型；函数调用参数通过
+`arguments_delta` 片段传输。
+
 **示例请求：**
 ```go
 import (

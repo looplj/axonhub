@@ -95,6 +95,10 @@ func isNonChoiceTerminalEvent(event *httpclient.StreamEvent) bool {
 	eventType := gjson.GetBytes(event.Data, "type").String()
 	return isResponsesTerminalEvent(event.Type) ||
 		isResponsesTerminalEvent(eventType) ||
+		event.Type == "interaction.completed" ||
+		event.Type == "error" ||
+		eventType == "interaction.completed" ||
+		eventType == "error" ||
 		event.Type == "message_stop" ||
 		eventType == "message_stop" ||
 		event.Type == "speech.audio.done" ||

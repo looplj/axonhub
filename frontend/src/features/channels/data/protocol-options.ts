@@ -44,6 +44,10 @@ export function getApiFormatsForProvider(provider: string, configs: ProtocolConf
     }
   }
 
+  if (provider === 'gemini' && formats.includes('gemini/contents') && !formats.includes('gemini/interactions')) {
+    formats.push('gemini/interactions');
+  }
+
   return formats;
 }
 
@@ -82,6 +86,10 @@ export function getChannelTypeForApiFormat(provider: string, apiFormat: ApiForma
   // channel type.
   if (apiFormat === 'zenmux/video') {
     return providerConfig.channelTypes.includes('zenmux_video') ? 'zenmux_video' : undefined;
+  }
+
+  if (provider === 'gemini' && apiFormat === 'gemini/interactions') {
+    return providerConfig.channelTypes.includes('gemini') ? 'gemini' : undefined;
   }
 
   for (const channelType of providerConfig.channelTypes) {
