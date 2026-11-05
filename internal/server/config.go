@@ -94,7 +94,12 @@ type Config struct {
 	RequestTimeout time.Duration `conf:"request_timeout" yaml:"request_timeout" json:"request_timeout"`
 
 	// LLMRequestTimeout is the maximum duration for processing a request to LLM.
+	// Zero disables the total request deadline.
 	LLMRequestTimeout time.Duration `conf:"llm_request_timeout" yaml:"llm_request_timeout" json:"llm_request_timeout"`
+
+	// LLMStreamIdleTimeout limits time without upstream stream data.
+	// Zero disables the stream idle deadline.
+	LLMStreamIdleTimeout time.Duration `conf:"llm_stream_idle_timeout" yaml:"llm_stream_idle_timeout" json:"llm_stream_idle_timeout"`
 
 	Safeguards safeguards.Config `conf:"safeguards" yaml:"safeguards" json:"safeguards"`
 
@@ -156,4 +161,12 @@ type IPAccessControl struct {
 	Enabled     bool     `conf:"enabled" yaml:"enabled" json:"enabled"`
 	AllowedIPs  []string `conf:"allowed_ips" yaml:"allowed_ips" json:"allowed_ips"`
 	RedirectURL string   `conf:"redirect_url" yaml:"redirect_url" json:"redirect_url"`
+}
+
+// writeTimeout must allow unlimited LLM requests when their total deadline is disabled.
+func (c Config) writeTimeout() time.Duration {
+	if c.LLMRequestTimeout <= 0 {
+		return 0
+	}
+	return max(c.RequestTimeout, c.LLMRequestTimeout)
 }

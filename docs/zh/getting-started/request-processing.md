@@ -37,6 +37,18 @@ flowchart TD
 
 ## 各阶段说明
 
+### 上游超时
+
+在 YAML 配置中设置以下服务端选项（值为时间长度）：
+
+```yaml
+server:
+  llm_stream_idle_timeout: 600s
+  llm_request_timeout: 1800s
+```
+
+`llm_stream_idle_timeout` 限制流式上游请求的空闲时间。从上游请求开始计时，收到上游字节时重置，包括上游心跳；网关生成的 ping 不会重置计时。`llm_request_timeout` 限制流式和非流式 LLM 请求的总时长。适用的时限中先到期者生效。将任一值设为 `0` 可关闭对应限制；关闭总时限后，空闲时限仍然生效。修改这些设置后需重启 AxonHub。
+
 ### 1. 协议转换
 
 AxonHub 支持多种 API 格式（如 OpenAI、Anthropic、Gemini），会先把请求转换成统一的内部格式。

@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"slices"
@@ -246,8 +248,22 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 
 	lease, err := e.acquirePreparedLease(ctx, request, wsURL, headers, payload)
 	if err != nil {
+		if cause := context.Cause(ctx); cause != nil {
+			err = cause
+		}
 		return nil, err
 	}
+	// Waiting for another request's pooled lease is local queueing. Start
+	// inactivity tracking only once this request can write upstream.
+	parentCtx := ctx
+	ctx, activity, stopIdle := httpclient.NewStreamIdleContext(ctx)
+	streamOwned := false
+	defer func() {
+		if !streamOwned {
+			stopIdle()
+		}
+	}()
+	setWebSocketActivity(lease.conn.NetConn(), activity)
 
 	if err := lease.write(ctx, payload); err != nil {
 		// A write failure is ambiguous: the upstream may already have accepted and
@@ -256,11 +272,20 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 		// for the caller to decide.
 		lease.release(true)
 
+		if cause := context.Cause(ctx); cause != nil {
+			err = cause
+		}
 		return nil, fmt.Errorf("failed to write response.create websocket event: %w", err)
 	}
 
-	stream := &webSocketStream{ctx: ctx, lease: lease, done: make(chan struct{})}
+	stream := &webSocketStream{ctx: ctx, parentCtx: parentCtx, lease: lease, done: make(chan struct{}), stopIdle: stopIdle}
+	streamOwned = true
 	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				slog.ErrorContext(ctx, "websocket cancellation watcher panicked", slog.Any("panic", recovered))
+			}
+		}()
 		select {
 		case <-ctx.Done():
 			_ = stream.Close()
@@ -514,12 +539,48 @@ func (e *WebSocketExecutor) getOrDialPooled(ctx context.Context, request *httpcl
 }
 
 func (e *WebSocketExecutor) dial(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header) (*websocket.Conn, error) {
+	ctx, activity, stopIdle := httpclient.NewStreamIdleContext(ctx)
+	defer stopIdle()
 	dialer := e.dialer
 	if dialer == nil {
 		dialer = websocket.DefaultDialer
 	}
 
-	conn, resp, err := dialer.DialContext(ctx, wsURL, headers)
+	// Gorilla applies context deadlines during the handshake, but context
+	// cancellation alone does not interrupt a blocked response-header read.
+	handshakeCtx := ctx
+	stopDialCancellation := func() bool { return false }
+	defer func() { stopDialCancellation() }()
+	clonedDialer := *dialer
+	dialContext := clonedDialer.NetDialContext
+	if dialContext == nil {
+		if legacyDial := clonedDialer.NetDial; legacyDial != nil {
+			dialContext = func(_ context.Context, network, address string) (net.Conn, error) {
+				return legacyDial(network, address)
+			}
+		} else {
+			dialContext = (&net.Dialer{}).DialContext
+		}
+	}
+	clonedDialer.NetDialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+		conn, err := dialContext(ctx, network, address)
+		if err != nil {
+			return nil, err
+		}
+		stopDialCancellation = context.AfterFunc(handshakeCtx, func() { _ = conn.Close() })
+		return &webSocketActivityConn{Conn: conn, activity: activity}, nil
+	}
+	if dialTLS := clonedDialer.NetDialTLSContext; dialTLS != nil {
+		clonedDialer.NetDialTLSContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+			conn, err := dialTLS(ctx, network, address)
+			if err != nil {
+				return nil, err
+			}
+			stopDialCancellation = context.AfterFunc(handshakeCtx, func() { _ = conn.Close() })
+			return &webSocketActivityConn{Conn: conn, activity: activity}, nil
+		}
+	}
+	conn, resp, err := clonedDialer.DialContext(ctx, wsURL, headers)
 	if resp != nil {
 		// The WebSocket handshake is an HTTP response. Observe it before
 		// converting a rejected handshake into httpclient.Error so both
@@ -527,7 +588,14 @@ func (e *WebSocketExecutor) dial(ctx context.Context, request *httpclient.Reques
 		request.ObserveResponseHeaders(ctx, resp.Header)
 	}
 	if err != nil {
+		if cause := context.Cause(ctx); cause != nil {
+			return nil, fmt.Errorf("websocket dial failed: %w", cause)
+		}
 		return nil, newWebSocketDialError(request, resp, err)
+	}
+	if cause := context.Cause(ctx); cause != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("websocket dial failed: %w", cause)
 	}
 	return conn, nil
 }
@@ -1134,16 +1202,18 @@ func newWebSocketDialError(request *httpclient.Request, resp *http.Response, err
 }
 
 type webSocketStream struct {
-	ctx      context.Context
-	lease    *webSocketLease
-	done     chan struct{}
-	doneOnce sync.Once
-	mu       sync.Mutex
-	current  *httpclient.StreamEvent
-	err      error
-	closed   bool
-	sawEvent bool
-	terminal bool
+	ctx       context.Context
+	parentCtx context.Context
+	lease     *webSocketLease
+	done      chan struct{}
+	doneOnce  sync.Once
+	mu        sync.Mutex
+	current   *httpclient.StreamEvent
+	err       error
+	closed    bool
+	sawEvent  bool
+	terminal  bool
+	stopIdle  func()
 }
 
 func (s *webSocketStream) Next() bool {
@@ -1166,7 +1236,7 @@ func (s *webSocketStream) Next() bool {
 			return false
 		}
 		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || strings.Contains(err.Error(), "use of closed network connection") {
-			if ctxErr := s.ctx.Err(); ctxErr != nil {
+			if ctxErr := context.Cause(s.ctx); ctxErr != nil {
 				s.setErr(ctxErr)
 			} else if !s.hasSeenEvent() {
 				s.setErr(fmt.Errorf("websocket closed before response event"))
@@ -1236,9 +1306,17 @@ func (s *webSocketStream) Close() error {
 }
 
 func (s *webSocketStream) contextCancelled() bool {
+	s.mu.Lock()
+	ctx := s.ctx
+	if s.closed && s.parentCtx != nil {
+		// Finishing cancels the watchdog context to release its resources.
+		// Only a caller cancellation can change an already finished stream.
+		ctx = s.parentCtx
+	}
+	s.mu.Unlock()
 	select {
-	case <-s.ctx.Done():
-		s.setContextErr()
+	case <-ctx.Done():
+		s.setContextErr(context.Cause(ctx))
 		s.finish(true)
 		return true
 	default:
@@ -1246,10 +1324,10 @@ func (s *webSocketStream) contextCancelled() bool {
 	}
 }
 
-func (s *webSocketStream) setContextErr() {
+func (s *webSocketStream) setContextErr(cause error) {
 	s.mu.Lock()
 	if s.err == nil && !s.terminal {
-		s.err = s.ctx.Err()
+		s.err = cause
 	}
 	s.mu.Unlock()
 }
@@ -1281,7 +1359,7 @@ func (s *webSocketStream) markTerminal() {
 
 func (s *webSocketStream) setErr(err error) {
 	s.mu.Lock()
-	if ctxErr := s.ctx.Err(); ctxErr != nil && !s.terminal {
+	if ctxErr := context.Cause(s.ctx); ctxErr != nil && !s.terminal {
 		s.err = ctxErr
 	} else if !s.closed {
 		s.err = err
@@ -1293,11 +1371,15 @@ func (s *webSocketStream) finish(evict bool) {
 	s.doneOnce.Do(func() {
 		s.mu.Lock()
 		s.closed = true
-		if ctxErr := s.ctx.Err(); ctxErr != nil && !s.terminal {
+		if ctxErr := context.Cause(s.ctx); ctxErr != nil && !s.terminal {
 			s.err = ctxErr
 		}
 		lease := s.lease
 		s.mu.Unlock()
+		if s.stopIdle != nil {
+			setWebSocketActivity(lease.conn.NetConn(), nil)
+			s.stopIdle()
+		}
 		lease.release(evict)
 		close(s.done)
 	})
@@ -1394,4 +1476,38 @@ func jsonValueIsEmpty(value any) bool {
 	}
 	text, ok := value.(string)
 	return ok && text == ""
+}
+
+// Track socket reads rather than decoded events: control frames and partial
+// message payloads are upstream activity too, including on pooled connections.
+type webSocketActivityConn struct {
+	net.Conn
+	mu       sync.Mutex
+	activity func()
+}
+
+func (c *webSocketActivityConn) Read(p []byte) (int, error) {
+	n, err := c.Conn.Read(p)
+	if n > 0 {
+		c.mu.Lock()
+		activity := c.activity
+		c.mu.Unlock()
+		if activity != nil {
+			activity()
+		}
+	}
+	return n, err
+}
+
+func setWebSocketActivity(conn net.Conn, activity func()) {
+	if c, ok := conn.(*webSocketActivityConn); ok {
+		c.mu.Lock()
+		c.activity = activity
+		c.mu.Unlock()
+		return
+	}
+	// TLS wraps the dialed socket, which retains the read observer.
+	if c, ok := conn.(interface{ NetConn() net.Conn }); ok {
+		setWebSocketActivity(c.NetConn(), activity)
+	}
 }

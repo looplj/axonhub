@@ -377,14 +377,30 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 	rawReq.Header.Set("Cache-Control", "no-cache")
 	rawReq.Header.Set("Connection", "keep-alive")
 
-	// Execute request
+	// Start at upstream request initiation, before waiting for headers.
+	streamCtx, activity, stop := NewStreamIdleContext(ctx)
+	rawReq = rawReq.WithContext(streamCtx)
+	streamOwned := false
+	defer func() {
+		if !streamOwned {
+			stop()
+		}
+	}()
+
 	rawResp, err := hc.client.Do(rawReq)
 	if rawResp != nil {
 		request.ObserveResponseHeaders(ctx, rawResp.Header)
 	}
 	if err != nil {
+		if cause := context.Cause(streamCtx); cause != nil {
+			err = cause
+		}
 		return nil, fmt.Errorf("HTTP stream request failed: %w", err)
 	}
+
+	// Receiving response headers is upstream progress before the first body byte.
+	activity()
+	rawResp.Body = &streamActivityReader{ReadCloser: rawResp.Body, ctx: streamCtx, activity: activity}
 
 	// Check for HTTP errors before creating stream
 	if rawResp.StatusCode >= 400 {
@@ -439,7 +455,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		decoderFactory = NewDefaultSSEDecoder
 	}
 
-	stream := decoderFactory(ctx, rawResp.Body)
+	stream := decoderFactory(streamCtx, rawResp.Body)
 	responseHeaders := make(http.Header)
 	if value := rawResp.Header.Get("X-Codex-Turn-State"); value != "" {
 		responseHeaders.Set("X-Codex-Turn-State", value)
@@ -453,6 +469,8 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		return event
 	})
 
+	stream = &idleTimeoutStream{Stream: stream, ctx: streamCtx, stop: stop}
+	streamOwned = true
 	return WithResponseHeaders(stream, MergeForwardResponseHeaders(nil, rawResp.Header)), nil
 }
 

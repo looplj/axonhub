@@ -26,6 +26,8 @@ func TestIsUpstreamTransportError(t *testing.T) {
 		{name: "EOF", err: io.EOF, want: true},
 		{name: "llm stream incomplete", err: llm.ErrStreamIncomplete, want: true},
 		{name: "orchestrator stream incomplete", err: ErrStreamIncomplete, want: true},
+		{name: "stream idle timeout", err: httpclient.ErrStreamIdleTimeout, want: true},
+		{name: "idle timeout with child cancellation", err: errors.Join(httpclient.ErrStreamIdleTimeout, context.Canceled), want: true},
 		{name: "context canceled", err: context.Canceled, want: false},
 		{name: "deadline exceeded", err: context.DeadlineExceeded, want: false},
 		{name: "plain error", err: errors.New("boom"), want: false},
@@ -76,4 +78,13 @@ func TestExtractErrorMessageAndInfo_ClassifiedTransportError(t *testing.T) {
 	// Plain errors keep the previous behavior.
 	require.Equal(t, "boom", ExtractErrorMessage(errors.New("boom")))
 	require.Nil(t, ExtractErrorInfo(errors.New("boom")))
+}
+
+func TestClassifyUpstreamStreamIdleTimeout(t *testing.T) {
+	err := ClassifyUpstreamTransportError(httpclient.ErrStreamIdleTimeout)
+	var responseError *llm.ResponseError
+	require.ErrorAs(t, err, &responseError)
+	require.Equal(t, http.StatusBadGateway, responseError.StatusCode)
+	require.ErrorIs(t, err, httpclient.ErrStreamIdleTimeout)
+	require.Same(t, err, ClassifyUpstreamTransportError(err))
 }
