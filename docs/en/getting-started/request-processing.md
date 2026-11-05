@@ -47,7 +47,7 @@ server:
   llm_request_timeout: 1800s
 ```
 
-`llm_stream_idle_timeout` limits inactivity on streaming upstream requests. It starts when the upstream request begins and resets whenever upstream bytes arrive, including upstream heartbeats; gateway-generated pings do not reset it. `llm_request_timeout` limits the total LLM request duration for streaming and non-streaming requests. The first applicable deadline to expire wins. Set either value to `0` to disable that limit; disabling the total timeout leaves the idle timeout active. Restart AxonHub after changing these settings.
+`llm_stream_idle_timeout` limits inactivity on streaming upstream requests. It starts when the upstream request begins and resets whenever upstream bytes arrive, including upstream heartbeats; gateway-generated pings do not reset it. The idle timer pauses while the gateway is not reading upstream data, so downstream processing and slow clients do not count as upstream inactivity. `llm_request_timeout` limits the total LLM request duration for streaming and non-streaming requests. The first applicable deadline to expire wins. Set either value to `0` to disable that limit; disabling the total timeout leaves the idle timeout active. With the total timeout disabled, individual downstream writes still have a 30-second deadline to release resources held by stalled clients. Restart AxonHub after changing these settings.
 
 ### 1. Protocol Transform
 

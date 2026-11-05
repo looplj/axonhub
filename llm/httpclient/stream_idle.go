@@ -13,16 +13,20 @@ import (
 // ErrStreamIdleTimeout indicates that an upstream stream stopped sending bytes.
 var ErrStreamIdleTimeout = errors.New("upstream stream idle timeout")
 
-type streamIdleTimeoutKey struct{}
+type (
+	streamIdleTimeoutKey struct{}
+	streamIdleWaitingKey struct{}
+)
 
 // WithStreamIdleTimeout configures the maximum interval without upstream stream
-// bytes, including the wait for response headers. Zero disables the timeout.
+// bytes while waiting on upstream, including response headers. Zero disables it.
 func WithStreamIdleTimeout(ctx context.Context, timeout time.Duration) context.Context {
 	return context.WithValue(ctx, streamIdleTimeoutKey{}, timeout)
 }
 
 // NewStreamIdleContext starts an upstream inactivity watchdog. Call activity
-// only when upstream bytes arrive, and stop when the attempt finishes. Custom
+// only when upstream bytes arrive, and stop when the attempt finishes. Use
+// SetStreamIdleWaiting to exclude time spent waiting for the consumer. Custom
 // streaming transports use this to share the HTTP transport's timeout policy.
 func NewStreamIdleContext(ctx context.Context) (streamCtx context.Context, activity func(), stop func()) {
 	timeout, _ := ctx.Value(streamIdleTimeoutKey{}).(time.Duration)
@@ -34,12 +38,13 @@ func NewStreamIdleContext(ctx context.Context) (streamCtx context.Context, activ
 	var mu sync.Mutex
 	deadline := time.Now().Add(timeout)
 	stopped := false
+	waiting := true
 	var timer *time.Timer
 	mu.Lock()
 	timer = time.AfterFunc(timeout, func() {
 		mu.Lock()
 		defer mu.Unlock()
-		if stopped {
+		if stopped || !waiting {
 			return
 		}
 		// A callback already queued before Reset must honor the latest bytes.
@@ -54,11 +59,25 @@ func NewStreamIdleContext(ctx context.Context) (streamCtx context.Context, activ
 	activity = func() {
 		mu.Lock()
 		defer mu.Unlock()
-		if !stopped {
+		if !stopped && waiting {
 			deadline = time.Now().Add(timeout)
 			timer.Reset(timeout)
 		}
 	}
+	streamCtx = context.WithValue(streamCtx, streamIdleWaitingKey{}, func(active bool) {
+		mu.Lock()
+		defer mu.Unlock()
+		if stopped || waiting == active {
+			return
+		}
+		waiting = active
+		if active {
+			deadline = time.Now().Add(timeout)
+			timer.Reset(timeout)
+		} else {
+			timer.Stop()
+		}
+	})
 	disarm := func() {
 		mu.Lock()
 		stopped = true
@@ -74,6 +93,23 @@ func NewStreamIdleContext(ctx context.Context) (streamCtx context.Context, activ
 	return streamCtx, activity, stop
 }
 
+// SetStreamIdleWaiting arms the watchdog only while the transport is waiting
+// for upstream data. Resuming grants a full idle interval to the next read.
+func SetStreamIdleWaiting(ctx context.Context, waiting bool) {
+	if set, ok := ctx.Value(streamIdleWaitingKey{}).(func(bool)); ok {
+		set(waiting)
+	}
+}
+
+// StreamContextError preserves the upstream idle sentinel while retaining the
+// standard cancellation errors used by callers to classify parent cancellation.
+func StreamContextError(ctx context.Context) error {
+	if errors.Is(context.Cause(ctx), ErrStreamIdleTimeout) {
+		return ErrStreamIdleTimeout
+	}
+	return ctx.Err()
+}
+
 type streamActivityReader struct {
 	io.ReadCloser
 	ctx      context.Context
@@ -81,12 +117,14 @@ type streamActivityReader struct {
 }
 
 func (r *streamActivityReader) Read(p []byte) (int, error) {
+	SetStreamIdleWaiting(r.ctx, true)
+	defer SetStreamIdleWaiting(r.ctx, false)
 	n, err := r.ReadCloser.Read(p)
 	if n > 0 {
 		r.activity()
 	}
-	if err != nil && context.Cause(r.ctx) != nil {
-		err = context.Cause(r.ctx)
+	if err != nil && StreamContextError(r.ctx) != nil {
+		err = StreamContextError(r.ctx)
 	}
 	return n, err
 }
@@ -108,7 +146,7 @@ func (s *idleTimeoutStream) Next() bool {
 	}
 	s.finished = true
 	s.err = s.Stream.Err()
-	if cause := context.Cause(s.ctx); cause != nil {
+	if cause := StreamContextError(s.ctx); cause != nil {
 		s.err = cause
 	}
 	s.stop()

@@ -236,7 +236,7 @@ func (s *defaultSSEDecoder) Next() bool {
 	// Pre-check ctx so we don't enter Recv after explicit cancellation.
 	select {
 	case <-s.ctx.Done():
-		s.err = context.Cause(s.ctx)
+		s.err = StreamContextError(s.ctx)
 
 		return false
 	default:
@@ -255,7 +255,7 @@ func (s *defaultSSEDecoder) Next() bool {
 		// can distinguish cancellation from genuine transport errors.
 		if errors.Is(err, bufio.ErrTooLong) {
 			s.err = fmt.Errorf("%w: limit %d bytes", ErrStreamEventTooLarge, s.maxEventSize)
-		} else if ctxErr := context.Cause(s.ctx); ctxErr != nil {
+		} else if ctxErr := StreamContextError(s.ctx); ctxErr != nil {
 			s.err = ctxErr
 		} else {
 			s.err = err
@@ -367,7 +367,7 @@ func (d *binaryChunkDecoder) Next() bool {
 
 	select {
 	case <-d.ctx.Done():
-		d.err = context.Cause(d.ctx)
+		d.err = StreamContextError(d.ctx)
 		return false
 	default:
 	}
@@ -375,7 +375,7 @@ func (d *binaryChunkDecoder) Next() bool {
 	n, err := d.reader.Read(d.buf)
 	if n > 0 {
 		if err != nil && !errors.Is(err, io.EOF) {
-			if ctxErr := context.Cause(d.ctx); ctxErr != nil {
+			if ctxErr := StreamContextError(d.ctx); ctxErr != nil {
 				d.pendingErr = ctxErr
 			} else {
 				d.pendingErr = err
@@ -407,7 +407,7 @@ func (d *binaryChunkDecoder) Next() bool {
 		return false
 	}
 
-	if ctxErr := context.Cause(d.ctx); ctxErr != nil {
+	if ctxErr := StreamContextError(d.ctx); ctxErr != nil {
 		d.err = ctxErr
 	} else {
 		d.err = err

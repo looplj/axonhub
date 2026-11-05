@@ -12,7 +12,7 @@ func TestWriteTimeout(t *testing.T) {
 		name               string
 		request, llm, want time.Duration
 	}{
-		{"unlimited LLM", 30 * time.Second, 0, 0},
+		{"unlimited LLM", 30 * time.Second, 0, 30 * time.Second},
 		{"LLM longer", 30 * time.Second, 30 * time.Minute, 30 * time.Minute},
 		{"ordinary longer", time.Minute, 30 * time.Second, time.Minute},
 	} {

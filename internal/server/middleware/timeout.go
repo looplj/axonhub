@@ -28,6 +28,11 @@ func WithLLMTimeout(timeout time.Duration) gin.HandlerFunc {
 		ctx, cancel := context.WithCancel(c.Request.Context())
 		defer cancel()
 		c.Request = c.Request.WithContext(ctx)
+		writer := &llmResponseWriter{ResponseWriter: c.Writer, timeout: llmWriteTimeout}
+		c.Writer = writer
+		writer.setDeadline(time.Time{})
+		// net/http may flush buffered headers/body after Gin returns.
+		defer func() { writer.setDeadline(time.Now().Add(writer.timeout)) }()
 		c.Next()
 	}
 }
