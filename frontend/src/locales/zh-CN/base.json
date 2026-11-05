@@ -321,6 +321,8 @@
   "scopes.read_dashboard": "查看仪表板",
   "scopes.read_settings": "查看系统设置",
   "scopes.write_settings": "管理系统设置",
+  "scopes.read_plugins": "查看插件",
+  "scopes.write_plugins": "修改插件配置",
   "scopes.read_projects": "查看项目信息",
   "scopes.write_projects": "管理项目",
   "scopes.select.label": "权限范围",

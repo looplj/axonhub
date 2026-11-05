@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { NAV_GROUP_DEFS } from '@/config/nav-items';
+import { NAV_GROUP_DEFS, PLUGINS_NAV_GROUP_ID } from '@/config/nav-items';
+import { IconAppWindow } from '@tabler/icons-react';
 import { Command } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
@@ -7,6 +8,8 @@ import { useSidebarPrefsStore } from '@/stores/sidebarPrefsStore';
 import { formatUserName, isCJKName } from '@/lib/utils';
 import { useRoutePermissions } from '@/hooks/useRoutePermissions';
 import { useMe } from '@/features/auth/data/auth';
+import { usePluginUIEntries } from '@/features/plugins/data/plugin-ui';
+import { resolvePluginTitle } from '@/features/plugins/plugin-ui';
 import { type SidebarData, type NavGroup, type NavLink } from './components/layout/types';
 
 // Translates the structural navigation definition into renderable groups.
@@ -17,6 +20,7 @@ export function useRawNavGroups(): NavGroup[] {
   return useMemo(
     () =>
       NAV_GROUP_DEFS.map((group) => ({
+        id: group.id,
         title: t(group.titleKey),
         items: group.items.map(
           (item) =>
@@ -47,8 +51,24 @@ export function applyHiddenNavItems(groups: NavGroup[], hiddenItems: string[]): 
     .filter((group) => group.items.length > 0);
 }
 
+// Appends plugin pages to the plugins group. The static group disappears when
+// the user cannot or chose not to see "Manage plugins", so it is recreated in
+// its usual slot before the settings group.
+export function mergePluginPages(groups: NavGroup[], pageItems: NavLink[], title: string): NavGroup[] {
+  const index = groups.findIndex((group) => group.id === PLUGINS_NAV_GROUP_ID);
+  if (index >= 0) {
+    return groups.map((group, i) => (i === index ? { ...group, items: [...group.items, ...pageItems] } : group));
+  }
+  const pluginGroup: NavGroup = { id: PLUGINS_NAV_GROUP_ID, title, items: pageItems };
+  const settingsIndex = groups.findIndex((group) => group.id === 'settings');
+  if (settingsIndex < 0) {
+    return [...groups, pluginGroup];
+  }
+  return [...groups.slice(0, settingsIndex), pluginGroup, ...groups.slice(settingsIndex)];
+}
+
 export function useSidebarData(): SidebarData {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user: authUser } = useAuthStore((state) => state.auth);
   const { data: meData } = useMe();
   const { filterNavGroups } = useRoutePermissions();
@@ -88,12 +108,29 @@ export function useSidebarData(): SidebarData {
   };
 
   const rawNavGroups = useRawNavGroups();
+  const { data: pluginEntries } = usePluginUIEntries();
 
   // Filter by permission first, then by the user's own visibility preferences.
-  const filteredNavGroups = useMemo(
-    () => applyHiddenNavItems(filterNavGroups(rawNavGroups), hiddenItems),
-    [filterNavGroups, rawNavGroups, hiddenItems]
-  );
+  // Plugin pages are added to the plugins group after that filter. They are not
+  // static nav items and they are not gated by route-permission.ts.
+  const filteredNavGroups = useMemo(() => {
+    const groups = applyHiddenNavItems(filterNavGroups(rawNavGroups), hiddenItems);
+    const pages = pluginEntries?.pluginUIEntries.pages ?? [];
+    if (pages.length === 0) {
+      return groups;
+    }
+    const pageItems = pages.map(
+      (page) =>
+        ({
+          title: resolvePluginTitle(page.title, i18n.language, page.key),
+          url: '/plugins/$pluginId/pages/$page',
+          params: { pluginId: page.pluginID, page: page.key },
+          matchPath: `/plugins/${page.pluginID}/pages/${page.key}`,
+          icon: IconAppWindow,
+        }) as NavLink
+    );
+    return mergePluginPages(groups, pageItems, t('plugins.nav.group'));
+  }, [filterNavGroups, rawNavGroups, hiddenItems, pluginEntries, i18n.language, t]);
 
   return {
     user: {

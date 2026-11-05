@@ -375,6 +375,54 @@ func (f OIDCIdentityMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mu
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.OIDCIdentityMutation", m)
 }
 
+// The PluginQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type PluginQueryRuleFunc func(context.Context, *ent.PluginQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f PluginQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.PluginQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.PluginQuery", q)
+}
+
+// The PluginMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type PluginMutationRuleFunc func(context.Context, *ent.PluginMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f PluginMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.PluginMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.PluginMutation", m)
+}
+
+// The PluginStorageQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type PluginStorageQueryRuleFunc func(context.Context, *ent.PluginStorageQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f PluginStorageQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.PluginStorageQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.PluginStorageQuery", q)
+}
+
+// The PluginStorageMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type PluginStorageMutationRuleFunc func(context.Context, *ent.PluginStorageMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f PluginStorageMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.PluginStorageMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.PluginStorageMutation", m)
+}
+
 // The ProjectQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type ProjectQueryRuleFunc func(context.Context, *ent.ProjectQuery) error
@@ -768,6 +816,10 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.OIDCIdentityQuery:
 		return q.Filter(), nil
+	case *ent.PluginQuery:
+		return q.Filter(), nil
+	case *ent.PluginStorageQuery:
+		return q.Filter(), nil
 	case *ent.ProjectQuery:
 		return q.Filter(), nil
 	case *ent.PromptQuery:
@@ -824,6 +876,10 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	case *ent.ModelMutation:
 		return m.Filter(), nil
 	case *ent.OIDCIdentityMutation:
+		return m.Filter(), nil
+	case *ent.PluginMutation:
+		return m.Filter(), nil
+	case *ent.PluginStorageMutation:
 		return m.Filter(), nil
 	case *ent.ProjectMutation:
 		return m.Filter(), nil

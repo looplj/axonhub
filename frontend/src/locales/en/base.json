@@ -321,6 +321,8 @@
   "scopes.read_dashboard": "View dashboard",
   "scopes.read_settings": "View system settings",
   "scopes.write_settings": "Manage system settings",
+  "scopes.read_plugins": "View plugins",
+  "scopes.write_plugins": "Manage plugin configuration",
   "scopes.read_projects": "View project information",
   "scopes.write_projects": "Manage projects",
   "scopes.select.label": "Scopes",

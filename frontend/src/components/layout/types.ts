@@ -17,6 +17,8 @@ interface BaseNavItem {
   badge?: string;
   icon?: React.ElementType;
   isDisabled?: boolean;
+  params?: Record<string, string>;
+  matchPath?: string;
 }
 
 type NavLink = BaseNavItem & {
@@ -33,6 +35,7 @@ type NavCollapsible = BaseNavItem & {
 type NavItem = NavCollapsible | NavLink;
 
 interface NavGroup {
+  id?: string;
   title: string;
   items: NavItem[];
 }

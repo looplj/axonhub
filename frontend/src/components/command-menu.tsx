@@ -49,10 +49,16 @@ function CommandMenuContent({
                 if (navItem.url)
                   return (
                     <CommandItem
-                      key={`${navItem.url}-${i}`}
-                      value={navItem.title}
+                      key={`${navItem.matchPath || navItem.url}-${i}`}
+                      value={`${navItem.title} ${navItem.matchPath || navItem.url}`}
                       onSelect={() => {
-                        runCommand(() => navigate({ to: navItem.url }));
+                        runCommand(() => {
+                          if (navItem.params) {
+                            void navigate({ to: navItem.url, params: navItem.params } as never);
+                            return;
+                          }
+                          void navigate({ to: navItem.url });
+                        });
                       }}
                     >
                       <div className='mr-2 flex h-4 w-4 items-center justify-center'>

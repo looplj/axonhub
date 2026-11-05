@@ -398,6 +398,61 @@ var (
 			},
 		},
 	}
+	// PluginsColumns holds the columns for the "plugins" table.
+	PluginsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "plugin_id", Type: field.TypeString, Size: 64},
+		{Name: "name", Type: field.TypeString, Nullable: true, Size: 1024, Default: ""},
+		{Name: "version", Type: field.TypeString, Nullable: true, Size: 128, Default: ""},
+		{Name: "description", Type: field.TypeString, Nullable: true, Size: 4096, Default: ""},
+		{Name: "manifest", Type: field.TypeJSON, Nullable: true},
+		{Name: "package", Type: field.TypeBytes, Nullable: true, SchemaType: map[string]string{"mysql": "longblob"}},
+		{Name: "package_sha256", Type: field.TypeString, Nullable: true, Size: 64, Default: ""},
+		{Name: "enabled", Type: field.TypeBool, Default: false},
+		{Name: "priority", Type: field.TypeInt, Default: 100},
+		{Name: "granted_permissions", Type: field.TypeJSON, Nullable: true},
+		{Name: "config", Type: field.TypeJSON, Nullable: true},
+	}
+	// PluginsTable holds the schema information for the "plugins" table.
+	PluginsTable = &schema.Table{
+		Name:       "plugins",
+		Columns:    PluginsColumns,
+		PrimaryKey: []*schema.Column{PluginsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "plugins_by_plugin_id",
+				Unique:  true,
+				Columns: []*schema.Column{PluginsColumns[4], PluginsColumns[3]},
+			},
+		},
+	}
+	// PluginStoragesColumns holds the columns for the "plugin_storages" table.
+	PluginStoragesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "installation_id", Type: field.TypeInt},
+		{Name: "namespace", Type: field.TypeString, Size: 128, Default: "default"},
+		{Name: "key", Type: field.TypeString, Size: 128},
+		{Name: "value", Type: field.TypeString, SchemaType: map[string]string{"mysql": "mediumtext"}},
+		{Name: "expires_at", Type: field.TypeTime, Nullable: true},
+	}
+	// PluginStoragesTable holds the schema information for the "plugin_storages" table.
+	PluginStoragesTable = &schema.Table{
+		Name:       "plugin_storages",
+		Columns:    PluginStoragesColumns,
+		PrimaryKey: []*schema.Column{PluginStoragesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "plugin_storages_by_installation_namespace_key",
+				Unique:  true,
+				Columns: []*schema.Column{PluginStoragesColumns[3], PluginStoragesColumns[4], PluginStoragesColumns[5]},
+			},
+		},
+	}
 	// ProjectsColumns holds the columns for the "projects" table.
 	ProjectsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -1070,6 +1125,8 @@ var (
 		InvitationsTable,
 		ModelsTable,
 		OidcIdentitiesTable,
+		PluginsTable,
+		PluginStoragesTable,
 		ProjectsTable,
 		PromptsTable,
 		PromptProtectionRulesTable,

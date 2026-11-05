@@ -1,10 +1,14 @@
 package server
 
 import (
+	"context"
+	"errors"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/server/api"
@@ -12,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/gql"
 	"github.com/looplj/axonhub/internal/server/gql/openapi"
 	"github.com/looplj/axonhub/internal/server/middleware"
+	"github.com/looplj/axonhub/internal/server/plugin"
 	"github.com/looplj/axonhub/internal/server/static"
 )
 
@@ -50,6 +55,7 @@ type Services struct {
 	AuthService    *biz.AuthService
 	SystemService  *biz.SystemService
 	RequestService *biz.RequestService
+	PluginManager  *plugin.Manager
 }
 
 func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services Services, ipAccessControl *middleware.IPAccessControlConfig) {
@@ -97,6 +103,9 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		// User Login - DO NOT AUTH
 		unSecureAdminGroup.POST("/auth/signin", handlers.Auth.SignIn)
 		unSecureAdminGroup.POST("/auth/refresh", handlers.Auth.Refresh)
+		// The UI token is the credential. GET and HEAD are the only successful
+		// methods; other methods hit the same handler and return 405.
+		registerPluginUIRoutes(unSecureAdminGroup, services.PluginManager, services.SystemService)
 	}
 
 	oauthGroup := server.Group("/oauth", middleware.WithTimeout(server.Config.RequestTimeout))
@@ -163,6 +172,21 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	{
 		adminGraphqlGroup.POST("/graphql", middleware.WithTimeout(server.Config.RequestTimeout), func(c *gin.Context) {
 			handlers.Graphql.Graphql.ServeHTTP(c.Writer, c.Request)
+		})
+	}
+
+	// Page GraphQL accepts a user JWT only. Service-account keys stay on
+	// /admin/graphql. The 10s budget, rate limit, and response cap belong to
+	// this route and are not applied to the admin GraphQL handler.
+	pluginGraphqlGroup := server.Group(
+		"/admin/plugins",
+		middleware.WithJWTAuth(services.AuthService),
+		middleware.WithProjectID(),
+		middleware.WithTimeout(gql.PluginGraphqlTimeout),
+	)
+	{
+		pluginGraphqlGroup.POST("/:pluginId/graphql", func(c *gin.Context) {
+			handlers.Graphql.PluginGraphql.ServeHTTP(c.Writer, c.Request)
 		})
 	}
 
@@ -291,4 +315,30 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 
 		registerGeminiRoutes(geminiAliasGroup)
 	}
+}
+
+// registerPluginUIRoutes serves token-scoped plugin UI files without a user JWT.
+// A nil manager does not panic here; the handler answers 503.
+func registerPluginUIRoutes(group *gin.RouterGroup, manager *plugin.Manager, system *biz.SystemService) {
+	handler := func(c *gin.Context) {
+		request := plugin.PluginUIRequest{
+			Manager: manager,
+			Token:   c.Param("token"),
+			Path:    c.Param("path"),
+		}
+		if system == nil {
+			request.SecretErr = errors.New("system secret is unavailable")
+		} else {
+			secret, err := authz.RunWithSystemBypass(c.Request.Context(), "plugin-ui-secret", func(ctx context.Context) (string, error) {
+				return system.SecretKey(ctx)
+			})
+			if err != nil {
+				request.SecretErr = err
+			} else {
+				request.Secret = secret
+			}
+		}
+		plugin.ServePluginUI(c.Writer, c.Request, request)
+	}
+	group.Any("/plugin-ui/:token/*path", handler)
 }

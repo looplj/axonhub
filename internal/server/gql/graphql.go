@@ -44,6 +44,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/internal/server/plugin"
 	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/internal/server/video_storage"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -82,11 +83,15 @@ type Dependencies struct {
 	GCWorker                       *gc.Worker
 	VideoWorker                    *video_storage.Worker
 	CatalogService                 *biz.CatalogService
+	PluginManager                  *plugin.Manager
 }
 
 type GraphqlHandler struct {
-	Graphql    http.Handler
-	Playground http.Handler
+	Graphql       http.Handler
+	Playground    http.Handler
+	PluginGraphql http.Handler
+
+	executable graphql.ExecutableSchema
 }
 
 // maxBackupUploadSize bounds what the restore mutation accepts through the
@@ -112,40 +117,8 @@ type GraphqlHandler struct {
 const maxBackupUploadSize = 128 << 20 // 128 MiB
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
-	gqlSrv := handler.New(
-		NewSchema(
-			deps.Ent,
-			deps.AuthService,
-			deps.APIKeyService,
-			deps.UserService,
-			deps.SystemService,
-			deps.ChannelService,
-			deps.RequestService,
-			deps.QuotaService,
-			deps.ProjectService,
-			deps.DataStorageService,
-			deps.RoleService,
-			deps.TraceService,
-			deps.ThreadService,
-			deps.UsageLogService,
-			deps.ChannelOverrideTemplateService,
-			deps.APIKeyProfileTemplateService,
-			deps.ModelService,
-			deps.BackupService,
-			deps.ChannelProbeService,
-			deps.PromptService,
-			deps.PromptProtectionRuleService,
-			deps.ProviderQuotaService,
-			deps.Scheduler,
-			deps.DefaultSelector,
-			deps.CandidateSelectorDiagnostics,
-			deps.ChannelLimiterManager,
-			deps.HttpClient,
-			deps.GCWorker,
-			deps.VideoWorker,
-			deps.CatalogService,
-		),
-	)
+	schema := newSchemaFromDeps(deps)
+	gqlSrv := handler.New(schema)
 
 	gqlSrv.AddTransport(transport.Options{})
 	gqlSrv.AddTransport(transport.GET{})
@@ -163,49 +136,186 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	})
 	gqlSrv.Use(&loggingTracer{})
 	gqlSrv.AroundOperations(apiKeyReadOnly)
-	skipTestChannelTransaction := entgql.SkipOperations("TestChannel", "TestChannelAPIKeys")
-	skipBulkImportTransaction := entgql.SkipIfHasFields("bulkImportChannels")
 	gqlSrv.Use(entgql.Transactioner{
 		TxOpener: deps.Ent,
 		// TestChannel performs long-running parallel provider requests whose database
 		// operations do not require one transaction. BulkImportChannels manages one
 		// transaction per row to preserve its partial-success behavior.
-		SkipTxFunc: func(op *ast.OperationDefinition) bool {
-			return skipTestChannelTransaction(op) || skipBulkImportTransaction(op)
-		},
+		SkipTxFunc: skipGraphqlTransaction,
 	})
-
-	// Set error presenter to handle CodedError and add extensions.code
-	gqlSrv.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {
-		// Check if it's a CodedError
-		var codedErr *xerrors.CodedError
-		if errors.As(err, &codedErr) {
-			return &gqlerror.Error{
-				Message: codedErr.Message,
-				Extensions: map[string]any{
-					"code":     codedErr.Code,
-					"resource": codedErr.Extensions["resource"],
-					"field":    codedErr.Extensions["field"],
-					"value":    codedErr.Extensions["value"],
-				},
-			}
-		}
-		// Convert ent privacy deny errors to FORBIDDEN
-		if errors.Is(err, privacy.Deny) {
-			return &gqlerror.Error{
-				Message: "permission denied",
-				Extensions: map[string]any{
-					"code": xerrors.ErrCodeForbidden,
-				},
-			}
-		}
-		// Return default error presentation
-		return graphql.DefaultErrorPresenter(ctx, err)
-	})
+	gqlSrv.SetErrorPresenter(presentGraphqlError)
 
 	return &GraphqlHandler{
-		Graphql:    gqlSrv,
-		Playground: playground.Handler("AxonHub", "/admin/graphql"),
+		Graphql:       gqlSrv,
+		Playground:    playground.Handler("AxonHub", "/admin/graphql"),
+		PluginGraphql: newPluginGraphqlHandler(schema, deps.Ent, deps.PluginManager),
+		executable:    schema,
+	}
+}
+
+func newSchemaFromDeps(deps Dependencies) graphql.ExecutableSchema {
+	return NewSchema(
+		deps.Ent,
+		deps.AuthService,
+		deps.APIKeyService,
+		deps.UserService,
+		deps.SystemService,
+		deps.ChannelService,
+		deps.RequestService,
+		deps.QuotaService,
+		deps.ProjectService,
+		deps.DataStorageService,
+		deps.RoleService,
+		deps.TraceService,
+		deps.ThreadService,
+		deps.UsageLogService,
+		deps.ChannelOverrideTemplateService,
+		deps.APIKeyProfileTemplateService,
+		deps.ModelService,
+		deps.BackupService,
+		deps.ChannelProbeService,
+		deps.PromptService,
+		deps.PromptProtectionRuleService,
+		deps.ProviderQuotaService,
+		deps.Scheduler,
+		deps.DefaultSelector,
+		deps.CandidateSelectorDiagnostics,
+		deps.ChannelLimiterManager,
+		deps.HttpClient,
+		deps.GCWorker,
+		deps.VideoWorker,
+		deps.CatalogService,
+		deps.PluginManager,
+	)
+}
+
+var (
+	skipTestChannelTransaction = entgql.SkipOperations("TestChannel", "TestChannelAPIKeys")
+	skipBulkImportTransaction  = entgql.SkipIfHasFields("bulkImportChannels")
+)
+
+func skipGraphqlTransaction(op *ast.OperationDefinition) bool {
+	return skipTestChannelTransaction(op) || skipBulkImportTransaction(op)
+}
+
+func presentGraphqlError(ctx context.Context, err error) *gqlerror.Error {
+	if codedErr, ok := errors.AsType[*xerrors.CodedError](err); ok {
+		return &gqlerror.Error{
+			Message: codedErr.Message,
+			Extensions: map[string]any{
+				"code":     codedErr.Code,
+				"resource": codedErr.Extensions["resource"],
+				"field":    codedErr.Extensions["field"],
+				"value":    codedErr.Extensions["value"],
+			},
+		}
+	}
+	if errors.Is(err, privacy.Deny) {
+		return &gqlerror.Error{
+			Message: "permission denied",
+			Extensions: map[string]any{
+				"code": xerrors.ErrCodeForbidden,
+			},
+		}
+	}
+	return graphql.DefaultErrorPresenter(ctx, err)
+}
+
+// pluginSelfServiceMutations are root mutations the permission ceiling cannot
+// gate because they act as the current user. The plugin endpoint rejects them.
+var pluginSelfServiceMutations = map[string]struct{}{
+	"updateMe":                      {},
+	"updateMyPassword":              {},
+	"unlinkOIDCIdentity":            {},
+	"createChannelOverrideTemplate": {},
+	"updateChannelOverrideTemplate": {},
+	"deleteChannelOverrideTemplate": {},
+}
+
+func rejectPluginGraphqlOperation(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
+	opCtx := graphql.GetOperationContext(ctx)
+	if opCtx == nil || opCtx.Operation == nil {
+		return next(ctx)
+	}
+	if opCtx.Operation.Operation == ast.Subscription {
+		return graphql.OneShot(graphql.ErrorResponse(ctx, "subscriptions are not supported"))
+	}
+	if opCtx.Operation.Operation == ast.Mutation &&
+		selectionUsesSelfService(opCtx.Doc, opCtx.Operation.SelectionSet, map[string]bool{}) {
+		return graphql.OneShot(pluginForbiddenResponse())
+	}
+	return next(ctx)
+}
+
+func selectionUsesSelfService(doc *ast.QueryDocument, set ast.SelectionSet, seen map[string]bool) bool {
+	for _, sel := range set {
+		switch item := sel.(type) {
+		case *ast.Field:
+			if _, ok := pluginSelfServiceMutations[item.Name]; ok {
+				return true
+			}
+		case *ast.InlineFragment:
+			if selectionUsesSelfService(doc, item.SelectionSet, seen) {
+				return true
+			}
+		case *ast.FragmentSpread:
+			if item == nil || seen[item.Name] {
+				continue
+			}
+			seen[item.Name] = true
+			if doc == nil {
+				continue
+			}
+			frag := doc.Fragments.ForName(item.Name)
+			if frag != nil && selectionUsesSelfService(doc, frag.SelectionSet, seen) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func pluginForbiddenResponse() *graphql.Response {
+	return &graphql.Response{
+		Errors: gqlerror.List{{
+			Message: "permission denied",
+			Extensions: map[string]any{
+				"code": xerrors.ErrCodeForbidden,
+			},
+		}},
+	}
+}
+
+// Private templates are authorized by user identity, not by a scope. Block all
+// paths to them, including nested user edges and node/nodes fragments.
+func rejectPluginPrivateFields(ctx context.Context, next graphql.Resolver) (any, error) {
+	field := graphql.GetFieldContext(ctx)
+	if field != nil {
+		name := field.Field.Definition.Type.Name()
+		if field.Object == "ChannelOverrideTemplate" || name == "ChannelOverrideTemplate" || name == "ChannelOverrideTemplateConnection" {
+			return nil, xerrors.ForbiddenError("plugins cannot access private channel override templates")
+		}
+	}
+	return next(ctx)
+}
+
+func newPluginGraphqlHandler(schema graphql.ExecutableSchema, client *ent.Client, manager *plugin.Manager) http.Handler {
+	srv := handler.New(schema)
+	srv.AddTransport(transport.POST{})
+	srv.SetQueryCache(lru.New[*ast.QueryDocument](1024))
+	srv.Use(extension.FixedComplexityLimit(pluginGraphqlComplexityLimit))
+	srv.Use(&loggingTracer{})
+	srv.AroundOperations(rejectPluginGraphqlOperation)
+	srv.AroundFields(rejectPluginPrivateFields)
+	srv.Use(entgql.Transactioner{
+		TxOpener:   client,
+		SkipTxFunc: skipGraphqlTransaction,
+	})
+	srv.SetErrorPresenter(presentGraphqlError)
+	return &pluginGraphqlHTTPHandler{
+		handler: srv,
+		manager: manager,
+		limiter: newPluginGraphqlLimiter(),
 	}
 }
 

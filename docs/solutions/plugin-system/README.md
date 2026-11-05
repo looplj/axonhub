@@ -8,6 +8,7 @@
 |------|------|--------|
 | Manifest | [manifest.md](manifest.md) | 包内 `manifest.json` 的字段、校验、权限词表、升级比较。下列模块都依赖它 |
 | 脚本入口 | [plugin.js.md](plugin.js.md) | `plugin.js` 的命名导出、参数与返回值、ctx、示例及加载生命周期 |
+| 权限 | [permission.md](permission.md) | Plugin Principal 的待实施方案、授权规则、迁移和验收；当前仍使用用户权限副本 |
 | UI Bridge | [ui-bridge.md](ui-bridge.md) | 页面与未来 slots 共用的浏览器 SDK、初始化上下文、消息协议及错误处理 |
 | 运行时 | 本文 | 安装、启停、市场、KV、JS 引擎 |
 | 事件 | [events.md](events.md) | 事件总线、12 种事件、内置 WebHook、`onEvent` |
@@ -187,7 +188,7 @@ ui/**              html/js/css/svg/png/woff2
 | KV key / namespace | `^[A-Za-z0-9_.:-]{1,128}$`；namespace 省略时为 `default` |
 | KV value | UTF-8，最大 256 KiB |
 | KV TTL | 省略或 0 表示不过期；最长 90 天 |
-| KV list | 单次最多 100 条；超出返回错误 |
+| KV list | 按 key 升序游标分页；first 默认 100，范围 1–100；nextCursor 为空表示末页 |
 | 市场索引 | 只接受 `https`；不跟随重定向；超时 15 s；响应最大 1 MiB；内存缓存 5 分钟 |
 | 市场包下载 | 同样只接受 `https`、不跟随重定向、超时 15 s；大小用包大小上限；sha256 必须与索引一致 |
 
@@ -212,7 +213,7 @@ plugin_storage
 
 宿主创建 JS 调用上下文时，从该调用固定的 Generation 绑定安装 ID；页面 GraphQL 在入口解析当前插件行时绑定安装 ID，resolver 沿用这一值。后续 KV 操作不得再按 manifest ID 查找当前安装，JS 和页面也不能指定安装 ID。因此旧调用即使在删除后继续执行，写入仍属于旧安装，不能覆盖重装插件的数据。
 
-过期行在 get/list 时删除并视为不存在。管理器每小时清理过期行，以及安装行已软删除或不存在的 KV；按数据库里的安装行判断，不依赖本实例缓存，不能清理仅被停用的插件数据。第一版接受旧调用在删除后继续写入旧安装的 KV，不增加逐次写入的事务校验；最后一次迟到写入会在后续清理周期删除。
+过期行在 get/list 时删除并视为不存在，不设置后台定时清理任务。删除插件时显式清理该安装的 KV。第一版接受旧调用在删除后继续写入旧安装的 KV，不增加逐次写入的事务校验；这些迟到写入可能残留在数据库中，但不会影响重装后的新安装。未再次访问的过期行也可能保留，直到对应安装被删除。
 
 `ctx.kv.get/set/delete/list` 由事件和请求插件共用；页面的 KV 字段调用同一个 `kv.go`，读写同一份数据。计数器 `ctx.counter` 不是这张表：它是滑动窗口，memory 模式下按实例计数。
 
@@ -258,7 +259,7 @@ Plugin
   +-- granted_permissions --> scopes 词表
   +-- config              --> systems.webhook_notifier_config 的 target 名
 
-PluginStorage -- installation_id --> Plugin.id（无外键；软删除时显式清理，迟到写入定时清理）
+PluginStorage -- installation_id --> Plugin.id（无外键；软删除时显式清理，允许迟到写入残留）
 
 System(webhook_notifier_config) 由内置插件 axonhub.webhook 读取
 ```
@@ -267,7 +268,7 @@ System(webhook_notifier_config) 由内置插件 axonhub.webhook 读取
 
 ```text
 上传：
-1. Owner 在 系统设置 › 插件 上传 .axplugin
+1. Owner 在 侧栏「插件」›「插件管理」（`/plugins`）上传 .axplugin
    → installPlugin(file: Upload!, grantedPermissions: [String!])，复用 backup restore 的 multipart transport
 2. ParsePackage 校验 ZIP → 按 [安装校验](manifest.md#4-安装校验) 校验 manifest；有 plugin.js 时编译、链接包内模块并做导出校验
 3. 新装：写入 plugins，enabled=false → 通知管理器刷新
@@ -344,10 +345,10 @@ System(webhook_notifier_config) 由内置插件 axonhub.webhook 读取
 
 #### 前端
 - `features/plugins/data/plugins.ts`
-- `features/plugins/components/plugins-settings.tsx`：列表、上传、启停、删除、运行状态。memory 模式显示「计数为单实例」。
+- `features/plugins/index.tsx`：插件管理页，`plugins-table.tsx` 列表（启停、删除、运行状态），`plugin-install-dialog.tsx` 上传，`plugin-detail-sheet.tsx` 详情与配置抽屉。memory 模式显示「计数为单实例」。
 - `features/plugins/components/plugin-market.tsx`：条目、安装和升级。
 - `features/plugins/components/plugin-grant-dialog.tsx`（新装授权和升级确认共用）：`write_*` 权限高亮，并写明授予后插件页面能执行该类全部 mutation，`write_channels` 还能读取凭证明文、修改渠道地址。`plugin-config-form.tsx`
-- `features/system/components/tabs.tsx`：`plugins` tab，需要 `read_plugins`。安装、启停、删除、授权按钮只对 Owner 显示，配置表单需要 `write_plugins`。
+- `routes/_authenticated/plugins/index.tsx`：独立路由 `/plugins`，需要系统级 `read_plugins`（不依赖 `read_settings`），在 `config/route-permission.ts` 登记。侧栏入口「插件管理」在 `nav-items.ts` 的 `plugins` 分组，位于「项目」和「设置」之间。安装、启停、删除、授权按钮只对 Owner 显示，配置表单需要 `write_plugins`。
 - `locales/en/plugins.json`、`locales/zh-CN/plugins.json`
 - `locales/en/base.json`、`locales/zh-CN/base.json`：`scopes.read_plugins`、`scopes.write_plugins`。
 
@@ -379,7 +380,7 @@ MySQL 的 `max_allowed_packet` 至少要 8 MiB，才能写入 5 MiB 的包。8.0
 | 功能 | 市场 sha256 不符不写库；相符与上传同一包相同 | `go test ./internal/server/plugin/ -run TestMarket` |
 | 功能 | 删除后插件行的 `deleted_at` 非 0、`package` 为空；同一 `plugin_id` 可以重装，新行不带旧配置和授权 | `go test ./internal/server/plugin/ -run TestDelete` |
 | 功能 | KV 升级、启停和重启后可读；TTL 到期为空；插件间隔离；无在途写入时删除插件后该安装 KV 行数为 0 | `go test ./internal/server/plugin/ -run TestKV` |
-| 功能 | 暂停旧安装的 JS 或页面 KV 写入，删除并同名同包重装后恢复旧写入：新安装读不到旧值，同名键不被覆盖；定时清理删除旧安装残留，保留新安装与停用安装的数据 | 同上，两个 Manager 共享 DB，控制调用停点并注入时钟 |
+| 功能 | 暂停旧安装的 JS 或页面 KV 写入，删除并同名同包重装后恢复旧写入：新安装读不到旧值，同名键不被覆盖；允许旧安装迟到写入残留，新安装与停用安装的数据保持不变 | 同上，两个 Manager 共享 DB，控制调用停点 |
 | 权限 | `read_plugins` 能查插件列表、不能改；`write_plugins` 能改配置、不能安装启停授权；都没有时查询被拒 | resolver 测试 |
 | 错误处理 | `..`、超限、manifest 不合法（细项见 [manifest.md](manifest.md#8-验收)）：可读错误且不写库 | `go test ./internal/server/plugin/ -run TestParsePackage` |
 | 错误处理 | 连续 20 次失败后熔断 5 分钟 | 插件单测，注入时钟 |
@@ -400,7 +401,7 @@ MySQL 的 `max_allowed_packet` 至少要 8 MiB，才能写入 5 MiB 的包。8.0
 | 官方索引被篡改 | 索引仓库或插件作者的发布账号被盗 | 装上与索引一致的恶意包 | 索引改动走 PR 审核；sha256 只绑定索引；妥协 1 |
 | 插件装得很多 | 不限制已安装插件数 | 已启用插件的脚本和 VM 占用内存，UI 文件占用临时磁盘；启动时需加载已启用的包 | UI 按需从文件读取；停用后释放；增量刷新；需要时再加数量上限 |
 | 临时磁盘不可用 | 磁盘写满、目录无权限或被系统清理 | UI 资源不可读或插件加载失败 | 状态 error 与可读日志；重建损坏缓存；正常退出清理本进程目录；异常退出残留由系统清理 |
-| KV 被写满 | 循环 set 不同的 key | 数据库膨胀 | 单值 256 KiB；删除插件时按安装 ID 删除，旧调用的迟到写入定时清理 |
+| KV 被写满 | 循环 set 不同的 key | 数据库膨胀 | 单值 256 KiB；删除插件时按安装 ID 删除，允许旧调用的迟到写入残留 |
 | secret 明文 | 数据库泄露 | 配置密钥和 KV value 一并泄露 | 妥协 4 |
 
 ## 8. 已知妥协
@@ -456,8 +457,8 @@ MySQL 的 `max_allowed_packet` 至少要 8 MiB，才能写入 5 MiB 的包。8.0
 | T-01 | [Plugin 实体、包解析与 manifest 校验](#plugin) | 待办 | 无 | schema（SoftDeleteMixin，唯一索引 `(plugin_id, deleted_at)`）、`package.go`；[manifest](manifest.md) 的类型、结构校验、升级比较与未开放字段拒绝；在 T-10 完成前，含 `plugin.js` 的包拒绝安装，返回可读错误；`events`、`hooks` 按 [字段表](manifest.md#3-字段) 的「开放」列拒绝；`make generate` |
 | T-02 | [插件管理器](#安装与同步) | 待办 | T-01 | `manager.go`、FX 接线；按安装 ID 与 `package_sha256` 增量加载，停用释放资源；临时目录、代际引用计数、缓存重建与退出清理；多实例同步及资源生命周期验收 |
 | T-03 | [插件管理 GraphQL 与管理页](#改动清单运行时) | 待办 | T-02 | `read_plugins` / `write_plugins` scope 与 i18n；`plugin.graphql` 与 resolver；plugins tab、本地上传、授权对话框（`write_*` 高亮）与升级确认（提交完整授权集合）、配置表单、i18n；本地和市场共用升级事务，落实 [授权收敛与配置迁移验收](manifest.md#8-验收)，包含 secret 降级拒绝和删除字段清理 |
-| T-04 | [插件 KV 存储](#pluginstorage) | 待办 | T-01 | `plugin_storage` schema、`kv.go`；按 `plugins.id` 绑定安装身份、删除时显式清理、定时清理过期及已删除安装的残留；`make generate`；重启可读、同名重装隔离、旧调用迟到写入与清理验收 |
-| T-05 | [插件 GraphQL 端点](pages.md#7-插件-graphql) | 待办 | T-03, T-04 | `downgrade.go`、`graphql.go` 抽取、路由；开放 mutation、自助 mutation 名单与根字段快照；KV 字段与 `write_plugins` 校验；降权矩阵测试 |
+| T-04 | [插件 KV 存储](#pluginstorage) | 待办 | T-01 | `plugin_storage` schema、`kv.go`；按 `plugins.id` 绑定安装身份、删除时显式清理、get/list 时清理过期数据；`make generate`；重启可读、同名重装隔离、旧调用迟到写入隔离验收 |
+| T-05 | [插件 GraphQL 端点](pages.md#7-插件-graphql) | 待办 | T-03, T-04 | `scoped_user.go`、`graphql.go` 抽取、路由；开放 mutation、自助 mutation 名单与根字段快照；KV 字段与 `write_plugins` 校验；插件权限矩阵测试 |
 | T-06 | [UI 资源与桥接](pages.md#6-资源与桥接) | 待办 | T-02 | `ui.go`、`uisdk/bridge.js`、CSP；token 绑定入口，允许同包 UI 白名单资源与宿主 bridge；从版本临时目录流式返回并持有资源引用；路径和包版本校验、资源路由匿名 CORS 与 MIME、缓存丢失重建、后端文件访问拒绝测试、ES module/Vite 页面加载验收 |
 | T-07 | [页面挂载](pages.md#5-路由与侧栏) | 待办 | T-03, T-05, T-06 | `plugin-frame.tsx`、页面路由、侧栏插件分组；单测与真实 sandbox 的模块加载及隔离 E2E |
 | T-08 | [事件总线与事件类型](events.md#5-事件) | 待办 | 无 | 新建 `internal/server/events`，含 Bus、指纹、FX 模块与单测 |
