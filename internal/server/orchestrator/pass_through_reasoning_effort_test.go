@@ -15,6 +15,8 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+// TestApplyPassThroughReasoningEffortMapping verifies the pass-through body helper
+// rewrites or removes the effort field for each API format that carries one.
 func TestApplyPassThroughReasoningEffortMapping(t *testing.T) {
 	dropNone := []llm.ReasoningEffortMapping{{From: llm.ReasoningEffortNone, To: ""}}
 	rewrite := []llm.ReasoningEffortMapping{{From: llm.ReasoningEffortNone, To: llm.ReasoningEffortLow}}
@@ -109,6 +111,8 @@ func TestApplyPassThroughReasoningEffortMapping(t *testing.T) {
 	}
 }
 
+// TestResponsesTransportAppliesReasoningEffortMapping verifies the Responses
+// cross-transport caller applies the channel reasoning effort mapping.
 func TestResponsesTransportAppliesReasoningEffortMapping(t *testing.T) {
 	tests := []struct {
 		name   string
