@@ -64,6 +64,28 @@ func TestApplyPassThroughReasoningEffortMapping(t *testing.T) {
 		require.Equal(t, "low", gjson.GetBytes(body, "reasoning.effort").String())
 	})
 
+	t.Run("anthropic deletes empty mapped value and preserves output config", func(t *testing.T) {
+		body, err := applyPassThroughReasoningEffortMapping(
+			[]byte(`{"model":"claude","output_config":{"effort":"none","format":{"type":"json"}},"thinking":{"type":"between_tools"}}`),
+			llm.APIFormatAnthropicMessage,
+			dropNone,
+		)
+		require.NoError(t, err)
+		require.False(t, gjson.GetBytes(body, "output_config.effort").Exists())
+		require.Equal(t, "json", gjson.GetBytes(body, "output_config.format.type").String())
+		require.Equal(t, "between_tools", gjson.GetBytes(body, "thinking.type").String())
+	})
+
+	t.Run("anthropic rewrites output config effort", func(t *testing.T) {
+		body, err := applyPassThroughReasoningEffortMapping(
+			[]byte(`{"output_config":{"effort":"none"}}`),
+			llm.APIFormatAnthropicMessage,
+			rewrite,
+		)
+		require.NoError(t, err)
+		require.Equal(t, "low", gjson.GetBytes(body, "output_config.effort").String())
+	})
+
 	tests := []struct {
 		name     string
 		body     []byte
@@ -75,7 +97,7 @@ func TestApplyPassThroughReasoningEffortMapping(t *testing.T) {
 		{name: "nil mappings", body: []byte(`{"reasoning_effort":"none"}`), format: llm.APIFormatOpenAIChatCompletion},
 		{name: "nil body", format: llm.APIFormatOpenAIChatCompletion, mappings: dropNone},
 		{name: "non-string value", body: []byte(`{"reasoning_effort":1}`), format: llm.APIFormatOpenAIChatCompletion, mappings: dropNone},
-		{name: "format without effort field", body: []byte(`{"reasoning_effort":"none"}`), format: llm.APIFormatAnthropicMessage, mappings: dropNone},
+		{name: "format without effort field", body: []byte(`{"reasoning_effort":"none"}`), format: llm.APIFormatOpenAIEmbedding, mappings: dropNone},
 	}
 
 	for _, tt := range tests {
@@ -173,4 +195,39 @@ func TestPassThroughBodyAppliesReasoningEffortMapping(t *testing.T) {
 	require.Equal(t, "provider-model", gjson.GetBytes(processed.Body, "model").String())
 	require.False(t, gjson.GetBytes(processed.Body, "reasoning_effort").Exists())
 	require.Equal(t, int64(5), gjson.GetBytes(processed.Body, "top_k").Int())
+}
+
+func TestAnthropicPassThroughBodyAppliesReasoningEffortMapping(t *testing.T) {
+	channel := &biz.Channel{Channel: &ent.Channel{
+		ID:   1,
+		Name: "anthropic-reasoning-effort-mapping",
+		Settings: &objects.ChannelSettings{
+			PassThroughBody: lo.ToPtr(true),
+			TransformOptions: objects.TransformOptions{
+				ReasoningEffortMapping: []llm.ReasoningEffortMapping{{From: llm.ReasoningEffortNone, To: llm.ReasoningEffortLow}},
+			},
+		},
+	}}
+	outbound := &PersistentOutboundTransformer{state: &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+		LlmRequest: &llm.Request{
+			Model:     "provider-model",
+			APIFormat: llm.APIFormatAnthropicMessage,
+			RawRequest: &httpclient.Request{
+				APIFormat: string(llm.APIFormatAnthropicMessage),
+				Body:      []byte(`{"model":"client-alias","max_tokens":16,"output_config":{"effort":"none"},"thinking":{"type":"between_tools"},"test_canary":true}`),
+			},
+		},
+	}}
+	transformed := &httpclient.Request{
+		APIFormat: string(llm.APIFormatAnthropicMessage),
+		Body:      []byte(`{"model":"provider-model","max_tokens":16}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(context.Background(), transformed)
+	require.NoError(t, err)
+	require.True(t, outbound.state.PassThroughApplied)
+	require.Equal(t, "provider-model", gjson.GetBytes(processed.Body, "model").String())
+	require.Equal(t, llm.ReasoningEffortLow, gjson.GetBytes(processed.Body, "output_config.effort").String())
+	require.True(t, gjson.GetBytes(processed.Body, "test_canary").Bool())
 }

@@ -311,6 +311,8 @@ func passThroughReasoningEffortPath(apiFormat llm.APIFormat) string {
 		return "reasoning_effort"
 	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket:
 		return "reasoning.effort"
+	case llm.APIFormatAnthropicMessage:
+		return "output_config.effort"
 	default:
 		return ""
 	}
