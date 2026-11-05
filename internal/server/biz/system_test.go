@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -1485,4 +1486,96 @@ func TestSystemService_SetSystemValue_ClearsMissingMarker(t *testing.T) {
 	policy, err = service.StoragePolicy(ctx)
 	require.NoError(t, err)
 	require.True(t, policy.StoreChunks)
+}
+
+// A request that reads a key after a transactional write but before the commit does not see the
+// row and caches a missing marker; once the transaction commits the saved value must be served.
+func TestSystemService_SetSystemValue_PublishesAfterCommit(t *testing.T) {
+	dsn := "file:" + filepath.Join(t.TempDir(), "system.db") + "?_fk=0&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
+	writer := enttest.NewEntClient(t, "sqlite3", dsn)
+	defer writer.Close()
+
+	reader := enttest.NewEntClient(t, "sqlite3", dsn)
+	defer reader.Close()
+
+	service := &SystemService{Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory})}
+	readerCtx := authz.WithTestBypass(ent.NewContext(context.Background(), reader))
+	key := "publish_after_commit_test"
+
+	tx, err := writer.Tx(context.Background())
+	require.NoError(t, err)
+
+	txCtx := authz.WithTestBypass(ent.NewTxContext(ent.NewContext(context.Background(), tx.Client()), tx))
+	require.NoError(t, service.setSystemValue(txCtx, key, "saved"))
+
+	_, err = service.getSystemValue(readerCtx, key)
+	require.True(t, ent.IsNotFound(err))
+
+	require.NoError(t, tx.Commit())
+
+	value, err := service.getSystemValue(readerCtx, key)
+	require.NoError(t, err)
+	require.Equal(t, "saved", value)
+}
+
+// A request whose not-found read raced with a save may store its missing marker after the save
+// published the value; the saved value must still win.
+func TestSystemService_SetSystemValue_WinsOverLateMissingMarker(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	key := "late_missing_marker_test"
+
+	require.NoError(t, service.setSystemValue(ctx, key, "saved"))
+	require.NoError(t, service.Cache.Set(ctx, systemValueMissingCachePrefix+key, ent.System{Key: key}))
+
+	value, err := service.getSystemValue(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "saved", value)
+}
+
+func TestSystemService_SetSystemValue_RollbackPublishesNothing(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	key := "rollback_publish_test"
+	require.NoError(t, service.setSystemValue(ctx, key, "committed"))
+
+	tx, err := client.Tx(ctx)
+	require.NoError(t, err)
+
+	txCtx := authz.WithTestBypass(ent.NewTxContext(ent.NewContext(context.Background(), tx.Client()), tx))
+	require.NoError(t, service.setSystemValue(txCtx, key, "rolled-back"))
+	require.NoError(t, tx.Rollback())
+
+	value, err := service.getSystemValue(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "committed", value)
+}
+
+// Reads later in the same transaction must see the row written by that transaction.
+func TestSystemService_SetSystemValue_ReadYourWriteInTransaction(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	key := "read_your_write_test"
+	require.NoError(t, service.setSystemValue(ctx, key, "before"))
+
+	tx, err := client.Tx(ctx)
+	require.NoError(t, err)
+
+	txCtx := authz.WithTestBypass(ent.NewTxContext(ent.NewContext(context.Background(), tx.Client()), tx))
+	require.NoError(t, service.setSystemValue(txCtx, key, "after"))
+
+	value, err := service.getSystemValue(txCtx, key)
+	require.NoError(t, err)
+	require.Equal(t, "after", value)
+	require.NoError(t, tx.Commit())
+
+	value, err = service.getSystemValue(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "after", value)
 }

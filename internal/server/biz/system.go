@@ -1002,7 +1002,7 @@ func (s *SystemService) setSystemValue(ctx context.Context, key, value string) e
 		return fmt.Errorf("failed to create system setting: %w", err)
 	}
 
-	s.invalidateSystemValueCache(ctx, key)
+	s.publishSystemValue(ctx, key, value)
 
 	return nil
 }
@@ -1442,7 +1442,7 @@ func (s *SystemService) UpdateChannelSetting(ctx context.Context, input UpdateSy
 				return fmt.Errorf("failed to create channel setting: %w", err)
 			}
 
-			s.invalidateSystemValueCache(ctx, SystemKeyChannelSettings)
+			s.publishSystemValue(ctx, SystemKeyChannelSettings, string(jsonBytes))
 			return nil
 		}
 		if err != nil {
@@ -1465,7 +1465,7 @@ func (s *SystemService) UpdateChannelSetting(ctx context.Context, input UpdateSy
 			return fmt.Errorf("failed to marshal channel setting: %w", err)
 		}
 		if string(jsonBytes) == current.Value {
-			s.invalidateSystemValueCache(ctx, SystemKeyChannelSettings)
+			s.publishSystemValue(ctx, SystemKeyChannelSettings, current.Value)
 			return nil
 		}
 
@@ -1484,7 +1484,7 @@ func (s *SystemService) UpdateChannelSetting(ctx context.Context, input UpdateSy
 			continue
 		}
 
-		s.invalidateSystemValueCache(ctx, SystemKeyChannelSettings)
+		s.publishSystemValue(ctx, SystemKeyChannelSettings, string(jsonBytes))
 		return nil
 	}
 
@@ -1503,6 +1503,51 @@ func applySystemChannelSettingsPatch(setting *SystemChannelSettings, input Updat
 	}
 	if input.TestUserPrompt != nil {
 		setting.TestUserPrompt = *input.TestUserPrompt
+	}
+}
+
+// publishSystemValue makes a value written through ctx visible in the cache.
+//
+// GraphQL mutations run inside a transaction. Entries are dropped right away so that reads later
+// in the same transaction go to the database and see the new row, but a request reading outside
+// the transaction before the commit can still cache the old value or a missing marker. The
+// committed value is therefore stored again after the commit. Storing it, instead of only deleting
+// entries, also wins over a missing marker cached by a request whose not-found read raced with the
+// write, because lookups check the value key first. A rolled-back transaction publishes nothing.
+func (s *SystemService) publishSystemValue(ctx context.Context, key, value string) {
+	tx := ent.TxFromContext(ctx)
+	if tx == nil {
+		s.cacheSystemValue(ctx, key, value)
+
+		return
+	}
+
+	s.invalidateSystemValueCache(ctx, key)
+
+	tx.OnCommit(func(next ent.Committer) ent.Committer {
+		return ent.CommitFunc(func(txCtx context.Context, tx *ent.Tx) error {
+			if err := next.Commit(txCtx, tx); err != nil {
+				return err
+			}
+
+			s.cacheSystemValue(context.WithoutCancel(ctx), key, value)
+
+			return nil
+		})
+	})
+}
+
+// cacheSystemValue stores a committed value and drops any missing marker for its key.
+func (s *SystemService) cacheSystemValue(ctx context.Context, key, value string) {
+	if err := s.Cache.Set(ctx, systemValueCachePrefix+key, ent.System{Key: key, Value: value}); err != nil {
+		log.Warn(ctx, "failed to cache system value", log.String("key", key), log.Cause(err))
+		s.invalidateSystemValueCache(ctx, key)
+
+		return
+	}
+
+	if err := s.Cache.Delete(ctx, systemValueMissingCachePrefix+key); err != nil {
+		log.Warn(ctx, "failed to invalidate cache", log.String("key", systemValueMissingCachePrefix+key), log.Cause(err))
 	}
 }
 
