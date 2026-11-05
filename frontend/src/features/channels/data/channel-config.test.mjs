@@ -432,3 +432,20 @@ test('Ollama has localized channel, provider, and cookie-field labels', () => {
     assert.ok(channels['channels.dialogs.fields.ollamaQuota.authCookie.description']);
   }
 });
+
+test('Anthropic channel defaults do not preload retiring Claude models', () => {
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+  const retiring = new Set(['claude-sonnet-4-5', 'claude-opus-4-5']);
+
+  for (const key of ['anthropic', 'claudecode']) {
+    const block = channelsConfig.match(new RegExp(`\\n  ${key}: {([\\s\\S]*?)\\n  },`))?.[1] ?? '';
+    const modelsBlock = block.match(/defaultModels:\s*\[([\s\S]*?)\]/)?.[1] ?? '';
+    const models = [...modelsBlock.matchAll(/'([^']+)'/g)].map((match) => match[1]);
+    assert.ok(models.length > 0, `${key} should define default models`);
+    assert.deepEqual(
+      models.filter((model) => retiring.has(model)),
+      [],
+      `${key} defaults should not include retiring models`
+    );
+  }
+});
