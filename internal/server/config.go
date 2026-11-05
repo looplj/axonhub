@@ -163,10 +163,7 @@ type IPAccessControl struct {
 	RedirectURL string   `conf:"redirect_url" yaml:"redirect_url" json:"redirect_url"`
 }
 
-// writeTimeout must allow unlimited LLM requests when their total deadline is disabled.
+// Unlimited LLM routes clear this deadline and bound individual downstream writes.
 func (c Config) writeTimeout() time.Duration {
-	if c.LLMRequestTimeout <= 0 {
-		return 0
-	}
 	return max(c.RequestTimeout, c.LLMRequestTimeout)
 }

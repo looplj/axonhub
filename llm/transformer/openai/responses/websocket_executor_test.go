@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -1812,5 +1813,76 @@ func TestWebSocketExecutorIdleTimeoutExcludesPoolQueue(t *testing.T) {
 		require.NoError(t, queued.stream.Err())
 	case <-ctx.Done():
 		t.Fatal("queued attempt did not acquire released lease")
+	}
+}
+
+func TestWebSocketExecutorIdleTimeoutExcludesConsumerDelay(t *testing.T) {
+	release := make(chan struct{})
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+		if _, _, err := conn.ReadMessage(); err != nil {
+			return
+		}
+		if err := conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.output_text.delta","delta":"first"}`)); err != nil {
+			return
+		}
+		<-release
+		_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.output_text.delta","delta":"second"}`))
+		_, _, _ = conn.ReadMessage()
+	}))
+	defer server.Close()
+	defer func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	}()
+	executor := NewWebSocketExecutor(httpclient.NewHttpClientWithClient(server.Client()))
+	defer executor.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	stream, err := executor.DoStream(httpclient.WithStreamIdleTimeout(ctx, 50*time.Millisecond), &httpclient.Request{
+		Method: http.MethodPost, URL: server.URL, Body: []byte(`{"model":"test"}`),
+	})
+	require.NoError(t, err)
+	defer stream.Close()
+	time.Sleep(120 * time.Millisecond)
+	require.True(t, stream.Next())
+	require.Contains(t, string(stream.Current().Data), "first")
+	time.Sleep(120 * time.Millisecond)
+	close(release)
+	require.True(t, stream.Next())
+	require.Contains(t, string(stream.Current().Data), "second")
+	require.False(t, stream.Next(), "resuming reads must restore idle timeout enforcement")
+	require.ErrorIs(t, stream.Err(), httpclient.ErrStreamIdleTimeout)
+}
+
+func TestWebSocketExecutorParentCustomCause(t *testing.T) {
+	for _, timeout := range []time.Duration{0, time.Second} {
+		t.Run(timeout.String(), func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+				require.NoError(t, err)
+				defer conn.Close()
+				_, _, _ = conn.ReadMessage()
+				_, _, _ = conn.ReadMessage()
+			}))
+			defer server.Close()
+			executor := NewWebSocketExecutor(httpclient.NewHttpClientWithClient(server.Client()))
+			defer executor.Close()
+			ctx, cancel := context.WithCancelCause(t.Context())
+			defer cancel(nil)
+			stream, err := executor.DoStream(httpclient.WithStreamIdleTimeout(ctx, timeout), &httpclient.Request{
+				Method: http.MethodPost, URL: server.URL, Body: []byte(`{"model":"test"}`),
+			})
+			require.NoError(t, err)
+			defer stream.Close()
+			cancel(errors.New("caller-specific cause"))
+			require.False(t, stream.Next())
+			require.ErrorIs(t, stream.Err(), context.Canceled)
+		})
 	}
 }

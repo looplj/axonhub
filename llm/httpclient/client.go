@@ -389,17 +389,18 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 
 	rawResp, err := hc.client.Do(rawReq)
 	if rawResp != nil {
+		// Stop counting upstream wait as soon as response headers arrive.
+		activity()
+		SetStreamIdleWaiting(streamCtx, false)
 		request.ObserveResponseHeaders(ctx, rawResp.Header)
 	}
 	if err != nil {
-		if cause := context.Cause(streamCtx); cause != nil {
+		if cause := StreamContextError(streamCtx); cause != nil {
 			err = cause
 		}
 		return nil, fmt.Errorf("HTTP stream request failed: %w", err)
 	}
 
-	// Receiving response headers is upstream progress before the first body byte.
-	activity()
 	rawResp.Body = &streamActivityReader{ReadCloser: rawResp.Body, ctx: streamCtx, activity: activity}
 
 	// Check for HTTP errors before creating stream

@@ -248,7 +248,7 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 
 	lease, err := e.acquirePreparedLease(ctx, request, wsURL, headers, payload)
 	if err != nil {
-		if cause := context.Cause(ctx); cause != nil {
+		if cause := httpclient.StreamContextError(ctx); cause != nil {
 			err = cause
 		}
 		return nil, err
@@ -272,12 +272,13 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 		// for the caller to decide.
 		lease.release(true)
 
-		if cause := context.Cause(ctx); cause != nil {
+		if cause := httpclient.StreamContextError(ctx); cause != nil {
 			err = cause
 		}
 		return nil, fmt.Errorf("failed to write response.create websocket event: %w", err)
 	}
 
+	httpclient.SetStreamIdleWaiting(ctx, false)
 	stream := &webSocketStream{ctx: ctx, parentCtx: parentCtx, lease: lease, done: make(chan struct{}), stopIdle: stopIdle}
 	streamOwned = true
 	go func() {
@@ -588,12 +589,12 @@ func (e *WebSocketExecutor) dial(ctx context.Context, request *httpclient.Reques
 		request.ObserveResponseHeaders(ctx, resp.Header)
 	}
 	if err != nil {
-		if cause := context.Cause(ctx); cause != nil {
+		if cause := httpclient.StreamContextError(ctx); cause != nil {
 			return nil, fmt.Errorf("websocket dial failed: %w", cause)
 		}
 		return nil, newWebSocketDialError(request, resp, err)
 	}
-	if cause := context.Cause(ctx); cause != nil {
+	if cause := httpclient.StreamContextError(ctx); cause != nil {
 		_ = conn.Close()
 		return nil, fmt.Errorf("websocket dial failed: %w", cause)
 	}
@@ -1227,7 +1228,9 @@ func (s *webSocketStream) Next() bool {
 	s.mu.Lock()
 	lease := s.lease
 	s.mu.Unlock()
+	httpclient.SetStreamIdleWaiting(s.ctx, true)
 	_, msg, err := lease.conn.ReadMessage()
+	httpclient.SetStreamIdleWaiting(s.ctx, false)
 	if err != nil {
 		s.mu.Lock()
 		closed := s.closed
@@ -1236,7 +1239,7 @@ func (s *webSocketStream) Next() bool {
 			return false
 		}
 		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || strings.Contains(err.Error(), "use of closed network connection") {
-			if ctxErr := context.Cause(s.ctx); ctxErr != nil {
+			if ctxErr := httpclient.StreamContextError(s.ctx); ctxErr != nil {
 				s.setErr(ctxErr)
 			} else if !s.hasSeenEvent() {
 				s.setErr(fmt.Errorf("websocket closed before response event"))
@@ -1316,7 +1319,7 @@ func (s *webSocketStream) contextCancelled() bool {
 	s.mu.Unlock()
 	select {
 	case <-ctx.Done():
-		s.setContextErr(context.Cause(ctx))
+		s.setContextErr(httpclient.StreamContextError(ctx))
 		s.finish(true)
 		return true
 	default:
@@ -1359,7 +1362,7 @@ func (s *webSocketStream) markTerminal() {
 
 func (s *webSocketStream) setErr(err error) {
 	s.mu.Lock()
-	if ctxErr := context.Cause(s.ctx); ctxErr != nil && !s.terminal {
+	if ctxErr := httpclient.StreamContextError(s.ctx); ctxErr != nil && !s.terminal {
 		s.err = ctxErr
 	} else if !s.closed {
 		s.err = err
@@ -1371,7 +1374,7 @@ func (s *webSocketStream) finish(evict bool) {
 	s.doneOnce.Do(func() {
 		s.mu.Lock()
 		s.closed = true
-		if ctxErr := context.Cause(s.ctx); ctxErr != nil && !s.terminal {
+		if ctxErr := httpclient.StreamContextError(s.ctx); ctxErr != nil && !s.terminal {
 			s.err = ctxErr
 		}
 		lease := s.lease

@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -161,4 +162,64 @@ func TestStreamIdleTimeoutResetsAtResponseHeaders(t *testing.T) {
 	require.True(t, stream.Next())
 	require.False(t, stream.Next())
 	require.NoError(t, stream.Err())
+}
+
+func TestStreamIdleTimeoutExcludesConsumerDelay(t *testing.T) {
+	for _, contentType := range []string{"text/event-stream", "application/octet-stream"} {
+		t.Run(contentType, func(t *testing.T) {
+			release := make(chan struct{})
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", contentType)
+				_, _ = fmt.Fprint(w, "data: first\n\n")
+				w.(http.Flusher).Flush()
+				select {
+				case <-release:
+					_, _ = fmt.Fprint(w, "data: second\n\n")
+				case <-r.Context().Done():
+				}
+			}))
+			defer server.Close()
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+			defer cancel()
+			stream, err := NewHttpClient().DoStream(WithStreamIdleTimeout(ctx, 50*time.Millisecond), &Request{Method: http.MethodGet, URL: server.URL})
+			require.NoError(t, err)
+			defer stream.Close()
+			time.Sleep(120 * time.Millisecond)
+			require.True(t, stream.Next(), "delay before the first read must not consume idle allowance")
+			require.Contains(t, string(stream.Current().Data), "first")
+			time.Sleep(120 * time.Millisecond)
+			close(release)
+			require.True(t, stream.Next(), "consumer backpressure must not trigger upstream idle timeout")
+			require.Contains(t, string(stream.Current().Data), "second")
+			for stream.Next() {
+			}
+			require.NoError(t, stream.Err())
+		})
+	}
+}
+
+func TestStreamParentCustomCause(t *testing.T) {
+	for _, timeout := range []time.Duration{0, time.Second} {
+		t.Run(timeout.String(), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.(http.Flusher).Flush()
+				<-r.Context().Done()
+			}))
+			defer server.Close()
+			ctx, cancel := context.WithCancelCause(t.Context())
+			defer cancel(nil)
+			stream, err := NewHttpClient().DoStream(WithStreamIdleTimeout(ctx, timeout), &Request{Method: http.MethodGet, URL: server.URL})
+			require.NoError(t, err)
+			defer stream.Close()
+			cancel(errors.New("caller-specific cause"))
+			require.False(t, stream.Next())
+			require.ErrorIs(t, stream.Err(), context.Canceled)
+		})
+	}
+}
+
+func TestStreamContextErrorCustomDeadlineCause(t *testing.T) {
+	ctx, cancel := context.WithDeadlineCause(t.Context(), time.Now().Add(-time.Second), errors.New("caller deadline"))
+	defer cancel()
+	require.ErrorIs(t, StreamContextError(ctx), context.DeadlineExceeded)
 }
