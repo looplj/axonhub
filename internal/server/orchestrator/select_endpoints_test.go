@@ -68,6 +68,70 @@ func TestSelectAPIFormat_PrefersResponsesProtocolMatchingInboundTransport(t *tes
 	require.Equal(t, llm.APIFormatOpenAIResponseWebSocket.String(), format)
 }
 
+func TestSelectAPIFormat_PrefersResponsesTransportFamilyOverUnrelatedFormat(t *testing.T) {
+	tests := []struct {
+		name   string
+		source llm.APIFormat
+		want   llm.APIFormat
+	}{
+		{
+			name:   "websocket request uses legacy HTTP endpoint",
+			source: llm.APIFormatOpenAIResponseWebSocket,
+			want:   llm.APIFormatOpenAIResponse,
+		},
+		{
+			name:   "HTTP request uses WebSocket endpoint",
+			source: llm.APIFormatOpenAIResponse,
+			want:   llm.APIFormatOpenAIResponseWebSocket,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			endpoints := []objects.ChannelEndpoint{
+				{APIFormat: llm.APIFormatAnthropicMessage.String()},
+				{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+				{APIFormat: tt.want.String()},
+			}
+
+			format := SelectAPIFormat(endpoints, &llm.Request{
+				RequestType: llm.RequestTypeChat,
+				APIFormat:   tt.source,
+			})
+
+			require.Equal(t, tt.want.String(), format)
+		})
+	}
+}
+
+func TestSelectForcedAPIFormat_PreservesConfiguredPriority(t *testing.T) {
+	endpoints := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatAnthropicMessage.String()},
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+	}
+
+	format := selectForcedAPIFormat(endpoints, &llm.Request{
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatOpenAIResponseWebSocket,
+	})
+
+	require.Equal(t, llm.APIFormatAnthropicMessage.String(), format)
+}
+
+func TestSelectAPIFormat_KeepsUnrelatedFallbackWithoutResponsesFamilyEndpoint(t *testing.T) {
+	endpoints := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatAnthropicMessage.String()},
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+	}
+
+	format := SelectAPIFormat(endpoints, &llm.Request{
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatOpenAIResponseWebSocket,
+	})
+
+	require.Equal(t, llm.APIFormatAnthropicMessage.String(), format)
+}
+
 func TestResponsesEndpointProtocolMatrix(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -257,9 +321,9 @@ func TestSelectAPIFormat_ForcedModelProtocols(t *testing.T) {
 	forced := []string{"openai/responses", "anthropic/messages"}
 	filtered := FilterEndpointsByAPIFormats(endpoints, forced)
 
-	require.Equal(t, "anthropic/messages", SelectAPIFormat(filtered, claudeCode))
-	require.Equal(t, "openai/responses", SelectAPIFormat(filtered, codex))
-	require.Equal(t, "openai/responses", SelectAPIFormat(filtered, chatClient))
+	require.Equal(t, "anthropic/messages", selectForcedAPIFormat(filtered, claudeCode))
+	require.Equal(t, "openai/responses", selectForcedAPIFormat(filtered, codex))
+	require.Equal(t, "openai/responses", selectForcedAPIFormat(filtered, chatClient))
 }
 
 func TestForcedAPIFormatsForCandidate(t *testing.T) {
@@ -325,10 +389,11 @@ func TestApplyForcedAPIFormats(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("narrows to the forced formats", func(t *testing.T) {
-		filtered := applyForcedAPIFormats(ctx, ch, []biz.ChannelModelEntry{{ActualModel: "m"}}, "m", endpoints)
+		filtered, forced := applyForcedAPIFormats(ctx, ch, []biz.ChannelModelEntry{{ActualModel: "m"}}, "m", endpoints)
 		require.Equal(t, []objects.ChannelEndpoint{
 			{APIFormat: llm.APIFormatAnthropicMessage.String()},
 		}, filtered)
+		require.True(t, forced)
 	})
 
 	t.Run("falls back to all endpoints when the override matches nothing configured", func(t *testing.T) {
@@ -339,13 +404,15 @@ func TestApplyForcedAPIFormats(t *testing.T) {
 			}},
 		}}
 
-		filtered := applyForcedAPIFormats(ctx, drifted, nil, "m", endpoints)
+		filtered, forced := applyForcedAPIFormats(ctx, drifted, nil, "m", endpoints)
 		require.Equal(t, endpoints, filtered)
+		require.False(t, forced)
 	})
 
 	t.Run("no override keeps all endpoints", func(t *testing.T) {
-		filtered := applyForcedAPIFormats(ctx, ch, nil, "other", endpoints)
+		filtered, forced := applyForcedAPIFormats(ctx, ch, nil, "other", endpoints)
 		require.Equal(t, endpoints, filtered)
+		require.False(t, forced)
 	})
 }
 
@@ -416,6 +483,55 @@ func TestPopulateAPIFormat_AppliesModelProtocols(t *testing.T) {
 		result := populateAPIFormat(context.Background(), candidates, req)
 		require.Len(t, result, 1)
 		require.Equal(t, llm.APIFormatOpenAIChatCompletion.String(), result[0].APIFormat)
+	})
+}
+
+func TestPopulateAPIFormat_ModelProtocolsPreserveConfiguredPriority(t *testing.T) {
+	newChannel := func(settings *objects.ChannelSettings) *biz.Channel {
+		return &biz.Channel{Channel: &ent.Channel{
+			ID:       1,
+			Name:     "multi-transport",
+			Type:     channel.TypeZhipuAnthropic,
+			Settings: settings,
+			Endpoints: []objects.ChannelEndpoint{
+				{APIFormat: llm.APIFormatOpenAIResponse.String()},
+			},
+		}}
+	}
+	req := &llm.Request{
+		Model:       "glm-5.3",
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatOpenAIResponseWebSocket,
+	}
+
+	t.Run("without override prefers the Responses transport family", func(t *testing.T) {
+		candidates := []*ChannelModelsCandidate{{
+			Channel: newChannel(&objects.ChannelSettings{}),
+			Models:  []biz.ChannelModelEntry{{ActualModel: "glm-5.3"}},
+		}}
+
+		result := populateAPIFormat(context.Background(), candidates, req)
+
+		require.Len(t, result, 1)
+		require.Equal(t, llm.APIFormatOpenAIResponse.String(), result[0].APIFormat)
+	})
+
+	t.Run("with override keeps the first configured format", func(t *testing.T) {
+		candidates := []*ChannelModelsCandidate{{
+			Channel: newChannel(&objects.ChannelSettings{
+				ModelProtocols: []objects.ModelProtocol{{
+					Model:      "glm-5.3",
+					APIFormats: []string{llm.APIFormatAnthropicMessage.String(), llm.APIFormatOpenAIResponse.String()},
+				}},
+			}),
+			Models: []biz.ChannelModelEntry{{ActualModel: "glm-5.3"}},
+		}}
+
+		result := populateAPIFormat(context.Background(), candidates, req)
+
+		require.Len(t, result, 1)
+		require.Equal(t, llm.APIFormatAnthropicMessage.String(), result[0].APIFormat)
+		require.Equal(t, []string{llm.APIFormatAnthropicMessage.String()}, result[0].modelAPIFormats)
 	})
 }
 
