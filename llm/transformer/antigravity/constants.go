@@ -17,8 +17,8 @@ const (
 	TokenURL    = "https://oauth2.googleapis.com/token"
 	UserInfoURL = "https://www.googleapis.com/oauth2/v1/userinfo"
 
-	// EndpointDaily is the primary endpoint (daily sandbox).
-	EndpointDaily = "https://daily-cloudcode-pa.sandbox.googleapis.com"
+	// EndpointDaily is the daily endpoint used by the current Antigravity App/CLI runtime.
+	EndpointDaily = "https://daily-cloudcode-pa.googleapis.com"
 	// EndpointAutopush is a fallback endpoint.
 	EndpointAutopush = "https://autopush-cloudcode-pa.sandbox.googleapis.com"
 	// EndpointProd is the production endpoint.

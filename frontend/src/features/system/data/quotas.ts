@@ -103,6 +103,11 @@ type ProviderCodexQuotaData = ProviderQuotaDataCommon & {
   };
 };
 
+export type ProviderAntigravityQuotaData = ProviderQuotaDataCommon & {
+  models?: Record<string, unknown>;
+  groups?: unknown[];
+};
+
 export type XAISubscriptionBillingWindow = {
   readonly usage_percent?: number;
   readonly reset_at?: string;
@@ -687,6 +692,12 @@ export type ProviderQuotaChannel = {
       };
     }
   | {
+      type: 'antigravity';
+      quotaStatus: {
+        quotaData: ProviderAntigravityQuotaData;
+      };
+    }
+  | {
       type: 'xai_subscription';
       quotaStatus: {
         quotaData: ProviderXAISubscriptionQuotaData;
@@ -882,6 +893,13 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
       ...base,
       type: 'codex' as const,
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderCodexQuotaData },
+    };
+  }
+  if (node.type === 'antigravity') {
+    return {
+      ...base,
+      type: 'antigravity' as const,
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderAntigravityQuotaData },
     };
   }
   if (node.type === 'cline') {

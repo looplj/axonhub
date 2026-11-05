@@ -77,11 +77,10 @@ func DetermineQuotaPreference(modelName string) QuotaPreference {
 }
 
 // GetInitialEndpoint returns the initial endpoint based on quota preference.
-// Always starts with Daily sandbox to match reference implementation behavior.
+// Always starts with the current App/CLI Daily endpoint.
 // Daily has the latest features and better quota availability.
 func GetInitialEndpoint(quotaPreference QuotaPreference) string {
-	// Both Antigravity and Gemini CLI quota should start with Daily
-	// Reference implementation always tries Daily first for better quota distribution
+	// Both quota preferences use the current Antigravity Daily endpoint first.
 	return EndpointDaily
 }
 
@@ -89,7 +88,7 @@ func GetInitialEndpoint(quotaPreference QuotaPreference) string {
 // Regardless of the initial endpoint, we try all three for maximum reliability.
 func GetFallbackEndpoints() []string {
 	return []string{
-		EndpointDaily,    // Daily sandbox (latest features)
+		EndpointDaily,    // App/CLI Daily (latest features)
 		EndpointAutopush, // Autopush sandbox (staging)
 		EndpointProd,     // Production (most stable)
 	}
