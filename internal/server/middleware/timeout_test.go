@@ -17,11 +17,10 @@ func TestWithLLMTimeoutUnlimitedPreservesCancellation(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	parent, cancelParent := context.WithCancel(context.Background())
 	defer cancelParent()
-	var handlerContext context.Context
 	router := gin.New()
 	router.Use(WithLLMTimeout(0))
 	router.GET("/", func(c *gin.Context) {
-		handlerContext = c.Request.Context()
+		handlerContext := c.Request.Context()
 		_, hasDeadline := handlerContext.Deadline()
 		require.False(t, hasDeadline)
 		require.NoError(t, handlerContext.Err())
@@ -29,7 +28,6 @@ func TestWithLLMTimeoutUnlimitedPreservesCancellation(t *testing.T) {
 		require.ErrorIs(t, handlerContext.Err(), context.Canceled)
 	})
 	router.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil).WithContext(parent))
-	require.ErrorIs(t, handlerContext.Err(), context.Canceled)
 }
 
 func TestWithLLMTimeoutFiniteDeadline(t *testing.T) {
@@ -47,12 +45,12 @@ func TestWithLLMTimeoutFiniteDeadline(t *testing.T) {
 
 func TestWithLLMTimeoutCancelsContextAfterHandlerReturns(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	var handlerContext context.Context
+	var handlerErr func() error
 	router := gin.New()
 	router.Use(WithLLMTimeout(0))
-	router.GET("/", func(c *gin.Context) { handlerContext = c.Request.Context() })
+	router.GET("/", func(c *gin.Context) { handlerErr = c.Request.Context().Err })
 	router.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
-	require.ErrorIs(t, handlerContext.Err(), context.Canceled)
+	require.ErrorIs(t, handlerErr(), context.Canceled)
 }
 
 func TestLLMTimeoutAndStreamIdleTimeout(t *testing.T) {
