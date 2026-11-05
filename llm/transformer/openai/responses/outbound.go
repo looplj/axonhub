@@ -256,6 +256,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			tools = append(tools, tool)
 		case "function":
 			tool := convertFunctionToTool(item)
+			// Anthropic defaults to non-strict tools, but Responses may normalize
+			// an omitted strict flag by making every property required.
+			if llmReq.APIFormat == llm.APIFormatAnthropicMessage && tool.Strict == nil {
+				tool.Strict = lo.ToPtr(false)
+			}
 			if namespace := item.Function.Namespace; namespace != "" {
 				if index, ok := namespaceIndexes[namespace]; ok {
 					tools[index].Tools = append(tools[index].Tools, tool)
