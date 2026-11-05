@@ -32,6 +32,18 @@ func TestToLLMMessage_ReasoningField(t *testing.T) {
 			},
 		},
 		{
+			name: "Only reasoning_text field (GitHub Copilot) - should normalize to both",
+			message: Message{
+				Role:          "assistant",
+				ReasoningText: lo.ToPtr("I'm thinking about this step by step"),
+			},
+			want: llm.Message{
+				Role:             "assistant",
+				Reasoning:        lo.ToPtr("I'm thinking about this step by step"),
+				ReasoningContent: lo.ToPtr("I'm thinking about this step by step"),
+			},
+		},
+		{
 			name: "Only reasoning_content field - should sync to Reasoning",
 			message: Message{
 				Role:             "assistant",
