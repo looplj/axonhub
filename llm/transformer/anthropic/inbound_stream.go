@@ -1138,6 +1138,8 @@ func (s *anthropicInboundStream) Next() bool {
 				stopReason = "max_tokens"
 			case "tool_calls":
 				stopReason = "tool_use"
+			case "content_filter":
+				stopReason = "refusal"
 			default:
 				stopReason = "end_turn"
 			}
