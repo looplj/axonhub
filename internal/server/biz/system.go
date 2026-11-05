@@ -696,6 +696,8 @@ type SystemService struct {
 
 	mu           sync.RWMutex
 	timeLocation *time.Location
+
+	missing missingSystemValues
 }
 
 func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
@@ -945,39 +947,97 @@ func (s *SystemService) SetTitle(ctx context.Context, title string) error {
 	return s.setSystemValue(ctx, SystemKeyTitle, title)
 }
 
-const (
-	systemValueCachePrefix = "system:"
-	// systemValueMissingCachePrefix marks keys that have no row yet. Most settings are never
-	// saved and fall back to defaults, so without this marker every lookup on the request path
-	// queries the database again. It uses its own prefix so instances running an older version
-	// against a shared cache never read the marker as a real value.
-	systemValueMissingCachePrefix = "system:missing:"
-	// systemValueMissingCacheTTL bounds how long other instances keep serving the default after
-	// a key is saved for the first time; the saving instance invalidates the marker immediately.
-	systemValueMissingCacheTTL = time.Minute
-)
+// systemValueMissingTTL bounds how long another instance keeps using a default after the key is
+// saved for the first time; the instance that saves it forgets the miss immediately.
+const systemValueMissingTTL = 10 * time.Second
 
 // errSystemValueNotSet is returned for keys known to have no row; it satisfies ent.IsNotFound
 // so callers keep falling back to their defaults.
 var errSystemValueNotSet error = &ent.NotFoundError{}
 
+// missingSystemValues remembers keys that have no row yet. Most settings are never saved and fall
+// back to defaults, so without it every lookup on the request path would query the database again.
+//
+// Entries stay in process memory: a shared cache could not order a miss recorded by another
+// instance against a write made here. Within the process every write bumps generation, and a
+// lookup only records its miss if no write happened since it started, so a lookup that read
+// before a write (or before its commit) can never hide the saved value.
+type missingSystemValues struct {
+	mu         sync.Mutex
+	generation uint64
+	expiry     map[string]time.Time
+}
+
+func (m *missingSystemValues) contains(key string, now time.Time) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	expiry, ok := m.expiry[key]
+	if !ok {
+		return false
+	}
+
+	if !now.Before(expiry) {
+		delete(m.expiry, key)
+
+		return false
+	}
+
+	return true
+}
+
+// snapshot returns the write generation; take it before querying the database.
+func (m *missingSystemValues) snapshot() uint64 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.generation
+}
+
+// remember records a miss unless a write happened after snapshot, which would make it stale.
+func (m *missingSystemValues) remember(key string, generation uint64, now time.Time) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if generation != m.generation {
+		return
+	}
+
+	if m.expiry == nil {
+		m.expiry = make(map[string]time.Time)
+	}
+
+	m.expiry[key] = now.Add(systemValueMissingTTL)
+}
+
+// forget drops the miss for key and discards misses from lookups still in flight.
+func (m *missingSystemValues) forget(key string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.generation++
+	delete(m.expiry, key)
+}
+
 func (s *SystemService) getSystemValue(ctx context.Context, key string) (string, error) {
-	cacheKey := systemValueCachePrefix + key
+	cacheKey := "system:" + key
 	if v, err := s.Cache.Get(ctx, cacheKey); err == nil {
 		return v.Value, nil
 	}
 
-	missingKey := systemValueMissingCachePrefix + key
-	if _, err := s.Cache.Get(ctx, missingKey); err == nil {
+	now := time.Now()
+	if s.missing.contains(key, now) {
 		return "", fmt.Errorf("failed to get system value: %w", errSystemValueNotSet)
 	}
 
+	generation := s.missing.snapshot()
 	client := s.entFromContext(ctx)
 
 	sys, err := client.System.Query().Where(system.KeyEQ(key)).Only(ctx)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			_ = s.Cache.Set(ctx, missingKey, ent.System{Key: key}, xcache.WithExpiration(systemValueMissingCacheTTL))
+		// A transaction may read an older snapshot, so only misses seen outside one are recorded.
+		if ent.IsNotFound(err) && ent.TxFromContext(ctx) == nil {
+			s.missing.remember(key, generation, now)
 		}
 
 		return "", fmt.Errorf("failed to get system value: %w", err)
@@ -1002,7 +1062,7 @@ func (s *SystemService) setSystemValue(ctx context.Context, key, value string) e
 		return fmt.Errorf("failed to create system setting: %w", err)
 	}
 
-	s.publishSystemValue(ctx, key, value)
+	s.invalidateSystemValueCache(ctx, key)
 
 	return nil
 }
@@ -1442,7 +1502,7 @@ func (s *SystemService) UpdateChannelSetting(ctx context.Context, input UpdateSy
 				return fmt.Errorf("failed to create channel setting: %w", err)
 			}
 
-			s.publishSystemValue(ctx, SystemKeyChannelSettings, string(jsonBytes))
+			s.invalidateSystemValueCache(ctx, SystemKeyChannelSettings)
 			return nil
 		}
 		if err != nil {
@@ -1465,7 +1525,7 @@ func (s *SystemService) UpdateChannelSetting(ctx context.Context, input UpdateSy
 			return fmt.Errorf("failed to marshal channel setting: %w", err)
 		}
 		if string(jsonBytes) == current.Value {
-			s.publishSystemValue(ctx, SystemKeyChannelSettings, current.Value)
+			s.invalidateSystemValueCache(ctx, SystemKeyChannelSettings)
 			return nil
 		}
 
@@ -1484,7 +1544,7 @@ func (s *SystemService) UpdateChannelSetting(ctx context.Context, input UpdateSy
 			continue
 		}
 
-		s.publishSystemValue(ctx, SystemKeyChannelSettings, string(jsonBytes))
+		s.invalidateSystemValueCache(ctx, SystemKeyChannelSettings)
 		return nil
 	}
 
@@ -1506,23 +1566,19 @@ func applySystemChannelSettingsPatch(setting *SystemChannelSettings, input Updat
 	}
 }
 
-// publishSystemValue makes a value written through ctx visible in the cache.
+// invalidateSystemValueCache drops the cached value and any recorded miss for key.
 //
-// GraphQL mutations run inside a transaction. Entries are dropped right away so that reads later
-// in the same transaction go to the database and see the new row, but a request reading outside
-// the transaction before the commit can still cache the old value or a missing marker. The
-// committed value is therefore stored again after the commit. Storing it, instead of only deleting
-// entries, also wins over a missing marker cached by a request whose not-found read raced with the
-// write, because lookups check the value key first. A rolled-back transaction publishes nothing.
-func (s *SystemService) publishSystemValue(ctx context.Context, key, value string) {
+// GraphQL mutations run inside a transaction: until it commits, other requests still read the old
+// row (or no row) and may cache it again, so the entries are dropped once more after the commit.
+// Writers only delete entries, so concurrent writes, repeated writes to one key and rollbacks can
+// never leave an outdated value behind.
+func (s *SystemService) invalidateSystemValueCache(ctx context.Context, key string) {
+	s.dropSystemValueCache(ctx, key)
+
 	tx := ent.TxFromContext(ctx)
 	if tx == nil {
-		s.cacheSystemValue(ctx, key, value)
-
 		return
 	}
-
-	s.invalidateSystemValueCache(ctx, key)
 
 	tx.OnCommit(func(next ent.Committer) ent.Committer {
 		return ent.CommitFunc(func(txCtx context.Context, tx *ent.Tx) error {
@@ -1530,32 +1586,18 @@ func (s *SystemService) publishSystemValue(ctx context.Context, key, value strin
 				return err
 			}
 
-			s.cacheSystemValue(context.WithoutCancel(ctx), key, value)
+			s.dropSystemValueCache(context.WithoutCancel(ctx), key)
 
 			return nil
 		})
 	})
 }
 
-// cacheSystemValue stores a committed value and drops any missing marker for its key.
-func (s *SystemService) cacheSystemValue(ctx context.Context, key, value string) {
-	if err := s.Cache.Set(ctx, systemValueCachePrefix+key, ent.System{Key: key, Value: value}); err != nil {
-		log.Warn(ctx, "failed to cache system value", log.String("key", key), log.Cause(err))
-		s.invalidateSystemValueCache(ctx, key)
+func (s *SystemService) dropSystemValueCache(ctx context.Context, key string) {
+	s.missing.forget(key)
 
-		return
-	}
-
-	if err := s.Cache.Delete(ctx, systemValueMissingCachePrefix+key); err != nil {
-		log.Warn(ctx, "failed to invalidate cache", log.String("key", systemValueMissingCachePrefix+key), log.Cause(err))
-	}
-}
-
-func (s *SystemService) invalidateSystemValueCache(ctx context.Context, key string) {
-	for _, cacheKey := range []string{systemValueCachePrefix + key, systemValueMissingCachePrefix + key} {
-		if err := s.Cache.Delete(ctx, cacheKey); err != nil {
-			log.Warn(ctx, "failed to invalidate cache", log.String("key", cacheKey), log.Cause(err))
-		}
+	if err := s.Cache.Delete(ctx, "system:"+key); err != nil {
+		log.Warn(ctx, "failed to invalidate cache", log.String("key", key), log.Cause(err))
 	}
 }
 
