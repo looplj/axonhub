@@ -103,7 +103,12 @@ export type FilterCondition = {
 export const filterConditionSchema: z.ZodType<FilterCondition> = z.object({
   type: z.enum(['condition', 'group']).default('condition'),
   logic: z.string().optional(),
-  conditions: z.array(z.lazy(() => filterConditionSchema)).optional().default([]),
+  // Empty child lists come back as null for leaf conditions, so accept null and
+  // normalise it to an empty list instead of failing the whole model list parse.
+  conditions: z
+    .array(z.lazy(() => filterConditionSchema))
+    .nullish()
+    .transform((value) => value ?? []),
   field: z.string().optional(),
   operator: z.string().optional(),
   value: z.any().optional(),
