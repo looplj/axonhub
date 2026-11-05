@@ -156,6 +156,9 @@ func preserveResponsesModel(body []byte, clientModel string) []byte {
 	return patched
 }
 
+// applyResponsesTransportRequestBody replays the client body when adapting between
+// Responses transports, then applies the channel reasoning effort mapping to the
+// adapted target format.
 func applyResponsesTransportRequestBody(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
 	return pipeline.OnRawRequest("responses-transport-request-body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		if !responsesTransportAdaptationEnabled(ctx, outbound, systemService) {
