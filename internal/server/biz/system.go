@@ -757,7 +757,9 @@ func (s *SystemService) Initialize(ctx context.Context, params *InitializeSystem
 		}
 	}()
 
-	ctx = ent.NewContext(ctx, tx.Client())
+	// Expose the transaction itself, not only its client, so after-commit work such as cache
+	// invalidation runs once setup commits.
+	ctx = ent.NewContext(ent.NewTxContext(ctx, tx), tx.Client())
 
 	hashedPassword, err := HashPassword(params.OwnerPassword)
 	if err != nil {
@@ -1033,17 +1035,22 @@ func (s *SystemService) getSystemValue(ctx context.Context, key string) (string,
 	generation := s.missing.snapshot()
 	client := s.entFromContext(ctx)
 
+	// Reads inside a transaction may see uncommitted rows or an older snapshot, so only results
+	// observed outside one are cached.
+	inTx := ent.TxFromContext(ctx) != nil
+
 	sys, err := client.System.Query().Where(system.KeyEQ(key)).Only(ctx)
 	if err != nil {
-		// A transaction may read an older snapshot, so only misses seen outside one are recorded.
-		if ent.IsNotFound(err) && ent.TxFromContext(ctx) == nil {
+		if ent.IsNotFound(err) && !inTx {
 			s.missing.remember(key, generation, now)
 		}
 
 		return "", fmt.Errorf("failed to get system value: %w", err)
 	}
 
-	_ = s.Cache.Set(ctx, cacheKey, *sys)
+	if !inTx {
+		_ = s.Cache.Set(ctx, cacheKey, *sys)
+	}
 
 	return sys.Value, nil
 }
@@ -1575,22 +1582,11 @@ func applySystemChannelSettingsPatch(setting *SystemChannelSettings, input Updat
 func (s *SystemService) invalidateSystemValueCache(ctx context.Context, key string) {
 	s.dropSystemValueCache(ctx, key)
 
-	tx := ent.TxFromContext(ctx)
-	if tx == nil {
-		return
-	}
-
-	tx.OnCommit(func(next ent.Committer) ent.Committer {
-		return ent.CommitFunc(func(txCtx context.Context, tx *ent.Tx) error {
-			if err := next.Commit(txCtx, tx); err != nil {
-				return err
-			}
-
-			s.dropSystemValueCache(context.WithoutCancel(ctx), key)
-
-			return nil
+	if ent.TxFromContext(ctx) != nil {
+		runAfterCommit(ctx, func(ctx context.Context) {
+			s.dropSystemValueCache(ctx, key)
 		})
-	})
+	}
 }
 
 func (s *SystemService) dropSystemValueCache(ctx context.Context, key string) {

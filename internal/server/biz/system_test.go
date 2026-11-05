@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync/atomic"
@@ -1633,4 +1634,75 @@ func TestMissingSystemValues_ExpiresAndIgnoresStaleLookups(t *testing.T) {
 	missing.forget("other")
 	missing.remember("key", generation, now)
 	require.False(t, missing.contains("key", now))
+}
+
+// A read through a transaction must not publish an uncommitted value that a rollback discards.
+func TestSystemService_GetSystemValue_DoesNotCacheTransactionReads(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	key := "transaction_read_test"
+	require.NoError(t, service.setSystemValue(ctx, key, "committed"))
+
+	tx, err := client.Tx(ctx)
+	require.NoError(t, err)
+
+	txCtx := authz.WithTestBypass(ent.NewTxContext(ent.NewContext(context.Background(), tx.Client()), tx))
+	require.NoError(t, service.setSystemValue(txCtx, key, "rolled-back"))
+
+	value, err := service.getSystemValue(txCtx, key)
+	require.NoError(t, err)
+	require.Equal(t, "rolled-back", value)
+	require.NoError(t, tx.Rollback())
+
+	value, err = service.getSystemValue(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "committed", value)
+}
+
+// A request such as a token refresh can read the secret key while Initialize is still running and
+// record it as missing; once setup commits the secret key must be readable.
+func TestSystemService_Initialize_ReadDuringSetupDoesNotHideSecretKey(t *testing.T) {
+	dsn := "file:" + filepath.Join(t.TempDir(), "initialize.db") + "?_fk=1&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
+	writer := enttest.NewEntClient(t, "sqlite3", dsn)
+	defer writer.Close()
+
+	reader := enttest.NewEntClient(t, "sqlite3", dsn)
+	defer reader.Close()
+
+	service := NewSystemService(SystemServiceParams{})
+	readerCtx := authz.WithTestBypass(ent.NewContext(context.Background(), reader))
+
+	// The brand name is written after the secret key, so this read runs once the secret key has been
+	// written and invalidated but before the setup transaction commits.
+	var missedDuringSetup atomic.Bool
+
+	writer.System.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			value, err := next.Mutate(ctx, m)
+			if mutation, ok := m.(*ent.SystemMutation); ok && err == nil {
+				if key, ok := mutation.Key(); ok && key == SystemKeyBrandName {
+					_, readErr := service.SecretKey(readerCtx)
+					missedDuringSetup.Store(errors.Is(readErr, ErrSystemNotInitialized))
+				}
+			}
+
+			return value, err
+		})
+	})
+
+	err := service.Initialize(ent.NewContext(t.Context(), writer), &InitializeSystemParams{
+		OwnerEmail:     "owner@example.com",
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
+	})
+	require.NoError(t, err)
+	require.True(t, missedDuringSetup.Load())
+
+	secretKey, err := service.SecretKey(readerCtx)
+	require.NoError(t, err)
+	require.NotEmpty(t, secretKey)
 }
