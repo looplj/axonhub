@@ -2,6 +2,8 @@
 
 [插件系统](README.md)的 UI 扩展点。v1 只有独立页面：侧栏入口加一个整页 iframe。dashboard 面板等插槽见 [slots.md](slots.md)，未排期，排期时复用本篇的 iframe 宿主、桥接和插件 GraphQL。manifest 的 `ui.pages` 字段见 [manifest.md](manifest.md)。数值限制见 [运行限制](README.md#运行限制)。任务见 [任务表](README.md#9-任务管理)，本篇对应 T-04 至 T-07。
 
+> 当前仍采用 `BuildPluginScopedUser` 创建权限受限的用户副本。独立 Plugin Principal 的替代方案见 [permission.md](permission.md)，尚未实施。
+
 ## 1. 背景
 
 ### 现状
@@ -16,7 +18,7 @@
 
 ## 2. 目标
 
-1. manifest 的 `ui.pages` 每个条目在侧栏的「插件」分组里有一个入口。打开 `/plugins/$pluginId/pages/$page` 时，主区域渲染该页面的 iframe。iframe 是 `sandbox="allow-scripts"`，不能读 cookie 和 localStorage。
+1. manifest 的 `ui.pages` 每个条目在侧栏的「插件」分组里有一个入口。打开 `/plugins/$pluginId/pages/$page` 时，主区域渲染该页面的 iframe。iframe 是 `sandbox="allow-scripts allow-forms"`，不能读 cookie 和 localStorage；表单可以用 `submit` 事件处理，但不能真正提交。
 2. 页面经桥接执行 GraphQL query 和 mutation。执行权限是插件的 `granted_permissions` 与当前用户权限的交集。
 3. 页面能读写本插件的 KV，读写不到其他插件的 KV。写入要求当前用户有 `write_plugins`。
 4. 插件被禁用、页面 key 不存在、或用户未登录时，不渲染 iframe。页面 10 秒内不握手或脚本报错时，显示错误和重试。
@@ -53,7 +55,7 @@
 | KV 写入：能打开页面的用户都能写 | 放弃。页面隐藏按钮挡不住直接调用端点 |
 | KV 写入：新增用户 scope `write_plugins` | 采用。scope 定义见 [README](README.md#plugin) |
 
-降权能生效，是因为规则只读 context 里的用户对象，不会按用户 ID 再加载一遍来做判断。例外是 `me`：它会重新从数据库加载，所以页面查 `me` 得到的是真实信息。这只是用户读自己，接受。
+权限副本约束依赖 context 用户的 scope 检查；仅凭用户 ID 放行或重新加载用户后判断身份的路径不受这个交集完整约束。`me` 当前会重新加载真实用户，私有资源与自助接口需单独限制。后续统一改造和 `me` 的边界见 [权限方案](permission.md#6-私有数据自助接口与-bypass)。
 
 自助 mutation 不经过 scope 判断，降权挡不住，所以插件端点单独拒绝它们，见 [插件 GraphQL](#7-插件-graphql)。这不是危险操作黑名单：被拒绝的是权限上限管不到的 mutation，不是按危险程度挑出来的。
 
@@ -67,7 +69,7 @@
 3. 匹配到：渲染 PluginFrame，entry 用该 page 的 entry，占满认证布局的主区域
 ```
 
-`sidebar.ts` 的 `useSidebarData` 在权限过滤之后追加一组「插件」。项来自 `pluginUIEntries.pages`，`title` 为字符串时直接显示，为对象时按当前语言 → `en` → `key` 回退，统一遵循 [title](manifest.md#title)。这一组不进 `nav-items.ts` 的静态定义，也不进 `route-permission.ts`：能看到项的条件是「已登录且该插件启用并声明了页面」。页面内部的数据由 [插件 GraphQL](#7-插件-graphql) 限制。
+侧栏的「插件」分组在 `nav-items.ts` 里静态定义，位于「项目」和「设置」之间，静态项只有「插件管理」（`/plugins`，需要 `read_plugins`）。`sidebar.ts` 的 `useSidebarData` 在权限过滤之后把页面项追加到这一组；用户看不到或隐藏了「插件管理」时，按原位置重建只含页面项的分组。项来自 `pluginUIEntries.pages`，`title` 为字符串时直接显示，为对象时按当前语言 → `en` → `key` 回退，统一遵循 [title](manifest.md#title)。页面项不进 `nav-items.ts`，也不进 `route-permission.ts`：能看到项的条件是「已登录且该插件启用并声明了页面」。页面内部的数据由 [插件 GraphQL](#7-插件-graphql) 限制。
 
 `PluginUIPage.title` 使用现有 `JSONRawMessage!` scalar 保留字符串或对象形式；前端声明为 `string | Record<string, string>`，用统一的标题解析函数处理，不在 GraphQL 中按某个用户语言提前转成字符串。
 
@@ -81,12 +83,15 @@
          + "." + HMAC-SHA256(SystemKeySecretKey, "plugin-ui|" + payload)
    entry 必须是该插件 manifest 里某个 page 的 entry，并绑定到 token；资源读取范围见下文
 2. iframe src=/admin/plugin-ui/<token>/<entry>
-   sandbox="allow-scripts"，不加 allow-same-origin
+   sandbox="allow-scripts allow-forms"，不加 allow-same-origin
    referrerpolicy="no-referrer"
+   allow-forms 只为让 submit 事件触发（没有它浏览器在派发 submit 前就拦截表单），
+   真正的表单提交由 CSP form-action 'none' 拦截
 3. 资源响应头：
-   Content-Security-Policy: sandbox allow-scripts; default-src 'none';
+   Content-Security-Policy: sandbox allow-scripts allow-forms; default-src 'none';
      script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';
-     img-src 'self' data:; font-src 'self'; connect-src 'none'; frame-ancestors 'self'
+     img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none';
+     frame-ancestors 'self'
    X-Content-Type-Options: nosniff
    Referrer-Policy: no-referrer
    Access-Control-Allow-Origin: *
@@ -182,7 +187,7 @@ UI token 的资源读取范围：
 - **响应**：该路由固定返回 `Access-Control-Allow-Origin: *`，不反射请求 Origin，也不使用 `Access-Control-Allow-Origin: null`。不返回 `Access-Control-Allow-Credentials` 或 Set-Cookie；不开放 Authorization 等自定义请求头。固定通配符不需要增加 `Vary: Origin`，保留其他已有 Vary 值。成功、条件响应（若返回 304）及错误响应均保留相同 CORS 头，错误响应不能包含受保护的资源内容。
 - **鉴权**：URL token 是资源访问凭据；CORS 不替代签名、有效期、启用状态、包版本和路径范围校验。所有读取（含 HEAD、条件请求）均先鉴权，不能因有 Cookie、用户 JWT 或 `Origin: null` 而放行无效 token。持有有效 token 的调用方可匿名读取其范围内的静态资源，因此包内 UI 文件不得包含密钥。
 - **加载方式**：示例使用 `crossorigin="anonymous"`，Vite 产物的模块脚本和 modulepreload 也使用匿名模式；禁止 `crossorigin="use-credentials"`。不向模块请求附加 Cookie、HTTP 身份认证或用户 Bearer token，不需要 SDK 在 JS 中拼接认证头。
-- **隔离保持**：iframe 和响应 CSP 仍为 `sandbox allow-scripts`，不增加 `allow-same-origin`，不放宽 `connect-src 'none'`。这套静态资源 CORS 不能挂到整个 `/admin`，也不能应用到主 GraphQL 或插件 GraphQL 端点；数据访问继续由父页面 Bridge 代理。CORS 不改变 SDK 的 source/session 校验。
+- **隔离保持**：iframe 和响应 CSP 仍为 `sandbox allow-scripts allow-forms`，不增加 `allow-same-origin`，不放宽 `connect-src 'none'` 和 `form-action 'none'`。这套静态资源 CORS 不能挂到整个 `/admin`，也不能应用到主 GraphQL 或插件 GraphQL 端点；数据访问继续由父页面 Bridge 代理。CORS 不改变 SDK 的 source/session 校验。
 - **响应类型**：JS 模块及其依赖返回 `Content-Type: text/javascript`，CSS 返回 `text/css`，字体返回 `font/woff2`，保留 `nosniff`。缺失的 JS 返回真实 404，不能用 HTML 入口兜底，否则模块会因 MIME 不匹配失败。
 
 `navigate` 只允许站内路径。`toast` 走宿主的通知。主题变化用 `onTheme` 再推一次。
@@ -214,12 +219,12 @@ UI token 的资源读取范围：
 a. 插件存在、已启用、声明了 ui.pages；否则 404
 b. kvWritable = 降权前的用户是 Owner，或有系统级 write_plugins。写入 context
 c. ceiling = granted_permissions 去掉 webhook，即插件被授予的 read_* 与 write_channels
-d. DowngradeUser(user, ceiling) 后 contexts.WithUser；pluginID 和步骤 a 解析到的 installationID（plugins.id）写入 context，本次操作固定使用
+d. BuildPluginScopedUser(user, ceiling) 后 contexts.WithUser；pluginID 和步骤 a 解析到的 installationID（plugins.id）写入 context，本次操作固定使用
 e. 接受 Query 和 Mutation，拒绝 Subscription。根字段在自助 mutation 名单里时返回 FORBIDDEN
 f. FixedComplexityLimit(1000)。响应上限 2 MiB
 ```
 
-`DowngradeUser`：
+`BuildPluginScopedUser`：
 
 - 系统有效 scope = Owner 则全部，否则 `Scopes` 并上系统角色 scopes。副本 `Scopes = 有效 ∩ ceiling`，`IsOwner=false`，`Edges.Roles=nil`。
 - 每个 `UserProject`：系统 Owner 或项目 Owner 则全部，否则成员 scopes 并上该项目角色 scopes。副本同样取交集，`IsOwner=false`。
@@ -236,6 +241,11 @@ f. FixedComplexityLimit(1000)。响应上限 2 MiB
 `plugin.graphql` 增加：
 
 ```graphql
+type PluginKVPage {
+  entries: [PluginKVEntry!]!
+  nextCursor: String
+}
+
 type PluginKVEntry {
   namespace: String!
   key: String!
@@ -246,7 +256,7 @@ type PluginKVEntry {
 
 extend type Query {
   pluginKV(namespace: String, key: String!): PluginKVEntry
-  pluginKVList(namespace: String, prefix: String): [PluginKVEntry!]!
+  pluginKVList(namespace: String, prefix: String, first: Int = 100, after: String): PluginKVPage!
 }
 
 extend type Mutation {
@@ -255,6 +265,7 @@ extend type Mutation {
 }
 ```
 
+- `pluginKVList` 按 key 升序分页：`first` 默认 100，范围 1–100；首请求省略 `after`，后续传上页的 `nextCursor`。返回 `entries` 和 `nextCursor`，游标为空表示没有下一页。游标是上一页最后一个 key，查询使用排他边界；翻页时保持 namespace 和 prefix 不变。分页不提供跨请求快照，并发新增在游标之前的键需重新从首页读取。
 - 字段没有插件 ID 参数。resolver 从 context 取 installationID，只有插件端点会写入；在 `/admin/graphql` 上调用返回 FORBIDDEN。不能按 manifest ID 重新查找安装，避免在途操作写入同名重装插件的 KV。
 - 读：能打开页面的用户都可以。写：要求 context 里的 `kvWritable`，否则 FORBIDDEN。
 - 直接调用 [`kv.go`](README.md#pluginstorage)，和 `ctx.kv` 是同一份数据、同一套校验（key、value 大小、TTL、list 条数）。namespace 省略时为 `default`。
@@ -263,7 +274,7 @@ extend type Mutation {
 
 ### 后端
 - `internal/server/plugin/ui.go`、`uisdk/bridge.js`：见上文。
-- `internal/server/plugin/downgrade.go`：`DowngradeUser`。
+- `internal/server/plugin/scoped_user.go`：`BuildPluginScopedUser`。
 - `internal/server/plugin/graphql.go`：插件端点、自助 mutation 名单、kvWritable、pluginID 与 installationID 写入 context。
 - `internal/server/gql/graphql.go`：抽出 `newSchemaFromDeps`，增加 `PluginGraphql`。
 - `internal/server/gql/plugin.graphql` 与 resolver：KV 字段。执行 `make generate` 后手写 `pluginKV`、`pluginKVList`、`setPluginKV`、`deletePluginKV`。
@@ -272,7 +283,7 @@ extend type Mutation {
 ### 前端
 - `features/plugins/components/plugin-frame.tsx`：握手、主题、GraphQL 转发、navigate、toast、错误与重试。
 - `routes/_authenticated/plugins/$pluginId/pages/$page.tsx`
-- `sidebar.ts`：追加插件分组。
+- `sidebar.ts`：把页面项追加到「插件」分组。
 - `locales/en/plugins.json`、`locales/zh-CN/plugins.json`：分组名、404、页面出错文案。key 与管理页共用这两个文件。
 
 ## 9. 验收

@@ -17,6 +17,7 @@ schema:
   - price.graphql
   - cost.graphql
   - analytics.graphql
+  - plugin.graphql
 
 omit_gqlgen_version_in_file_notice: true
 
@@ -815,3 +816,34 @@ models:
   DeleteDisabledAPIKeysPayload:
     model:
       - github.com/looplj/axonhub/internal/server/biz.DeleteDisabledAPIKeysResult
+  # Plugin is not ent.Plugin. The DTO has no package bytes.
+  Plugin:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.InstalledPlugin
+  PluginConfigField:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.ConfigField
+  PluginRuntimeStatus:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.RuntimeStatusView
+  PluginUpgradePreview:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.UpgradePreview
+  PluginInstallResult:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.InstallView
+  PluginKVPage:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.KVPage
+  PluginKVEntry:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.KVEntry
+  PluginUIPage:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.UIPage
+  PluginUIEntries:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.UIEntries
+  PluginUISession:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.UISession

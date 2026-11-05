@@ -9,6 +9,7 @@ import {
   IconLayoutDashboard,
   IconNote,
   IconPackages,
+  IconPuzzle,
   IconRobot,
   IconSettings,
   IconShield,
@@ -34,6 +35,8 @@ export interface NavGroupDef {
   titleKey: string;
   items: NavItemDef[];
 }
+
+export const PLUGINS_NAV_GROUP_ID = 'plugins';
 
 export const NAV_GROUP_DEFS: NavGroupDef[] = [
   {
@@ -64,6 +67,12 @@ export const NAV_GROUP_DEFS: NavGroupDef[] = [
       { titleKey: 'sidebar.items.roles', url: '/project/roles', icon: IconShield },
       { titleKey: 'sidebar.items.playground', url: '/project/playground', icon: IconRobot },
     ],
+  },
+  {
+    // Plugin pages are appended to this group at runtime by `useSidebarData`.
+    id: PLUGINS_NAV_GROUP_ID,
+    titleKey: 'plugins.nav.group',
+    items: [{ titleKey: 'plugins.nav.manage', url: '/plugins', icon: IconPuzzle }],
   },
   {
     id: 'settings',

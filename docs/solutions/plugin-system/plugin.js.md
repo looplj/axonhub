@@ -113,12 +113,16 @@ interface KVEntry {
   expiresAt: Timestamp | null;
   updatedAt: Timestamp;
 }
+interface KVPage {
+  entries: KVEntry[];
+  nextCursor: string | null;
+}
 interface KV {
   get(key: string, options?: { namespace?: string }): string | null;
   set(key: string, value: string,
       options?: { namespace?: string; ttlSeconds?: number }): void;
   delete(key: string, options?: { namespace?: string }): boolean;
-  list(options?: { namespace?: string; prefix?: string }): KVEntry[];
+  list(options?: { namespace?: string; prefix?: string; first?: number; after?: string }): KVPage;
 }
 interface Counter {
   add(key: string, windowSeconds: number): number;
@@ -131,7 +135,7 @@ interface Log {
 }
 ```
 
-- `ctx.kv`：namespace 默认 `default`；get 对不存在或已过期的键返回 null，空字符串是合法值。set 为覆盖写入，value 必须是 UTF-8 字符串，存 JSON 需显式 `JSON.stringify`；TTL 省略或为 0 表示不过期，覆盖时重设 TTL。delete 仅在删除未过期的现存键时返回 true，否则 false。list 默认空 prefix，按 key 升序返回该 namespace 内匹配前缀的未过期条目；无结果返回 `[]`，超过总览条数上限报错，不截断、不分页。prefix 是字面前缀，不是正则或 SQL 通配符。
+- `ctx.kv`：namespace 默认 `default`；get 对不存在或已过期的键返回 null，空字符串是合法值。set 为覆盖写入，value 必须是 UTF-8 字符串，存 JSON 需显式 `JSON.stringify`；TTL 省略或为 0 表示不过期，覆盖时重设 TTL。delete 仅在删除未过期的现存键时返回 true，否则 false。list 默认空 prefix，按 key 升序返回该 namespace 内匹配前缀的未过期条目；返回 `{ entries, nextCursor }`，无结果时 entries 为 `[]`、nextCursor 为 null。first 默认 100、范围 1–100；after 传上一页 nextCursor，按 key 排他边界继续读取，nextCursor 为 null 表示末页。prefix 是字面前缀，不是正则或 SQL 通配符。
 - `ctx.counter`：add 固定递增 1 并返回递增后的窗口计数；get 只读，不存在时为 0。窗口必须是整数秒。同一插件、同一 key、同一 windowSeconds 才是同一计数器，不同窗口独立。Redis 并发时不保证递增与求和整体原子性，沿用已接受的妥协，不增加 Lua。计数器不是持久 KV。
 - `ctx.log`：fields 默认 `{}`；宿主另附插件、安装和调用信息，插件不能覆盖这些身份字段。日志接口不因日志落地失败中断钩子。
 - KV、counter、log 在 `onEvent`、`onRequest`、`onAttempt` 都可用。KV set/delete 计入写类 API 限额；counter.add 用于每次事件计数，不计入处置类写限额。
