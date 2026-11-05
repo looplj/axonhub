@@ -1022,6 +1022,18 @@ func (m *missingSystemValues) forget(key string) {
 }
 
 func (s *SystemService) getSystemValue(ctx context.Context, key string) (string, error) {
+	// A transaction must see its own writes, which another request may have shadowed in the caches
+	// with the committed state, and what it reads may be uncommitted or an older snapshot. So it
+	// bypasses both caches and never fills them.
+	if ent.TxFromContext(ctx) != nil {
+		sys, err := s.entFromContext(ctx).System.Query().Where(system.KeyEQ(key)).Only(ctx)
+		if err != nil {
+			return "", fmt.Errorf("failed to get system value: %w", err)
+		}
+
+		return sys.Value, nil
+	}
+
 	cacheKey := "system:" + key
 	if v, err := s.Cache.Get(ctx, cacheKey); err == nil {
 		return v.Value, nil
@@ -1033,24 +1045,17 @@ func (s *SystemService) getSystemValue(ctx context.Context, key string) (string,
 	}
 
 	generation := s.missing.snapshot()
-	client := s.entFromContext(ctx)
 
-	// Reads inside a transaction may see uncommitted rows or an older snapshot, so only results
-	// observed outside one are cached.
-	inTx := ent.TxFromContext(ctx) != nil
-
-	sys, err := client.System.Query().Where(system.KeyEQ(key)).Only(ctx)
+	sys, err := s.entFromContext(ctx).System.Query().Where(system.KeyEQ(key)).Only(ctx)
 	if err != nil {
-		if ent.IsNotFound(err) && !inTx {
+		if ent.IsNotFound(err) {
 			s.missing.remember(key, generation, now)
 		}
 
 		return "", fmt.Errorf("failed to get system value: %w", err)
 	}
 
-	if !inTx {
-		_ = s.Cache.Set(ctx, cacheKey, *sys)
-	}
+	_ = s.Cache.Set(ctx, cacheKey, *sys)
 
 	return sys.Value, nil
 }

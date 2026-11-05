@@ -1661,6 +1661,59 @@ func TestSystemService_GetSystemValue_DoesNotCacheTransactionReads(t *testing.T)
 	require.Equal(t, "committed", value)
 }
 
+// Mutations such as UpdateVideoStorageSettings write a setting and then read it again in the same
+// transaction. Another request reading the key in between caches the committed state (a miss, or
+// the previous value); the transaction must still read its own write.
+func TestSystemService_GetSystemValue_TransactionReadsOwnWriteDespiteConcurrentCaching(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		before string // committed value before the transaction; empty means the key was never saved
+	}{
+		{name: "first save"},
+		{name: "update", before: "before"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dsn := "file:" + filepath.Join(t.TempDir(), "system.db") + "?_fk=0&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
+			writer := enttest.NewEntClient(t, "sqlite3", dsn)
+			defer writer.Close()
+
+			reader := enttest.NewEntClient(t, "sqlite3", dsn)
+			defer reader.Close()
+
+			service := &SystemService{Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory})}
+			readerCtx := authz.WithTestBypass(ent.NewContext(context.Background(), reader))
+			key := "transaction_own_write_test"
+
+			if tc.before != "" {
+				require.NoError(t, service.setSystemValue(authz.WithTestBypass(ent.NewContext(context.Background(), writer)), key, tc.before))
+			}
+
+			tx, err := writer.Tx(context.Background())
+			require.NoError(t, err)
+
+			txCtx := authz.WithTestBypass(ent.NewTxContext(ent.NewContext(context.Background(), tx.Client()), tx))
+			require.NoError(t, service.setSystemValue(txCtx, key, "after"))
+
+			value, err := service.getSystemValue(readerCtx, key)
+			if tc.before == "" {
+				require.True(t, ent.IsNotFound(err))
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.before, value)
+			}
+
+			value, err = service.getSystemValue(txCtx, key)
+			require.NoError(t, err)
+			require.Equal(t, "after", value)
+			require.NoError(t, tx.Commit())
+
+			value, err = service.getSystemValue(readerCtx, key)
+			require.NoError(t, err)
+			require.Equal(t, "after", value)
+		})
+	}
+}
+
 // A request such as a token refresh can read the secret key while Initialize is still running and
 // record it as missing; once setup commits the secret key must be readable.
 func TestSystemService_Initialize_ReadDuringSetupDoesNotHideSecretKey(t *testing.T) {
