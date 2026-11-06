@@ -24,7 +24,7 @@ func (r userScopeQueryRule) EvalQuery(ctx context.Context, q ent.Query) error {
 		return err
 	}
 
-	if HasSystemScope(user, r.requiredScope) {
+	if EffectiveSystemScope(ctx, user, r.requiredScope) {
 		return privacy.Allow
 	}
 
@@ -39,7 +39,7 @@ func UserWriteScopeRule(writeScope ScopeSlug) privacy.MutationRule {
 			return err
 		}
 
-		if HasSystemScope(user, writeScope) {
+		if EffectiveSystemScope(ctx, user, writeScope) {
 			return privacy.Allow
 		}
 
@@ -55,7 +55,7 @@ func UserScopeQueryMutationRule(requiredScope ScopeSlug) privacy.QueryMutationRu
 			return err
 		}
 
-		if HasSystemScope(user, requiredScope) {
+		if EffectiveSystemScope(ctx, user, requiredScope) {
 			return privacy.Allow
 		}
 
@@ -69,7 +69,7 @@ func UserHasScope(ctx context.Context, requiredScope ScopeSlug) bool {
 		return false
 	}
 
-	if HasSystemScope(user, requiredScope) {
+	if EffectiveSystemScope(ctx, user, requiredScope) {
 		return true
 	}
 

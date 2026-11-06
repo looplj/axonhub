@@ -14,7 +14,6 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
@@ -209,7 +208,7 @@ func (n *WebhookNotifier) notify(
 	renderCtx WebhookRenderContext,
 	occurredAt time.Time,
 ) {
-	ctx = authz.WithSystemBypass(context.WithoutCancel(ctx), "webhook-notifier")
+	ctx = context.WithoutCancel(ctx)
 	renderCtx.OccurredAt = occurredAt.In(n.SystemService.TimeLocation(ctx)).Format(time.RFC3339)
 	cfg := *n.SystemService.WebhookNotifierConfigOrDefault(ctx)
 	targets := n.selectTargets(cfg, eventName)
@@ -330,7 +329,6 @@ func (n *WebhookNotifier) SendToTarget(ctx context.Context, name string, payload
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx = authz.WithSystemBypass(ctx, "webhook-notifier")
 	target, ok := webhookTargetByName(n.SystemService.WebhookNotifierConfigOrDefault(ctx), name)
 	if !ok {
 		return ErrWebhookTargetNotFound

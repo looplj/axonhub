@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/looplj/axonhub/internal/authz/identity"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/system"
 )
 
 type (
@@ -35,6 +37,14 @@ func (p Policy) EvalMutation(ctx context.Context, m ent.Mutation) error {
 // EvalQuery evaluates a query against a query policy.
 // Like the ent privacy package, but will deny by default.
 func (policies QueryPolicy) EvalQuery(ctx context.Context, q ent.Query) error {
+	// Resource constraints must apply to every Ent entry point, including node/nodes
+	// and aggregate queries, before a business scope can allow the query.
+	if identity.IsPlugin(ctx) {
+		if query, ok := q.(*ent.SystemQuery); ok {
+			query.Where(system.KeyNEQ("system_jwt_secret_key"))
+		}
+	}
+
 	for _, policy := range policies {
 		decision := policy.EvalQuery(ctx, q)
 

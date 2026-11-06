@@ -481,8 +481,8 @@ func (s *OIDCService) IsUserRestrictedToOIDC(ctx context.Context, u *ent.User) b
 		// The edge was not loaded. This runs during pre-auth sign-in, where there is
 		// no viewer in the context yet, so the privacy policy on OIDCIdentity would
 		// deny a normal query ("no user in context"). Read the user's own OIDC links
-		// under a system bypass, mirroring the user lookup in AuthService.AuthenticateUser.
-		identities, err = authz.RunWithSystemBypass(ctx, "oidc-restriction-check",
+		// as a fixed host read; only the restriction decision is returned to the caller.
+		identities, err = authz.RunAsHost(ctx, s.entFromContext(ctx), "oidc-restriction-check",
 			func(bypassCtx context.Context) ([]*ent.OIDCIdentity, error) {
 				return s.entFromContext(bypassCtx).OIDCIdentity.Query().
 					Where(oidcidentity.UserID(u.ID)).

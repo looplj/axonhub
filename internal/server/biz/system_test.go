@@ -33,7 +33,7 @@ func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
 
 	// Getting secret key before initialization should return error
 	ctx = authz.WithTestBypass(ctx)
-	secretKey, err := service.SecretKey(ctx)
+	secretKey, err := service.SecretKey(authz.NewSystemContext(ctx))
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrSystemNotInitialized)
 	require.Contains(t, err.Error(), "secret key not found")
@@ -149,7 +149,7 @@ func TestSystemService_WithTwoLevelCache(t *testing.T) {
 	err := service.SetSecretKey(ctx, secretKey)
 	require.NoError(t, err)
 
-	retrievedSecretKey, err := service.SecretKey(ctx)
+	retrievedSecretKey, err := service.SecretKey(authz.NewSystemContext(ctx))
 	require.NoError(t, err)
 	require.Equal(t, secretKey, retrievedSecretKey)
 }
@@ -671,7 +671,7 @@ func TestSystemService_Initialize_WithCache(t *testing.T) {
 
 	// Verify secret key is cached
 	ctx = authz.WithTestBypass(ctx)
-	secretKey, err := service.SecretKey(ctx)
+	secretKey, err := service.SecretKey(authz.NewSystemContext(ctx))
 	require.NoError(t, err)
 	require.NotEmpty(t, secretKey)
 	require.Len(t, secretKey, 64)
@@ -686,7 +686,7 @@ func TestSystemService_Initialize_WithCache(t *testing.T) {
 	require.NoError(t, err)
 
 	// Values should remain the same
-	secretKey2, err := service.SecretKey(ctx)
+	secretKey2, err := service.SecretKey(authz.NewSystemContext(ctx))
 	require.NoError(t, err)
 	require.Equal(t, secretKey, secretKey2)
 }
@@ -1120,7 +1120,7 @@ func TestSystemService_Initialize_SetsAllSystemKeys(t *testing.T) {
 	require.Equal(t, "Test Brand", brandName)
 
 	// Verify secret key is set and has correct length
-	secretKey, err := service.SecretKey(ctx)
+	secretKey, err := service.SecretKey(authz.NewSystemContext(ctx))
 	require.NoError(t, err)
 	require.Len(t, secretKey, 64)
 }
@@ -1736,7 +1736,7 @@ func TestSystemService_Initialize_ReadDuringSetupDoesNotHideSecretKey(t *testing
 			value, err := next.Mutate(ctx, m)
 			if mutation, ok := m.(*ent.SystemMutation); ok && err == nil {
 				if key, ok := mutation.Key(); ok && key == SystemKeyBrandName {
-					_, readErr := service.SecretKey(readerCtx)
+					_, readErr := service.SecretKey(authz.NewSystemContext(readerCtx))
 					missedDuringSetup.Store(errors.Is(readErr, ErrSystemNotInitialized))
 				}
 			}
@@ -1755,7 +1755,7 @@ func TestSystemService_Initialize_ReadDuringSetupDoesNotHideSecretKey(t *testing
 	require.NoError(t, err)
 	require.True(t, missedDuringSetup.Load())
 
-	secretKey, err := service.SecretKey(readerCtx)
+	secretKey, err := service.SecretKey(authz.NewSystemContext(readerCtx))
 	require.NoError(t, err)
 	require.NotEmpty(t, secretKey)
 }

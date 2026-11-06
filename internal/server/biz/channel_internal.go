@@ -70,8 +70,12 @@ func (svc *ChannelService) onTokenRefreshed(ch *ent.Channel) func(ctx context.Co
 	return func(ctx context.Context, refreshed *oauth.OAuthCredentials) error {
 		mu.Lock()
 		defer mu.Unlock()
-		ctx = authz.WithSystemBypass(ctx, "channel-refresh-cache")
-		return svc.refreshOAuthToken(ctx, &snapshot, refreshed)
+		// The channel was authorized before constructing the provider. Persist only
+		// its refreshed credentials as a host operation, preserving the caller's client.
+		_, err := authz.RunAsHost(ctx, svc.entFromContext(ctx), "channel-refresh-credentials", func(hostCtx context.Context) (struct{}, error) {
+			return struct{}{}, svc.refreshOAuthToken(hostCtx, &snapshot, refreshed)
+		})
+		return err
 	}
 }
 

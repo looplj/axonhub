@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -85,14 +84,14 @@ func (s *InvitationService) CreateInvitation(ctx context.Context, projectID, rol
 		return nil, err
 	}
 
-	projectRow, err := authz.RunWithSystemBypass(ctx, "invitation-project-lookup", func(ctx context.Context) (*ent.Project, error) {
+	projectRow, err := authz.RunAsHost(ctx, s.entFromContext(ctx), "invitation-project-lookup", func(ctx context.Context) (*ent.Project, error) {
 		return s.entFromContext(ctx).Project.Query().Where(project.IDEQ(projectID)).Only(ctx)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project: %w", err)
 	}
 
-	projectRole, err := authz.RunWithSystemBypass(ctx, "invitation-role-lookup", func(ctx context.Context) (*ent.Role, error) {
+	projectRole, err := authz.RunAsHost(ctx, s.entFromContext(ctx), "invitation-role-lookup", func(ctx context.Context) (*ent.Role, error) {
 		return s.entFromContext(ctx).Role.Query().
 			Where(role.IDEQ(roleID), role.ProjectIDEQ(projectID)).
 			Only(ctx)
@@ -104,7 +103,7 @@ func (s *InvitationService) CreateInvitation(ctx context.Context, projectID, rol
 		return nil, fmt.Errorf("permission denied: %w", err)
 	}
 
-	created, err := authz.RunWithSystemBypass(ctx, "invitation-create", func(ctx context.Context) (*ent.Invitation, error) {
+	created, err := authz.RunAsHost(ctx, s.entFromContext(ctx), "invitation-create", func(ctx context.Context) (*ent.Invitation, error) {
 		return s.entFromContext(ctx).Invitation.Create().
 			SetTokenHash(hashInvitationToken(token)).
 			SetProjectID(projectID).
@@ -264,22 +263,9 @@ func (s *InvitationService) canInvite(ctx context.Context, projectID int) error 
 	if !ok || currentUser == nil {
 		return fmt.Errorf("user not found in context")
 	}
-	if currentUser.IsOwner || scopes.UserHasScope(ctx, scopes.ScopeWriteUsers) {
+	if scopes.EffectiveSystemScope(ctx, currentUser, scopes.ScopeWriteUsers) ||
+		scopes.EffectiveProjectScope(ctx, currentUser, projectID, scopes.ScopeWriteUsers) {
 		return nil
-	}
-
-	for _, membership := range currentUser.Edges.ProjectUsers {
-		if membership.ProjectID != projectID {
-			continue
-		}
-		if membership.IsOwner || slices.Contains(membership.Scopes, string(scopes.ScopeWriteUsers)) {
-			return nil
-		}
-		for _, role := range currentUser.Edges.Roles {
-			if role.ProjectID != nil && *role.ProjectID == projectID && slices.Contains(role.Scopes, string(scopes.ScopeWriteUsers)) {
-				return nil
-			}
-		}
 	}
 
 	return fmt.Errorf("permission denied: project user management access required")

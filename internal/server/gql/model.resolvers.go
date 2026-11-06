@@ -142,7 +142,7 @@ func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput)
 			return nil, authz.RequireScope(ctx, scopes.ScopeReadChannels)
 		}
 
-		return authz.RunWithSystemBypass(ctx, "project-model-metadata", list)
+		return authz.RunAsHost(ctx, r.client, "project-model-metadata", list)
 	}
 
 	if settings.QueryAllChannelModels || lo.FromPtrOr(input.IncludeAllChannelModels, false) {

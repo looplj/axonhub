@@ -5,8 +5,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-
-	"github.com/samber/lo"
 )
 
 func TestWithBypassPrivacy(t *testing.T) {
@@ -217,7 +215,7 @@ func TestBypassScopeIsolation(t *testing.T) {
 
 func TestBypassWithSystemPrincipal(t *testing.T) {
 	// System principal should succeed
-	ctx := context.WithValue(context.Background(), principalKey{}, Principal{Type: PrincipalTypeSystem})
+	ctx := NewSystemContext(context.Background())
 
 	bypassCtx, err := WithBypassPrivacy(ctx, "system-operation")
 	if err != nil {
@@ -245,7 +243,7 @@ func TestBypassWithSystemPrincipal(t *testing.T) {
 func TestBypassWithNonSystemPrincipal(t *testing.T) {
 	// User principal should fail
 	t.Run("user principal", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), principalKey{}, Principal{Type: PrincipalTypeUser, UserID: lo.ToPtr(123)})
+		ctx := NewUserContext(context.Background(), 123)
 
 		_, err := WithBypassPrivacy(ctx, "user-operation")
 		if err == nil {
@@ -255,7 +253,7 @@ func TestBypassWithNonSystemPrincipal(t *testing.T) {
 
 	// APIKey principal should fail
 	t.Run("apikey principal", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), principalKey{}, Principal{Type: PrincipalTypeAPIKey, APIKeyID: lo.ToPtr(456), ProjectID: lo.ToPtr(789)})
+		ctx := NewAPIKeyContext(context.Background(), 456, 789)
 
 		_, err := WithBypassPrivacy(ctx, "apikey-operation")
 		if err == nil {

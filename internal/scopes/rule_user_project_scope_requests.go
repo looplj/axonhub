@@ -29,7 +29,7 @@ func UserProjectScopeReadRequestsRule(requiredScope ScopeSlug) privacy.QueryRule
 			return privacy.Skipf("User not found in context")
 		}
 
-		if !HasSystemScope(currentUser, requiredScope) && !userHasProjectScope(currentUser, projectID, requiredScope) {
+		if !EffectiveSystemScope(ctx, currentUser, requiredScope) && !EffectiveProjectScope(ctx, currentUser, projectID, requiredScope) {
 			return privacy.Skipf("User %d can not query project %d with scope %s", currentUser.ID, projectID, requiredScope)
 		}
 
@@ -39,7 +39,7 @@ func UserProjectScopeReadRequestsRule(requiredScope ScopeSlug) privacy.QueryRule
 			return privacy.Skipf("Not a project-owned query")
 		}
 
-		if HasSystemScope(currentUser, requiredScope) || userIsProjectOwner(currentUser, projectID) {
+		if EffectiveSystemScope(ctx, currentUser, requiredScope) || userIsProjectOwner(currentUser, projectID) {
 			return privacy.Allowf("User %d can audit requests in project %d", currentUser.ID, projectID)
 		}
 

@@ -2,7 +2,7 @@
 
 [插件系统](README.md)的 UI 扩展点。v1 只有独立页面：侧栏入口加一个整页 iframe。dashboard 面板等插槽见 [slots.md](slots.md)，未排期，排期时复用本篇的 iframe 宿主、桥接和插件 GraphQL。manifest 的 `ui.pages` 字段见 [manifest.md](manifest.md)。数值限制见 [运行限制](README.md#运行限制)。任务见 [任务表](README.md#9-任务管理)，本篇对应 T-04 至 T-07。
 
-> 当前仍采用 `BuildPluginScopedUser` 创建权限受限的用户副本。独立 Plugin Principal 的替代方案见 [permission.md](permission.md)，尚未实施。
+> 页面使用独立 Plugin Principal，context 中的用户为收窄视图（权限与插件授权取交集、无 Owner、无角色），详见 [permission.md](permission.md)。
 
 ## 1. 背景
 
@@ -46,8 +46,8 @@
 |------|------|
 | 页面提交 SQL | 放弃。绕过 Ent privacy，能读到凭证列，还要写三种方言 |
 | iframe 直连 `/admin/graphql` | 放弃。iframe 要拿到用户 token，插件获得用户的全部权限 |
-| 宿主代理 GraphQL，放入降权后的 `*ent.User` | 采用。现有 privacy 规则不用改 |
-| 在 context 里加 scope 上限，逐个改 `HasSystemScope` 和 `OwnerRule` | 放弃。调用点超过 80 处，漏一处就越权 |
+| 宿主代理 GraphQL，使用 Plugin 主体和收窄用户视图 | 采用。公共 privacy 与业务授权检查识别委托上限；直接读 Owner 标记的代码默认拿不到 Owner 权限 |
+| 在 context 里只放一个独立 scope 上限 | 不采用。身份、安装和授权快照必须保持一致 |
 | 合成 API Key principal | 放弃。`WithPrincipal` 不允许同一请求混用 User 和 APIKey |
 | 页面写入：开放 mutation，权限上限包含 `write_*` | 采用。敏感权限在授权时高亮，风险记为妥协 |
 | 页面写入：插件动作 `onAction`，后端只能调宿主 API | 放弃。写的范围更小，但每种写操作都要先加宿主 API，且页面依赖 JS 执行运行时 |
@@ -55,9 +55,7 @@
 | KV 写入：能打开页面的用户都能写 | 放弃。页面隐藏按钮挡不住直接调用端点 |
 | KV 写入：新增用户 scope `write_plugins` | 采用。scope 定义见 [README](README.md#plugin) |
 
-权限副本约束依赖 context 用户的 scope 检查；仅凭用户 ID 放行或重新加载用户后判断身份的路径不受这个交集完整约束。`me` 当前会重新加载真实用户，私有资源与自助接口需单独限制。后续统一改造和 `me` 的边界见 [权限方案](permission.md#6-私有数据自助接口与-bypass)。
-
-自助 mutation 不经过 scope 判断，降权挡不住，所以插件端点单独拒绝它们，见 [插件 GraphQL](#7-插件-graphql)。这不是危险操作黑名单：被拒绝的是权限上限管不到的 mutation，不是按危险程度挑出来的。
+Plugin 主体记录真实用户 ID 用于身份和归属；context 中的用户是收窄视图，系统与项目授权分别取交集。Owner、本人身份不再自动放行插件；私有模板由 Ent privacy 拒绝。`me` 只暴露基础资料，不返回权限或关联资源。自助操作由业务入口的 `RequireDirectUser` 拒绝插件，私有资源由 Ent 本人资源规则限制；GraphQL 不维护 mutation 黑名单。详见 [权限方案](permission.md#6-私有数据自助接口与-bypass)。
 
 ## 5. 路由与侧栏
 
@@ -217,24 +215,20 @@ UI token 的资源读取范围：
 
 ```text
 a. 插件存在、已启用、声明了 ui.pages；否则 404
-b. kvWritable = 降权前的用户是 Owner，或有系统级 write_plugins。写入 context
+b. kvWritable = 委托用户是 Owner，或有系统级 write_plugins。写入 context
 c. ceiling = granted_permissions 去掉 webhook，即插件被授予的 read_* 与 write_channels
-d. BuildPluginScopedUser(user, ceiling) 后 contexts.WithUser；pluginID 和步骤 a 解析到的 installationID（plugins.id）写入 context，本次操作固定使用
-e. 接受 Query 和 Mutation，拒绝 Subscription。根字段在自助 mutation 名单里时返回 FORBIDDEN
+d. authz.DelegatePlugin 派生 Plugin 主体，复制授权快照并隔离请求容器；pluginID 和步骤 a 解析到的 installationID（plugins.id）绑定本次操作
+e. 接受 Query 和 Mutation，拒绝 Subscription。个人账号操作在业务入口检查直接用户身份，Owner 操作检查直接 Owner，私有资源通过 Ent privacy 检查；拒绝时返回 FORBIDDEN。
 f. FixedComplexityLimit(1000)。响应上限 2 MiB
 ```
 
-`BuildPluginScopedUser`：
+`DelegatePlugin` 要求已认证且身份一致的直接 User，拒绝继承 privacy Allow 或系统 bypass。context 中的用户替换为 `scopes.DelegatedUserView` 生成的收窄视图，并固定在委托快照中；每次资源授权检查 Plugin 的授权上限和用户在系统或对应项目的权限。Owner-only 操作不对 Plugin 开放。主体替换属于非法宿主调用，先审计再 panic；通用 system bypass 对 Plugin 默认拒绝（审计并返回错误或拒绝所有 Ent 操作）；普通权限不足仍返回授权错误。
 
-- 系统有效 scope = Owner 则全部，否则 `Scopes` 并上系统角色 scopes。副本 `Scopes = 有效 ∩ ceiling`，`IsOwner=false`，`Edges.Roles=nil`。
-- 每个 `UserProject`：系统 Owner 或项目 Owner 则全部，否则成员 scopes 并上该项目角色 scopes。副本同样取交集，`IsOwner=false`。
-- 其余字段保留。
+页面 KV 由固定宿主操作校验安装 ID、用户身份和写资格，不向插件返回特权 context。插件获授 `write_channels` 且用户本人也拥有该权限时，凭证明文读取遵循相应显式权限；资源查询仍通过 Ent privacy。
 
-`IsOwner=false` 让只认 `OwnerRule` 的 mutation（备份恢复、用户和角色管理、系统设置等）在插件端点一律被拒。插件被授予 `write_channels`、用户本人也有时，页面能执行渠道相关的全部 mutation，也能读到 `credentials` 明文，见 [妥协 1](#10-风险与妥协)。
+个人资料、密码和 OIDC 解绑通过业务入口的直接用户检查保护；私人模板通过 Ent 本人资源规则保护。测试枚举 schema 的全部 Mutation 根字段并与快照比较：新增 mutation 时确认其 scope、直接用户或资源归属检查后更新快照。限制不依赖字段名、别名或 fragment。多个 mutation 的拒绝发生在字段执行时；数据库事务内的写入会随错误回滚，已发生的外部副作用不能靠此机制撤销。
 
-自助 mutation：`updateMe`、`updateMyPassword`、`unlinkOIDCIdentity`、`createChannelOverrideTemplate`、`updateChannelOverrideTemplate`、`deleteChannelOverrideTemplate`。名单放在 `graphql.go`。测试枚举 schema 的全部 Mutation 根字段并与快照比较：新增 mutation 会让测试失败，作者确认它按 scope 授权后更新快照，否则加进名单。
-
-`graphql.go` 抽出 `newSchemaFromDeps`。`GraphqlHandler` 增加 `PluginGraphql`，复用同一 schema，只注册 POST，`AroundOperations` 拒绝 Subscription 和自助 mutation，复用 ErrorPresenter，不启用 APQ。
+`graphql.go` 抽出 `newSchemaFromDeps`。`GraphqlHandler` 增加 `PluginGraphql`，复用同一 schema，只注册 POST，`AroundOperations` 仅拒绝 Subscription，复用 ErrorPresenter，不启用 APQ。
 
 ### KV 字段
 
@@ -274,8 +268,8 @@ extend type Mutation {
 
 ### 后端
 - `internal/server/plugin/ui.go`、`uisdk/bridge.js`：见上文。
-- `internal/server/plugin/scoped_user.go`：`BuildPluginScopedUser`。
-- `internal/server/plugin/graphql.go`：插件端点、自助 mutation 名单、kvWritable、pluginID 与 installationID 写入 context。
+- `internal/authz/plugin.go`、`internal/authz/identity/`：受控委托、安装身份和授权快照。
+- `internal/server/plugin/graphql.go`：插件端点、业务主体鉴权、kvWritable、pluginID 与 installationID 写入 context。
 - `internal/server/gql/graphql.go`：抽出 `newSchemaFromDeps`，增加 `PluginGraphql`。
 - `internal/server/gql/plugin.graphql` 与 resolver：KV 字段。执行 `make generate` 后手写 `pluginKV`、`pluginKVList`、`setPluginKV`、`deletePluginKV`。
 - `internal/server/routes.go`：两个路由组。
@@ -313,8 +307,8 @@ extend type Mutation {
 
 | 风险 | 触发条件 | 影响 | 对策 |
 |------|----------|------|------|
-| 降权被绕过 | 新 resolver 按用户 ID 重新加载用户再做权限判断 | 页面得到用户的完整权限 | 降权矩阵覆盖全部 Query 根字段。新增 resolver 时检查这一点。`me` 除外 |
-| 新增自助 mutation 未进名单 | 新 mutation 只认用户本人，不查 scope | 页面能以用户身份修改其个人数据 | Mutation 根字段快照测试，新增时必须分类 |
+| 降权被绕过 | 新 resolver 按用户 ID 从数据库重新加载用户再做权限判断 | 页面得到用户的完整权限 | 替换 context 用户无效（`GetUser` 固定返回收窄视图）；重新加载的查询仍受 Plugin privacy 约束；Owner 判断走 `scopes.IsDirectOwner`。降权矩阵覆盖全部 Query 根字段，`me` 除外 |
+| 新增自助操作缺少主体检查 | 新业务入口只认用户 ID | 页面能以用户身份修改其个人数据 | 业务入口统一调用 `RequireDirectUser`，保留跨入口授权回归测试 |
 | 页面滥用写权限 | 插件被授予 `write_channels`，有该权限的用户打开页面 | 页面在用户不知情时改渠道，包括改渠道地址把凭证送到外部，或读出凭证明文 | 授权对话框高亮并写明影响；妥协 1 |
 
 ```text

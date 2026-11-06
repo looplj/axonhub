@@ -120,18 +120,6 @@ func TestPluginGraphql(t *testing.T) {
 
 	got := mutationRootNames(fx.handler.executable)
 	require.Equal(t, pluginMutationFieldSnapshot, got)
-	for _, name := range []string{
-		"updateMe",
-		"updateMyPassword",
-		"unlinkOIDCIdentity",
-		"createChannelOverrideTemplate",
-		"updateChannelOverrideTemplate",
-		"deleteChannelOverrideTemplate",
-	} {
-		require.Contains(t, pluginMutationFieldSnapshot, name)
-		_, listed := pluginSelfServiceMutations[name]
-		require.True(t, listed, name)
-	}
 
 	var complexity strings.Builder
 	complexity.WriteString("query { ")
@@ -387,12 +375,14 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 	t.Cleanup(channelSvc.Stop)
 
 	handler := NewGraphqlHandlers(Dependencies{
-		Ent:            db,
-		AuthService:    authSvc,
-		UserService:    userSvc,
-		SystemService:  systemSvc,
-		ChannelService: channelSvc,
-		PluginManager:  manager,
+		Ent:                            db,
+		AuthService:                    authSvc,
+		UserService:                    userSvc,
+		SystemService:                  systemSvc,
+		ChannelService:                 channelSvc,
+		ChannelOverrideTemplateService: biz.NewChannelOverrideTemplateService(biz.ChannelOverrideTemplateServiceParams{Client: db, ChannelService: channelSvc}),
+		PluginManager:                  manager,
+		QuotaService:                   biz.NewQuotaService(db, systemSvc),
 	})
 
 	engine := gin.New()
@@ -556,7 +546,7 @@ func pluginEndpointZip(t *testing.T, id string, permissions []string, withPage b
 
 // pluginMutationFieldSnapshot is every Mutation root field. A new mutation
 // fails TestPluginGraphql until this list is updated and the field is either
-// covered by a scope or added to pluginSelfServiceMutations.
+// covered by scope, direct-user, or resource ownership checks.
 var pluginMutationFieldSnapshot = []string{
 	"addUserToProject",
 	"applyChannelOverrideTemplate",
