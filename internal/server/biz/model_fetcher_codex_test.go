@@ -54,15 +54,15 @@ func TestModelFetcher_CodexCatalog(t *testing.T) {
 			require.Nil(t, result.Error)
 			imageModelCount := 0
 			for _, model := range result.Models {
-				if model.ID == "gpt-image-2" {
+				if strings.HasPrefix(model.ID, "gpt-image-") {
 					imageModelCount++
 				}
 			}
-			require.Equal(t, 1, imageModelCount)
+			require.Equal(t, 5, imageModelCount)
 			if tt.fallback {
 				require.Len(t, result.Models, len(codex.DefaultModels()))
 			} else {
-				require.Equal(t, []ModelIdentify{{ID: "first-astra"}, {ID: "new-sol"}, {ID: "gpt-image-2"}}, result.Models)
+				require.Equal(t, []ModelIdentify{{ID: "first-astra"}, {ID: "new-sol"}, {ID: "gpt-image-2"}, {ID: "gpt-image-2.5-sunburst"}, {ID: "gpt-image-2.5-flare"}, {ID: "gpt-image-2.6-sunburst"}, {ID: "gpt-image-2.6-flare"}}, result.Models)
 			}
 		})
 	}
@@ -294,7 +294,13 @@ func TestModelFetcher_CodexStoredCredentialReplacement(t *testing.T) {
 				require.False(t, result.Fallback)
 				want := []ModelIdentify{{ID: "new-model"}}
 				if mode != "replace-api-key" {
-					want = append(want, ModelIdentify{ID: "gpt-image-2"})
+					want = append(want,
+						ModelIdentify{ID: "gpt-image-2"},
+						ModelIdentify{ID: "gpt-image-2.5-sunburst"},
+						ModelIdentify{ID: "gpt-image-2.5-flare"},
+						ModelIdentify{ID: "gpt-image-2.6-sunburst"},
+						ModelIdentify{ID: "gpt-image-2.6-flare"},
+					)
 				}
 				require.Equal(t, want, result.Models)
 			}
