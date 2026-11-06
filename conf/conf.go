@@ -153,6 +153,9 @@ func unmarshal(v *viper.Viper) (Config, error) {
 	if config.APIServer.LLMRequestTimeout < 0 {
 		return Config{}, fmt.Errorf("server.llm_request_timeout must not be negative")
 	}
+	if config.APIServer.LLMStreamRequestTimeout < 0 {
+		return Config{}, fmt.Errorf("server.llm_stream_request_timeout must not be negative")
+	}
 	if config.APIServer.LLMStreamIdleTimeout < 0 {
 		return Config{}, fmt.Errorf("server.llm_stream_idle_timeout must not be negative")
 	}
@@ -248,7 +251,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.name", "AxonHub")
 	v.SetDefault("server.base_path", "")
 	v.SetDefault("server.request_timeout", "30s")
-	v.SetDefault("server.llm_request_timeout", "1800s")
+	v.SetDefault("server.llm_request_timeout", "600s")
+	v.SetDefault("server.llm_stream_request_timeout", "1800s")
 	v.SetDefault("server.llm_stream_idle_timeout", "600s")
 	v.SetDefault("server.sse_keep_alive.enabled", false)
 	v.SetDefault("server.sse_keep_alive.interval", "15s")
