@@ -1,0 +1,111 @@
+extend type Query {
+  plugins: [Plugin!]!
+  pluginRuntimeStatuses: [PluginRuntimeStatus!]!
+  pluginCountersArePerInstance: Boolean!
+}
+
+extend type Mutation {
+  installPlugin(file: Upload!, grantedPermissions: [String!]): PluginInstallResult!
+  enablePlugin(id: ID!, grantedPermissions: [String!]!): Plugin!
+  disablePlugin(id: ID!): Plugin!
+  updatePluginSettings(id: ID!, priority: Int!, config: Map!): Plugin!
+  deletePlugin(id: ID!): Boolean!
+}
+
+type Plugin {
+  id: ID!
+  pluginID: String!
+  name: String!
+  version: String!
+  description: String!
+  enabled: Boolean!
+  priority: Int!
+  builtin: Boolean!
+  grantedPermissions: [String!]!
+  manifestPermissions: [String!]!
+  configFields: [PluginConfigField!]!
+  config: Map!
+  runtimeStatus: String!
+  runtimeError: String!
+}
+
+type PluginConfigField {
+  name: String!
+  type: String!
+  title: String!
+  description: String!
+  format: String!
+  enumValues: [String!]!
+  minimum: Float
+  maximum: Float
+  defaultJSON: String!
+}
+
+type PluginRuntimeStatus {
+  id: ID!
+  pluginID: String!
+  status: String!
+  reason: String!
+}
+
+type PluginUpgradePreview {
+  currentVersion: String!
+  newVersion: String!
+  permissions: [String!]!
+  events: [String!]!
+  hooks: [String!]!
+  pages: [String!]!
+}
+
+type PluginInstallResult {
+  plugin: Plugin
+  upgradePreview: PluginUpgradePreview
+}
+
+type PluginKVPage {
+  entries: [PluginKVEntry!]!
+  nextCursor: String
+}
+
+type PluginKVEntry {
+  namespace: String!
+  key: String!
+  value: String!
+  expiresAt: Time
+  updatedAt: Time!
+}
+
+extend type Query {
+  pluginKV(namespace: String, key: String!): PluginKVEntry
+  pluginKVList(namespace: String, prefix: String, first: Int = 100, after: String): PluginKVPage!
+}
+
+extend type Mutation {
+  setPluginKV(namespace: String, key: String!, value: String!, ttlSeconds: Int): PluginKVEntry!
+  deletePluginKV(namespace: String, key: String!): Boolean!
+}
+
+type PluginUIPage {
+  pluginID: String!
+  key: String!
+  entry: String!
+  title: JSONRawMessage!
+}
+
+type PluginUIEntries {
+  pages: [PluginUIPage!]!
+}
+
+type PluginUISession {
+  token: String!
+  config: Map!
+  canWriteKV: Boolean!
+}
+
+extend type Query {
+  pluginUIEntries: PluginUIEntries!
+}
+
+extend type Mutation {
+  createPluginUISession(pluginID: String!, entry: String!): PluginUISession!
+}

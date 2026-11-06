@@ -134,6 +134,7 @@ config.yml
 internal/server/static/dist/*
 !internal/server/static/dist/.gitkeep
 *.b64
+*.axplugin
 coverage.out
 *.test
 *.backup

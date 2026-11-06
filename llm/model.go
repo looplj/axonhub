@@ -909,6 +909,28 @@ func (u *Usage) GetPromptTokens() *int64 {
 	return &u.PromptTokens
 }
 
+// HasRealCounts reports whether the usage object carries actual token counts
+// rather than being an all-zero placeholder.
+//
+// Some OpenAI-compatible providers stream a zeroed usage object on every chunk
+// and report the real counts only in the trailing usage-only chunk. Others put
+// the real counts on the finish_reason chunk and never send a usage-only chunk.
+// Callers that decide "the stream is complete" from a usage object can use this
+// to tell the two apart without keying on the shape of `choices`.
+//
+// The question answered here is "did upstream report anything?", not "are all
+// fields final?". A response that was filtered or produced no output
+// legitimately reports a zero completion total, so requiring a positive count
+// on both fields would delay the terminal event until the stream drains — the
+// very symptom this guard exists to prevent.
+func (u *Usage) HasRealCounts() bool {
+	if u == nil {
+		return false
+	}
+
+	return u.PromptTokens > 0 || u.CompletionTokens > 0
+}
+
 // CompletionTokensDetails Breakdown of tokens used in a completion.
 type CompletionTokensDetails struct {
 	AudioTokens              int64 `json:"audio_tokens"`

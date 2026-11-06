@@ -400,12 +400,22 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	// Ollama sends each tool call complete, possibly spread over several chunks.
+	// Keep a per-stream counter so calls from different chunks get distinct index/ID.
+	toolCallOffset := 0
+
 	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
-		return t.TransformStreamChunk(ctx, event)
+		return t.transformStreamChunk(ctx, event, &toolCallOffset)
 	}), nil
 }
 
 func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error) {
+	offset := 0
+
+	return t.transformStreamChunk(ctx, event, &offset)
+}
+
+func (t *OutboundTransformer) transformStreamChunk(_ context.Context, event *httpclient.StreamEvent, toolCallOffset *int) (*llm.Response, error) {
 	if event == nil || len(event.Data) == 0 {
 		return nil, nil
 	}
@@ -429,7 +439,10 @@ func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *h
 
 		if len(ollamaResp.Message.ToolCalls) > 0 {
 			toolCalls = make([]llm.ToolCall, 0, len(ollamaResp.Message.ToolCalls))
-			for i, tc := range ollamaResp.Message.ToolCalls {
+			for _, tc := range ollamaResp.Message.ToolCalls {
+				i := *toolCallOffset
+				*toolCallOffset++
+
 				args, _ := json.Marshal(tc.Function.Arguments)
 				if string(args) == "null" {
 					args = []byte("{}")
@@ -518,7 +531,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *http
 	var model string
 	var promptEvalCount, evalCount int64
 	var finishReason string
-	var lastToolCalls []ollamaToolCall
+	var allToolCalls []ollamaToolCall
 
 	for _, chunk := range chunks {
 		var ollamaResp ChatResponse
@@ -535,7 +548,7 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *http
 			fullThinking.WriteString(ollamaResp.Message.Thinking)
 
 			if len(ollamaResp.Message.ToolCalls) > 0 {
-				lastToolCalls = ollamaResp.Message.ToolCalls
+				allToolCalls = append(allToolCalls, ollamaResp.Message.ToolCalls...)
 			}
 		}
 
@@ -564,9 +577,9 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *http
 	}
 
 	var toolCalls []llm.ToolCall
-	if len(lastToolCalls) > 0 {
-		toolCalls = make([]llm.ToolCall, 0, len(lastToolCalls))
-		for i, tc := range lastToolCalls {
+	if len(allToolCalls) > 0 {
+		toolCalls = make([]llm.ToolCall, 0, len(allToolCalls))
+		for i, tc := range allToolCalls {
 			args, _ := json.Marshal(tc.Function.Arguments)
 			if string(args) == "null" {
 				args = []byte("{}")
