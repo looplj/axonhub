@@ -580,9 +580,11 @@ func (m *PluginManifest) UnmarshalJSON(data []byte) error {
 	}
 	if raw, ok := obj["events"]; ok {
 		m.EventsPresent = true
-		if values, err := decodeJSONStringSlice(raw, "events"); err == nil {
-			m.Events = values
+		values, err := decodeJSONStringSlice(raw, "events")
+		if err != nil {
+			return err
 		}
+		m.Events = values
 	}
 	if _, ok := obj["providers"]; ok {
 		m.ProvidersPresent = true

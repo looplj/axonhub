@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/events"
 )
 
 const validManifestJSON = `{
@@ -65,6 +66,27 @@ func TestManifest(t *testing.T) {
 		})
 		_, err = ParseManifest(raw, "v1.0.0-beta9")
 		require.ErrorContains(t, err, "description must be at most")
+	})
+
+	t.Run("accepts the open event types", func(t *testing.T) {
+		raw := mutateManifest(t, func(_ *testing.T, manifest map[string]any) {
+			manifest["events"] = []any{}
+		})
+		manifest, err := ParseManifest(raw, "v1.0.0-beta9")
+		require.NoError(t, err)
+		require.True(t, manifest.EventsPresent)
+		require.Empty(t, manifest.Events)
+
+		names := make([]any, 0, len(events.OpenEventTypes()))
+		for _, name := range events.OpenEventTypes() {
+			names = append(names, name)
+		}
+		raw = mutateManifest(t, func(_ *testing.T, manifest map[string]any) {
+			manifest["events"] = names
+		})
+		manifest, err = ParseManifest(raw, "v1.0.0-beta9")
+		require.NoError(t, err)
+		require.Equal(t, events.OpenEventTypes(), manifest.Events)
 	})
 
 	t.Run("accepts every opened permission", func(t *testing.T) {
@@ -423,15 +445,47 @@ func TestManifest(t *testing.T) {
 			mutate: func(_ *testing.T, manifest map[string]any) {
 				manifest["events"] = []any{}
 			},
-			want:    "events are not enabled",
-			notWant: "unknown field",
 		},
 		{
 			name: "events populated",
 			mutate: func(_ *testing.T, manifest map[string]any) {
 				manifest["events"] = []any{"request.failover"}
 			},
-			want: "events are not enabled",
+		},
+		{
+			name: "events channel.auto_disabled",
+			mutate: func(_ *testing.T, manifest map[string]any) {
+				manifest["events"] = []any{"channel.auto_disabled"}
+			},
+			want: `event "channel.auto_disabled" is not enabled`,
+		},
+		{
+			name: "events provider.quota.warning",
+			mutate: func(_ *testing.T, manifest map[string]any) {
+				manifest["events"] = []any{"provider.quota.warning"}
+			},
+			want: `event "provider.quota.warning" is not enabled`,
+		},
+		{
+			name: "events provider.quota.exhausted",
+			mutate: func(_ *testing.T, manifest map[string]any) {
+				manifest["events"] = []any{"provider.quota.exhausted"}
+			},
+			want: `event "provider.quota.exhausted" is not enabled`,
+		},
+		{
+			name: "events duplicated",
+			mutate: func(_ *testing.T, manifest map[string]any) {
+				manifest["events"] = []any{"request.failover", "request.failover"}
+			},
+			want: `event "request.failover" is duplicated`,
+		},
+		{
+			name: "events not an array",
+			mutate: func(_ *testing.T, manifest map[string]any) {
+				manifest["events"] = "request.failover"
+			},
+			want: "events must be an array of strings",
 		},
 		{
 			name: "hooks.request true",

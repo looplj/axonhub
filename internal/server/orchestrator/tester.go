@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
+	"github.com/looplj/axonhub/internal/pkg/xsecret"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -619,7 +620,7 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 			case <-groupCtx.Done():
 				errMsg := groupCtx.Err().Error()
 				results[index] = &TestAPIKeyResult{
-					KeyPrefix: maskAPIKey(apiKey),
+					KeyPrefix: xsecret.MaskAPIKey(apiKey),
 					Success:   false,
 					Error:     &errMsg,
 				}
@@ -722,7 +723,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 	userPrompt string,
 	apiFormat llm.APIFormat,
 ) *TestAPIKeyResult {
-	keyPrefix := maskAPIKey(key)
+	keyPrefix := xsecret.MaskAPIKey(key)
 
 	inbound, body, err := processor.buildChannelTestInput(ctx, testModel, useStream, systemPrompt, userPrompt, responsesWebSocket, apiFormat)
 	if err != nil {
@@ -828,13 +829,4 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 		Success:   true,
 		Latency:   latency,
 	}
-}
-
-// maskAPIKey returns a masked version of the API key for display.
-func maskAPIKey(key string) string {
-	if len(key) <= 8 {
-		return "****"
-	}
-
-	return key[:4] + "****" + key[len(key)-4:]
 }

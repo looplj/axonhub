@@ -1,0 +1,138 @@
+:root {
+    color-scheme: light;
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --text: #1c1f24;
+    --muted: #5e6772;
+    --line: #e3e6eb;
+    --accent: #1f6b4a;
+    --accent-text: #ffffff;
+    --danger: #9f3a34;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #14171b;
+    --card: #1d2127;
+    --text: #f3f5f7;
+    --muted: #a7b0ba;
+    --line: #313740;
+    --accent: #3d9a6e;
+    --accent-text: #07140d;
+    --danger: #e0a19c;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font:
+        15px/1.5 ui-sans-serif,
+        system-ui,
+        sans-serif;
+}
+
+main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 28px 20px 40px;
+}
+
+.eyebrow {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+}
+
+h1,
+h2 {
+    margin: 0;
+    font-weight: 650;
+}
+h1 {
+    font-size: 28px;
+    letter-spacing: -0.03em;
+}
+h2 {
+    font-size: 16px;
+}
+
+.status {
+    min-height: 1.4em;
+    margin: 12px 0;
+    color: var(--danger);
+}
+
+.card {
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--card);
+}
+
+.section-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+}
+
+.muted {
+    color: var(--muted);
+}
+
+button {
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font: inherit;
+    cursor: pointer;
+}
+
+button.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line);
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+#clear {
+    margin-top: 16px;
+}
+
+.list {
+    display: grid;
+    gap: 10px;
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.list li {
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+}
+
+.list strong,
+.list p {
+    margin: 0;
+}
+.list time,
+.list p {
+    color: var(--muted);
+    font-size: 13px;
+}
+.list p {
+    margin-top: 4px;
+}

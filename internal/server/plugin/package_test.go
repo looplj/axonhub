@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -70,8 +71,9 @@ func TestParsePackage(t *testing.T) {
 			"plugin.js":     "export {}",
 			"ui/page.html":  "<html></html>",
 		})
-		_, err := ParsePackage(raw)
-		require.ErrorContains(t, err, "JS plugins are not enabled yet")
+		pkg, err := ParsePackage(raw)
+		require.NoError(t, err)
+		require.Equal(t, []string{"manifest.json", "plugin.js", "ui/page.html"}, pkg.Files)
 	})
 
 	t.Run("plugin.js under ui", func(t *testing.T) {
@@ -80,8 +82,134 @@ func TestParsePackage(t *testing.T) {
 			"ui/plugin.js":  "export {}",
 			"ui/page.html":  "<html></html>",
 		})
+		pkg, err := ParsePackage(raw)
+		require.NoError(t, err)
+		require.Equal(t, []string{"manifest.json", "ui/page.html", "ui/plugin.js"}, pkg.Files)
+	})
+
+	t.Run("ui plugin.js is not the backend entry", func(t *testing.T) {
+		raw := mustZip(t, map[string]string{
+			"manifest.json": validManifestJSON,
+			"ui/plugin.js":  "this is not javascript {{{",
+			"ui/page.html":  "<html></html>",
+		})
+		pkg, err := ParsePackage(raw)
+		require.NoError(t, err)
+		require.Contains(t, pkg.Files, "ui/plugin.js")
+	})
+
+	t.Run("invalid plugin.js", func(t *testing.T) {
+		raw := mustZip(t, map[string]string{
+			"manifest.json": manifestWithoutUI(t),
+			"plugin.js":     "export function (",
+		})
 		_, err := ParsePackage(raw)
-		require.ErrorContains(t, err, "JS plugins are not enabled yet")
+		require.ErrorContains(t, err, "SyntaxError")
+		require.ErrorContains(t, err, "plugin.js")
+	})
+
+	t.Run("bare import", func(t *testing.T) {
+		raw := mustZip(t, map[string]string{
+			"manifest.json": manifestWithoutUI(t),
+			"plugin.js":     "import lodash from \"lodash\"\nexport {}",
+		})
+		_, err := ParsePackage(raw)
+		require.ErrorContains(t, err, "lodash")
+		require.ErrorContains(t, err, "package-relative")
+	})
+
+	t.Run("node import", func(t *testing.T) {
+		raw := mustZip(t, map[string]string{
+			"manifest.json": manifestWithoutUI(t),
+			"plugin.js":     "import fs from \"node:fs\"\nexport {}",
+		})
+		_, err := ParsePackage(raw)
+		require.ErrorContains(t, err, "node:fs")
+		require.ErrorContains(t, err, "package-relative")
+	})
+
+	t.Run("import escapes the archive", func(t *testing.T) {
+		raw := mustZip(t, map[string]string{
+			"manifest.json": manifestWithoutUI(t),
+			"plugin.js":     "import secret from \"../secret.js\"\nexport {}",
+		})
+		_, err := ParsePackage(raw)
+		require.ErrorContains(t, err, "escapes the archive")
+		require.ErrorContains(t, err, "../secret.js")
+	})
+
+	t.Run("absolute import", func(t *testing.T) {
+		raw := mustZip(t, map[string]string{
+			"manifest.json": manifestWithoutUI(t),
+			"plugin.js":     "import secret from \"/etc/passwd\"\nexport {}",
+		})
+		_, err := ParsePackage(raw)
+		require.ErrorContains(t, err, "absolute")
+		require.ErrorContains(t, err, "/etc/passwd")
+	})
+
+	t.Run("import a ui module", func(t *testing.T) {
+		raw := mustZip(t, map[string]string{
+			"manifest.json": validManifestJSON,
+			"ui/page.html":  "<html></html>",
+			"ui/helper.js":  "export const label = \"ui\"\n",
+			"plugin.js":     "import { label } from \"./ui/helper.js\"\nexport const value = label\n",
+		})
+		pkg, err := ParsePackage(raw)
+		require.NoError(t, err)
+		require.Contains(t, pkg.Files, "plugin.js")
+		require.Contains(t, pkg.Files, "ui/helper.js")
+
+		dir := t.TempDir()
+		files, err := ExtractPackageUI(raw, dir)
+		require.NoError(t, err)
+		require.Contains(t, files, "ui/helper.js")
+		require.NotContains(t, files, "plugin.js")
+		body, err := os.ReadFile(filepath.Join(dir, "ui", "helper.js"))
+		require.NoError(t, err)
+		require.Contains(t, string(body), "label")
+		_, err = os.Stat(filepath.Join(dir, "plugin.js"))
+		require.ErrorIs(t, err, os.ErrNotExist)
+	})
+
+	t.Run("relative import", func(t *testing.T) {
+		raw := mustZip(t, map[string]string{
+			"manifest.json": manifestWithoutUI(t),
+			"plugin.js":     "import { label } from \"./lib/label.js\"\nexport function onEvent() { return label }\n",
+			"lib/label.js":  "export const label = \"ok\"\n",
+		})
+		pkg, err := ParsePackage(raw)
+		require.NoError(t, err)
+		require.Equal(t, []string{"lib/label.js", "manifest.json", "plugin.js"}, pkg.Files)
+	})
+
+	t.Run("file outside the import closure", func(t *testing.T) {
+		raw := mustZip(t, map[string]string{
+			"manifest.json": manifestWithoutUI(t),
+			"plugin.js":     "export {}",
+			"notes.txt":     "hello",
+		})
+		_, err := ParsePackage(raw)
+		require.ErrorContains(t, err, "notes.txt")
+		require.ErrorContains(t, err, "not allowed")
+	})
+
+	t.Run("plugin.js exceeds 1 MiB", func(t *testing.T) {
+		raw := mustZipBytes(t, map[string][]byte{
+			"manifest.json": []byte(manifestWithoutUI(t)),
+			"plugin.js":     bytes.Repeat([]byte{' '}, MaxPluginJSBytes+1),
+		})
+		_, err := ParsePackage(raw)
+		require.ErrorContains(t, err, "1 MiB")
+	})
+
+	t.Run("dynamic code is disabled", func(t *testing.T) {
+		raw := mustZip(t, map[string]string{
+			"manifest.json": manifestWithoutUI(t),
+			"plugin.js":     "eval(\"1\")\nexport {}\n",
+		})
+		_, err := ParsePackage(raw)
+		require.ErrorContains(t, err, "EvalError")
 	})
 
 	t.Run("stray file", func(t *testing.T) {
@@ -147,6 +275,13 @@ func TestParsePackage(t *testing.T) {
 		_, err := ParsePackage(raw)
 		require.ErrorContains(t, err, "absolute")
 	})
+}
+
+func manifestWithoutUI(t *testing.T) string {
+	t.Helper()
+	return string(mutateManifest(t, func(_ *testing.T, manifest map[string]any) {
+		delete(manifest, "ui")
+	}))
 }
 
 func mustZip(t *testing.T, files map[string]string) []byte {

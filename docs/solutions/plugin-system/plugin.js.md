@@ -136,7 +136,7 @@ interface Log {
 ```
 
 - `ctx.kv`：namespace 默认 `default`；get 对不存在或已过期的键返回 null，空字符串是合法值。set 为覆盖写入，value 必须是 UTF-8 字符串，存 JSON 需显式 `JSON.stringify`；TTL 省略或为 0 表示不过期，覆盖时重设 TTL。delete 仅在删除未过期的现存键时返回 true，否则 false。list 默认空 prefix，按 key 升序返回该 namespace 内匹配前缀的未过期条目；返回 `{ entries, nextCursor }`，无结果时 entries 为 `[]`、nextCursor 为 null。first 默认 100、范围 1–100；after 传上一页 nextCursor，按 key 排他边界继续读取，nextCursor 为 null 表示末页。prefix 是字面前缀，不是正则或 SQL 通配符。
-- `ctx.counter`：add 固定递增 1 并返回递增后的窗口计数；get 只读，不存在时为 0。窗口必须是整数秒。同一插件、同一 key、同一 windowSeconds 才是同一计数器，不同窗口独立。Redis 并发时不保证递增与求和整体原子性，沿用已接受的妥协，不增加 Lua。计数器不是持久 KV。
+- `ctx.counter`：add 固定递增 1 并返回递增后的窗口计数；get 只读，不存在时为 0。窗口必须是整数秒。同一插件、同一 key、同一 windowSeconds 才是同一计数器，不同窗口独立。Redis 通过 Lua 原子完成过期清理、递增和总数返回，使用服务端时间；原子计数不保证后续宿主动作恰好执行一次。计数器不是持久 KV。
 - `ctx.log`：fields 默认 `{}`；宿主另附插件、安装和调用信息，插件不能覆盖这些身份字段。日志接口不因日志落地失败中断钩子。
 - KV、counter、log 在 `onEvent`、`onRequest`、`onAttempt` 都可用。KV set/delete 计入写类 API 限额；counter.add 用于每次事件计数，不计入处置类写限额。
 
@@ -194,7 +194,7 @@ interface EventActions {
 - get 对不存在或已删除的行返回 null；返回对象只含上面的白名单字段，requests.get 不返回请求/响应 body、客户端 IP 或用户凭证。
 - channels.list 按 ID 升序，afterId 省略从头开始，游标为排他下界；空结果为 `items: []`，没有下一页时 nextAfterId 为 null。limit 的默认值和上限见总览，必须为正整数。
 - 启停方法成功返回 undefined，目标已处于所需状态也视为成功；目标不存在抛 `NOT_FOUND`。reason 省略为 `plugin action`，只作日志和业务处置说明。凭证通过该渠道内的 fingerprint 定位，无匹配抛 `NOT_FOUND`，多匹配抛 `CONFLICT`，不能猜选；`oauth` 不支持这两个凭证级动作，返回 `INVALID_ARGUMENT`。expiresAt 省略或 null 为不自动恢复，非空必须是未来时间。
-- webhook.send 只接受已有目标名称，不接受 URL、headers 或凭证覆盖。payload 作为自定义模板 Data，字符串 payload.message 同时填充 Message，其余当前事件字段由宿主提供；按目标已有模板渲染发送。目标不存在抛 `NOT_FOUND`，未启用抛 `INVALID_STATE`，非成功 HTTP 状态或传输失败抛 `UNAVAILABLE`；调用成功表示已收到成功 HTTP 响应。此入口只尝试一次，不自动重试，防止通知重复。
+- webhook.send 只接受已有目标名称，不接受 URL、headers 或凭证覆盖。payload 作为自定义模板 Data，字符串 payload.message 同时填充 Message；宿主从当前事件填充 Event、Severity、OccurredAt，并将 event.Subject.Channel 映射到 Channel。模板上下文不提供 Subject，Data 也不是 event.Data；按目标已有模板渲染发送。目标不存在抛 `NOT_FOUND`，未启用抛 `INVALID_STATE`，非成功 HTTP 状态或传输失败抛 `UNAVAILABLE`；调用成功表示已收到成功 HTTP 响应。此入口只尝试一次，不自动重试，防止通知重复。
 - 四个启停方法与 webhook.send 计入写类 API 限额。具体事件来源和递归深度沿用事件篇。
 
 ### 主动拒绝请求

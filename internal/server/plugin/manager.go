@@ -19,6 +19,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MoeForge/moejs"
+	"github.com/redis/go-redis/v9"
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 
@@ -32,6 +34,9 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"github.com/looplj/axonhub/internal/pkg/xredis"
+	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/events"
 )
 
 const (
@@ -128,8 +133,11 @@ type Manager struct {
 
 	refreshInterval time.Duration
 	extract         func(data []byte, dest string) ([]string, error)
-	forceNext       atomic.Bool
-	packageReads    atomic.Int64
+	// compileModule, when set, replaces compileContents for a package that
+	// contains plugin.js. Tests count calls and inject failures.
+	compileModule func(data []byte) (*moejs.Module, error)
+	forceNext     atomic.Bool
+	packageReads  atomic.Int64
 
 	refreshMu   sync.Mutex
 	resourcesMu sync.Mutex
@@ -144,12 +152,28 @@ type Manager struct {
 	builtins  map[string]Builtin
 
 	// cacheMode is ManagerParams.Cache.Mode. Empty is stored as memory.
-	// Counters are per instance unless this is two-level.
+	// Counters are per instance unless this is redis or two-level.
 	cacheMode string
+
+	counterMu      sync.Mutex
+	countersClosed bool
+	redis          redis.UniversalClient
+	memCounters    *memoryCounters
+	writes         *pluginWriteLimiter
+	channels       *biz.ChannelService
+	webhooks       *biz.WebhookNotifier
+	dispatcher     *eventDispatcher
 
 	// kvNow is the clock for KV expiry. Nil means time.Now.
 	// Tests in this package may set it.
 	kvNow func() time.Time
+
+	// callNow is the clock for the circuit breaker. Nil means time.Now.
+	// Tests in this package may set it. It is not the KV clock.
+	callNow func() time.Time
+
+	execMu sync.Mutex
+	execs  map[int]*pluginExec
 
 	stopOnce sync.Once
 	stopErr  error
@@ -165,8 +189,11 @@ type managerConfig struct {
 type ManagerParams struct {
 	fx.In
 
-	Client *ent.Client
-	Cache  xcache.Config
+	Client   *ent.Client
+	Cache    xcache.Config
+	Bus      *events.Bus
+	Channels *biz.ChannelService
+	Webhooks *biz.WebhookNotifier
 }
 
 // NewManager creates the process temp root, watcher, and cache, then loads metadata.
@@ -208,8 +235,22 @@ func newManager(params ManagerParams, cfg managerConfig) (*Manager, error) {
 		resources:       map[resourceKey]*pluginResource{},
 		builtins:        map[string]Builtin{},
 		cacheMode:       cacheMode,
+		execs:           map[int]*pluginExec{},
+		writes:          newPluginWriteLimiter(),
+		channels:        params.Channels,
+		webhooks:        params.Webhooks,
 	}
 	manager.callsCond = sync.NewCond(&manager.callsMu)
+	if manager.countersUseRedis() {
+		redisClient, err := xredis.NewClient(params.Cache.Redis)
+		if err != nil {
+			_ = os.RemoveAll(tempRoot)
+			return nil, fmt.Errorf("plugin counter redis: %w", err)
+		}
+		manager.redis = redisClient
+	} else {
+		manager.memCounters = newMemoryCounters()
+	}
 
 	watcherMode := cacheMode
 	if watcherMode == xcache.ModeTwoLevel {
@@ -223,10 +264,14 @@ func newManager(params ManagerParams, cfg managerConfig) (*Manager, error) {
 		Buffer:       32,
 	})
 	if err != nil {
+		manager.closeRedis()
 		_ = os.RemoveAll(tempRoot)
 		return nil, fmt.Errorf("plugin watcher init failed: %w", err)
 	}
 	manager.notifier = notifier
+	if params.Bus != nil {
+		manager.dispatcher = newEventDispatcher(manager, params.Bus)
+	}
 
 	initial := newGeneration(manager, nil)
 	manager.cache = live.NewCache(live.Options[*Generation]{
@@ -239,7 +284,11 @@ func newManager(params ManagerParams, cfg managerConfig) (*Manager, error) {
 		Watcher:         notifier,
 	})
 	if err := manager.cache.Load(context.Background(), true); err != nil {
+		if manager.dispatcher != nil {
+			manager.dispatcher.close()
+		}
 		manager.cache.Stop()
+		manager.closeRedis()
 		_ = os.RemoveAll(tempRoot)
 		return nil, fmt.Errorf("load plugins: %w", err)
 	}
@@ -268,6 +317,9 @@ func (m *Manager) stop(ctx context.Context) error {
 	m.callsMu.Lock()
 	m.stopping = true
 	m.callsMu.Unlock()
+	if m.dispatcher != nil {
+		m.dispatcher.close()
+	}
 	// Wait for any extraction already in progress before deleting its directories.
 	m.refreshMu.Lock()
 	defer m.refreshMu.Unlock()
@@ -294,9 +346,12 @@ func (m *Manager) stop(ctx context.Context) error {
 		release.releaseResources()
 	}
 	if err := m.waitCalls(ctx); err != nil {
+		m.closeRedis()
 		return err
 	}
+	m.closeExecs()
 	m.syncBuiltins(context.Background(), gen, nil)
+	m.closeRedis()
 	if m.tempRoot == "" {
 		return nil
 	}
@@ -344,13 +399,13 @@ func (m *Manager) IsBuiltin(pluginID string) bool {
 	return ok
 }
 
-// CountersArePerInstance is true unless this process cache mode is two-level.
-// An empty mode is stored as memory, so counters stay per instance.
+// CountersArePerInstance is true unless this process shares counters through Redis.
+// redis and two-level use the shared counter. An empty mode is stored as memory.
 func (m *Manager) CountersArePerInstance() bool {
 	if m == nil {
 		return true
 	}
-	return m.cacheMode != xcache.ModeTwoLevel
+	return m.cacheMode != xcache.ModeTwoLevel && m.cacheMode != xcache.ModeRedis
 }
 
 // RegisterBuiltin adds a package-less plugin. An empty registry is a no-op.
@@ -391,9 +446,25 @@ func (m *Manager) PackageReads() int64 {
 	return m.packageReads.Load()
 }
 
-// VMCount is always zero until a later task creates JavaScript VMs.
+// VMCount is the number of JavaScript runtimes this process holds for every
+// plugin, idle and borrowed. A compiled module is not a runtime.
 func (m *Manager) VMCount() int {
-	return 0
+	if m == nil {
+		return 0
+	}
+	m.execMu.Lock()
+	execs := make([]*pluginExec, 0, len(m.execs))
+	for _, exec := range m.execs {
+		execs = append(execs, exec)
+	}
+	m.execMu.Unlock()
+	count := 0
+	for _, exec := range execs {
+		exec.mu.Lock()
+		count += exec.borrowed + len(exec.idle)
+		exec.mu.Unlock()
+	}
+	return count
 }
 
 // RuntimeStatuses returns this process's in-memory status for the current generation.
@@ -540,7 +611,7 @@ func (m *Manager) Enable(ctx context.Context, id int, granted []string) error {
 	return m.finishWrite(ctx)
 }
 
-// Disable keeps the row and drops this process's copy of its UI files on the next refresh.
+// Disable keeps the row and drops this process's UI files and compiled module on the next refresh.
 func (m *Manager) Disable(ctx context.Context, id int) error {
 	ctx = authz.WithSystemBypass(ctx, pluginBypassReason)
 	err := m.runInTx(ctx, func(txCtx context.Context) error {
@@ -681,6 +752,9 @@ func (m *Manager) onSwap(old, next *Generation) {
 		m.retire(old)
 	}
 	m.syncBuiltins(context.Background(), old, next)
+	if m.dispatcher != nil {
+		m.dispatcher.sync(next)
+	}
 }
 
 func (m *Manager) retire(gen *Generation) {
@@ -809,7 +883,30 @@ func (m *Manager) resourceFor(ctx context.Context, row pluginRecord, prev *Loade
 func (m *Manager) publishResource(resource *pluginResource, data []byte) error {
 	resource.mu.Lock()
 	resource.ready = false
+	resource.module = nil
+	resource.hasPluginJS = false
 	resource.mu.Unlock()
+
+	contents, err := readPackage(data)
+	if err != nil {
+		return err
+	}
+	var module *moejs.Module
+	if contents.hasPluginJS() {
+		if m.compileModule != nil {
+			module, err = m.compileModule(data)
+		} else {
+			module, err = compileContents(contents)
+		}
+		if err != nil {
+			return err
+		}
+		if module == nil {
+			return errors.New("plugin.js did not compile")
+		}
+	} else if err := rejectDisallowed(contents, nil); err != nil {
+		return err
+	}
 
 	finalDir := filepath.Join(m.tempRoot, strconv.Itoa(resource.key.id), resource.key.sha)
 	staging := finalDir + ".staging"
@@ -832,7 +929,9 @@ func (m *Manager) publishResource(resource *pluginResource, data []byte) error {
 
 	extract := m.extract
 	if extract == nil {
-		extract = ExtractPackageUI
+		extract = func(_ []byte, dest string) ([]string, error) {
+			return writePreparedUI(data, dest, contents.uiFiles, contents.dirs)
+		}
 	}
 	files, err := extract(data, staging)
 	if err != nil {
@@ -854,6 +953,8 @@ func (m *Manager) publishResource(resource *pluginResource, data []byte) error {
 	resource.mu.Lock()
 	resource.dir = finalDir
 	resource.files = files
+	resource.module = module
+	resource.hasPluginJS = module != nil
 	resource.ready = true
 	resource.mu.Unlock()
 	return nil
@@ -1042,7 +1143,8 @@ func newGeneration(manager *Manager, plugins []*LoadedPlugin) *Generation {
 	return gen
 }
 
-// VMCount is always zero for UI-only packages. A later task owns the JS runtime.
+// VMCount is always zero. Runtimes belong to the process manager, not to a
+// generation. Compiled modules are stored on plugin resources.
 func (g *Generation) VMCount() int {
 	return 0
 }
@@ -1251,11 +1353,22 @@ type pluginResource struct {
 	key     resourceKey
 	manager *Manager
 
-	mu    sync.Mutex
-	dir   string
-	files []string
-	ready bool
-	refs  int
+	mu          sync.Mutex
+	dir         string
+	files       []string
+	ready       bool
+	refs        int
+	hasPluginJS bool
+	module      *moejs.Module
+}
+
+func (r *pluginResource) compiledModule() *moejs.Module {
+	if r == nil {
+		return nil
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.module
 }
 
 func (r *pluginResource) hold() {
@@ -1273,11 +1386,17 @@ func (r *pluginResource) release(manager *Manager) {
 	r.refs--
 	last := r.refs == 0
 	dir := r.dir
+	module := r.module
+	if last {
+		r.module = nil
+		r.hasPluginJS = false
+	}
 	r.mu.Unlock()
 	if !last {
 		return
 	}
 	if manager != nil {
+		manager.releaseExecModule(r.key.id, module)
 		manager.resourcesMu.Lock()
 		if manager.resources[r.key] == r {
 			delete(manager.resources, r.key)
@@ -1297,6 +1416,13 @@ func (r *pluginResource) release(manager *Manager) {
 func (r *pluginResource) complete() bool {
 	dir, files, ready := r.snapshot()
 	if !ready || dir == "" {
+		return false
+	}
+	r.mu.Lock()
+	hasJS := r.hasPluginJS
+	module := r.module
+	r.mu.Unlock()
+	if hasJS && module == nil {
 		return false
 	}
 	info, err := os.Stat(dir)

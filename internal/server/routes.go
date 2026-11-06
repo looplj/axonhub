@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"net/http"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -103,8 +104,9 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		// User Login - DO NOT AUTH
 		unSecureAdminGroup.POST("/auth/signin", handlers.Auth.SignIn)
 		unSecureAdminGroup.POST("/auth/refresh", handlers.Auth.Refresh)
-		// The UI token is the credential. GET and HEAD are the only successful
-		// methods; other methods hit the same handler and return 405.
+		// The UI token is the credential and only GET/HEAD resources are routed.
+		// Other methods fall through to the default 404 handler; OPTIONS
+		// preflight is handled by the global CORS middleware.
 		registerPluginUIRoutes(unSecureAdminGroup, services.PluginManager, services.SystemService)
 	}
 
@@ -340,5 +342,9 @@ func registerPluginUIRoutes(group *gin.RouterGroup, manager *plugin.Manager, sys
 		}
 		plugin.ServePluginUI(c.Writer, c.Request, request)
 	}
-	group.Any("/plugin-ui/:token/*path", handler)
+	// Only GET/HEAD are routed: other methods must not be registered here,
+	// because a root-level OPTIONS("*any") catch-all exists when CORS is
+	// enabled and Gin panics when a second wildcard is added to that tree.
+	group.Handle(http.MethodGet, "/plugin-ui/:token/*path", handler)
+	group.Handle(http.MethodHead, "/plugin-ui/:token/*path", handler)
 }

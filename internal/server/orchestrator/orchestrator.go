@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/events"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/pipeline/cc"
@@ -101,6 +102,7 @@ func NewChatCompletionOrchestrator(
 		quotaProvider:              quotaProvider,
 		proxy:                      nil,
 		responsesSessions:          responsesStore,
+		EventBus:                   channelService.EventBus,
 	}
 }
 
@@ -145,6 +147,10 @@ type ChatCompletionOrchestrator struct {
 	proxy *httpclient.ProxyConfig
 
 	responsesSessions *responsesSessionStore
+
+	// EventBus publishes plugin events. Nil skips publication. FX threads the
+	// process bus through ChannelService, and the constructor copies it here.
+	EventBus *events.Bus
 }
 
 func (processor *ChatCompletionOrchestrator) WithChannelSelector(selector CandidateSelector) *ChatCompletionOrchestrator {
@@ -164,6 +170,15 @@ func (processor *ChatCompletionOrchestrator) WithAllowedChannels(allowedChannelI
 func (processor *ChatCompletionOrchestrator) WithProxy(proxy *httpclient.ProxyConfig) *ChatCompletionOrchestrator {
 	c := *processor
 	c.proxy = proxy
+
+	return &c
+}
+
+// WithEventBus returns a copy that publishes plugin events to bus.
+// A nil bus skips publication. The bus is passed on the orchestrator, not on context.
+func (processor *ChatCompletionOrchestrator) WithEventBus(bus *events.Bus) *ChatCompletionOrchestrator {
+	c := *processor
+	c.EventBus = bus
 
 	return &c
 }
@@ -250,6 +265,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		ModelMapper:           processor.ModelMapper,
 		Proxy:                 processor.proxy,
 		CurrentCandidateIndex: 0,
+		EventBus:              processor.EventBus,
 	}
 
 	var pipelineOpts []pipeline.Option
@@ -396,6 +412,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(updateErr))
 			}
 		}
+
+		publishRequestFailed(persistCtx, state, err)
 
 		return ChatCompletionResult{}, err
 	}
