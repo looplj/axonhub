@@ -211,6 +211,9 @@ func TopLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
 	return nil
 }
 
+// DoStream sends response.create on an exclusive connection lease and transfers
+// its ownership to the returned stream. Idle timing excludes pooled lease waits
+// and pauses between the consumer's calls to Next.
 func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	if request == nil {
 		return nil, fmt.Errorf("request is nil")
@@ -539,6 +542,8 @@ func (e *WebSocketExecutor) getOrDialPooled(ctx context.Context, request *httpcl
 	return pc, nil
 }
 
+// dial applies idle timing through connection setup and the HTTP upgrade,
+// refreshing it on socket reads and closing the socket if the context cancels.
 func (e *WebSocketExecutor) dial(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header) (*websocket.Conn, error) {
 	ctx, activity, stopIdle := httpclient.NewStreamIdleContext(ctx)
 	defer stopIdle()
@@ -1217,6 +1222,8 @@ type webSocketStream struct {
 	stopIdle  func()
 }
 
+// Next times upstream reads while yielding terminal response events before
+// releasing the lease. Read failures and recovery events evict the connection.
 func (s *webSocketStream) Next() bool {
 	if s.contextCancelled() {
 		return false
@@ -1308,6 +1315,8 @@ func (s *webSocketStream) Close() error {
 	return nil
 }
 
+// contextCancelled ends an active stream with its cancellation cause. Once the
+// stream is closed, only parent cancellation counts; watchdog cleanup does not.
 func (s *webSocketStream) contextCancelled() bool {
 	s.mu.Lock()
 	ctx := s.ctx
@@ -1327,6 +1336,7 @@ func (s *webSocketStream) contextCancelled() bool {
 	}
 }
 
+// setContextErr records cancellation only before a terminal event or prior error.
 func (s *webSocketStream) setContextErr(cause error) {
 	s.mu.Lock()
 	if s.err == nil && !s.terminal {
@@ -1360,6 +1370,8 @@ func (s *webSocketStream) markTerminal() {
 	s.mu.Unlock()
 }
 
+// setErr prefers the context's cause before a terminal event; otherwise it
+// accepts transport errors only while the stream remains open.
 func (s *webSocketStream) setErr(err error) {
 	s.mu.Lock()
 	if ctxErr := httpclient.StreamContextError(s.ctx); ctxErr != nil && !s.terminal {
@@ -1370,6 +1382,8 @@ func (s *webSocketStream) setErr(err error) {
 	s.mu.Unlock()
 }
 
+// finish captures cancellation before disarming the watchdog, detaches the read
+// observer, and releases the lease exactly once, evicting it when requested.
 func (s *webSocketStream) finish(evict bool) {
 	s.doneOnce.Do(func() {
 		s.mu.Lock()
@@ -1489,6 +1503,8 @@ type webSocketActivityConn struct {
 	activity func()
 }
 
+// Read reports raw socket bytes to the current lease's activity observer,
+// including partial messages and control frames.
 func (c *webSocketActivityConn) Read(p []byte) (int, error) {
 	n, err := c.Conn.Read(p)
 	if n > 0 {
@@ -1502,6 +1518,8 @@ func (c *webSocketActivityConn) Read(p []byte) (int, error) {
 	return n, err
 }
 
+// setWebSocketActivity replaces the pooled socket's observer, unwrapping TLS
+// when necessary. A nil observer detaches the finished request's watchdog.
 func setWebSocketActivity(conn net.Conn, activity func()) {
 	if c, ok := conn.(*webSocketActivityConn); ok {
 		c.mu.Lock()
