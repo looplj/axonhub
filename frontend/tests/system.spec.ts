@@ -44,26 +44,15 @@ test.describe('Admin System Management', () => {
       ])
       await expect(brandInput).toHaveValue(originalValue)
     }
+  })
 
-    const storageTab = page.getByRole('tab', { name: /Storage|存储/i })
-    await storageTab.click()
-    await expect(storageTab).toHaveAttribute('aria-selected', 'true')
-    
-    // Wait for storage content to load and check for any storage-related content
-    await page.waitForTimeout(1000)
-    const storageContent = page.locator('h1, h2, h3, h4, div, span').filter({ hasText: /Storage|storage|存储/i })
-    if (await storageContent.count() > 0) {
-      await expect(storageContent.first()).toBeVisible()
-    } else {
-      // If no specific storage text, just verify the tab is active
-      await expect(storageTab).toHaveAttribute('aria-selected', 'true')
-    }
+  test('storage settings live on the operations page', async ({ page }) => {
+    await page.goto('/system/operations?tab=storage')
+    await expect(page.locator('#default-data-storage')).toBeVisible()
   })
 
   test('can control provider quota collection with existing system settings UI', async ({ page }) => {
-    const quotaTab = page.getByRole('tab', { name: /Quota|配额/i })
-    await quotaTab.click()
-    await expect(quotaTab).toHaveAttribute('aria-selected', 'true')
+    await page.goto('/system/requests?tab=quota')
 
     const title = page.getByText(/^(Provider Quota Collection|提供商配额采集)$/i)
     await expect(title).toBeVisible()

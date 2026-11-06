@@ -1,4 +1,5 @@
 import { LinkProps } from '@tanstack/react-router';
+import type { NavModuleId } from '@/config/nav-items';
 
 interface User {
   name: string;
@@ -40,10 +41,21 @@ interface NavGroup {
   items: NavItem[];
 }
 
+interface NavModule {
+  id: NavModuleId;
+  title: string;
+  icon: React.ElementType;
+  groups: NavGroup[];
+}
+
 interface SidebarData {
   user: User;
   teams: Team[];
+  // Every module the user can see, used by the header tabs and the command menu.
+  modules: NavModule[];
+  activeModuleId: NavModuleId | null;
+  // Groups of the active module, rendered by the sidebar.
   navGroups: NavGroup[];
 }
 
-export type { SidebarData, NavGroup, NavItem, NavCollapsible, NavLink };
+export type { SidebarData, NavModule, NavGroup, NavItem, NavCollapsible, NavLink };

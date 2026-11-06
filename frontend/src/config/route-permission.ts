@@ -73,6 +73,21 @@ export const routeConfigs: RouteGroup[] = [
         mode: 'hidden',
       },
       {
+        path: '/system/requests',
+        requiredScopes: ['read_settings'],
+        mode: 'hidden',
+      },
+      {
+        path: '/system/integrations',
+        requiredScopes: ['read_settings'],
+        mode: 'hidden',
+      },
+      {
+        path: '/system/operations',
+        requiredScopes: ['read_settings'],
+        mode: 'hidden',
+      },
+      {
         path: '/plugins',
         requiredScopes: ['read_plugins'],
         mode: 'hidden',
