@@ -325,10 +325,36 @@ test('Codex reset credits count as expiring soon inside the 72-hour window', () 
 
   assert.equal(RESET_CREDIT_EXPIRING_SOON_MS, 72 * 60 * 60 * 1000);
   assert.equal(isResetCreditExpiringSoon(hoursFromNow(1), now), true, 'a credit hours from expiry must qualify');
+  assert.equal(isResetCreditExpiringSoon(hoursFromNow(71), now), true, 'a credit inside the window must qualify');
   assert.equal(isResetCreditExpiringSoon(hoursFromNow(72), now), true, 'the threshold is inclusive');
   assert.equal(isResetCreditExpiringSoon(hoursFromNow(73), now), false, 'a credit days away must not qualify');
+  // Cached quota data can outlive the credit itself; a lapsed credit must never
+  // advertise a redemption (it used to render an enabled button with "0m left").
+  assert.equal(isResetCreditExpiringSoon(hoursFromNow(-1), now), false, 'a credit that already expired must not qualify');
+  assert.equal(
+    isResetCreditExpiringSoon(new Date(now).toISOString(), now),
+    false,
+    'a credit expiring exactly now must not qualify'
+  );
   assert.equal(isResetCreditExpiringSoon(undefined, now), false, 'missing expiry metadata must not qualify');
   assert.equal(isResetCreditExpiringSoon('not-a-date', now), false, 'invalid expiry metadata must not qualify');
+});
+
+test('Codex expiry window and countdown cannot surface a lapsed credit', () => {
+  const source = read('components/quota-badges.tsx');
+
+  assert.match(
+    source,
+    /return expiresAtMs > now && expiresAtMs - now <= RESET_CREDIT_EXPIRING_SOON_MS;/,
+    'the expiring-soon check must require a positive remaining interval'
+  );
+  // The countdown floors to whole minutes, so a still-valid credit less than a
+  // minute away is clamped to "1m" instead of rendering "0m".
+  assert.match(
+    source,
+    /const totalMinutes = Math\.max\(1, Math\.floor\(diffMs \/ 60000\)\);/,
+    'the remaining-time formatter must never render zero minutes'
+  );
 });
 
 test('Codex reset button also appears when the earliest reset credit is expiring soon', () => {

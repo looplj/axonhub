@@ -71,7 +71,9 @@ function isResetCreditExpiringSoon(expiresAt?: string, now = Date.now()): boolea
   if (!expiresAt) return false;
   const expiresAtMs = new Date(expiresAt).getTime();
   if (Number.isNaN(expiresAtMs)) return false;
-  return expiresAtMs - now <= RESET_CREDIT_EXPIRING_SOON_MS;
+  // A credit that already lapsed is stale cached quota data, not a redemption
+  // reminder: only a credit that is still valid can be "expiring soon".
+  return expiresAtMs > now && expiresAtMs - now <= RESET_CREDIT_EXPIRING_SOON_MS;
 }
 
 // Effective routing mode for a channel: its own mode wins unless it defers
@@ -640,7 +642,11 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
   // quota unit labels keep the hint localized without a second formatter key.
   const formatResetCreditRemaining = (expiresAt?: string) => {
     if (!expiresAt) return '';
-    const totalMinutes = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 60000));
+    const diffMs = new Date(expiresAt).getTime() - Date.now();
+    if (Number.isNaN(diffMs)) return '';
+    // Callers only pass credits that are still valid, but one less than a
+    // minute from expiry must not read as "0m".
+    const totalMinutes = Math.max(1, Math.floor(diffMs / 60000));
     const days = Math.floor(totalMinutes / (24 * 60));
     const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
     const minutes = totalMinutes % 60;
