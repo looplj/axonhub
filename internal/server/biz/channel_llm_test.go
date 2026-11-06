@@ -33,6 +33,19 @@ func TestChannelService_BuildResponsesWebSocketOutbound(t *testing.T) {
 	require.Equal(t, llm.APIFormatOpenAIResponseWebSocket, outbound.APIFormat())
 }
 
+func TestChannelService_BuildNonDefaultEndpointOutbound_NoEnabledAPIKey(t *testing.T) {
+	entity := &ent.Channel{ID: 2, Name: "oauth-only", Type: channel.TypeOpenai, BaseURL: "https://provider.test"}
+	ch := &Channel{Channel: entity}
+
+	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIChatCompletion, llm.APIFormatOpenAIResponse, llm.APIFormatAnthropicMessage} {
+		require.NotPanics(t, func() {
+			outbound, err := (&ChannelService{}).buildNonDefaultEndpointOutbound(entity, ch, objects.ChannelEndpoint{APIFormat: format.String()})
+			require.ErrorIs(t, err, errNoEnabledAPIKey)
+			require.Nil(t, outbound)
+		}, format.String())
+	}
+}
+
 func TestChannel_IsModelSupported_WithExtraModelPrefix(t *testing.T) {
 	tests := []struct {
 		name      string
