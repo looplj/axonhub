@@ -347,7 +347,7 @@ export function MetricColorDialog({ open, onOpenChange }: MetricColorDialogProps
                       >
                         <span
                           className={cn(
-                            'absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-zinc-500 dark:bg-zinc-400',
+                            'absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-[var(--metric-tier-marker)]',
                             (isActive || isHighlighted) && 'bg-foreground w-0.5'
                           )}
                         />

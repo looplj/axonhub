@@ -99,11 +99,11 @@ test('replacing a boundary keeps the others untouched', () => {
 test('colour classes are empty when a metric is off or neutral', () => {
   const settings = m.defaultMetricColorSettings();
 
-  assert.equal(m.metricColorTextClass(settings, 'cacheHitRate', 96), 'text-green-600 dark:text-green-400');
+  assert.equal(m.metricColorTextClass(settings, 'cacheHitRate', 96), 'text-[color:var(--metric-tier-green-fg)]');
   assert.equal(m.metricColorTextClass(settings, 'cacheHitRate', 85), '');
   assert.equal(
     m.metricColorTextClass(settings, 'throughputIncludingFirstToken', 90),
-    'text-green-600 dark:text-green-400',
+    'text-[color:var(--metric-tier-green-fg)]',
     'the total rate is on by default'
   );
   assert.equal(m.metricColorTextClass(settings, 'firstTokenLatency', null), '');

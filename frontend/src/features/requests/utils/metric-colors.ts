@@ -83,12 +83,19 @@ export const METRIC_COLOR_META: Record<MetricColorKey, MetricColorMeta> = {
  * drift from the list — the band is a preview of the list colour, not a
  * separate palette.
  */
+/**
+ * Tier palette. `text` is the table-cell foreground and `swatch` the wide band
+ * fill drawn in the dialog; they read the same semantic tokens but resolve to
+ * different values, because small text needs weight while a full-width bar
+ * needs restraint. Tokens live in index.css under `:root` and `.dark`.
+ * `neutral` keeps an empty text class so callers inherit their own styling.
+ */
 export const METRIC_COLOR_TIER_STYLE: Record<MetricColorTier, { text: string; swatch: string }> = {
-  red: { text: 'text-red-600 dark:text-red-400', swatch: 'bg-red-600 dark:bg-red-400' },
-  yellow: { text: 'text-yellow-600 dark:text-yellow-400', swatch: 'bg-yellow-600 dark:bg-yellow-400' },
-  neutral: { text: '', swatch: 'bg-zinc-400 dark:bg-zinc-600' },
-  blue: { text: 'text-blue-600 dark:text-blue-400', swatch: 'bg-blue-600 dark:bg-blue-400' },
-  green: { text: 'text-green-600 dark:text-green-400', swatch: 'bg-green-600 dark:bg-green-400' },
+  red: { text: 'text-[color:var(--metric-tier-red-fg)]', swatch: 'bg-[var(--metric-tier-red-fill)]' },
+  yellow: { text: 'text-[color:var(--metric-tier-yellow-fg)]', swatch: 'bg-[var(--metric-tier-yellow-fill)]' },
+  neutral: { text: '', swatch: 'bg-[var(--metric-tier-neutral-fill)]' },
+  blue: { text: 'text-[color:var(--metric-tier-blue-fg)]', swatch: 'bg-[var(--metric-tier-blue-fill)]' },
+  green: { text: 'text-[color:var(--metric-tier-green-fg)]', swatch: 'bg-[var(--metric-tier-green-fill)]' },
 };
 
 /**
