@@ -178,7 +178,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   gemini_openai: {
     channelType: 'gemini_openai',
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    defaultModels: ['gemini-2.5-pro', 'gemini-2.5-flash'],
+    defaultModels: ['gemini-3.1-pro-preview', 'gemini-3.8-flash'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: Google,
@@ -186,7 +186,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   gemini: {
     channelType: 'gemini',
     baseURL: 'https://generativelanguage.googleapis.com/v1beta',
-    defaultModels: ['gemini-2.5-pro', 'gemini-2.5-flash'],
+    defaultModels: ['gemini-3.1-pro-preview', 'gemini-3.8-flash'],
     apiFormat: GEMINI_CONTENTS,
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: Google,
@@ -194,7 +194,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   gemini_vertex: {
     channelType: 'gemini_vertex',
     baseURL: 'https://aiplatform.googleapis.com/v1',
-    defaultModels: ['gemini-2.5-pro', 'gemini-2.5-flash'],
+    defaultModels: ['gemini-3.1-pro-preview', 'gemini-3.8-flash'],
     apiFormat: GEMINI_CONTENTS,
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: Google,

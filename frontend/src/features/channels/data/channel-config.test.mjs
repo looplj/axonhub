@@ -449,3 +449,15 @@ test('Anthropic channel defaults do not preload retiring Claude models', () => {
     );
   }
 });
+
+test('Gemini channels default to current models, not the retired 2.5 family', () => {
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+
+  for (const channel of ['gemini_openai', 'gemini', 'gemini_vertex']) {
+    const match = channelsConfig.match(new RegExp(`\\n  ${channel}: {[\\s\\S]*?defaultModels: \\[([^\\]]*)\\]`));
+    assert.ok(match, `${channel} should define defaultModels`);
+    assert.doesNotMatch(match[1], /gemini-2\.5/, `${channel} should not default to retired gemini-2.5 models`);
+    assert.match(match[1], /gemini-3\.1-pro-preview/);
+    assert.match(match[1], /gemini-3\.8-flash/);
+  }
+});
