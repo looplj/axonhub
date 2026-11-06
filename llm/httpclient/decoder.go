@@ -349,6 +349,8 @@ type binaryChunkDecoder struct {
 
 var _ StreamDecoder = (*binaryChunkDecoder)(nil)
 
+// Next yields bytes before reporting a read's accompanying error on the next call.
+// A clean EOF yields one completion event; cancellation preserves the idle cause.
 func (d *binaryChunkDecoder) Next() bool {
 	if d.err != nil {
 		return false

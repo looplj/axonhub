@@ -116,6 +116,8 @@ type streamActivityReader struct {
 	activity func()
 }
 
+// Read counts only time blocked on upstream and refreshes activity for any bytes,
+// even when the same read also returns an error.
 func (r *streamActivityReader) Read(p []byte) (int, error) {
 	SetStreamIdleWaiting(r.ctx, true)
 	defer SetStreamIdleWaiting(r.ctx, false)
@@ -137,6 +139,8 @@ type idleTimeoutStream struct {
 	finished bool
 }
 
+// Next captures the terminal cause before stopping the watchdog, so cleanup's
+// cancellation cannot replace a successful end or an upstream idle timeout.
 func (s *idleTimeoutStream) Next() bool {
 	if s.finished {
 		return false
@@ -153,6 +157,8 @@ func (s *idleTimeoutStream) Next() bool {
 	return false
 }
 
+// Err exposes the wrapped error until iteration ends, then returns the cause
+// captured before watchdog cleanup.
 func (s *idleTimeoutStream) Err() error {
 	if !s.finished {
 		return s.Stream.Err()
@@ -160,6 +166,7 @@ func (s *idleTimeoutStream) Err() error {
 	return s.err
 }
 
+// Close stops the watchdog before closing the underlying stream.
 func (s *idleTimeoutStream) Close() error {
 	s.stop()
 	return s.Stream.Close()
