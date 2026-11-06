@@ -243,6 +243,58 @@ const {
   buildQuotaDisplayItems,
 } = await loadTsModule(modeHelpers);
 
+test('Codex next-expiry pick ignores reset credits that already expired', async () => {
+  // The picker lives inside the Codex render branch, so rebuild it from the
+  // exact production source and run it against mixed fixtures.
+  let nextExpiringDecl;
+  const findNextExpiring = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === 'nextExpiringReset') {
+      nextExpiringDecl = node;
+    }
+    ts.forEachChild(node, findNextExpiring);
+  };
+  findNextExpiring(badgesAst);
+  assert.ok(nextExpiringDecl?.initializer, 'the Codex next-expiry picker must stay in quota-badges.tsx');
+
+  const predicate = badgesAst.statements.find(
+    (node) => ts.isFunctionDeclaration(node) && node.name?.text === 'isResetCreditUnexpired'
+  );
+  assert.ok(predicate, 'the reset-credit expiry predicate must stay a module-level helper');
+
+  const { pickNextExpiringReset } = await loadTsModule(
+    [
+      `export ${predicate.getText(badgesAst)}`,
+      `export const pickNextExpiringReset = (availableResets) => (${nextExpiringDecl.initializer.getText(badgesAst)});`,
+    ].join('\n')
+  );
+
+  const now = Date.now();
+  const hoursFromNow = (hours) => new Date(now + hours * 60 * 60 * 1000).toISOString();
+
+  // The expired credit is first by expiresAt: a naive ascending sort would pick
+  // it, render a date in the past, and hide the credit that is actually next.
+  const picked = pickNextExpiringReset([
+    { id: 'expired', expiresAt: hoursFromNow(-1) },
+    { id: 'valid-soon', expiresAt: hoursFromNow(2) },
+    { id: 'valid-later', expiresAt: hoursFromNow(10) },
+  ]);
+  assert.equal(picked?.id, 'valid-soon', 'the next expiry must come from the unexpired credits');
+  assert.equal(
+    pickNextExpiringReset([{ id: 'expired', expiresAt: hoursFromNow(-1) }]),
+    undefined,
+    'a list of only expired credits has no next expiry'
+  );
+  assert.equal(
+    pickNextExpiringReset([
+      { id: 'missing' },
+      { id: 'invalid', expiresAt: 'not-a-date' },
+      { id: 'valid', expiresAt: hoursFromNow(1) },
+    ])?.id,
+    'valid',
+    'missing or invalid expiry metadata is still ignored'
+  );
+});
+
 test('per-channel mode falls back to the global default when the channel defers via INHERIT', () => {
   // parseChannelNode maps channels without settings.quotaRoutingMode to INHERIT.
   assert.match(read('features/system/data/quotas.ts'), /quotaRoutingMode: node\.settings\?\.quotaRoutingMode \?\? 'INHERIT'/);
