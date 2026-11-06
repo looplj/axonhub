@@ -16,7 +16,7 @@ on:
         description: Frontend sources or frontend CI changed
         value: ${{ jobs.changes.outputs.frontend }}
       docker:
-        description: Anything that affects the Docker image changed
+        description: Docker build configuration or Docker CI changed
         value: ${{ jobs.changes.outputs.docker }}
 
 permissions:
@@ -51,35 +51,39 @@ jobs:
           # For pushes, diff against the commit before the push instead of the default branch.
           base: ${{ github.ref_name }}
           filters: |
-            backend-src: &backend-src
+            backend:
               - '**/*.go'
               - '**/go.mod'
               - '**/go.sum'
-              - 'cmd/**'
-              - 'conf/**'
-              - 'internal/**'
-              - 'llm/**'
-              - 'integration_test/**'
+              # Match Go inputs explicitly: JS, docs, and plugin UI changes
+              # under internal/ must not trigger the Go checks.
+              - 'go.work'
+              - 'go.work.sum'
+              - 'internal/server/gql/**/*.graphql'
+              - 'internal/server/gql/**/gqlgen.yml'
+              - 'internal/ent/template/**'
+              - 'internal/ent/migrate/migrations/**'
+              - 'internal/**/testdata/**'
+              - 'llm/**/testdata/**'
+              - 'internal/build/VERSION'
+              - 'internal/server/assets/favicon.ico'
+              - 'internal/server/biz/catalogdata/**'
               - 'scripts/verify-go-sse-dependency*.sh'
               - 'Makefile'
               - '.golangci.yml'
-            frontend-src: &frontend-src
-              - 'frontend/**'
-            backend:
-              - *backend-src
               - '.github/workflows/changes.yml'
               - '.github/workflows/build.yml'
               - '.github/workflows/test.yml'
               - '.github/workflows/lint.yml'
               - '.github/workflows/vulncheck.yml'
             frontend:
-              - *frontend-src
+              - 'frontend/**'
               - '.github/workflows/changes.yml'
               - '.github/workflows/build.yml'
               - '.github/workflows/test.yml'
             docker:
-              - *backend-src
-              - *frontend-src
+              # Source changes are covered by the frontend/backend checks.
+              # PR image builds validate changes to Docker configuration only.
               - 'Dockerfile'
               - '.dockerignore'
               - '.github/workflows/changes.yml'

@@ -1,36 +1,43 @@
 import { useMemo } from 'react';
-import { NAV_GROUP_DEFS, PLUGINS_NAV_GROUP_ID } from '@/config/nav-items';
+import { useLocation } from '@tanstack/react-router';
+import { NAV_MODULE_DEFS, PLUGINS_NAV_GROUP_ID, resolveNavModule, type NavModuleId } from '@/config/nav-items';
 import { IconAppWindow } from '@tabler/icons-react';
 import { Command } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import { useSidebarPrefsStore } from '@/stores/sidebarPrefsStore';
 import { formatUserName, isCJKName } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useRoutePermissions } from '@/hooks/useRoutePermissions';
 import { useMe } from '@/features/auth/data/auth';
 import { usePluginUIEntries } from '@/features/plugins/data/plugin-ui';
 import { resolvePluginTitle } from '@/features/plugins/plugin-ui';
-import { type SidebarData, type NavGroup, type NavLink } from './components/layout/types';
+import { type SidebarData, type NavGroup, type NavLink, type NavModule } from './components/layout/types';
 
-// Translates the structural navigation definition into renderable groups.
+// Translates the structural navigation definition into renderable modules.
 // Shared with the "customize menu" dialog so it can list the same items.
-export function useRawNavGroups(): NavGroup[] {
+export function useRawNavModules(): NavModule[] {
   const { t } = useTranslation();
 
   return useMemo(
     () =>
-      NAV_GROUP_DEFS.map((group) => ({
-        id: group.id,
-        title: t(group.titleKey),
-        items: group.items.map(
-          (item) =>
-            ({
-              title: t(item.titleKey),
-              url: item.url,
-              icon: item.icon,
-              mobileOnly: item.mobileOnly,
-            }) as NavLink
-        ),
+      NAV_MODULE_DEFS.map((module) => ({
+        id: module.id,
+        title: t(module.titleKey),
+        icon: module.icon,
+        groups: module.groups.map((group) => ({
+          id: group.id,
+          title: group.titleKey ? t(group.titleKey) : '',
+          items: group.items.map(
+            (item) =>
+              ({
+                title: t(item.titleKey),
+                url: item.url,
+                icon: item.icon,
+                mobileOnly: item.mobileOnly,
+              }) as NavLink
+          ),
+        })),
       })),
     [t]
   );
@@ -52,19 +59,38 @@ export function applyHiddenNavItems(groups: NavGroup[], hiddenItems: string[]): 
 }
 
 // Appends plugin pages to the plugins group. The static group disappears when
-// the user cannot or chose not to see "Manage plugins", so it is recreated in
-// its usual slot before the settings group.
+// the user cannot or chose not to see "Manage plugins", so it is recreated.
 export function mergePluginPages(groups: NavGroup[], pageItems: NavLink[], title: string): NavGroup[] {
   const index = groups.findIndex((group) => group.id === PLUGINS_NAV_GROUP_ID);
   if (index >= 0) {
     return groups.map((group, i) => (i === index ? { ...group, items: [...group.items, ...pageItems] } : group));
   }
-  const pluginGroup: NavGroup = { id: PLUGINS_NAV_GROUP_ID, title, items: pageItems };
-  const settingsIndex = groups.findIndex((group) => group.id === 'settings');
-  if (settingsIndex < 0) {
-    return [...groups, pluginGroup];
+  return [...groups, { id: PLUGINS_NAV_GROUP_ID, title, items: pageItems }];
+}
+
+// The tab to highlight: the module owning the current route, otherwise the
+// module the user was last in, otherwise the first visible one.
+export function pickActiveModuleId(
+  visibleIds: NavModuleId[],
+  routeModuleId: NavModuleId | null,
+  lastModuleId: NavModuleId | null
+): NavModuleId | null {
+  if (routeModuleId && visibleIds.includes(routeModuleId)) {
+    return routeModuleId;
   }
-  return [...groups.slice(0, settingsIndex), pluginGroup, ...groups.slice(settingsIndex)];
+  if (lastModuleId && visibleIds.includes(lastModuleId)) {
+    return lastModuleId;
+  }
+  return visibleIds[0] ?? null;
+}
+
+// First enabled link of a module, used as the landing page of its tab.
+// Mobile-only entries are a last resort.
+export function firstNavLink(module: NavModule): NavLink | undefined {
+  const links = module.groups
+    .flatMap((group) => group.items)
+    .filter((item): item is NavLink => !item.isDisabled && 'url' in item && !!item.url);
+  return links.find((link) => !link.mobileOnly) ?? links[0];
 }
 
 export function useSidebarData(): SidebarData {
@@ -73,6 +99,9 @@ export function useSidebarData(): SidebarData {
   const { data: meData } = useMe();
   const { filterNavGroups } = useRoutePermissions();
   const hiddenItems = useSidebarPrefsStore((state) => state.hiddenItems);
+  const lastModuleId = useSidebarPrefsStore((state) => state.lastModuleId);
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const isMobile = useIsMobile();
 
   // Use data from me query if available, otherwise fall back to auth store
   const user = meData || authUser;
@@ -107,18 +136,15 @@ export function useSidebarData(): SidebarData {
     return 'User';
   };
 
-  const rawNavGroups = useRawNavGroups();
+  const rawNavModules = useRawNavModules();
   const { data: pluginEntries } = usePluginUIEntries();
 
   // Filter by permission first, then by the user's own visibility preferences.
-  // Plugin pages are added to the plugins group after that filter. They are not
-  // static nav items and they are not gated by route-permission.ts.
-  const filteredNavGroups = useMemo(() => {
-    const groups = applyHiddenNavItems(filterNavGroups(rawNavGroups), hiddenItems);
+  // Plugin pages are added to the plugins module after that filter. They are
+  // not static nav items and they are not gated by route-permission.ts.
+  // Modules left without items are dropped so they get no header tab.
+  const modules = useMemo(() => {
     const pages = pluginEntries?.pluginUIEntries.pages ?? [];
-    if (pages.length === 0) {
-      return groups;
-    }
     const pageItems = pages.map(
       (page) =>
         ({
@@ -129,8 +155,30 @@ export function useSidebarData(): SidebarData {
           icon: IconAppWindow,
         }) as NavLink
     );
-    return mergePluginPages(groups, pageItems, t('plugins.nav.group'));
-  }, [filterNavGroups, rawNavGroups, hiddenItems, pluginEntries, i18n.language, t]);
+
+    return rawNavModules
+      .map((module) => {
+        let groups = applyHiddenNavItems(filterNavGroups(module.groups), hiddenItems).filter((group) =>
+          group.items.some((item) => !item.isDisabled)
+        );
+        if (module.id === 'plugins' && pageItems.length > 0) {
+          groups = mergePluginPages(groups, pageItems, t('plugins.nav.group'));
+        }
+        return { ...module, groups };
+      })
+      // Mobile-only items stay in the data (the command menu lists them) but do
+      // not earn a module its tab on desktop.
+      .filter((module) =>
+        module.groups.some((group) => group.items.some((item) => !item.isDisabled && (isMobile || !(item as NavLink).mobileOnly)))
+      );
+  }, [filterNavGroups, rawNavModules, hiddenItems, isMobile, pluginEntries, i18n.language, t]);
+
+  const activeModuleId = pickActiveModuleId(
+    modules.map((module) => module.id),
+    resolveNavModule(pathname),
+    lastModuleId
+  );
+  const navGroups = modules.find((module) => module.id === activeModuleId)?.groups ?? [];
 
   return {
     user: {
@@ -147,6 +195,8 @@ export function useSidebarData(): SidebarData {
         // plan: t('sidebar.team.plan'),
       },
     ],
-    navGroups: filteredNavGroups,
+    modules,
+    activeModuleId,
+    navGroups,
   };
 }

@@ -1,10 +1,14 @@
+import { useEffect } from 'react';
 import Cookies from 'js-cookie';
-import { Outlet } from '@tanstack/react-router';
+import { Outlet, useLocation } from '@tanstack/react-router';
+import { resolveNavModule } from '@/config/nav-items';
+import { useSidebarPrefsStore } from '@/stores/sidebarPrefsStore';
 import { cn } from '@/lib/utils';
 import { useVersionCheck } from '@/hooks/use-version-check';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppHeader } from '@/components/layout/app-header';
 import { AppSidebar } from '@/components/layout/app-sidebar';
+import { useEnsureSelectedProject } from '@/components/layout/project-switcher';
 import SkipToMain from '@/components/skip-to-main';
 import { OnboardingProvider } from '@/features/onboarding';
 import { useSidebarData } from './sidebar';
@@ -16,13 +20,25 @@ interface Props {
 export function AuthenticatedLayout({ children }: Props) {
   const defaultOpen = Cookies.get('sidebar_state') !== 'false';
   const sidebarData = useSidebarData();
+  const location = useLocation();
+  const recordModuleVisit = useSidebarPrefsStore((state) => state.recordModuleVisit);
+
+  useEnsureSelectedProject();
+
+  // Remember the last page of each module so its header tab can return there.
+  useEffect(() => {
+    const moduleId = resolveNavModule(location.pathname);
+    if (moduleId) {
+      recordModuleVisit(moduleId, location.href);
+    }
+  }, [location.pathname, location.href, recordModuleVisit]);
 
   // Check for new version on mount (only for owners)
   useVersionCheck();
 
   return (
     <SidebarProvider defaultOpen={defaultOpen} className='fixed inset-0 min-h-0 flex-col overflow-hidden'>
-      <AppHeader />
+      <AppHeader sidebarData={sidebarData} />
       <div className='flex flex-1 overflow-hidden'>
         <SkipToMain />
         <AppSidebar sidebarData={sidebarData} />

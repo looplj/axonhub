@@ -12,16 +12,19 @@ import { PermissionGuard } from '@/components/permission-guard';
 import { checkProviderQuotas } from '@/features/system/data/quotas';
 import { useBrandSettings } from '@/features/system/data/system';
 import { BrandLogo } from './brand-logo';
+import { NavModuleTabs } from './nav-module-tabs';
 import { ProjectSwitcher } from './project-switcher';
+import { type SidebarData } from './types';
 import { toast } from 'sonner';
 
-export function AppHeader() {
+export function AppHeader({ sidebarData }: { sidebarData: SidebarData }) {
   const { data: brandSettings } = useBrandSettings();
   const { t } = useTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const { isMobile } = useSidebar();
   const displayName = brandSettings?.brandName || 'AxonHub';
+  const showProjectSwitcher = sidebarData.activeModuleId === 'project';
 
   const refreshMutation = useMutation({
     mutationFn: async () => {
@@ -59,11 +62,19 @@ export function AppHeader() {
             <span className='text-sm leading-none font-semibold'>{displayName}</span>
           </div>
 
-          {/* Separator */}
-          <div className='bg-border mx-0.5 h-3.5 w-px' />
+          {/* Module tabs - desktop only, the mobile sidebar has its own switcher */}
+          {!isMobile && (
+            <NavModuleTabs modules={sidebarData.modules} activeModuleId={sidebarData.activeModuleId} className='ml-4' />
+          )}
 
-          {/* Project Switcher */}
-          <ProjectSwitcher />
+          {/* Project Switcher - only meaningful for project-scoped pages. Placed after
+              the tabs so toggling it never shifts them. */}
+          {showProjectSwitcher && (
+            <>
+              <span className='text-muted-foreground/60 mx-0.5 text-sm select-none'>/</span>
+              <ProjectSwitcher />
+            </>
+          )}
         </div>
 
         {/* 右侧控件 */}

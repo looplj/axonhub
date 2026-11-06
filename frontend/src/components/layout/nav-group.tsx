@@ -45,8 +45,8 @@ export function NavGroup({ title, items }: NavGroup) {
   }
 
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>{title}</SidebarGroupLabel>
+    <SidebarGroup className='py-1'>
+      {title && <SidebarGroupLabel className='h-6 group-data-[collapsible=icon]:-mt-6'>{title}</SidebarGroupLabel>}
       <SidebarMenu>
         {visibleItems.map((item) => {
           const key = `${item.title}-${navTarget(item)}`;
@@ -69,7 +69,7 @@ const SidebarMenuLink = ({ item, href }: { item: NavLink; href: string }) => {
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={checkIsActive(href, item)} tooltip={item.title} className='h-12 rounded-2xl transition-all'>
+      <SidebarMenuButton asChild isActive={checkIsActive(href, item)} tooltip={item.title} className='h-8 rounded-lg transition-all'>
         <Link {...navLinkProps(item)} onClick={() => setOpenMobile(false)}>
           {item.icon && <item.icon className='text-xl' />}
           <span>{item.title}</span>
@@ -89,7 +89,7 @@ const SidebarMenuCollapsible = ({ item, href }: { item: NavCollapsible; href: st
     <Collapsible asChild defaultOpen={checkIsActive(href, item, true)} className='group/collapsible'>
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton tooltip={item.title} className='h-12 rounded-2xl transition-all'>
+          <SidebarMenuButton tooltip={item.title} className='h-8 rounded-lg transition-all'>
             {item.icon && <item.icon className='text-xl' />}
             <span>{item.title}</span>
             {item.badge && <NavBadge>{item.badge}</NavBadge>}
@@ -124,7 +124,7 @@ const SidebarMenuCollapsedDropdown = ({ item, href }: { item: NavCollapsible; hr
     <SidebarMenuItem>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <SidebarMenuButton tooltip={item.title} isActive={checkIsActive(href, item)} className='h-12 rounded-2xl transition-all'>
+          <SidebarMenuButton tooltip={item.title} isActive={checkIsActive(href, item)} className='h-8 rounded-lg transition-all'>
             {item.icon && <item.icon className='text-xl' />}
             <span>{item.title}</span>
             {item.badge && <NavBadge>{item.badge}</NavBadge>}
