@@ -408,6 +408,7 @@
   "quota.codex.expiresAt": "到期时间",
   "quota.codex.grantedAt": "发放时间",
   "quota.codex.noResetCredits": "当前没有可用的 Codex 重置次数",
+  "quota.codex.resetCreditExpiringSoon": "重置券将在 {{time}}后过期，请尽快兑换以免失效。",
   "quota.label.today": "今天",
   "quota.label.5h_limiting": "5小时限制",
   "quota.label.7d_limiting": "7天限制",
