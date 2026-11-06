@@ -62,6 +62,18 @@ const STATUS_LABELS = {
   unknown: 'quota.status.unknown',
 } as const;
 
+// Codex reset credits expire (typically 30 days after they are granted). Show
+// the redeem action shortly before the earliest credit lapses even while the
+// channel still has quota left, otherwise the credit is wasted.
+const RESET_CREDIT_EXPIRING_SOON_MS = 72 * 60 * 60 * 1000;
+
+function isResetCreditExpiringSoon(expiresAt?: string, now = Date.now()): boolean {
+  if (!expiresAt) return false;
+  const expiresAtMs = new Date(expiresAt).getTime();
+  if (Number.isNaN(expiresAtMs)) return false;
+  return expiresAtMs - now <= RESET_CREDIT_EXPIRING_SOON_MS;
+}
+
 // Effective routing mode for a channel: its own mode wins unless it defers
 // via INHERIT to the global default. Null when the global default is
 // unavailable (e.g. the viewer lacks read_settings scope) — the mode badge is
@@ -623,6 +635,19 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? value : format(date, 'yyyy-MM-dd HH:mm');
   };
+
+  // Compact remaining time for an expiring reset credit, e.g. "2d 3h". The
+  // quota unit labels keep the hint localized without a second formatter key.
+  const formatResetCreditRemaining = (expiresAt?: string) => {
+    if (!expiresAt) return '';
+    const totalMinutes = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 60000));
+    const days = Math.floor(totalMinutes / (24 * 60));
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+    const minutes = totalMinutes % 60;
+    if (days > 0) return `${days}${t('quota.label.d')} ${hours}${t('quota.label.h')}`;
+    if (hours > 0) return `${hours}${t('quota.label.h')} ${minutes}${t('quota.label.m')}`;
+    return `${minutes}${t('quota.label.m')}`;
+  };
   return (
     <div className='min-w-0 space-y-3 border-b py-3 first:pt-1 last:border-0 last:pb-1'>
       <div className='flex items-center justify-between'>
@@ -896,6 +921,11 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
               .filter((reset) => reset.grantedAt && !Number.isNaN(new Date(reset.grantedAt).getTime()))
               .sort((a, b) => new Date(b.grantedAt!).getTime() - new Date(a.grantedAt!).getTime())[0];
             const resetTime = nextExpiringReset?.expiresAt ?? latestGrantedReset?.grantedAt;
+            const expiringSoonReset =
+              nextExpiringReset && isResetCreditExpiringSoon(nextExpiringReset.expiresAt) ? nextExpiringReset : undefined;
+            const resetCreditExpiryHint = expiringSoonReset?.expiresAt
+              ? t('quota.codex.resetCreditExpiringSoon', { time: formatResetCreditRemaining(expiringSoonReset.expiresAt) })
+              : undefined;
             const hasResetInfo = qd._resets?.supported === true && !qd._resets.error;
             const canAttemptReset = qd._resets?.supported === true && (Boolean(qd._resets.error) || availableResetCount > 0);
             return (
@@ -956,14 +986,19 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                       <span className='text-foreground font-medium'>{formatQuotaResetTime(resetTime)}</span>
                     </div>
                   )}
-                  {(status === 'exhausted' || status === 'warning') && (
-                    <div className='flex items-center justify-end pt-1'>
+                  {(status === 'exhausted' || status === 'warning' || Boolean(expiringSoonReset)) && (
+                    <div className='flex flex-col items-end gap-1 pt-1'>
+                      {resetCreditExpiryHint && (
+                        <p className='text-xs font-medium text-amber-600 dark:text-amber-400' role='status'>
+                          {resetCreditExpiryHint}
+                        </p>
+                      )}
                       <Button
                         size='sm'
                         variant='outline'
                         className='h-7 text-xs'
                         disabled={isResetting || !canAttemptReset}
-                        title={!canAttemptReset ? t('quota.codex.noResetCredits') : undefined}
+                        title={!canAttemptReset ? t('quota.codex.noResetCredits') : resetCreditExpiryHint}
                         onClick={handleResetCodexQuota}
                       >
                         {isResetting ? <Loader2 className='mr-1.5 h-3.5 w-3.5 animate-spin' /> : <Zap className='mr-1.5 h-3.5 w-3.5' />}
