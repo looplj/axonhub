@@ -554,7 +554,7 @@
   "channels.dialogs.settings.overrides.body.value": "值",
   "channels.dialogs.settings.overrides.body.valuePlaceholder": "例如 0.7",
   "channels.dialogs.settings.overrides.body.condition": "条件",
-  "channels.dialogs.settings.overrides.body.conditionPlaceholder": "例如 {{if eq .Model \"gpt-4\"}}true{{end}}",
+  "channels.dialogs.settings.overrides.body.conditionPlaceholder": "例如 {{eq .Model \"gpt-4\"}}",
   "channels.dialogs.settings.overrides.headers.title": "覆盖请求头",
   "channels.dialogs.settings.overrides.headers.description": "配置自定义 HTTP 请求头，会应用到通过此渠道发送的所有请求。",
   "channels.dialogs.settings.overrides.headers.key": "键名",

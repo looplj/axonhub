@@ -557,7 +557,7 @@
   "channels.dialogs.settings.overrides.body.value": "Value",
   "channels.dialogs.settings.overrides.body.valuePlaceholder": "e.g. 0.7",
   "channels.dialogs.settings.overrides.body.condition": "Condition",
-  "channels.dialogs.settings.overrides.body.conditionPlaceholder": "e.g. {{if eq .Model \"gpt-4\"}}true{{end}}",
+  "channels.dialogs.settings.overrides.body.conditionPlaceholder": "e.g. {{eq .Model \"gpt-4\"}}",
   "channels.dialogs.settings.overrides.headers.title": "Override Headers",
   "channels.dialogs.settings.overrides.headers.description": "Configure custom HTTP headers that will be applied to all requests sent through this channel.",
   "channels.dialogs.settings.overrides.headers.key": "Key",
