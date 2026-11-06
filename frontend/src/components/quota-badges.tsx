@@ -473,6 +473,15 @@ function PeriodQuotaEstimate({ limits, currency }: { limits: ProviderQuotaLimit[
   );
 }
 
+// Cached quota data can outlive the reset credit it describes: a credit that
+// lapsed after the last quota poll is no longer redeemable. Excluding those
+// keeps the "expires at" row from advertising a date in the past.
+function isResetCreditUnexpired(reset: { expiresAt?: string }, now = Date.now()): boolean {
+  if (!reset.expiresAt) return false;
+  const expiresAtMs = new Date(reset.expiresAt).getTime();
+  return !Number.isNaN(expiresAtMs) && expiresAtMs > now;
+}
+
 function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; effectiveMode: QuotaRoutingMode | null }) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -881,7 +890,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             const availableResets = qd._resets?.resets ?? [];
             const availableResetCount = availableResets.length;
             const nextExpiringReset = availableResets
-              .filter((reset) => reset.expiresAt && !Number.isNaN(new Date(reset.expiresAt).getTime()))
+              .filter((reset) => isResetCreditUnexpired(reset))
               .sort((a, b) => new Date(a.expiresAt!).getTime() - new Date(b.expiresAt!).getTime())[0];
             const latestGrantedReset = availableResets
               .filter((reset) => reset.grantedAt && !Number.isNaN(new Date(reset.grantedAt).getTime()))
