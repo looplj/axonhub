@@ -13,8 +13,10 @@ import (
 	"github.com/tidwall/gjson"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/looplj/axonhub/internal/authz/identity"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/pkg/xsecret"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -338,6 +340,12 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	modelID *string,
 	proxy *httpclient.ProxyConfig,
 ) (*TestChannelResult, error) {
+	// Plugin channel tests are not supported yet; reject before reading credentials
+	// or performing any upstream request or persistence work.
+	if identity.IsPlugin(ctx) {
+		return nil, xerrors.ForbiddenError("channel testing is not available to plugins")
+	}
+
 	channel, err := processor.channelService.GetChannel(ctx, channelID.ID)
 	if err != nil {
 		return nil, err
@@ -572,6 +580,12 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 	modelID *string,
 	proxy *httpclient.ProxyConfig,
 ) (*TestChannelAPIKeysResult, error) {
+	// Plugin channel tests are not supported yet; reject before reading credentials
+	// or performing any upstream request or persistence work.
+	if identity.IsPlugin(ctx) {
+		return nil, xerrors.ForbiddenError("channel testing is not available to plugins")
+	}
+
 	ch, err := processor.channelService.GetChannel(ctx, channelID.ID)
 	if err != nil {
 		return nil, err
@@ -669,6 +683,12 @@ func (processor *TestChannelOrchestrator) TestSingleAPIKey(
 	modelID *string,
 	proxy *httpclient.ProxyConfig,
 ) (*TestAPIKeyResult, error) {
+	// Plugin channel tests are not supported yet; reject before reading credentials
+	// or performing any upstream request or persistence work.
+	if identity.IsPlugin(ctx) {
+		return nil, xerrors.ForbiddenError("channel testing is not available to plugins")
+	}
+
 	ch, err := processor.channelService.GetChannel(ctx, channelID.ID)
 	if err != nil {
 		return nil, err

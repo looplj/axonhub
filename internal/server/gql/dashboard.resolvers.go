@@ -415,6 +415,10 @@ func (r *queryResolver) TopRequestsProjects(ctx context.Context) ([]*TopRequests
 // Note: Uses usage_logs table for token consumption statistics (today, this week, this month).
 // Provides result-only token metrics aggregated by calendar periods.
 func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
+	// All-time totals may be served from a shared cache without touching Ent, so check the scope explicitly.
+	if err := authz.RequireScope(ctx, scopes.ScopeReadDashboard); err != nil {
+		return nil, err
+	}
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	// This resolver tolerates partial failures and reports some failures via

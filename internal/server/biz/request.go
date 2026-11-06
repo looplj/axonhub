@@ -591,7 +591,7 @@ func (s *RequestService) responseHeadersForStorage(ctx context.Context, headers 
 	if len(headers) == 0 {
 		return nil, nil
 	}
-	policy, err := s.SystemService.StoragePolicy(authz.WithSystemBypass(ctx, "response-header-storage-policy"))
+	policy, err := s.SystemService.StoragePolicy(ctx)
 	if err == nil && !policy.StoreResponseBody {
 		return nil, nil
 	}

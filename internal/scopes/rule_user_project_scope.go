@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/entql"
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/authz/identity"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
@@ -79,7 +80,7 @@ func ProjectOwnerReadUsersRule() privacy.QueryRule {
 			return privacy.Skipf("User not found in context")
 		}
 
-		if !userIsProjectOwner(currentUser, projectID) {
+		if identity.IsPlugin(ctx) || !userIsProjectOwner(currentUser, projectID) {
 			return privacy.Skipf("User %d is not an owner of project %d", currentUser.ID, projectID)
 		}
 
@@ -113,11 +114,11 @@ func ProjectMemberReadUsersRule(requiredScope ScopeSlug) privacy.QueryRule {
 			return privacy.Skipf("Not a user query")
 		}
 
-		if HasSystemScope(currentUser, requiredScope) {
+		if EffectiveSystemScope(ctx, currentUser, requiredScope) {
 			return privacy.Allowf("User %d has system scope %s, querying users", currentUser.ID, requiredScope)
 		}
 
-		if !userHasProjectScope(currentUser, projectID, requiredScope) {
+		if !EffectiveProjectScope(ctx, currentUser, projectID, requiredScope) {
 			return privacy.Skipf("User %d can not query users in project %d with scope %s", currentUser.ID, requiredScope, requiredScope)
 		}
 
@@ -154,7 +155,7 @@ func projectMemberQueryFilter(requiredScope ScopeSlug) func(ctx context.Context,
 		switch q := q.(type) {
 		case ProjectOwnedFilter:
 			// Check if user has global scope permission or project scope permission.
-			if !HasSystemScope(currentUser, requiredScope) && !userHasProjectScope(currentUser, projectID, requiredScope) {
+			if !EffectiveSystemScope(ctx, currentUser, requiredScope) && !EffectiveProjectScope(ctx, currentUser, projectID, requiredScope) {
 				return privacy.Skipf("User %d can not query project %d with scope %s", currentUser.ID, projectID, requiredScope)
 			}
 
@@ -162,7 +163,7 @@ func projectMemberQueryFilter(requiredScope ScopeSlug) func(ctx context.Context,
 
 			return privacy.Allowf("User %d can query project %d with scope %s", currentUser.ID, projectID, requiredScope)
 		case *ent.ProjectFilter:
-			if !HasSystemScope(currentUser, requiredScope) && !userHasProjectScope(currentUser, projectID, requiredScope) {
+			if !EffectiveSystemScope(ctx, currentUser, requiredScope) && !EffectiveProjectScope(ctx, currentUser, projectID, requiredScope) {
 				return privacy.Skipf("User %d can not query project %d with scope %s", currentUser.ID, projectID, requiredScope)
 			}
 
@@ -196,7 +197,7 @@ func (r projectMemberMutationRule) EvalMutation(ctx context.Context, m ent.Mutat
 		return privacy.Skipf("User not found in context")
 	}
 
-	if HasSystemScope(user, r.requiredScope) {
+	if EffectiveSystemScope(ctx, user, r.requiredScope) {
 		return privacy.Allowf("User %d has system scope %s, allowing mutation", user.ID, r.requiredScope)
 	}
 
@@ -208,7 +209,7 @@ func (r projectMemberMutationRule) EvalMutation(ctx context.Context, m ent.Mutat
 			return privacy.Skipf("Project ID not found in context")
 		}
 
-		if !HasSystemScope(user, r.requiredScope) && !userHasProjectScope(user, projectID, r.requiredScope) {
+		if !EffectiveSystemScope(ctx, user, r.requiredScope) && !EffectiveProjectScope(ctx, user, projectID, r.requiredScope) {
 			return privacy.Skipf("User %d can not modify resources in project %d with scope %s", user.ID, projectID, r.requiredScope)
 		}
 
@@ -241,7 +242,7 @@ func (r projectMemberMutationRule) EvalMutation(ctx context.Context, m ent.Mutat
 		}
 	case *ent.ProjectMutation:
 		// Check if user has global scope permission
-		if HasSystemScope(user, r.requiredScope) {
+		if EffectiveSystemScope(ctx, user, r.requiredScope) {
 			return privacy.Allowf("User %d can create project", user.ID)
 		}
 
@@ -254,7 +255,7 @@ func (r projectMemberMutationRule) EvalMutation(ctx context.Context, m ent.Mutat
 			return privacy.Skipf("Project ID not found")
 		}
 
-		if userHasProjectScope(user, mProjectID, r.requiredScope) {
+		if EffectiveProjectScope(ctx, user, mProjectID, r.requiredScope) {
 			return privacy.Allowf("User %d can modify project %d", user.ID, mProjectID)
 		}
 

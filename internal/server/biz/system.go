@@ -701,10 +701,7 @@ type SystemService struct {
 }
 
 func (s *SystemService) IsInitialized(ctx context.Context) (bool, error) {
-	ctx = authz.WithSystemBypass(ctx, "system-is-initialized")
-	client := s.entFromContext(ctx)
-
-	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyInitialized)).Only(ctx)
+	sys, err := s.querySystemRow(ctx, SystemKeyInitialized)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return false, nil
@@ -854,8 +851,14 @@ func (s *SystemService) Initialize(ctx context.Context, params *InitializeSystem
 	return nil
 }
 
-// SecretKey retrieves the JWT secret key from system settings.
+// SecretKey retrieves the JWT signing key for a System principal only.
+// Authorization runs before any cache read; ordinary settings scopes and privacy
+// Allow decisions do not grant access to this internal credential.
 func (s *SystemService) SecretKey(ctx context.Context) (string, error) {
+	if err := authz.RequireSystemPrincipal(ctx); err != nil {
+		return "", err
+	}
+
 	value, err := s.getSystemValue(ctx, SystemKeySecretKey)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -885,10 +888,7 @@ func (s *SystemService) StoreChunks(ctx context.Context) (bool, error) {
 
 // BrandName retrieves the brand name.
 func (s *SystemService) BrandName(ctx context.Context) (string, error) {
-	ctx = authz.WithSystemBypass(ctx, "system-brand-name")
-	client := s.entFromContext(ctx)
-
-	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyBrandName)).Only(ctx)
+	sys, err := s.querySystemRow(ctx, SystemKeyBrandName)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return "", nil
@@ -907,10 +907,7 @@ func (s *SystemService) SetBrandName(ctx context.Context, brandName string) erro
 
 // BrandLogo retrieves the brand logo (base64 encoded).
 func (s *SystemService) BrandLogo(ctx context.Context) (string, error) {
-	ctx = authz.WithSystemBypass(ctx, "system-brand-logo")
-	client := s.entFromContext(ctx)
-
-	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyBrandLogo)).Only(ctx)
+	sys, err := s.querySystemRow(ctx, SystemKeyBrandLogo)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return "", nil
@@ -929,10 +926,7 @@ func (s *SystemService) SetBrandLogo(ctx context.Context, brandLogo string) erro
 
 // Title retrieves the browser page title.
 func (s *SystemService) Title(ctx context.Context) (string, error) {
-	ctx = authz.WithSystemBypass(ctx, "system-title")
-	client := s.entFromContext(ctx)
-
-	sys, err := client.System.Query().Where(system.KeyEQ(SystemKeyTitle)).Only(ctx)
+	sys, err := s.querySystemRow(ctx, SystemKeyTitle)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return "", nil
@@ -1021,12 +1015,14 @@ func (m *missingSystemValues) forget(key string) {
 	delete(m.expiry, key)
 }
 
+// getSystemValue is a host read: what it returns, caches, and loads on a miss does not depend on
+// who triggered it. Callers that expose a setting must authorize at their own boundary.
 func (s *SystemService) getSystemValue(ctx context.Context, key string) (string, error) {
 	// A transaction must see its own writes, which another request may have shadowed in the caches
 	// with the committed state, and what it reads may be uncommitted or an older snapshot. So it
 	// bypasses both caches and never fills them.
 	if ent.TxFromContext(ctx) != nil {
-		sys, err := s.entFromContext(ctx).System.Query().Where(system.KeyEQ(key)).Only(ctx)
+		sys, err := s.querySystemRow(ctx, key)
 		if err != nil {
 			return "", fmt.Errorf("failed to get system value: %w", err)
 		}
@@ -1046,7 +1042,7 @@ func (s *SystemService) getSystemValue(ctx context.Context, key string) (string,
 
 	generation := s.missing.snapshot()
 
-	sys, err := s.entFromContext(ctx).System.Query().Where(system.KeyEQ(key)).Only(ctx)
+	sys, err := s.querySystemRow(ctx, key)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			s.missing.remember(key, generation, now)
@@ -1058,6 +1054,14 @@ func (s *SystemService) getSystemValue(ctx context.Context, key string) (string,
 	_ = s.Cache.Set(ctx, cacheKey, *sys)
 
 	return sys.Value, nil
+}
+
+// querySystemRow reads a setting row from the database, bypassing the caches, as a host read that
+// keeps the caller's transaction client.
+func (s *SystemService) querySystemRow(ctx context.Context, key string) (*ent.System, error) {
+	return authz.RunAsHost(ctx, s.entFromContext(ctx), "system-settings-read", func(hostCtx context.Context) (*ent.System, error) {
+		return ent.FromContext(hostCtx).System.Query().Where(system.KeyEQ(key)).Only(hostCtx)
+	})
 }
 
 // setSystemValue sets or updates a system key-value pair.
@@ -1165,12 +1169,7 @@ func (s *SystemService) RetryPolicy(ctx context.Context) (*RetryPolicy, error) {
 }
 
 func (s *SystemService) RetryPolicyOrDefault(ctx context.Context) *RetryPolicy {
-	// Internal callers (stream processing, error handling, channel auto-disable,
-	// load balancing) run with API-key or background contexts that carry no user
-	// principal, which the Ent privacy layer rejects with "no user in context".
-	// Reading the global retry policy is a system-scoped operation, so apply a
-	// scoped system bypass instead of silently falling back to the default.
-	policy, err := s.RetryPolicy(authz.WithSystemBypass(ctx, "retry-policy-or-default"))
+	policy, err := s.RetryPolicy(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return lo.ToPtr(defaultRetryPolicy)
@@ -1337,9 +1336,7 @@ func (s *SystemService) SetWebhookNotifierConfig(ctx context.Context, cfg *Webho
 
 // ModelSettings retrieves the model settings configuration.
 func (s *SystemService) ModelSettings(ctx context.Context) (*SystemModelSettings, error) {
-	value, err := authz.RunWithSystemBypass(ctx, "system-model-settings", func(bypassCtx context.Context) (string, error) {
-		return s.getSystemValue(bypassCtx, SystemKeyModelSettings)
-	})
+	value, err := s.getSystemValue(ctx, SystemKeyModelSettings)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return lo.ToPtr(defaultModelSettings), nil
@@ -1440,15 +1437,9 @@ func (s *SystemService) ChannelSetting(ctx context.Context) (*SystemChannelSetti
 }
 
 // ChannelTestPrompts retrieves the effective global prompts for channel tests.
-// Channel tests are authorized independently from system settings, so this read
-// uses the same restricted system bypass as other internal settings reads.
+// Channel tests are authorized independently from system settings; the read itself is a host read.
 func (s *SystemService) ChannelTestPrompts(ctx context.Context) (string, string, error) {
-	setting, err := authz.RunWithSystemBypass(ctx, "system-channel-test-prompts", func(bypassCtx context.Context) (*SystemChannelSettings, error) {
-		return s.ChannelSettingOrDefault(bypassCtx), nil
-	})
-	if err != nil {
-		return "", "", err
-	}
+	setting := s.ChannelSettingOrDefault(ctx)
 
 	return setting.TestSystemPrompt, setting.TestUserPrompt, nil
 }

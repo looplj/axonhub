@@ -23,7 +23,7 @@ func (r *Resolver) pluginManagerOrErr() (*plugin.Manager, error) {
 }
 
 func requirePluginRead(ctx context.Context) error {
-	if user, ok := contexts.GetUser(ctx); ok && user != nil && user.IsOwner {
+	if user, ok := contexts.GetUser(ctx); ok && user != nil && scopes.IsDirectOwner(ctx) {
 		return nil
 	}
 	if scopes.UserHasScope(ctx, scopes.ScopeReadPlugins) {
@@ -33,7 +33,7 @@ func requirePluginRead(ctx context.Context) error {
 }
 
 func requirePluginWrite(ctx context.Context) error {
-	if user, ok := contexts.GetUser(ctx); ok && user != nil && user.IsOwner {
+	if user, ok := contexts.GetUser(ctx); ok && user != nil && scopes.IsDirectOwner(ctx) {
 		return nil
 	}
 	if scopes.UserHasScope(ctx, scopes.ScopeWritePlugins) {
@@ -44,7 +44,7 @@ func requirePluginWrite(ctx context.Context) error {
 
 func requirePluginOwner(ctx context.Context) error {
 	user, ok := contexts.GetUser(ctx)
-	if !ok || user == nil || !user.IsOwner {
+	if !ok || user == nil || !scopes.IsDirectOwner(ctx) {
 		return ErrNotOwner
 	}
 	return nil

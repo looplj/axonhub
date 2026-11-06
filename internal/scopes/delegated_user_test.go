@@ -1,4 +1,4 @@
-package plugin
+package scopes
 
 import (
 	"testing"
@@ -8,10 +8,10 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 )
 
-func TestBuildPluginScopedUser(t *testing.T) {
-	t.Run("owner keeps only ceiling scopes", func(t *testing.T) {
+func TestDelegatedUserView(t *testing.T) {
+	t.Run("owner keeps only granted scopes", func(t *testing.T) {
 		projectID := 4
-		ceiling := []string{"read_channels", "write_channels"}
+		grants := []string{"read_channels", "write_channels"}
 		owner := &ent.User{
 			ID:      1,
 			Email:   "owner@example.com",
@@ -33,16 +33,16 @@ func TestBuildPluginScopedUser(t *testing.T) {
 			},
 		}
 
-		copied := BuildPluginScopedUser(owner, ceiling)
+		copied := DelegatedUserView(owner, grants)
 
 		require.False(t, copied.IsOwner)
 		require.Nil(t, copied.Edges.Roles)
-		require.ElementsMatch(t, ceiling, copied.Scopes)
+		require.ElementsMatch(t, grants, copied.Scopes)
 		require.Equal(t, "owner@example.com", copied.Email)
 		require.Len(t, copied.Edges.ProjectUsers, 1)
 		require.False(t, copied.Edges.ProjectUsers[0].IsOwner)
 		require.Equal(t, projectID, copied.Edges.ProjectUsers[0].ProjectID)
-		require.ElementsMatch(t, ceiling, copied.Edges.ProjectUsers[0].Scopes)
+		require.ElementsMatch(t, grants, copied.Edges.ProjectUsers[0].Scopes)
 
 		require.True(t, owner.IsOwner)
 		require.Equal(t, []string{"read_settings"}, owner.Scopes)
@@ -50,13 +50,13 @@ func TestBuildPluginScopedUser(t *testing.T) {
 		require.True(t, owner.Edges.ProjectUsers[0].IsOwner)
 		require.Equal(t, []string{"read_prompts"}, owner.Edges.ProjectUsers[0].Scopes)
 		copied.Scopes[0] = "mutated"
-		require.NotContains(t, ceiling, "mutated")
+		require.NotContains(t, grants, "mutated")
 	})
 
-	t.Run("direct scope outside ceiling disappears and system role scope remains", func(t *testing.T) {
+	t.Run("direct scope outside grants disappears and system role scope remains", func(t *testing.T) {
 		projectID := 7
 		otherProjectID := 8
-		ceiling := []string{"read_channels", "read_requests"}
+		grants := []string{"read_channels", "read_requests"}
 		systemRole := &ent.Role{
 			ID:     2,
 			Name:   "reader",
@@ -89,7 +89,7 @@ func TestBuildPluginScopedUser(t *testing.T) {
 			},
 		}
 
-		copied := BuildPluginScopedUser(user, ceiling)
+		copied := DelegatedUserView(user, grants)
 
 		require.False(t, copied.IsOwner)
 		require.Nil(t, copied.Edges.Roles)
@@ -107,9 +107,9 @@ func TestBuildPluginScopedUser(t *testing.T) {
 		require.Equal(t, []string{"write_users"}, user.Edges.ProjectUsers[0].Scopes)
 	})
 
-	t.Run("project owner membership keeps only ceiling scopes", func(t *testing.T) {
+	t.Run("project owner membership keeps only granted scopes", func(t *testing.T) {
 		projectID := 5
-		ceiling := []string{"read_channels"}
+		grants := []string{"read_channels"}
 		user := &ent.User{
 			ID:     4,
 			Email:  "project-owner@example.com",
@@ -125,7 +125,7 @@ func TestBuildPluginScopedUser(t *testing.T) {
 			},
 		}
 
-		copied := BuildPluginScopedUser(user, ceiling)
+		copied := DelegatedUserView(user, grants)
 
 		require.False(t, copied.IsOwner)
 		require.Empty(t, copied.Scopes)

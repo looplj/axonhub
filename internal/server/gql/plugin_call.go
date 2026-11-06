@@ -14,6 +14,7 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/time/rate"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/scopes"
@@ -65,7 +66,11 @@ func (h *pluginGraphqlHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		InstallationID: row.ID,
 		KVWritable:     scopes.HasSystemScope(user, scopes.ScopeWritePlugins),
 	}
-	ctx := contexts.WithUser(r.Context(), plugin.BuildPluginScopedUser(user, pluginCallCeiling(granted)))
+	ctx, err := authz.DelegatePlugin(r.Context(), row.ID, pluginCallCeiling(granted))
+	if err != nil {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
 	ctx = plugin.WithCall(ctx, call)
 
 	capped := newCappedResponseWriter(w, pluginGraphqlMaxResponseBytes)

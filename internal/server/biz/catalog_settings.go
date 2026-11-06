@@ -9,7 +9,6 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 )
 
@@ -78,9 +77,7 @@ func defaultCatalogSettings() CatalogSettings {
 }
 
 func (s *SystemService) CatalogSettings(ctx context.Context) (*CatalogSettings, error) {
-	value, err := authz.RunWithSystemBypass(ctx, "catalog-settings", func(bypassCtx context.Context) (string, error) {
-		return s.getSystemValue(bypassCtx, SystemKeyCatalogSettings)
-	})
+	value, err := s.getSystemValue(ctx, SystemKeyCatalogSettings)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return lo.ToPtr(defaultCatalogSettings()), nil

@@ -60,11 +60,14 @@ func loggedInPluginUser(ctx context.Context) (*ent.User, error) {
 	if !ok || user == nil || user.ID <= 0 {
 		return nil, xerrors.ForbiddenError("authentication required")
 	}
+	if err := authz.RequireDirectUser(ctx); err != nil {
+		return nil, xerrors.ForbiddenError("direct user required")
+	}
 	return user, nil
 }
 
 // callerCanWritePluginKV reports whether this caller may write plugin KV.
-// On the plugin GraphQL endpoint the flag was stored before BuildPluginScopedUser.
+// On the plugin GraphQL endpoint the host stores this qualification before delegation.
 func callerCanWritePluginKV(ctx context.Context) bool {
 	if call, ok := plugin.CallFromContext(ctx); ok {
 		return call.KVWritable

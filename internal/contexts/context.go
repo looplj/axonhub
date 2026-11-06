@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 
+	"github.com/looplj/axonhub/internal/authz/identity"
 	"github.com/looplj/axonhub/internal/ent"
 )
 
@@ -54,7 +55,14 @@ func WithUser(ctx context.Context, user *ent.User) context.Context {
 }
 
 // GetUser retrieves the user entity from the context.
+// A delegated (plugin) context always returns the restricted view pinned at delegation,
+// even if the container user was replaced afterwards.
 func GetUser(ctx context.Context) (*ent.User, bool) {
+	if view, ok := identity.DelegatedUserView(ctx); ok {
+		user, _ := view.(*ent.User)
+		return user, user != nil
+	}
+
 	container := getContainer(ctx)
 	return container.User, container.User != nil
 }

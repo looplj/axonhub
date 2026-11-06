@@ -166,15 +166,16 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 		return QuotaResult{}, err
 	}
 
-	reqCount, err := authz.RunWithSystemBypass(ctx, "quota-request-count", func(bypassCtx context.Context) (int64, error) {
-		return s.requestCount(bypassCtx, apiKeyID, window)
+	// The caller authorized access to the key; the usage aggregates are host reads.
+	reqCount, err := authz.RunAsHost(ctx, s.ent, "quota-request-count", func(hostCtx context.Context) (int64, error) {
+		return s.requestCount(hostCtx, apiKeyID, window)
 	})
 	if err != nil {
 		return QuotaResult{}, err
 	}
 
-	usageAgg, err := authz.RunWithSystemBypass(ctx, "quota-usage-agg", func(bypassCtx context.Context) (usageAggResult, error) {
-		return s.usageAgg(bypassCtx, apiKeyID, window, true, true)
+	usageAgg, err := authz.RunAsHost(ctx, s.ent, "quota-usage-agg", func(hostCtx context.Context) (usageAggResult, error) {
+		return s.usageAgg(hostCtx, apiKeyID, window, true, true)
 	})
 	if err != nil {
 		return QuotaResult{}, err

@@ -199,6 +199,12 @@ func skipGraphqlTransaction(op *ast.OperationDefinition) bool {
 }
 
 func presentGraphqlError(ctx context.Context, err error) *gqlerror.Error {
+	if errors.Is(err, authz.ErrPluginSystemBypass) {
+		return &gqlerror.Error{
+			Message:    "this operation is not available to plugin callers",
+			Extensions: map[string]any{"code": xerrors.ErrCodeForbidden},
+		}
+	}
 	if codedErr, ok := errors.AsType[*xerrors.CodedError](err); ok {
 		return &gqlerror.Error{
 			Message: codedErr.Message,
@@ -221,17 +227,6 @@ func presentGraphqlError(ctx context.Context, err error) *gqlerror.Error {
 	return graphql.DefaultErrorPresenter(ctx, err)
 }
 
-// pluginSelfServiceMutations are root mutations the permission ceiling cannot
-// gate because they act as the current user. The plugin endpoint rejects them.
-var pluginSelfServiceMutations = map[string]struct{}{
-	"updateMe":                      {},
-	"updateMyPassword":              {},
-	"unlinkOIDCIdentity":            {},
-	"createChannelOverrideTemplate": {},
-	"updateChannelOverrideTemplate": {},
-	"deleteChannelOverrideTemplate": {},
-}
-
 func rejectPluginGraphqlOperation(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	if opCtx == nil || opCtx.Operation == nil {
@@ -239,62 +234,6 @@ func rejectPluginGraphqlOperation(ctx context.Context, next graphql.OperationHan
 	}
 	if opCtx.Operation.Operation == ast.Subscription {
 		return graphql.OneShot(graphql.ErrorResponse(ctx, "subscriptions are not supported"))
-	}
-	if opCtx.Operation.Operation == ast.Mutation &&
-		selectionUsesSelfService(opCtx.Doc, opCtx.Operation.SelectionSet, map[string]bool{}) {
-		return graphql.OneShot(pluginForbiddenResponse())
-	}
-	return next(ctx)
-}
-
-func selectionUsesSelfService(doc *ast.QueryDocument, set ast.SelectionSet, seen map[string]bool) bool {
-	for _, sel := range set {
-		switch item := sel.(type) {
-		case *ast.Field:
-			if _, ok := pluginSelfServiceMutations[item.Name]; ok {
-				return true
-			}
-		case *ast.InlineFragment:
-			if selectionUsesSelfService(doc, item.SelectionSet, seen) {
-				return true
-			}
-		case *ast.FragmentSpread:
-			if item == nil || seen[item.Name] {
-				continue
-			}
-			seen[item.Name] = true
-			if doc == nil {
-				continue
-			}
-			frag := doc.Fragments.ForName(item.Name)
-			if frag != nil && selectionUsesSelfService(doc, frag.SelectionSet, seen) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func pluginForbiddenResponse() *graphql.Response {
-	return &graphql.Response{
-		Errors: gqlerror.List{{
-			Message: "permission denied",
-			Extensions: map[string]any{
-				"code": xerrors.ErrCodeForbidden,
-			},
-		}},
-	}
-}
-
-// Private templates are authorized by user identity, not by a scope. Block all
-// paths to them, including nested user edges and node/nodes fragments.
-func rejectPluginPrivateFields(ctx context.Context, next graphql.Resolver) (any, error) {
-	field := graphql.GetFieldContext(ctx)
-	if field != nil {
-		name := field.Field.Definition.Type.Name()
-		if field.Object == "ChannelOverrideTemplate" || name == "ChannelOverrideTemplate" || name == "ChannelOverrideTemplateConnection" {
-			return nil, xerrors.ForbiddenError("plugins cannot access private channel override templates")
-		}
 	}
 	return next(ctx)
 }
@@ -306,7 +245,6 @@ func newPluginGraphqlHandler(schema graphql.ExecutableSchema, client *ent.Client
 	srv.Use(extension.FixedComplexityLimit(pluginGraphqlComplexityLimit))
 	srv.Use(&loggingTracer{})
 	srv.AroundOperations(rejectPluginGraphqlOperation)
-	srv.AroundFields(rejectPluginPrivateFields)
 	srv.Use(entgql.Transactioner{
 		TxOpener:   client,
 		SkipTxFunc: skipGraphqlTransaction,

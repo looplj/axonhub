@@ -293,7 +293,7 @@ func newPluginUIFixture(t *testing.T, name string) *pluginUIFixture {
 		t.Helper()
 		ctx := ent.NewContext(req.Context(), db)
 		if fx.current != nil {
-			ctx = contexts.WithUser(ctx, fx.current)
+			ctx = contexts.WithUser(authz.NewUserContext(ctx, fx.current.ID), fx.current)
 		}
 		recorder := httptest.NewRecorder()
 		handler.Graphql.ServeHTTP(recorder, req.WithContext(ctx))

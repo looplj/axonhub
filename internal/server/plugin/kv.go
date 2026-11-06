@@ -10,6 +10,8 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/authz/identity"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/pluginstorage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
@@ -41,31 +43,32 @@ func (m *Manager) KVGet(ctx context.Context, manifestID string, installationID i
 	if err != nil {
 		return nil, err
 	}
-	ctx = kvBypass(ctx, manifestID, installationID)
-	row, err := m.client(ctx).PluginStorage.Query().
-		Where(
-			pluginstorage.InstallationID(installationID),
-			pluginstorage.Namespace(namespace),
-			pluginstorage.Key(key),
-		).
-		Only(ctx)
-	if ent.IsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("read plugin kv: %w", err)
-	}
-	now := m.now()
-	if kvExpired(row.ExpiresAt, now) {
-		if _, err := m.client(ctx).PluginStorage.Delete().Where(
-			pluginstorage.IDEQ(row.ID), pluginstorage.ExpiresAtLTE(now),
-		).Exec(ctx); err != nil {
-			return nil, fmt.Errorf("delete expired plugin kv: %w", err)
+	return runKV(ctx, m, manifestID, installationID, false, func(ctx context.Context) (*KVEntry, error) {
+		row, err := m.client(ctx).PluginStorage.Query().
+			Where(
+				pluginstorage.InstallationID(installationID),
+				pluginstorage.Namespace(namespace),
+				pluginstorage.Key(key),
+			).
+			Only(ctx)
+		if ent.IsNotFound(err) {
+			return nil, nil
 		}
-		return nil, nil
-	}
-	entry := kvEntryFromRow(row)
-	return &entry, nil
+		if err != nil {
+			return nil, fmt.Errorf("read plugin kv: %w", err)
+		}
+		now := m.now()
+		if kvExpired(row.ExpiresAt, now) {
+			if _, err := m.client(ctx).PluginStorage.Delete().Where(
+				pluginstorage.IDEQ(row.ID), pluginstorage.ExpiresAtLTE(now),
+			).Exec(ctx); err != nil {
+				return nil, fmt.Errorf("delete expired plugin kv: %w", err)
+			}
+			return nil, nil
+		}
+		entry := kvEntryFromRow(row)
+		return &entry, nil
+	})
 }
 
 // KVSet upserts (installation_id, namespace, key), replacing value and expiry.
@@ -82,41 +85,42 @@ func (m *Manager) KVSet(ctx context.Context, manifestID string, installationID i
 	if err != nil {
 		return nil, err
 	}
-	ctx = kvBypass(ctx, manifestID, installationID)
-	client := m.client(ctx)
-	create := client.PluginStorage.Create().
-		SetInstallationID(installationID).
-		SetNamespace(namespace).
-		SetKey(key).
-		SetValue(value).
-		SetNillableExpiresAt(expiresAt)
-	if err := create.OnConflictColumns(
-		pluginstorage.FieldInstallationID,
-		pluginstorage.FieldNamespace,
-		pluginstorage.FieldKey,
-	).Update(func(u *ent.PluginStorageUpsert) {
-		u.SetValue(value)
-		u.UpdateUpdatedAt()
-		if expiresAt == nil {
-			u.ClearExpiresAt()
-		} else {
-			u.SetExpiresAt(*expiresAt)
+	return runKV(ctx, m, manifestID, installationID, true, func(ctx context.Context) (*KVEntry, error) {
+		client := m.client(ctx)
+		create := client.PluginStorage.Create().
+			SetInstallationID(installationID).
+			SetNamespace(namespace).
+			SetKey(key).
+			SetValue(value).
+			SetNillableExpiresAt(expiresAt)
+		if err := create.OnConflictColumns(
+			pluginstorage.FieldInstallationID,
+			pluginstorage.FieldNamespace,
+			pluginstorage.FieldKey,
+		).Update(func(u *ent.PluginStorageUpsert) {
+			u.SetValue(value)
+			u.UpdateUpdatedAt()
+			if expiresAt == nil {
+				u.ClearExpiresAt()
+			} else {
+				u.SetExpiresAt(*expiresAt)
+			}
+		}).Exec(ctx); err != nil {
+			return nil, fmt.Errorf("save plugin kv: %w", err)
 		}
-	}).Exec(ctx); err != nil {
-		return nil, fmt.Errorf("save plugin kv: %w", err)
-	}
-	row, err := client.PluginStorage.Query().
-		Where(
-			pluginstorage.InstallationID(installationID),
-			pluginstorage.Namespace(namespace),
-			pluginstorage.Key(key),
-		).
-		Only(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("read plugin kv after save: %w", err)
-	}
-	entry := kvEntryFromRow(row)
-	return &entry, nil
+		row, err := client.PluginStorage.Query().
+			Where(
+				pluginstorage.InstallationID(installationID),
+				pluginstorage.Namespace(namespace),
+				pluginstorage.Key(key),
+			).
+			Only(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("read plugin kv after save: %w", err)
+		}
+		entry := kvEntryFromRow(row)
+		return &entry, nil
+	})
 }
 
 // KVDelete removes one live key. A missing or expired key returns (false, nil).
@@ -125,19 +129,20 @@ func (m *Manager) KVDelete(ctx context.Context, manifestID string, installationI
 	if err != nil {
 		return false, err
 	}
-	ctx = kvBypass(ctx, manifestID, installationID)
-	n, err := m.client(ctx).PluginStorage.Delete().
-		Where(
-			pluginstorage.InstallationID(installationID),
-			pluginstorage.Namespace(namespace),
-			pluginstorage.Key(key),
-			pluginstorage.Or(pluginstorage.ExpiresAtIsNil(), pluginstorage.ExpiresAtGT(m.now())),
-		).
-		Exec(ctx)
-	if err != nil {
-		return false, fmt.Errorf("delete plugin kv: %w", err)
-	}
-	return n > 0, nil
+	return runKV(ctx, m, manifestID, installationID, true, func(ctx context.Context) (bool, error) {
+		n, err := m.client(ctx).PluginStorage.Delete().
+			Where(
+				pluginstorage.InstallationID(installationID),
+				pluginstorage.Namespace(namespace),
+				pluginstorage.Key(key),
+				pluginstorage.Or(pluginstorage.ExpiresAtIsNil(), pluginstorage.ExpiresAtGT(m.now())),
+			).
+			Exec(ctx)
+		if err != nil {
+			return false, fmt.Errorf("delete plugin kv: %w", err)
+		}
+		return n > 0, nil
+	})
 }
 
 // KVPage contains one page of keys and a cursor for the next page.
@@ -163,56 +168,57 @@ func (m *Manager) KVList(ctx context.Context, manifestID string, installationID 
 	if err != nil {
 		return nil, err
 	}
-	ctx = kvBypass(ctx, manifestID, installationID)
-	client := m.client(ctx)
-	now := m.now()
-	if _, err := client.PluginStorage.Delete().
-		Where(
+	return runKV(ctx, m, manifestID, installationID, false, func(ctx context.Context) (*KVPage, error) {
+		client := m.client(ctx)
+		now := m.now()
+		if _, err := client.PluginStorage.Delete().
+			Where(
+				pluginstorage.InstallationID(installationID),
+				pluginstorage.Namespace(namespace),
+				pluginstorage.ExpiresAtNotNil(),
+				pluginstorage.ExpiresAtLTE(now),
+			).
+			Exec(ctx); err != nil {
+			return nil, fmt.Errorf("delete expired plugin kv: %w", err)
+		}
+		preds := []predicate.PluginStorage{
 			pluginstorage.InstallationID(installationID),
 			pluginstorage.Namespace(namespace),
-			pluginstorage.ExpiresAtNotNil(),
-			pluginstorage.ExpiresAtLTE(now),
-		).
-		Exec(ctx); err != nil {
-		return nil, fmt.Errorf("delete expired plugin kv: %w", err)
-	}
-	preds := []predicate.PluginStorage{
-		pluginstorage.InstallationID(installationID),
-		pluginstorage.Namespace(namespace),
-		pluginstorage.Or(
-			pluginstorage.ExpiresAtIsNil(),
-			pluginstorage.ExpiresAtGT(now),
-		),
-	}
-	if prefix != "" {
-		preds = append(preds, pluginstorage.KeyHasPrefix(prefix))
-	}
-	if after != "" {
-		preds = append(preds, pluginstorage.KeyGT(after))
-	}
-	rows, err := client.PluginStorage.Query().
-		Where(preds...).
-		Order(pluginstorage.ByKey()).
-		Limit(first + 1).
-		All(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("list plugin kv: %w", err)
-	}
-	page := &KVPage{}
-	if len(rows) > first {
-		rows = rows[:first]
-		page.NextCursor = lo.ToPtr(rows[len(rows)-1].Key)
-	}
-	page.Entries = lo.Map(rows, func(row *ent.PluginStorage, _ int) KVEntry {
-		return kvEntryFromRow(row)
+			pluginstorage.Or(
+				pluginstorage.ExpiresAtIsNil(),
+				pluginstorage.ExpiresAtGT(now),
+			),
+		}
+		if prefix != "" {
+			preds = append(preds, pluginstorage.KeyHasPrefix(prefix))
+		}
+		if after != "" {
+			preds = append(preds, pluginstorage.KeyGT(after))
+		}
+		rows, err := client.PluginStorage.Query().
+			Where(preds...).
+			Order(pluginstorage.ByKey()).
+			Limit(first + 1).
+			All(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list plugin kv: %w", err)
+		}
+		page := &KVPage{}
+		if len(rows) > first {
+			rows = rows[:first]
+			page.NextCursor = lo.ToPtr(rows[len(rows)-1].Key)
+		}
+		page.Entries = lo.Map(rows, func(row *ent.PluginStorage, _ int) KVEntry {
+			return kvEntryFromRow(row)
+		})
+		return page, nil
 	})
-	return page, nil
 }
 
 // KVDeleteInstallation deletes every KV row for installationID.
 // It does not look up the plugin row.
 func (m *Manager) KVDeleteInstallation(ctx context.Context, manifestID string, installationID int) error {
-	ctx = kvBypass(ctx, manifestID, installationID)
+	ctx = authz.WithSystemBypass(ctx, "plugin-kv-delete-installation")
 	if _, err := m.client(ctx).PluginStorage.Delete().
 		Where(pluginstorage.InstallationID(installationID)).
 		Exec(ctx); err != nil {
@@ -242,8 +248,34 @@ func (m *Manager) kvExpiry(ttl time.Duration) (*time.Time, error) {
 	return &expiresAt, nil
 }
 
-func kvBypass(ctx context.Context, manifestID string, installationID int) context.Context {
-	return authz.WithSystemBypass(ctx, fmt.Sprintf("plugin-kv manifest=%s installation=%d", manifestID, installationID))
+// runKV runs one fixed KV operation as a host operation that never returns privileged
+// authority through the public Manager API. A plugin caller is first bound to its own
+// installation and write qualification.
+func runKV[T any](ctx context.Context, m *Manager, manifestID string, installationID int, write bool, fn func(context.Context) (T, error)) (T, error) {
+	if identity.IsPlugin(ctx) {
+		if err := authorizePluginKV(ctx, manifestID, installationID, write); err != nil {
+			var zero T
+			return zero, err
+		}
+	}
+	return authz.RunAsHost(ctx, m.client(ctx), fmt.Sprintf("plugin-kv manifest=%s installation=%d", manifestID, installationID), fn)
+}
+
+// authorizePluginKV checks the installation identity bound by the host. The write
+// qualification is computed from the real user before delegation (call.KVWritable),
+// because the delegated user view does not carry owner or plugin-management authority.
+func authorizePluginKV(ctx context.Context, manifestID string, installationID int, write bool) error {
+	p, _ := authz.GetPrincipal(ctx)
+	user, ok := contexts.GetUser(ctx)
+	call, bound := CallFromContext(ctx)
+	_, hasAPIKey := contexts.GetAPIKey(ctx)
+	if hasAPIKey || !ok || user == nil || !identity.ValidPlugin(ctx, user.ID) || p.PluginInstallationID != installationID || !bound || call.InstallationID != installationID || call.ManifestID != manifestID {
+		return fmt.Errorf("plugin KV installation identity mismatch")
+	}
+	if write && !call.KVWritable {
+		return fmt.Errorf("plugin KV write denied")
+	}
+	return nil
 }
 
 func validateKVLookup(installationID int, namespace, key string) (string, error) {

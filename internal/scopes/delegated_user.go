@@ -1,34 +1,35 @@
-package plugin
+package scopes
 
 import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/scopes"
 )
 
-// BuildPluginScopedUser returns a copy of user whose scopes are the effective scopes
-// intersected with ceiling. The caller struct is not modified.
+// DelegatedUserView returns the user as a delegated caller may see it: system and
+// project scopes are the effective scopes intersected with grants. The caller struct
+// is not modified.
 //
-// The copy is not a system owner and its roles edge is nil. Project memberships
-// keep their length, are not owners, and carry the project scopes that were on
-// the membership or on a role for that project.
-func BuildPluginScopedUser(user *ent.User, ceiling []string) *ent.User {
+// The view is not a system owner and its roles edge is nil. Project memberships keep
+// their length, are not owners, and carry the project scopes that were on the
+// membership or on a role for that project. Code that reads IsOwner or roles directly
+// therefore cannot hand owner authority to a delegated caller.
+func DelegatedUserView(user *ent.User, grants []string) *ent.User {
 	if user == nil {
 		return nil
 	}
 
 	copied := *user
 	copied.IsOwner = false
-	copied.Scopes = intersectCeiling(effectiveSystemScopes(user), ceiling)
+	copied.Scopes = intersectGrants(effectiveSystemScopes(user), grants)
 	copied.Edges.Roles = nil
-	copied.Edges.ProjectUsers = copyProjectUsers(user, ceiling)
+	copied.Edges.ProjectUsers = delegatedProjectUsers(user, grants)
 	return &copied
 }
 
 func effectiveSystemScopes(user *ent.User) []string {
 	if user.IsOwner {
-		return scopes.AllScopesAsStrings()
+		return AllScopesAsStrings()
 	}
 
 	effective := appendUnique(nil, user.Scopes)
@@ -43,7 +44,7 @@ func effectiveSystemScopes(user *ent.User) []string {
 
 func effectiveProjectScopes(user *ent.User, membership *ent.UserProject) []string {
 	if user.IsOwner || membership.IsOwner {
-		return scopes.AllScopesAsStrings()
+		return AllScopesAsStrings()
 	}
 
 	effective := appendUnique(nil, membership.Scopes)
@@ -56,7 +57,7 @@ func effectiveProjectScopes(user *ent.User, membership *ent.UserProject) []strin
 	return effective
 }
 
-func copyProjectUsers(user *ent.User, ceiling []string) []*ent.UserProject {
+func delegatedProjectUsers(user *ent.User, grants []string) []*ent.UserProject {
 	source := user.Edges.ProjectUsers
 	if source == nil {
 		return nil
@@ -69,14 +70,14 @@ func copyProjectUsers(user *ent.User, ceiling []string) []*ent.UserProject {
 		}
 		item := *membership
 		item.IsOwner = false
-		item.Scopes = intersectCeiling(effectiveProjectScopes(user, membership), ceiling)
+		item.Scopes = intersectGrants(effectiveProjectScopes(user, membership), grants)
 		copied[i] = &item
 	}
 	return copied
 }
 
-func intersectCeiling(effective, ceiling []string) []string {
-	allowed := lo.SliceToMap(ceiling, func(item string) (string, struct{}) {
+func intersectGrants(effective, grants []string) []string {
+	allowed := lo.SliceToMap(grants, func(item string) (string, struct{}) {
 		return item, struct{}{}
 	})
 	seen := make(map[string]struct{}, len(effective))
