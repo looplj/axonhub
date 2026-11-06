@@ -6,7 +6,7 @@
 
 ## 页面做什么
 
-- 跟随控制台的明暗主题。
+- 使用宿主推送的主题变量，跟随控制台的明暗和配色。握手完成前用 CSS 里的回退色。
 - 读取 `heading` 和 `maxNotes`。还没改过配置时，页面拿到的是 schema 里的默认值。这个例子没有 secret；当前实现会把 secret 字段以 `******` 交给页面，不给原文。
 - 列表使用 `pluginKVList(first: 100, after: ...)`，沿 `nextCursor` 分页读取，直到游标为空。
 - 用 `pluginKV` / `setPluginKV` / `deletePluginKV` 保存笔记。键形如 `note.<UUID>`，值是 JSON 字符串。能打开页面的人都可以读；写入要求当前用户有 `write_plugins`。

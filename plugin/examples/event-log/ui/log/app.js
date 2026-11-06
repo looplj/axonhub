@@ -31,10 +31,6 @@ let busy = false;
 if (!axonhub) {
   status.textContent = "AxonHub bridge did not load";
 } else {
-  axonhub.onTheme(({ theme }) => {
-    document.documentElement.dataset.theme =
-      theme === "dark" ? "dark" : "light";
-  });
   refreshButton.addEventListener("click", () => {
     refresh().catch(showStatus);
   });

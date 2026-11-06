@@ -119,6 +119,68 @@ export function resolvePluginTheme(theme: string, prefersDark: boolean): 'light'
   return prefersDark ? 'dark' : 'light';
 }
 
+// Keep this list identical to TOKEN_NAMES in internal/server/plugin/uisdk/bridge.js.
+export const PLUGIN_UI_TOKEN_NAMES = [
+  '--background',
+  '--foreground',
+  '--card',
+  '--card-foreground',
+  '--popover',
+  '--popover-foreground',
+  '--primary',
+  '--primary-foreground',
+  '--secondary',
+  '--secondary-foreground',
+  '--muted',
+  '--muted-foreground',
+  '--accent',
+  '--accent-foreground',
+  '--destructive',
+  '--destructive-foreground',
+  '--border',
+  '--input',
+  '--ring',
+  '--radius',
+  '--font-sans',
+  '--font-mono',
+  '--shadow-2xs',
+  '--shadow-xs',
+  '--shadow-sm',
+  '--shadow',
+  '--shadow-md',
+  '--shadow-lg',
+  '--shadow-xl',
+  '--shadow-2xl',
+] as const;
+
+const PLUGIN_UI_TOKEN_VALUE_MAX = 200;
+
+// Computed custom properties are colors, lengths, and font stacks.
+// Reject values that could terminate a declaration if they were ever interpolated.
+export function isPluginUITokenValue(value: string): boolean {
+  if (value.length === 0 || value.length > PLUGIN_UI_TOKEN_VALUE_MAX) {
+    return false;
+  }
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    if (code <= 31 || code === 127) {
+      return false;
+    }
+  }
+  return !/[;{}<>\\]/.test(value);
+}
+
+export function readPluginUITokens(style: { getPropertyValue(name: string): string }): Record<string, string> {
+  const tokens: Record<string, string> = {};
+  for (const name of PLUGIN_UI_TOKEN_NAMES) {
+    const value = style.getPropertyValue(name).trim();
+    if (isPluginUITokenValue(value)) {
+      tokens[name] = value;
+    }
+  }
+  return tokens;
+}
+
 export function pluginProjectId(selected: string | null | undefined): number | null {
   if (!selected) {
     return null;

@@ -96,7 +96,8 @@ Plugin 主体记录真实用户 ID 用于身份和归属；context 中的用户�
    不设置 Access-Control-Allow-Credentials；只对 token 保护的 UI 资源路由启用，见下文 CORS 契约
 4. 页面加载 /admin/plugin-ui/<token>/_axonhub/bridge.js，axonhub.ready() 发 hello
 5. 宿主只接受 event.source === iframe.contentWindow 的消息
-   回 init{theme, colorScheme, locale, projectId, page, panel: null, slot: null, config, canWriteKV}
+   回 init{theme, colorScheme, tokens, locale, projectId, page, panel: null, slot: null, config, canWriteKV}
+   tokens 是宿主已计算的样式变量，规则见 [UI Bridge](ui-bridge.md#1-sdk-契约)
    config 去掉 secret；canWriteKV 是当前用户是否有 write_plugins
 6. axonhub.graphql(query, variables)
    → PluginFrame 用自己渲染时的 pluginID POST /admin/plugins/:pluginId/graphql

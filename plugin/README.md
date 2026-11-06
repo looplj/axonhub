@@ -4,6 +4,7 @@
 
 ## 目录
 
+- [`DEVELOPMENT.md`](DEVELOPMENT.md)：插件页面如何使用宿主主题。
 - [`scripts/`](scripts/)：插件开发工具，当前提供 Go 打包工具。
 - [`examples/notes/`](examples/notes/README.md)：可安装的 Notes UI 插件示例。
 - [`examples/event-log/`](examples/event-log/README.md)：可安装的事件记录示例，用来确认事件已经送达。
