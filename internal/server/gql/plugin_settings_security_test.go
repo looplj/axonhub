@@ -13,9 +13,9 @@ import (
 
 func TestPluginSystemEntityProtectsSigningKey(t *testing.T) {
 	fx := newPluginEndpointFixture(t, "plugin_system_secret")
-	installed, err := fx.manager.Install(fx.setupCtx, pluginEndpointZip(t, "acme.settings", []string{"read_settings"}, true), nil)
+	installed, err := fx.manager.Install(fx.setupCtx, pluginEndpointZip(t, "acme.settings", []string{"read_settings"}, true), nil, nil)
 	require.NoError(t, err)
-	require.NoError(t, fx.manager.Enable(fx.setupCtx, installed.Plugin.ID, []string{"read_settings"}))
+	require.NoError(t, fx.manager.Enable(fx.setupCtx, installed.Plugin.ID, []string{"read_settings"}, nil))
 	secret := fx.db.System.Query().Where(system.KeyEQ(biz.SystemKeySecretKey)).OnlyX(fx.setupCtx)
 	fx.db.System.Create().SetKey(biz.SystemKeyBrandName).SetValue("visible-plugin-brand").SaveX(fx.setupCtx)
 	code, payload, raw := fx.postPlugin(fx.ownerToken, "acme.settings", `{ systems(first: 100) { edges { node { key value } } } }`)
@@ -45,7 +45,7 @@ func TestPluginSystemEntityProtectsSigningKey(t *testing.T) {
 func TestSettingsReadAuthorizationIgnoresCacheState(t *testing.T) {
 	fx := newPluginEndpointFixture(t, "settings_read_authz")
 	fx.db.System.Create().SetKey(biz.SystemKeySecuritySettings).SetValue(`{"blocked_ips":["203.0.113.77"]}`).SaveX(fx.setupCtx)
-	installed, err := fx.manager.Install(fx.setupCtx, pluginEndpointZip(t, "acme.settings", []string{"read_settings", "write_channels"}, true), nil)
+	installed, err := fx.manager.Install(fx.setupCtx, pluginEndpointZip(t, "acme.settings", []string{"read_settings", "write_channels"}, true), nil, nil)
 	require.NoError(t, err)
 
 	const security = `{ securitySettings { blockedIPs } }`
@@ -73,11 +73,11 @@ func TestSettingsReadAuthorizationIgnoresCacheState(t *testing.T) {
 	allowed(fx.postAdmin(fx.writerToken, retry))
 	allowed(fx.postAdmin(fx.readerToken, `{ brandSettings { brandName } systemStatus { isInitialized } }`))
 
-	require.NoError(t, fx.manager.Enable(fx.setupCtx, installed.Plugin.ID, []string{"write_channels"}))
+	require.NoError(t, fx.manager.Enable(fx.setupCtx, installed.Plugin.ID, []string{"write_channels"}, nil))
 	denied(fx.postPlugin(fx.ownerToken, "acme.settings", security))
 	allowed(fx.postPlugin(fx.ownerToken, "acme.settings", retry))
 
-	require.NoError(t, fx.manager.Enable(fx.setupCtx, installed.Plugin.ID, []string{"read_settings"}))
+	require.NoError(t, fx.manager.Enable(fx.setupCtx, installed.Plugin.ID, []string{"read_settings"}, nil))
 	code, payload, raw = fx.postPlugin(fx.ownerToken, "acme.settings", security)
 	allowed(code, payload, raw)
 	require.Contains(t, raw, "203.0.113.77")

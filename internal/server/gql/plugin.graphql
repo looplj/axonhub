@@ -5,8 +5,8 @@ extend type Query {
 }
 
 extend type Mutation {
-  installPlugin(file: Upload!, grantedPermissions: [String!]): PluginInstallResult!
-  enablePlugin(id: ID!, grantedPermissions: [String!]!): Plugin!
+  installPlugin(file: Upload!, grantedPermissions: [String!], grantedNetwork: [String!]): PluginInstallResult!
+  enablePlugin(id: ID!, grantedPermissions: [String!]!, grantedNetwork: [String!]!): Plugin!
   disablePlugin(id: ID!): Plugin!
   updatePluginSettings(id: ID!, priority: Int!, config: Map!): Plugin!
   deletePlugin(id: ID!): Boolean!
@@ -22,7 +22,9 @@ type Plugin {
   priority: Int!
   builtin: Boolean!
   grantedPermissions: [String!]!
+  grantedNetwork: [String!]!
   manifestPermissions: [String!]!
+  manifestNetwork: [String!]!
   configFields: [PluginConfigField!]!
   config: Map!
   runtimeStatus: String!
@@ -52,6 +54,7 @@ type PluginUpgradePreview {
   currentVersion: String!
   newVersion: String!
   permissions: [String!]!
+  network: [String!]!
   events: [String!]!
   hooks: [String!]!
   pages: [String!]!

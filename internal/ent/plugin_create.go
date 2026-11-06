@@ -181,6 +181,12 @@ func (_c *PluginCreate) SetGrantedPermissions(v []string) *PluginCreate {
 	return _c
 }
 
+// SetGrantedNetwork sets the "granted_network" field.
+func (_c *PluginCreate) SetGrantedNetwork(v []string) *PluginCreate {
+	_c.mutation.SetGrantedNetwork(v)
+	return _c
+}
+
 // SetConfig sets the "config" field.
 func (_c *PluginCreate) SetConfig(v map[string]interface{}) *PluginCreate {
 	_c.mutation.SetConfig(v)
@@ -273,6 +279,10 @@ func (_c *PluginCreate) defaults() error {
 	if _, ok := _c.mutation.GrantedPermissions(); !ok {
 		v := plugin.DefaultGrantedPermissions
 		_c.mutation.SetGrantedPermissions(v)
+	}
+	if _, ok := _c.mutation.GrantedNetwork(); !ok {
+		v := plugin.DefaultGrantedNetwork
+		_c.mutation.SetGrantedNetwork(v)
 	}
 	if _, ok := _c.mutation.Config(); !ok {
 		v := plugin.DefaultConfig
@@ -403,6 +413,10 @@ func (_c *PluginCreate) createSpec() (*Plugin, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.GrantedPermissions(); ok {
 		_spec.SetField(plugin.FieldGrantedPermissions, field.TypeJSON, value)
 		_node.GrantedPermissions = value
+	}
+	if value, ok := _c.mutation.GrantedNetwork(); ok {
+		_spec.SetField(plugin.FieldGrantedNetwork, field.TypeJSON, value)
+		_node.GrantedNetwork = value
 	}
 	if value, ok := _c.mutation.Config(); ok {
 		_spec.SetField(plugin.FieldConfig, field.TypeJSON, value)
@@ -643,6 +657,24 @@ func (u *PluginUpsert) UpdateGrantedPermissions() *PluginUpsert {
 // ClearGrantedPermissions clears the value of the "granted_permissions" field.
 func (u *PluginUpsert) ClearGrantedPermissions() *PluginUpsert {
 	u.SetNull(plugin.FieldGrantedPermissions)
+	return u
+}
+
+// SetGrantedNetwork sets the "granted_network" field.
+func (u *PluginUpsert) SetGrantedNetwork(v []string) *PluginUpsert {
+	u.Set(plugin.FieldGrantedNetwork, v)
+	return u
+}
+
+// UpdateGrantedNetwork sets the "granted_network" field to the value that was provided on create.
+func (u *PluginUpsert) UpdateGrantedNetwork() *PluginUpsert {
+	u.SetExcluded(plugin.FieldGrantedNetwork)
+	return u
+}
+
+// ClearGrantedNetwork clears the value of the "granted_network" field.
+func (u *PluginUpsert) ClearGrantedNetwork() *PluginUpsert {
+	u.SetNull(plugin.FieldGrantedNetwork)
 	return u
 }
 
@@ -926,6 +958,27 @@ func (u *PluginUpsertOne) UpdateGrantedPermissions() *PluginUpsertOne {
 func (u *PluginUpsertOne) ClearGrantedPermissions() *PluginUpsertOne {
 	return u.Update(func(s *PluginUpsert) {
 		s.ClearGrantedPermissions()
+	})
+}
+
+// SetGrantedNetwork sets the "granted_network" field.
+func (u *PluginUpsertOne) SetGrantedNetwork(v []string) *PluginUpsertOne {
+	return u.Update(func(s *PluginUpsert) {
+		s.SetGrantedNetwork(v)
+	})
+}
+
+// UpdateGrantedNetwork sets the "granted_network" field to the value that was provided on create.
+func (u *PluginUpsertOne) UpdateGrantedNetwork() *PluginUpsertOne {
+	return u.Update(func(s *PluginUpsert) {
+		s.UpdateGrantedNetwork()
+	})
+}
+
+// ClearGrantedNetwork clears the value of the "granted_network" field.
+func (u *PluginUpsertOne) ClearGrantedNetwork() *PluginUpsertOne {
+	return u.Update(func(s *PluginUpsert) {
+		s.ClearGrantedNetwork()
 	})
 }
 
@@ -1378,6 +1431,27 @@ func (u *PluginUpsertBulk) UpdateGrantedPermissions() *PluginUpsertBulk {
 func (u *PluginUpsertBulk) ClearGrantedPermissions() *PluginUpsertBulk {
 	return u.Update(func(s *PluginUpsert) {
 		s.ClearGrantedPermissions()
+	})
+}
+
+// SetGrantedNetwork sets the "granted_network" field.
+func (u *PluginUpsertBulk) SetGrantedNetwork(v []string) *PluginUpsertBulk {
+	return u.Update(func(s *PluginUpsert) {
+		s.SetGrantedNetwork(v)
+	})
+}
+
+// UpdateGrantedNetwork sets the "granted_network" field to the value that was provided on create.
+func (u *PluginUpsertBulk) UpdateGrantedNetwork() *PluginUpsertBulk {
+	return u.Update(func(s *PluginUpsert) {
+		s.UpdateGrantedNetwork()
+	})
+}
+
+// ClearGrantedNetwork clears the value of the "granted_network" field.
+func (u *PluginUpsertBulk) ClearGrantedNetwork() *PluginUpsertBulk {
+	return u.Update(func(s *PluginUpsert) {
+		s.ClearGrantedNetwork()
 	})
 }
 

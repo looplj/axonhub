@@ -26,9 +26,9 @@ func TestPluginAPIKeyQuotaUsagesAuthorizedProfile(t *testing.T) {
 	fx.db.UsageLog.Create().SetRequestID(req.ID).SetProjectID(key.ProjectID).SetAPIKeyID(key.ID).SetModelID("quota-model").SetPromptTokens(111).SetTotalTokens(111).SaveX(fx.setupCtx)
 	otherProject := fx.db.Project.Create().SetName("other-quota-project").SaveX(fx.setupCtx)
 	otherKey := fx.db.APIKey.Create().SetName("other-quota-key").SetKey("other-quota-key-secret").SetUserID(key.UserID).SetProjectID(otherProject.ID).SetType(apikey.TypeServiceAccount).SetProfiles(profiles).SaveX(fx.setupCtx)
-	installed, err := fx.manager.Install(fx.setupCtx, pluginEndpointZip(t, "acme.quota", []string{"read_api_keys"}, true), nil)
+	installed, err := fx.manager.Install(fx.setupCtx, pluginEndpointZip(t, "acme.quota", []string{"read_api_keys"}, true), nil, nil)
 	require.NoError(t, err)
-	require.NoError(t, fx.manager.Enable(fx.setupCtx, installed.Plugin.ID, []string{"read_api_keys"}))
+	require.NoError(t, fx.manager.Enable(fx.setupCtx, installed.Plugin.ID, []string{"read_api_keys"}, nil))
 	post := func(token string, id int) (map[string]any, string) {
 		body, err := json.Marshal(map[string]any{"query": fmt.Sprintf(`{ apiKeyQuotaUsages(apiKeyId: "gid://axonhub/APIKey/%d") { profileName usage { requestCount totalTokens } } }`, id)})
 		require.NoError(t, err)
@@ -52,7 +52,7 @@ func TestPluginAPIKeyQuotaUsagesAuthorizedProfile(t *testing.T) {
 	require.Contains(t, payload, "errors", raw)
 	payload, raw = post(fx.readerToken, key.ID)
 	require.Contains(t, payload, "errors", raw)
-	require.NoError(t, fx.manager.Enable(fx.setupCtx, installed.Plugin.ID, nil))
+	require.NoError(t, fx.manager.Enable(fx.setupCtx, installed.Plugin.ID, nil, nil))
 	payload, raw = post(fx.ownerToken, key.ID)
 	require.Contains(t, payload, "errors", raw)
 }

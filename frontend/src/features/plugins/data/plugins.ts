@@ -17,6 +17,8 @@ const PLUGIN_FIELDS = `
   builtin
   grantedPermissions
   manifestPermissions
+  grantedNetwork
+  manifestNetwork
   configFields {
     name
     type
@@ -43,8 +45,8 @@ const PLUGINS_QUERY = `
 `;
 
 const INSTALL_PLUGIN_MUTATION = `
-  mutation InstallPlugin($file: Upload!, $grantedPermissions: [String!]) {
-    installPlugin(file: $file, grantedPermissions: $grantedPermissions) {
+  mutation InstallPlugin($file: Upload!, $grantedPermissions: [String!], $grantedNetwork: [String!]) {
+    installPlugin(file: $file, grantedPermissions: $grantedPermissions, grantedNetwork: $grantedNetwork) {
       plugin {
         ${PLUGIN_FIELDS}
       }
@@ -52,6 +54,7 @@ const INSTALL_PLUGIN_MUTATION = `
         currentVersion
         newVersion
         permissions
+        network
         events
         hooks
         pages
@@ -61,8 +64,8 @@ const INSTALL_PLUGIN_MUTATION = `
 `;
 
 const ENABLE_PLUGIN_MUTATION = `
-  mutation EnablePlugin($id: ID!, $grantedPermissions: [String!]!) {
-    enablePlugin(id: $id, grantedPermissions: $grantedPermissions) {
+  mutation EnablePlugin($id: ID!, $grantedPermissions: [String!]!, $grantedNetwork: [String!]!) {
+    enablePlugin(id: $id, grantedPermissions: $grantedPermissions, grantedNetwork: $grantedNetwork) {
       ${PLUGIN_FIELDS}
     }
   }
@@ -113,6 +116,8 @@ export interface Plugin {
   builtin: boolean;
   grantedPermissions: string[];
   manifestPermissions: string[];
+  grantedNetwork: string[];
+  manifestNetwork: string[];
   configFields: PluginConfigField[];
   config: Record<string, unknown>;
   runtimeStatus: string;
@@ -123,6 +128,7 @@ export interface PluginUpgradePreview {
   currentVersion: string;
   newVersion: string;
   permissions: string[];
+  network: string[];
   events: string[];
   hooks: string[];
   pages: string[];
@@ -145,13 +151,17 @@ export function usePlugins() {
   });
 }
 
-export async function installPlugin(file: File, grantedPermissions: string[] | null): Promise<PluginInstallResult> {
+export async function installPlugin(
+  file: File,
+  grantedPermissions: string[] | null,
+  grantedNetwork: string[] | null
+): Promise<PluginInstallResult> {
   const formData = new FormData();
   formData.append(
     'operations',
     JSON.stringify({
       query: INSTALL_PLUGIN_MUTATION,
-      variables: { file: null, grantedPermissions },
+      variables: { file: null, grantedPermissions, grantedNetwork },
     })
   );
   formData.append('map', JSON.stringify({ '0': ['variables.file'] }));
@@ -181,8 +191,15 @@ export async function installPlugin(file: File, grantedPermissions: string[] | n
 export function useInstallPlugin() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ file, grantedPermissions }: { file: File; grantedPermissions: string[] | null }) =>
-      installPlugin(file, grantedPermissions),
+    mutationFn: ({
+      file,
+      grantedPermissions,
+      grantedNetwork,
+    }: {
+      file: File;
+      grantedPermissions: string[] | null;
+      grantedNetwork: string[] | null;
+    }) => installPlugin(file, grantedPermissions, grantedNetwork),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
       queryClient.invalidateQueries({ queryKey: ['pluginUIEntries'] });
@@ -194,8 +211,15 @@ export function useInstallPlugin() {
 export function useEnablePlugin() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, grantedPermissions }: { id: string; grantedPermissions: string[] }) =>
-      graphqlRequest<{ enablePlugin: Plugin }>(ENABLE_PLUGIN_MUTATION, { id, grantedPermissions }),
+    mutationFn: ({
+      id,
+      grantedPermissions,
+      grantedNetwork,
+    }: {
+      id: string;
+      grantedPermissions: string[];
+      grantedNetwork: string[];
+    }) => graphqlRequest<{ enablePlugin: Plugin }>(ENABLE_PLUGIN_MUTATION, { id, grantedPermissions, grantedNetwork }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
       queryClient.invalidateQueries({ queryKey: ['pluginUIEntries'] });

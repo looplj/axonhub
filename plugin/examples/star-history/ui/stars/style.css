@@ -1,0 +1,135 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--background, #f4f5f7);
+  color: var(--foreground, #1c1f24);
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 20px 40px;
+}
+
+.masthead {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.mark { display: block; flex-shrink: 0; }
+.mark rect { fill: var(--primary, #1f6b4a); }
+.mark path { fill: var(--primary-foreground, #ffffff); }
+
+.eyebrow {
+  margin: 0;
+  color: var(--muted-foreground, #5e6772);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+h1, h2 { margin: 0; font-weight: 650; }
+h1 { font-size: 28px; letter-spacing: -0.03em; }
+h2 { font-size: 16px; }
+
+.lead {
+  max-width: 68ch;
+  margin: 14px 0 0;
+  color: var(--muted-foreground, #5e6772);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 0;
+}
+
+.meta dt, .meta dd { margin: 0; display: inline; }
+
+.meta dt {
+  color: var(--muted-foreground, #5e6772);
+}
+
+.meta dt::after { content: " "; }
+
+.meta dd {
+  margin-right: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--muted, #eef1f4);
+  color: var(--foreground, #1c1f24);
+  overflow-wrap: anywhere;
+}
+
+.status {
+  min-height: 1.4em;
+  margin: 12px 0 0;
+  color: var(--destructive, #9f3a34);
+  overflow-wrap: anywhere;
+}
+
+.status.busy { color: var(--muted-foreground, #5e6772); }
+
+.card {
+  margin-top: 8px;
+  padding: 16px;
+  border: 1px solid var(--border, #e3e6eb);
+  border-radius: var(--radius, 0.75rem);
+  background: var(--card, #ffffff);
+  color: var(--card-foreground, inherit);
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.muted { color: var(--muted-foreground, #5e6772); }
+
+#chart-note { margin: 0; text-align: right; }
+
+#chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: var(--muted-foreground, #5e6772);
+}
+
+#chart .grid {
+  stroke: var(--border, #e3e6eb);
+  stroke-width: 1;
+}
+
+#chart .area {
+  fill: var(--primary, #1f6b4a);
+  opacity: 0.16;
+}
+
+#chart .line {
+  fill: none;
+  stroke: var(--primary, #1f6b4a);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+#chart .dot { fill: var(--primary, #1f6b4a); }
+
+#chart text {
+  fill: currentColor;
+  font-size: 12px;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+}
+
+@media (max-width: 720px) {
+  .section-head { flex-direction: column; }
+  #chart-note { text-align: left; }
+}

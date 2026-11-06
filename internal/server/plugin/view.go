@@ -24,7 +24,9 @@ type InstalledPlugin struct {
 	Priority            int
 	Builtin             bool
 	GrantedPermissions  []string
+	GrantedNetwork      []string
 	ManifestPermissions []string
+	ManifestNetwork     []string
 	ConfigFields        []ConfigField
 	Config              map[string]any
 	RuntimeStatus       string
@@ -134,6 +136,7 @@ func (m *Manager) PresentInstall(result *InstallResult, zip []byte) (*InstallVie
 			return nil, err
 		}
 		installed.ManifestPermissions = cloneStrings(pkg.Manifest.Permissions)
+		installed.ManifestNetwork = cloneStrings(pkg.Manifest.NetworkGrants())
 	}
 	view.Plugin = &installed
 	return view, nil
@@ -159,7 +162,9 @@ func (m *Manager) presentRecord(row pluginRecord, statuses map[int]RuntimeStatus
 		Priority:            row.Priority,
 		Builtin:             m.IsBuiltin(row.PluginID),
 		GrantedPermissions:  cloneStrings(row.Granted),
+		GrantedNetwork:      cloneStrings(row.GrantedNetwork),
 		ManifestPermissions: cloneStrings(row.Manifest.Permissions),
+		ManifestNetwork:     cloneStrings(row.Manifest.NetworkGrants()),
 		ConfigFields:        configFields(row.Manifest.ConfigSchema),
 		Config:              maskConfig(row.Manifest.ConfigSchema, row.Config),
 		RuntimeStatus:       status,
@@ -181,20 +186,21 @@ func recordFromEntity(row *ent.Plugin) pluginRecord {
 		return pluginRecord{}
 	}
 	return pluginRecord{
-		ID:            row.ID,
-		CreatedAt:     row.CreatedAt,
-		UpdatedAt:     row.UpdatedAt,
-		DeletedAt:     row.DeletedAt,
-		PackageSHA256: row.PackageSha256,
-		PluginID:      row.PluginID,
-		Name:          row.Name,
-		Version:       row.Version,
-		Description:   row.Description,
-		Manifest:      row.Manifest,
-		Enabled:       row.Enabled,
-		Priority:      row.Priority,
-		Granted:       cloneStrings(row.GrantedPermissions),
-		Config:        cloneConfig(row.Config),
+		ID:             row.ID,
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
+		DeletedAt:      row.DeletedAt,
+		PackageSHA256:  row.PackageSha256,
+		PluginID:       row.PluginID,
+		Name:           row.Name,
+		Version:        row.Version,
+		Description:    row.Description,
+		Manifest:       row.Manifest,
+		Enabled:        row.Enabled,
+		Priority:       row.Priority,
+		Granted:        cloneStrings(row.GrantedPermissions),
+		GrantedNetwork: cloneStrings(row.GrantedNetwork),
+		Config:         cloneConfig(row.Config),
 	}
 }
 
@@ -206,6 +212,7 @@ func normalizePreview(preview *UpgradePreview) *UpgradePreview {
 		CurrentVersion: preview.CurrentVersion,
 		NewVersion:     preview.NewVersion,
 		Permissions:    cloneStrings(preview.Permissions),
+		Network:        cloneStrings(preview.Network),
 		Events:         cloneStrings(preview.Events),
 		Hooks:          cloneStrings(preview.Hooks),
 		Pages:          cloneStrings(preview.Pages),

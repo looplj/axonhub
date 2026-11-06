@@ -80,11 +80,12 @@ var ReservedPluginIDs = map[string]struct{}{
 	"axonhub.webhook": {},
 }
 
-// ManifestDiff is the set of permissions, events, hooks, and pages the new
-// manifest declares and the old one did not. Name, version, description,
-// axonhubVersion, entry, and title changes are not included.
+// ManifestDiff is the set of permissions, network rules, events, hooks, and
+// pages the new manifest declares and the old one did not. Name, version,
+// description, axonhubVersion, entry, and title changes are not included.
 type ManifestDiff struct {
 	Permissions []string
+	Network     []string
 	Events      []string
 	Hooks       []string
 	Pages       []string
@@ -93,15 +94,16 @@ type ManifestDiff struct {
 // NeedsPreview reports whether an enabled plugin must ask the owner before upgrade.
 // The enabled check itself belongs to the install transaction.
 func (d ManifestDiff) NeedsPreview() bool {
-	return len(d.Permissions) > 0 || len(d.Events) > 0 || len(d.Hooks) > 0 || len(d.Pages) > 0
+	return len(d.Permissions) > 0 || len(d.Network) > 0 || len(d.Events) > 0 || len(d.Hooks) > 0 || len(d.Pages) > 0
 }
 
 // UpgradePlan is the pure result of comparing two manifests.
 // Callers write it in their own transaction.
 type UpgradePlan struct {
-	Diff    ManifestDiff
-	Granted []string
-	Config  map[string]any
+	Diff           ManifestDiff
+	Granted        []string
+	GrantedNetwork []string
+	Config         map[string]any
 }
 
 // ParseManifest decodes manifest JSON and validates it against axonhubVersion.
@@ -161,6 +163,7 @@ func DiffManifest(old, next *objects.PluginManifest) ManifestDiff {
 	}
 	return ManifestDiff{
 		Permissions: addedStrings(next.Permissions, old.Permissions),
+		Network:     addedStrings(next.NetworkGrants(), old.NetworkGrants()),
 		Events:      addedStrings(next.Events, old.Events),
 		Hooks:       addedHooks(old.Hooks, next.Hooks),
 		Pages:       addedStrings(pageKeys(next.UI), pageKeys(old.UI)),
@@ -172,6 +175,16 @@ func DiffManifest(old, next *objects.PluginManifest) ManifestDiff {
 // the result is the intersection of oldGrant and declared, with nothing new added.
 // A non-nil submitted slice is the full new grant and must be a subset of declared.
 func ConvergePermissions(oldGrant []string, declared []string, submitted *[]string) ([]string, error) {
+	return convergeGrant(oldGrant, declared, submitted, "permission")
+}
+
+// ConvergeNetwork applies the same intersection and full-set rules as permissions.
+// Tokens are the declared URL string or the regex source, compared exactly.
+func ConvergeNetwork(oldGrant []string, declared []string, submitted *[]string) ([]string, error) {
+	return convergeGrant(oldGrant, declared, submitted, "network rule")
+}
+
+func convergeGrant(oldGrant []string, declared []string, submitted *[]string, kind string) ([]string, error) {
 	declaredSet := lo.SliceToMap(declared, func(item string) (string, struct{}) {
 		return item, struct{}{}
 	})
@@ -197,7 +210,7 @@ func ConvergePermissions(oldGrant []string, declared []string, submitted *[]stri
 	seen := make(map[string]struct{}, len(*submitted))
 	for _, item := range *submitted {
 		if _, ok := declaredSet[item]; !ok {
-			return nil, fmt.Errorf("granted permission %q is not declared by the plugin", item)
+			return nil, fmt.Errorf("granted %s %q is not declared by the plugin", kind, item)
 		}
 		if _, dup := seen[item]; dup {
 			continue
@@ -264,12 +277,17 @@ func MigrateConfig(old map[string]any, schema *objects.PluginConfigSchema) (map[
 
 // PrepareUpgrade runs the shared upgrade checks. It does not write the database.
 // A failure returns no plan, so the previous config is left untouched.
-func PrepareUpgrade(old, next *objects.PluginManifest, oldGrant []string, oldConfig map[string]any, submitted *[]string) (*UpgradePlan, error) {
+// A nil submitted or submittedNetwork pointer converges that grant with the new declaration.
+func PrepareUpgrade(old, next *objects.PluginManifest, oldGrant []string, oldNetwork []string, oldConfig map[string]any, submitted *[]string, submittedNetwork *[]string) (*UpgradePlan, error) {
 	if old == nil || next == nil {
 		return nil, errors.New("manifest is required")
 	}
 	diff := DiffManifest(old, next)
 	granted, err := ConvergePermissions(oldGrant, next.Permissions, submitted)
+	if err != nil {
+		return nil, err
+	}
+	network, err := ConvergeNetwork(oldNetwork, next.NetworkGrants(), submittedNetwork)
 	if err != nil {
 		return nil, err
 	}
@@ -281,9 +299,10 @@ func PrepareUpgrade(old, next *objects.PluginManifest, oldGrant []string, oldCon
 		return nil, err
 	}
 	return &UpgradePlan{
-		Diff:    diff,
-		Granted: granted,
-		Config:  migrated,
+		Diff:           diff,
+		Granted:        granted,
+		GrantedNetwork: network,
+		Config:         migrated,
 	}, nil
 }
 

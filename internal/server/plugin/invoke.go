@@ -30,8 +30,6 @@ var (
 
 	// ErrCircuitOpen means this process has paused the plugin after consecutive call failures.
 	ErrCircuitOpen = errors.New("plugin circuit open")
-
-	errPromiseReturn = errors.New("plugin call returned a promise")
 )
 
 // InvokeRequest is one call into an installed plugin's named export.
@@ -128,6 +126,7 @@ func (m *Manager) Invoke(ctx context.Context, req InvokeRequest) (InvokeResult, 
 		config:         config,
 		timeout:        req.Timeout,
 		granted:        loaded.GrantedPermissions,
+		network:        loaded.GrantedNetwork,
 	})
 	if callErr != nil {
 		if countsAsCallFailure(callErr) {
@@ -148,20 +147,29 @@ type callExportInput struct {
 	config         json.RawMessage
 	timeout        time.Duration
 	granted        []string
+	network        []string
 }
 
 func (m *Manager) callExport(ctx context.Context, vm *pluginVM, in callExportInput) (InvokeResult, error, bool) {
 	callCtx, disarm := armPluginInterrupt(vm, ctx, in.timeout)
+	// ioCtx is canceled only after the call is marked finished. A timeout must
+	// not complete in-flight HTTP early enough for its callback to run.
+	ioCtx, cancelIO := context.WithCancel(context.WithoutCancel(callCtx))
 	host := &hostCall{
 		manager:        m,
 		rt:             vm.rt,
 		ctx:            callCtx,
+		ioCtx:          ioCtx,
+		cancelIO:       cancelIO,
 		pluginID:       in.pluginID,
 		installationID: in.installationID,
 		export:         in.export,
 		alive:          true,
 		granted:        permissionSet(in.granted),
+		network:        append([]string(nil), in.network...),
+		async:          newCallAsync(),
 	}
+	defer cancelIO()
 	defer func() { host.alive = false }()
 
 	discard, callErr := host.run(vm, in)
@@ -201,21 +209,150 @@ func (h *hostCall) run(vm *pluginVM, in callExportInput) (discard bool, err erro
 	}
 	returned, err := vm.rt.CallFunction(fn, moejs.Undefined(), args...)
 	if err != nil {
-		return isFatalRuntime(err), callFailed(err)
+		return h.end(isFatalRuntime(err), callFailed(err))
 	}
-	if _, _, promise := moejs.PromiseResult(returned); promise {
-		return false, fmt.Errorf("plugin call failed: %w", errPromiseReturn)
+	for {
+		state, result, isPromise := moejs.PromiseResult(returned)
+		if !isPromise {
+			return h.accept(returned)
+		}
+		switch state {
+		case moejs.PromiseFulfilled:
+			return h.accept(result)
+		case moejs.PromiseRejected:
+			return h.end(false, h.promiseFailure(result))
+		}
+		callback, waitErr := h.async.next(h.ctx)
+		if waitErr != nil {
+			return h.end(true, callFailed(waitErr))
+		}
+		if err := callback(); err != nil {
+			return h.end(isFatalRuntime(err), callFailed(err))
+		}
 	}
-	value, err := h.readReturn(returned)
+}
+
+func (h *hostCall) accept(value moejs.Value) (bool, error) {
+	raw, err := h.readReturn(value)
 	if err != nil {
-		return isFatalRuntime(err), callFailed(err)
+		return h.end(isFatalRuntime(err), callFailed(err))
 	}
 	state, err := h.readState()
 	if err != nil {
-		return isFatalRuntime(err), callFailed(err)
+		return h.end(isFatalRuntime(err), callFailed(err))
 	}
-	h.result = InvokeResult{Value: value, State: state}
-	return false, nil
+	h.result = InvokeResult{Value: raw, State: state}
+	return h.end(false, nil)
+}
+
+// end closes result delivery and cancels in-flight host I/O.
+// A call that still has tasks or queued callbacks discards its VM.
+func (h *hostCall) end(discard bool, err error) (bool, error) {
+	if h.async != nil && h.async.close() {
+		discard = true
+	}
+	if h.cancelIO != nil {
+		h.cancelIO()
+	}
+	return discard, err
+}
+
+func (h *hostCall) promiseFailure(reason moejs.Value) error {
+	message := "promise rejected"
+	if reason.IsString() {
+		message = reason.String()
+	} else if reason.IsObject() {
+		if msg, err := h.rt.Get(reason, "message"); err == nil && msg.IsString() && msg.String() != "" {
+			message = msg.String()
+		}
+	}
+	return fmt.Errorf("plugin call failed: %s", message)
+}
+
+// callAsync is one hook call's host tasks and the callbacks that may touch its VM.
+// HTTP workers only enqueue. The VM goroutine runs the callbacks.
+type callAsync struct {
+	mu       sync.Mutex
+	finished bool
+	tasks    int
+	queue    []func() error
+	wake     chan struct{}
+}
+
+func newCallAsync() *callAsync {
+	return &callAsync{wake: make(chan struct{}, 1)}
+}
+
+func (a *callAsync) track() bool {
+	if a == nil {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.finished {
+		return false
+	}
+	a.tasks++
+	return true
+}
+
+// deliver queues fn for the VM goroutine. A finished call drops fn and returns false.
+func (a *callAsync) deliver(fn func() error) bool {
+	if a == nil {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.tasks > 0 {
+		a.tasks--
+	}
+	if a.finished || fn == nil {
+		return false
+	}
+	a.queue = append(a.queue, fn)
+	select {
+	case a.wake <- struct{}{}:
+	default:
+	}
+	return true
+}
+
+func (a *callAsync) next(ctx context.Context) (func() error, error) {
+	for {
+		a.mu.Lock()
+		if len(a.queue) > 0 {
+			fn := a.queue[0]
+			a.queue = a.queue[1:]
+			a.mu.Unlock()
+			return fn, nil
+		}
+		a.mu.Unlock()
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		select {
+		case <-ctx.Done():
+			err := context.Cause(ctx)
+			if err == nil {
+				err = ctx.Err()
+			}
+			return nil, err
+		case <-a.wake:
+		}
+	}
+}
+
+// close stops delivery. It reports whether tasks or callbacks were still outstanding.
+func (a *callAsync) close() bool {
+	if a == nil {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.finished = true
+	pending := a.tasks > 0 || len(a.queue) > 0
+	a.queue = nil
+	return pending
 }
 
 func callFailed(err error) error {

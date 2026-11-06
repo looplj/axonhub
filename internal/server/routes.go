@@ -177,18 +177,20 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		})
 	}
 
-	// Page GraphQL accepts a user JWT only. Service-account keys stay on
-	// /admin/graphql. The 10s budget, rate limit, and response cap belong to
-	// this route and are not applied to the admin GraphQL handler.
-	pluginGraphqlGroup := server.Group(
+	// Page routes accept a user JWT only. Service-account keys stay on
+	// /admin/graphql. GraphQL keeps its 10s budget. Fetch uses the 15s
+	// bridge budget. Neither route has a rate limiter.
+	pluginGroup := server.Group(
 		"/admin/plugins",
 		middleware.WithJWTAuth(services.AuthService),
 		middleware.WithProjectID(),
-		middleware.WithTimeout(gql.PluginGraphqlTimeout),
 	)
 	{
-		pluginGraphqlGroup.POST("/:pluginId/graphql", func(c *gin.Context) {
+		pluginGroup.POST("/:pluginId/graphql", middleware.WithTimeout(gql.PluginGraphqlTimeout), func(c *gin.Context) {
 			handlers.Graphql.PluginGraphql.ServeHTTP(c.Writer, c.Request)
+		})
+		pluginGroup.POST("/:pluginId/fetch", middleware.WithTimeout(gql.PluginFetchTimeout), func(c *gin.Context) {
+			handlers.Graphql.PluginFetch.ServeHTTP(c.Writer, c.Request)
 		})
 	}
 

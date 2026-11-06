@@ -223,6 +223,24 @@ func (_u *PluginUpdate) ClearGrantedPermissions() *PluginUpdate {
 	return _u
 }
 
+// SetGrantedNetwork sets the "granted_network" field.
+func (_u *PluginUpdate) SetGrantedNetwork(v []string) *PluginUpdate {
+	_u.mutation.SetGrantedNetwork(v)
+	return _u
+}
+
+// AppendGrantedNetwork appends value to the "granted_network" field.
+func (_u *PluginUpdate) AppendGrantedNetwork(v []string) *PluginUpdate {
+	_u.mutation.AppendGrantedNetwork(v)
+	return _u
+}
+
+// ClearGrantedNetwork clears the value of the "granted_network" field.
+func (_u *PluginUpdate) ClearGrantedNetwork() *PluginUpdate {
+	_u.mutation.ClearGrantedNetwork()
+	return _u
+}
+
 // SetConfig sets the "config" field.
 func (_u *PluginUpdate) SetConfig(v map[string]interface{}) *PluginUpdate {
 	_u.mutation.SetConfig(v)
@@ -394,6 +412,17 @@ func (_u *PluginUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.GrantedPermissionsCleared() {
 		_spec.ClearField(plugin.FieldGrantedPermissions, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.GrantedNetwork(); ok {
+		_spec.SetField(plugin.FieldGrantedNetwork, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedGrantedNetwork(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, plugin.FieldGrantedNetwork, value)
+		})
+	}
+	if _u.mutation.GrantedNetworkCleared() {
+		_spec.ClearField(plugin.FieldGrantedNetwork, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.Config(); ok {
 		_spec.SetField(plugin.FieldConfig, field.TypeJSON, value)
@@ -615,6 +644,24 @@ func (_u *PluginUpdateOne) ClearGrantedPermissions() *PluginUpdateOne {
 	return _u
 }
 
+// SetGrantedNetwork sets the "granted_network" field.
+func (_u *PluginUpdateOne) SetGrantedNetwork(v []string) *PluginUpdateOne {
+	_u.mutation.SetGrantedNetwork(v)
+	return _u
+}
+
+// AppendGrantedNetwork appends value to the "granted_network" field.
+func (_u *PluginUpdateOne) AppendGrantedNetwork(v []string) *PluginUpdateOne {
+	_u.mutation.AppendGrantedNetwork(v)
+	return _u
+}
+
+// ClearGrantedNetwork clears the value of the "granted_network" field.
+func (_u *PluginUpdateOne) ClearGrantedNetwork() *PluginUpdateOne {
+	_u.mutation.ClearGrantedNetwork()
+	return _u
+}
+
 // SetConfig sets the "config" field.
 func (_u *PluginUpdateOne) SetConfig(v map[string]interface{}) *PluginUpdateOne {
 	_u.mutation.SetConfig(v)
@@ -816,6 +863,17 @@ func (_u *PluginUpdateOne) sqlSave(ctx context.Context) (_node *Plugin, err erro
 	}
 	if _u.mutation.GrantedPermissionsCleared() {
 		_spec.ClearField(plugin.FieldGrantedPermissions, field.TypeJSON)
+	}
+	if value, ok := _u.mutation.GrantedNetwork(); ok {
+		_spec.SetField(plugin.FieldGrantedNetwork, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedGrantedNetwork(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, plugin.FieldGrantedNetwork, value)
+		})
+	}
+	if _u.mutation.GrantedNetworkCleared() {
+		_spec.ClearField(plugin.FieldGrantedNetwork, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.Config(); ok {
 		_spec.SetField(plugin.FieldConfig, field.TypeJSON, value)

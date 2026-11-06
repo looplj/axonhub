@@ -45,6 +45,8 @@ type Plugin struct {
 	Priority int `json:"priority,omitempty"`
 	// Permissions the owner granted. Must stay a subset of manifest.permissions.
 	GrantedPermissions []string `json:"granted_permissions,omitempty"`
+	// Owner-granted subset of manifest.network.
+	GrantedNetwork []string `json:"granted_network,omitempty"`
 	// Plugin configuration object validated against manifest.configSchema.
 	Config       map[string]interface{} `json:"config,omitempty"`
 	selectValues sql.SelectValues
@@ -55,7 +57,7 @@ func (*Plugin) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case plugin.FieldManifest, plugin.FieldPackage, plugin.FieldGrantedPermissions, plugin.FieldConfig:
+		case plugin.FieldManifest, plugin.FieldPackage, plugin.FieldGrantedPermissions, plugin.FieldGrantedNetwork, plugin.FieldConfig:
 			values[i] = new([]byte)
 		case plugin.FieldEnabled:
 			values[i] = new(sql.NullBool)
@@ -168,6 +170,14 @@ func (_m *Plugin) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field granted_permissions: %w", err)
 				}
 			}
+		case plugin.FieldGrantedNetwork:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field granted_network", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.GrantedNetwork); err != nil {
+					return fmt.Errorf("unmarshal field granted_network: %w", err)
+				}
+			}
 		case plugin.FieldConfig:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field config", values[i])
@@ -250,6 +260,9 @@ func (_m *Plugin) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("granted_permissions=")
 	builder.WriteString(fmt.Sprintf("%v", _m.GrantedPermissions))
+	builder.WriteString(", ")
+	builder.WriteString("granted_network=")
+	builder.WriteString(fmt.Sprintf("%v", _m.GrantedNetwork))
 	builder.WriteString(", ")
 	builder.WriteString("config=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Config))

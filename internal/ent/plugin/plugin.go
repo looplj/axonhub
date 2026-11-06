@@ -41,6 +41,8 @@ const (
 	FieldPriority = "priority"
 	// FieldGrantedPermissions holds the string denoting the granted_permissions field in the database.
 	FieldGrantedPermissions = "granted_permissions"
+	// FieldGrantedNetwork holds the string denoting the granted_network field in the database.
+	FieldGrantedNetwork = "granted_network"
 	// FieldConfig holds the string denoting the config field in the database.
 	FieldConfig = "config"
 	// Table holds the table name of the plugin in the database.
@@ -63,6 +65,7 @@ var Columns = []string{
 	FieldEnabled,
 	FieldPriority,
 	FieldGrantedPermissions,
+	FieldGrantedNetwork,
 	FieldConfig,
 }
 
@@ -119,6 +122,8 @@ var (
 	DefaultPriority int
 	// DefaultGrantedPermissions holds the default value on creation for the "granted_permissions" field.
 	DefaultGrantedPermissions []string
+	// DefaultGrantedNetwork holds the default value on creation for the "granted_network" field.
+	DefaultGrantedNetwork []string
 	// DefaultConfig holds the default value on creation for the "config" field.
 	DefaultConfig map[string]interface{}
 )

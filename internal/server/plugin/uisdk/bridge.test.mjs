@@ -442,6 +442,9 @@ test("host reply status and code map without exposing server internals", async (
     [{ code: "TIMEOUT", message: "context deadline exceeded: sql", status: 504 }, "TIMEOUT", 504],
     [{ code: "INTERNAL", message: "stack trace /tmp/server.go:9", status: 500 }, "INTERNAL", 500],
     [{ code: "NETWORK_ERROR", message: "dial tcp secret-host:5432" }, "NETWORK_ERROR", undefined],
+    [{ code: "NETWORK_ERROR", message: "dial tcp secret-host:5432", status: 502 }, "NETWORK_ERROR", 502],
+    [{ code: "INVALID_STATE", message: "redirect location=https://secret.example/next", status: 502 }, "INVALID_STATE", 502],
+    [{ code: "FORBIDDEN", message: "target not granted", status: 403 }, "FORBIDDEN", 403],
   ];
   for (const [hostError, code, status] of cases) {
     const env = setup();
@@ -460,6 +463,54 @@ test("host reply status and code map without exposing server internals", async (
     assert.equal(error.message.includes("stack"), false);
     assert.equal(calls(env).length, 1);
   }
+});
+
+test("fetch validates arguments, posts to the parent, and resolves a non-2xx result", async () => {
+  const env = setup();
+  let browserFetches = 0;
+  env.window.fetch = () => {
+    browserFetches += 1;
+    throw new Error("browser fetch");
+  };
+  await handshake(env);
+  const before = calls(env).length;
+  await assert.rejects(env.window.axonhub.fetch(""), (error) => error.code === "INVALID_ARGUMENT");
+  await assert.rejects(env.window.axonhub.fetch("https://example.com/v1", null), (error) => error.code === "INVALID_ARGUMENT");
+  await assert.rejects(env.window.axonhub.fetch("https://example.com/v1", { method: "get" }), (error) => error.code === "INVALID_ARGUMENT");
+  await assert.rejects(env.window.axonhub.fetch("https://example.com/v1", { headers: { accept: 1 } }), (error) => error.code === "INVALID_ARGUMENT");
+  await assert.rejects(env.window.axonhub.fetch("https://example.com/v1", { headers: ["accept"] }), (error) => error.code === "INVALID_ARGUMENT");
+  await assert.rejects(env.window.axonhub.fetch("https://example.com/v1", { body: { text: "no" } }), (error) => error.code === "INVALID_ARGUMENT");
+  const browserFetch = env.window.fetch;
+  assert.equal(calls(env).length, before);
+  assert.equal(browserFetches, 0);
+  assert.notEqual(env.window.axonhub.fetch, browserFetch);
+
+  const pending = env.window.axonhub.fetch("https://example.com/v1/check", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+  });
+  const sent = calls(env).at(-1).data;
+  assert.equal(sent.method, "fetch");
+  assert.deepEqual(json(sent.params), {
+    url: "https://example.com/v1/check",
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+  });
+  deliver(env, reply(sent.id, {
+    ok: true,
+    result: { status: 403, headers: { "content-type": "text/plain" }, body: "no" },
+  }));
+  assert.deepEqual(json(await pending), { status: 403, headers: { "content-type": "text/plain" }, body: "no" });
+  assert.equal(browserFetches, 0);
+
+  const forbidden = env.window.axonhub.fetch("https://evil.example/");
+  deliver(env, reply(calls(env).at(-1).data.id, {
+    ok: false,
+    error: { code: "FORBIDDEN", message: "target not granted", status: 403 },
+  }));
+  await assert.rejects(forbidden, (error) => error.code === "FORBIDDEN" && error.message === "Forbidden");
 });
 
 test("navigate and toast validate arguments before sending", async () => {

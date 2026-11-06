@@ -43,7 +43,8 @@ Provider 的 `transformRequest`、`transformResponse` 另见 [provider.md](provi
 | 返回 `undefined`，或没有 return | 保持调用前的请求，不提交对参数对象的原地修改 |
 | 返回 `null`、标量或其他非法值 | 本次调用失败，保留调用前的请求 |
 | `onRequest` 中调用 `ctx.reject(status, message)` | 主动拒绝请求，允许的状态码和错误路径见请求篇 |
-| 抛错、超时或返回 Promise | 本次调用失败，按请求篇处理 |
+| 抛错、超时，或 Promise 被拒绝 | 本次调用失败，按请求篇处理 |
+| 返回 Promise | 宿主等待结算。结算值按上面各行处理；等待计入该钩子的预算 |
 
 - `onRequest` 可以修改 model，修改后仍走模型权限检查和映射；不能修改 stream。
 - `onAttempt` 的返回值只影响当次尝试，不污染下一次重试；不能修改 model 或 stream。
@@ -62,6 +63,7 @@ pass-through 渠道会覆盖除 model 外的请求改写，渠道 override 也�
 | `ctx.config` | 按 manifest schema 保存的本插件配置；页面拿到的是去掉 secret 的单独配置视图 |
 | `ctx.log.info/warn/error` | 记录插件日志，不应记录密钥或完整请求内容 |
 | `ctx.kv.get/set/delete/list` | 插件持久数据；事件与请求插件共用，按本次安装 ID 隔离 |
+| `ctx.fetch` | 宿主代发的外部请求，只到达已授权的路径或正则。见 [出站请求](#出站请求)。`onEvent`、`onRequest`、`onAttempt` 都可 `await` |
 | `ctx.request` | 请求钩子的请求元数据：`projectId`、`apiKeyId`、客户端 `model`、`apiFormat`；playground 的 `apiKeyId` 为 null |
 | `ctx.attempt` | `onAttempt` 的当前渠道、实际模型和上游格式 |
 | `ctx.state` | 请求钩子之间共享的、按请求和插件隔离的 JSON 状态；未来响应钩子沿用 |
@@ -97,7 +99,7 @@ interface PluginHostError extends Error {
 }
 ```
 
-后端宿主 API 全部同步返回，失败抛出 `PluginHostError`；错误 message 可读但不作为稳定判断依据，不含密钥。JSON 数字必须有限，拒绝循环对象、函数、BigInt 和非 JSON 值。省略参数或传 undefined 使用默认值，null 只有在签名明确允许时才合法；不隐式转换参数类型。时间、TTL 和窗口单位在签名中区分。
+后端宿主 API 里，KV、计数器、日志、渠道和 WebHook 同步返回。`ctx.fetch` 返回 Promise，由钩子 `await`。失败抛出 `PluginHostError`；错误 message 可读但不作为稳定判断依据，不含密钥。JSON 数字必须有限，拒绝循环对象、函数、BigInt 和非 JSON 值。省略参数或传 undefined 使用默认值，null 只有在签名明确允许时才合法；不隐式转换参数类型。时间、TTL 和窗口单位在签名中区分。
 
 API 只在有效的钩子调用中可用，不能把 ctx 或其方法保存到模块变量后跨调用使用。宿主 I/O 继承本次调用的取消与剩余执行时间，不因进入 Go 宿主函数而延长预算；取消后不再接受新的副作用调用。超时不承诺撤销已提交的数据库写入或已发送的通知。
 
@@ -197,6 +199,43 @@ interface EventActions {
 - webhook.send 只接受已有目标名称，不接受 URL、headers 或凭证覆盖。payload 作为自定义模板 Data，字符串 payload.message 同时填充 Message；宿主从当前事件填充 Event、Severity、OccurredAt，并将 event.Subject.Channel 映射到 Channel。模板上下文不提供 Subject，Data 也不是 event.Data；按目标已有模板渲染发送。目标不存在抛 `NOT_FOUND`，未启用抛 `INVALID_STATE`，非成功 HTTP 状态或传输失败抛 `UNAVAILABLE`；调用成功表示已收到成功 HTTP 响应。此入口只尝试一次，不自动重试，防止通知重复。
 - 四个启停方法与 webhook.send 计入写类 API 限额。具体事件来源和递归深度沿用事件篇。
 
+### 出站请求
+
+`ctx.fetch` 由宿主发出 HTTP，脚本里没有全局 `fetch`。页面不直接连接外部主机，浏览器侧走 [axonhub.fetch](ui-bridge.md#1-sdk-契约)，用同一份已授权规则。CSP 的 `connect-src` 保持 `'none'`。`ctx.models` 本轮不提供。
+
+登记在 manifest 的 `network`，Owner 授予的子集写在 `granted_network`。比较时去掉 query 和 fragment，只看 scheme、host、port、path。query 可以出现在实际请求上，但不参与授权。
+
+```ts
+interface FetchResult {
+  status: number;
+  headers: Record<string, string>;
+  body: string; // UTF-8
+}
+interface FetchInit {
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  headers?: Record<string, string>;
+  body?: string;
+}
+interface Fetch {
+  fetch(url: string, init?: FetchInit): Promise<FetchResult>;
+}
+```
+
+- 精确规则是完整的 `https` URL，必须带 path，`https://example.com/v1/check` 只等于这条 path，不含其子路径。默认端口 443 不写入比较串。
+- 正则规则写成 `{ "regex": "^https://api\\.example\\.com/v1/items/[0-9]+$" }`。宿主用 Go `regexp` 对去掉 query、fragment 后的 URL 做全匹配，模式本身要带 `^` 和 `$`。
+- 未授权、不是 `https`、或带 userinfo：不发出请求，抛 `PERMISSION_DENIED`。上游返回 301、302、303、307、308 时不请求 Location，本次调用抛 `INVALID_STATE`。
+- `Host` 与逐跳头由宿主丢弃。插件自己的 `Authorization` 可以放在 `headers` 里，宿主不附带渠道凭证或用户 Cookie。
+- 非 2xx 仍 resolve，由插件看 `status`。传输失败或超时抛 `UNAVAILABLE` / `DEADLINE_EXCEEDED`。响应不是合法 UTF-8 时抛 `INVALID_STATE`。
+- 体积和条数见 [运行限制](README.md#运行限制)。等待计入当前钩子预算；页面调用计入 Bridge 的 15 s。VM 在钩子返回的 Promise 结算前不归还；未等待的任务按 [异步调用收尾](#异步调用收尾) 清理。
+
+```js
+const res = await ctx.fetch("https://moderation.example.com/v1/check", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ text: "..." }),
+});
+```
+
 ### 主动拒绝请求
 
 ```ts
@@ -256,7 +295,17 @@ export function onAttempt(req, ctx) {
 
 允许包内相对 import，例如 `import { normalize } from "./lib/normalize.js"`。依赖必须在包内，npm 依赖由作者提前打包。裸模块名、`node:` 和包外路径被拒绝；运行时不下载依赖，也不提供 Node.js 文件系统和进程 API。`eval` 与动态代码生成由 `DisableDynamicCode` 禁用。
 
-函数必须同步：安装时拒绝 async 钩子，调用时返回 Promise 视为非法，不通过等待 Promise 扩展执行时间。不提供 `ctx.fetch`；外发通知只通过已配置且授权的 WebHook 目标。
+函数可以是 async。宿主等待钩子返回的 Promise，等待计入该钩子的预算；Promise 被拒绝视同抛错。顶层 `await` 拒绝安装。运行时不提供全局 `fetch`，外部请求只走 `ctx.fetch`，目标见 [出站请求](#出站请求)。`ctx.webhook.send` 仍只发往 Owner 已配置的 WebHook 目标。
+
+### 异步调用收尾
+
+每次钩子调用拥有独立的调用 ID、可取消 context 和宿主异步任务集合。`ctx.fetch` 发起时登记任务，完成结果只投递到该调用的执行队列；HTTP worker 不直接操作 VM，Promise 的 resolve/reject 与 JS 回调都在 VM 所属执行线程处理。
+
+钩子返回（含返回的 Promise 结算）、抛错或超时时，宿主先将调用标记为结束并关闭结果投递，再取消仍在进行的 I/O。迟到结果只释放响应体等 Go 资源，不能再 resolve/reject Promise 或进入 JS，也不能投递到下一次调用。未等待的 fetch 不会延长钩子生命周期；已经发送的 HTTP 请求不承诺撤销。
+
+结束时仍有未结算的宿主异步任务或待执行的回调，则丢弃该 VM，不带着遗留 Promise 归还池子。只有任务和执行队列均已清空的正常调用才复用 VM；被中断的 VM 仍直接丢弃。这样 `void ctx.fetch(...)`、`Promise.race(...)` 提前返回和超时都不会让旧回调进入后续请求。
+
+验收覆盖：未 await 的 fetch 后立即返回、两个 fetch 的 `Promise.race`、请求取消、超时后 HTTP 才完成；确认迟到回调不执行、不修改后续调用状态，I/O 被取消且响应资源被释放。异步调度与 VM 收尾归 T-11，真实 fetch 集成用例归 T-16。
 
 加载和调用顺序：
 
@@ -264,7 +313,7 @@ export function onAttempt(req, ctx) {
 安装校验：编译、链接 → 临时 VM 执行顶层 → 检查声明的导出
 启用/升级：加载包 → 编译结果与模块数据进入内存 → 发布 Generation
 首次需要 VM：创建 VM → 初始化模块、执行顶层
-每次调用：借 VM → 交付参数与 ctx → 调用命名导出 → 校验结果 → 归还 VM
+每次调用：借 VM → 交付参数与 ctx → 调用命名导出并等待返回值 → 校验结果 → 异步调用收尾 → 归还或丢弃 VM
 停用/删除/升级：旧调用结束 → 释放旧执行资源
 ```
 
@@ -282,11 +331,11 @@ UI 文件保存在实例临时目录，后端模块和执行数据保存在内�
 
 ## 7. 实现与验收对应
 
-- **T-10，安装与导出校验**：声明但缺少命名导出、只有 default 对象、导出不是函数、async 钩子、包外 import 均失败；正常命名导出和包内相对 import 通过。
-- **T-11，运行时**：按次借还 VM，返回 Promise 失败，中断后丢弃 VM；不同请求的 `ctx.state` 隔离，同一请求换 VM 后仍能读取自己的状态。调用阶段不重复读库、解压或编译。
+- **T-10，安装与导出校验**：声明但缺少命名导出、只有 default 对象、导出不是函数、顶层 await、包外 import 均失败；async 钩子和包内相对 import 通过。
+- **T-11，运行时**：按次借还 VM，等待 Promise 到结算或超时，中断后丢弃 VM；不同请求的 `ctx.state` 隔离，同一请求换 VM 后仍能读取自己的状态。调用阶段不重复读库、解压或编译。`ctx.fetch` 不在本任务。
 - **T-12，事件**：只分发声明的事件；业务事件不进入流式钩子；宿主权限与 KV 安装隔离遵循事件篇和总览验收。
 - **T-13，请求**：返回对象才提交修改，原地修改后返回 undefined 不生效；非法返回或 stream 改写回滚；`onRequest` 改 model 后仍过权限检查，`onAttempt` 改 model 被拒；未声明钩子不调用。
 
-宿主 API 契约测试还覆盖：KV 缺失/空串/过期、覆盖重设 TTL、list 排序与超限；不同窗口计数器独立；渠道分页和不存在返回值；凭证歧义与 OAuth 拒绝；未授权调用无副作用；WebHook 失败不重试；同步宿主 I/O 取消；catch reject 后仍不能放行请求；失败调用不提交 ctx.state。
+宿主 API 契约测试还覆盖：KV 缺失/空串/过期、覆盖重设 TTL、list 排序与超限；不同窗口计数器独立；渠道分页和不存在返回值；凭证歧义与 OAuth 拒绝；未授权调用无副作用；WebHook 失败不重试；宿主 I/O 取消；catch reject 后仍不能放行请求；失败调用不提交 ctx.state。出站的路径匹配、正则全匹配、重定向不跟随归入 T-16。
 
 验证归入 `go test ./internal/server/plugin/...` 和请求篇的 orchestrator 契约测试；本文没有运行测试的记录，不将示例视为已实现或已验收。

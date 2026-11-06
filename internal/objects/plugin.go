@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"math"
+	"net/url"
 	"path"
 	"regexp"
 	"slices"
@@ -30,6 +31,11 @@ const (
 	ConfigTypeNumber   = "number"
 	ConfigTypeBoolean  = "boolean"
 	ConfigFormatSecret = "secret"
+
+	// MaxPluginNetworkRules is the manifest.network limit.
+	MaxPluginNetworkRules = 32
+	// MaxPluginNetworkRegex is the maximum regex source length.
+	MaxPluginNetworkRegex = 256
 )
 
 var (
@@ -45,6 +51,7 @@ var (
 		"axonhubVersion":   {},
 		"pluginApiVersion": {},
 		"permissions":      {},
+		"network":          {},
 		"events":           {},
 		"hooks":            {},
 		"configSchema":     {},
@@ -86,6 +93,9 @@ var (
 		ConfigTypeNumber:  {},
 		ConfigTypeBoolean: {},
 	}
+	networkRuleFieldNames = map[string]struct{}{
+		"regex": {},
+	}
 )
 
 // PluginManifest is the parsed manifest.json document.
@@ -102,12 +112,29 @@ type PluginManifest struct {
 	PluginAPIVersion    int                 `json:"pluginApiVersion,omitempty"`
 	PluginAPIVersionSet bool                `json:"-"`
 	Permissions         []string            `json:"permissions,omitempty"`
+	Network             []PluginNetworkRule `json:"network,omitempty"`
 	Events              []string            `json:"events,omitempty"`
 	EventsPresent       bool                `json:"-"`
 	Hooks               *PluginHooksSpec    `json:"hooks,omitempty"`
 	ConfigSchema        *PluginConfigSchema `json:"configSchema,omitempty"`
 	UI                  *PluginUI           `json:"ui,omitempty"`
 	ProvidersPresent    bool                `json:"-"`
+}
+
+// PluginNetworkRule is one manifest.network entry.
+// Exact is the declared https URL. Regex is the declared regexp source.
+// Exactly one of them is set. The grant token is Exact, or Regex when Exact is empty.
+type PluginNetworkRule struct {
+	Exact string
+	Regex string
+}
+
+// Grant returns the canonical grant token: the declared URL, or the regex source.
+func (r PluginNetworkRule) Grant() string {
+	if r.Regex != "" {
+		return r.Regex
+	}
+	return r.Exact
 }
 
 // PluginHooksSpec holds the opened request-hook booleans.
@@ -221,7 +248,99 @@ func (m *PluginManifest) Validate() error {
 			return err
 		}
 	}
+	if err := m.validateNetwork(); err != nil {
+		return err
+	}
 	return nil
+}
+
+// NetworkGrants returns canonical network tokens in declaration order.
+// An omitted network is an empty list.
+func (m *PluginManifest) NetworkGrants() []string {
+	if m == nil || len(m.Network) == 0 {
+		return []string{}
+	}
+	out := make([]string, len(m.Network))
+	for i, rule := range m.Network {
+		out[i] = rule.Grant()
+	}
+	return out
+}
+
+func (m *PluginManifest) validateNetwork() error {
+	if m == nil || len(m.Network) == 0 {
+		return nil
+	}
+	if len(m.Network) > MaxPluginNetworkRules {
+		return fmt.Errorf("network must have at most %d rules", MaxPluginNetworkRules)
+	}
+	seen := make(map[string]struct{}, len(m.Network))
+	for i, rule := range m.Network {
+		if err := rule.validate(); err != nil {
+			return fmt.Errorf("network[%d]: %w", i, err)
+		}
+		token := rule.Grant()
+		if _, ok := seen[token]; ok {
+			return fmt.Errorf("network rule %q is duplicated", token)
+		}
+		seen[token] = struct{}{}
+	}
+	return nil
+}
+
+func (r PluginNetworkRule) validate() error {
+	if r.Regex != "" && r.Exact != "" {
+		return errors.New("network rule must be a URL string or a regex object")
+	}
+	if r.Regex != "" {
+		return validateNetworkRegex(r.Regex)
+	}
+	return validateExactNetworkURL(r.Exact)
+}
+
+func validateExactNetworkURL(raw string) error {
+	if raw == "" || strings.ContainsAny(raw, " \t\r\n?#") {
+		return errors.New("exact rule must be an https URL with a path and without userinfo, query, or fragment")
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.Path == "" ||
+		parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.Opaque != "" {
+		return errors.New("exact rule must be an https URL with a path and without userinfo, query, or fragment")
+	}
+	return nil
+}
+
+func validateNetworkRegex(source string) error {
+	if len(source) > MaxPluginNetworkRegex {
+		return fmt.Errorf("regex must be at most %d characters", MaxPluginNetworkRegex)
+	}
+	if !strings.HasPrefix(source, "^") || !strings.HasSuffix(source, "$") {
+		return errors.New("regex must start with ^ and end with $")
+	}
+	if _, err := regexp.Compile(source); err != nil {
+		return fmt.Errorf("regex is invalid: %w", err)
+	}
+	return nil
+}
+
+// UnmarshalJSON reads a URL string or {"regex": source}.
+func (r *PluginNetworkRule) UnmarshalJSON(data []byte) error {
+	parsed, err := decodeNetworkRule(data, 0)
+	if err != nil {
+		return err
+	}
+	*r = parsed
+	return nil
+}
+
+// MarshalJSON writes a URL string or {"regex": source}.
+func (r PluginNetworkRule) MarshalJSON() ([]byte, error) {
+	if r.Regex != "" {
+		return json.Marshal(struct {
+			Regex string `json:"regex"`
+		}{Regex: r.Regex})
+	}
+	return json.Marshal(r.Exact)
 }
 
 // Validate checks configSchema shape. Property names are not whitelisted.
@@ -577,6 +696,14 @@ func (m *PluginManifest) UnmarshalJSON(data []byte) error {
 			return err
 		}
 		m.Permissions = values
+	}
+	m.Network = []PluginNetworkRule{}
+	if raw, ok := obj["network"]; ok {
+		rules, err := decodeNetworkRules(raw)
+		if err != nil {
+			return err
+		}
+		m.Network = rules
 	}
 	if raw, ok := obj["events"]; ok {
 		m.EventsPresent = true
@@ -951,6 +1078,61 @@ func decodeJSONStringSlice(data []byte, fieldPath string) ([]string, error) {
 		values = append(values, value)
 	}
 	return values, nil
+}
+
+func decodeNetworkRules(data []byte) ([]PluginNetworkRule, error) {
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || bytes.Equal(data, []byte("null")) || data[0] != '[' {
+		return nil, errors.New("network must be an array")
+	}
+	var raws []json.RawMessage
+	if err := json.Unmarshal(data, &raws); err != nil {
+		return nil, errors.New("network must be an array")
+	}
+	rules := make([]PluginNetworkRule, 0, len(raws))
+	for i, raw := range raws {
+		rule, err := decodeNetworkRule(raw, i)
+		if err != nil {
+			return nil, err
+		}
+		rules = append(rules, rule)
+	}
+	return rules, nil
+}
+
+func decodeNetworkRule(data []byte, index int) (PluginNetworkRule, error) {
+	fieldPath := fmt.Sprintf("network[%d]", index)
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || bytes.Equal(data, []byte("null")) {
+		return PluginNetworkRule{}, fmt.Errorf("%s must be a URL string or a regex object", fieldPath)
+	}
+	switch data[0] {
+	case '"':
+		value, err := decodeJSONString(data, fieldPath)
+		if err != nil {
+			return PluginNetworkRule{}, err
+		}
+		return PluginNetworkRule{Exact: value}, nil
+	case '{':
+		obj, err := decodeObject(data, fieldPath)
+		if err != nil {
+			return PluginNetworkRule{}, err
+		}
+		if err := rejectUnknownFields(obj, networkRuleFieldNames, fieldPath); err != nil {
+			return PluginNetworkRule{}, err
+		}
+		raw, ok := obj["regex"]
+		if !ok {
+			return PluginNetworkRule{}, fmt.Errorf("%s.regex is required", fieldPath)
+		}
+		value, err := decodeJSONString(raw, fieldPath+".regex")
+		if err != nil {
+			return PluginNetworkRule{}, err
+		}
+		return PluginNetworkRule{Regex: value}, nil
+	default:
+		return PluginNetworkRule{}, fmt.Errorf("%s must be a URL string or a regex object", fieldPath)
+	}
 }
 
 func decodeJSONArray(data []byte, fieldPath string) ([]any, error) {

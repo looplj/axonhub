@@ -14,6 +14,9 @@ import {
   bridgeError,
   isPluginSitePath,
   matchPluginBridgeMessage,
+  pluginFetchCallParams,
+  pluginFetchHTTPError,
+  pluginFetchResult,
   pluginHTTPBridgeError,
   pluginProjectId,
   readPluginUITokens,
@@ -206,7 +209,7 @@ function PluginFrameAttempt({
       reply({ ok: false, error: bridgeError('NOT_READY') });
       return;
     }
-    if (call.method !== 'graphql' && call.method !== 'navigate' && call.method !== 'toast') {
+    if (call.method !== 'graphql' && call.method !== 'navigate' && call.method !== 'toast' && call.method !== 'fetch') {
       reply({ ok: false, error: bridgeError('INVALID_ARGUMENT') });
       return;
     }
@@ -241,6 +244,78 @@ function PluginFrameAttempt({
       }
       TOASTS[kind](message);
       reply({ ok: true, result: null });
+      return;
+    }
+    if (call.method === 'fetch') {
+      const outbound = pluginFetchCallParams(call.params);
+      if (!outbound) {
+        reply({ ok: false, error: bridgeError('INVALID_ARGUMENT') });
+        return;
+      }
+      const requestPluginId = pluginId;
+      const requestProjectId = selectedProjectId;
+      const timeoutSignal = AbortSignal.timeout(CALL_TIMEOUT_MS);
+      const signal = AbortSignal.any([session.abort.signal, timeoutSignal]);
+      try {
+        const token = await ensureFreshAccessToken();
+        if (session.disposed || sessionRef.current?.id !== session.id || signal.aborted) {
+          return;
+        }
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+        if (requestProjectId) {
+          headers['X-Project-ID'] = requestProjectId;
+        }
+        const response = await fetch(`/admin/plugins/${encodeURIComponent(requestPluginId)}/fetch`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(outbound),
+          signal,
+        });
+        if (session.disposed || sessionRef.current?.id !== session.id) {
+          return;
+        }
+        if (!response.ok) {
+          let payload: unknown = null;
+          try {
+            payload = await response.json();
+          } catch {
+            payload = null;
+          }
+          if (session.disposed || sessionRef.current?.id !== session.id) {
+            return;
+          }
+          reply({ ok: false, error: pluginFetchHTTPError(response.status, payload) });
+          return;
+        }
+        let payload: unknown;
+        try {
+          payload = await response.json();
+        } catch {
+          reply({ ok: false, error: bridgeError('INTERNAL', response.status) });
+          return;
+        }
+        if (session.disposed || sessionRef.current?.id !== session.id) {
+          return;
+        }
+        const result = pluginFetchResult(payload);
+        if (!result) {
+          reply({ ok: false, error: bridgeError('INTERNAL', response.status) });
+          return;
+        }
+        reply({ ok: true, result });
+      } catch {
+        if (session.disposed || sessionRef.current?.id !== session.id) {
+          return;
+        }
+        if (timeoutSignal.aborted) {
+          reply({ ok: false, error: bridgeError('TIMEOUT') });
+          return;
+        }
+        reply({ ok: false, error: bridgeError('NETWORK_ERROR') });
+      }
       return;
     }
 

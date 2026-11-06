@@ -48,9 +48,20 @@ func TestValidateExports(t *testing.T) {
 		})
 		require.True(t, exports["onEvent"].Function)
 		require.True(t, exports["onEvent"].Async)
-		err := ValidateExports(events, exports)
-		require.ErrorContains(t, err, "onEvent")
-		require.ErrorContains(t, err, "must not be async")
+		require.NoError(t, ValidateExports(events, exports))
+	})
+
+	t.Run("top-level await", func(t *testing.T) {
+		_, err := evaluateSources(map[string]string{
+			"plugin.js": "await Promise.resolve(1)\nexport function onEvent() {}\n",
+		})
+		require.ErrorContains(t, err, "plugin.js: top-level await is not allowed")
+
+		_, err = evaluateSources(map[string]string{
+			"plugin.js":   "import \"./lib/wait.js\"\nexport function onEvent() {}\n",
+			"lib/wait.js": "await Promise.resolve(1)\nexport const ready = true\n",
+		})
+		require.ErrorContains(t, err, "lib/wait.js: top-level await is not allowed")
 	})
 
 	t.Run("valid named export", func(t *testing.T) {

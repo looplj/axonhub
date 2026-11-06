@@ -21,10 +21,12 @@ interface PluginGrantDialogProps {
   onOpenChange: (open: boolean) => void;
   mode: 'install' | 'upgrade';
   permissions: string[];
+  network: string[];
   initialGranted: string[];
+  initialGrantedNetwork: string[];
   preview?: PluginUpgradePreview | null;
   pending?: boolean;
-  onConfirm: (granted: string[]) => void;
+  onConfirm: (grantedPermissions: string[], grantedNetwork: string[]) => void;
 }
 
 export function PluginGrantDialog({
@@ -32,30 +34,33 @@ export function PluginGrantDialog({
   onOpenChange,
   mode,
   permissions,
+  network,
   initialGranted,
+  initialGrantedNetwork,
   preview,
   pending = false,
   onConfirm,
 }: PluginGrantDialogProps) {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<string[]>([]);
+  const [selectedNetwork, setSelectedNetwork] = useState<string[]>([]);
   const wasOpen = useRef(false);
 
   useEffect(() => {
     if (open && !wasOpen.current) {
       const allowed = new Set(permissions);
       setSelected(initialGranted.filter((permission) => allowed.has(permission)));
+      const allowedNetwork = new Set(network);
+      setSelectedNetwork(initialGrantedNetwork.filter((rule) => allowedNetwork.has(rule)));
     }
     wasOpen.current = open;
-  }, [open, permissions, initialGranted]);
+  }, [open, permissions, network, initialGranted, initialGrantedNetwork]);
 
-  const toggle = (permission: string, checked: boolean) => {
-    setSelected((current) => {
-      if (checked) {
-        return current.includes(permission) ? current : [...current, permission];
-      }
-      return current.filter((item) => item !== permission);
-    });
+  const toggle = (current: string[], value: string, checked: boolean) => {
+    if (checked) {
+      return current.includes(value) ? current : [...current, value];
+    }
+    return current.filter((item) => item !== value);
   };
 
   const added = (items: string[] | undefined) => items ?? [];
@@ -76,6 +81,7 @@ export function PluginGrantDialog({
             <div className='space-y-2 text-sm'>
               <p>{t('plugins.grant.versionChange', { current: preview.currentVersion, next: preview.newVersion })}</p>
               <AddedList label={t('plugins.grant.addedPermissions')} items={added(preview.permissions)} empty={t('plugins.grant.none')} />
+              <AddedList label={t('plugins.grant.addedNetwork')} items={added(preview.network)} empty={t('plugins.grant.none')} />
               <AddedList label={t('plugins.grant.addedEvents')} items={added(preview.events)} empty={t('plugins.grant.none')} />
               <AddedList label={t('plugins.grant.addedHooks')} items={added(preview.hooks)} empty={t('plugins.grant.none')} />
               <AddedList label={t('plugins.grant.addedPages')} items={added(preview.pages)} empty={t('plugins.grant.none')} />
@@ -98,7 +104,7 @@ export function PluginGrantDialog({
                   <Checkbox
                     id={inputID}
                     checked={selected.includes(permission)}
-                    onCheckedChange={(value) => toggle(permission, value === true)}
+                    onCheckedChange={(value) => setSelected((current) => toggle(current, permission, value === true))}
                     disabled={pending}
                   />
                   <div className='space-y-1'>
@@ -111,6 +117,27 @@ export function PluginGrantDialog({
               );
             })}
           </div>
+          <div className='space-y-2'>
+            <p className='text-sm font-medium'>{t('plugins.grant.network')}</p>
+            {network.length > 0 && <p className='text-destructive text-sm'>{t('plugins.grant.networkWarning')}</p>}
+            {network.length === 0 && <p className='text-muted-foreground text-sm'>{t('plugins.grant.none')}</p>}
+            {network.map((rule, index) => {
+              const inputID = `plugin-grant-network-${index}`;
+              return (
+                <div key={`${index}:${rule}`} className='flex items-start gap-3 rounded-md border p-3'>
+                  <Checkbox
+                    id={inputID}
+                    checked={selectedNetwork.includes(rule)}
+                    onCheckedChange={(value) => setSelectedNetwork((current) => toggle(current, rule, value === true))}
+                    disabled={pending}
+                  />
+                  <Label htmlFor={inputID} className='font-normal break-all'>
+                    {rule}
+                  </Label>
+                </div>
+              );
+            })}
+          </div>
         </div>
         <DialogFooter>
           <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={pending}>
@@ -118,7 +145,12 @@ export function PluginGrantDialog({
           </Button>
           <Button
             type='button'
-            onClick={() => onConfirm(permissions.filter((permission) => selected.includes(permission)))}
+            onClick={() =>
+              onConfirm(
+                permissions.filter((permission) => selected.includes(permission)),
+                network.filter((rule) => selectedNetwork.includes(rule))
+              )
+            }
             disabled={pending}
           >
             {pending

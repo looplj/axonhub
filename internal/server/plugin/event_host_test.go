@@ -73,7 +73,7 @@ export function onEvent(event, ctx) {
 	})
 	require.Equal(t, "request.failover\nrequest.failover\n", kvValue(t, manager, "acme.events", installed.ID, "seen"))
 
-	require.NoError(t, manager.Enable(pluginCtx(), installed.ID, nil))
+	require.NoError(t, manager.Enable(pluginCtx(), installed.ID, nil, nil))
 	require.True(t, bus.HasSubscribers(events.TypeRequestFailover))
 	require.NoError(t, manager.Stop(context.Background()))
 	require.False(t, bus.HasSubscribers(events.TypeRequestFailover))
@@ -97,7 +97,7 @@ export function onEvent(event, ctx) {
   }
 }
 `)
-	require.NoError(t, manager.Enable(pluginCtx(), installed.ID, nil))
+	require.NoError(t, manager.Enable(pluginCtx(), installed.ID, nil, nil))
 	publishFailover(bus, ch, "", 0)
 	waitKV(t, manager, "acme.denied", installed.ID, "result", "PluginHostError:PERMISSION_DENIED")
 
@@ -145,7 +145,7 @@ export function onEvent(event, ctx) {
   ctx.kv.set("done", "yes");
 }
 `, fingerprint))
-	require.NoError(t, manager.Enable(pluginCtx(), installed.ID, []string{"write_channels"}))
+	require.NoError(t, manager.Enable(pluginCtx(), installed.ID, []string{"write_channels"}, nil))
 	publishFailover(bus, ch, "", 0)
 	waitKV(t, manager, "acme.cred", installed.ID, "done", "yes")
 	require.Equal(t, "INVALID_ARGUMENT", kvValue(t, manager, "acme.cred", installed.ID, "oauth"))
@@ -176,7 +176,7 @@ func TestInstallRejectsClosedEventsWithoutWrite(t *testing.T) {
 	for _, name := range []string{"channel.auto_disabled", "provider.quota.warning", "provider.quota.exhausted"} {
 		t.Run(name, func(t *testing.T) {
 			raw := eventZip(t, "acme.closed", []string{name}, nil, "export function onEvent() {}")
-			_, err := manager.Install(pluginCtx(), raw, nil)
+			_, err := manager.Install(pluginCtx(), raw, nil, nil)
 			require.ErrorContains(t, err, name)
 			require.ErrorContains(t, err, "is not enabled")
 			require.Zero(t, pluginCount(t, client))
@@ -185,16 +185,24 @@ func TestInstallRejectsClosedEventsWithoutWrite(t *testing.T) {
 
 	t.Run("plugin.js required", func(t *testing.T) {
 		raw := eventZip(t, "acme.closed", []string{"request.failover"}, nil, "")
-		_, err := manager.Install(pluginCtx(), raw, nil)
+		_, err := manager.Install(pluginCtx(), raw, nil, nil)
 		require.ErrorContains(t, err, "plugin.js is required")
 		require.Zero(t, pluginCount(t, client))
 	})
 
-	t.Run("onEvent must not be async", func(t *testing.T) {
-		raw := eventZip(t, "acme.closed", []string{"request.failover"}, nil, "export async function onEvent() {}")
-		_, err := manager.Install(pluginCtx(), raw, nil)
-		require.ErrorContains(t, err, "must not be async")
-		require.Zero(t, pluginCount(t, client))
+	t.Run("async onEvent can be installed", func(t *testing.T) {
+		raw := eventZip(t, "acme.closed", []string{"request.failover"}, nil, "export async function onEvent() { return 1 }")
+		installed, err := manager.Install(pluginCtx(), raw, nil, nil)
+		require.NoError(t, err)
+		require.NotNil(t, installed.Plugin)
+	})
+
+	t.Run("top-level await", func(t *testing.T) {
+		before := pluginCount(t, client)
+		raw := eventZip(t, "acme.closed", []string{"request.failover"}, nil, "await Promise.resolve(1)\nexport function onEvent() {}")
+		_, err := manager.Install(pluginCtx(), raw, nil, nil)
+		require.ErrorContains(t, err, "top-level await is not allowed")
+		require.Equal(t, before, pluginCount(t, client))
 	})
 }
 
@@ -263,7 +271,7 @@ func runFailoverThreshold(t *testing.T, cache xcache.Config, mr *miniredis.Minir
 	ch := createEventChannel(t, client, "guard-channel", []string{"sk-guard"})
 
 	installed := installEventPlugin(t, manager, "acme.guard", []string{"request.failover"}, []string{"write_channels", "webhook"}, failoverGuardScript)
-	require.NoError(t, manager.Enable(pluginCtx(), installed.ID, []string{"write_channels", "webhook"}))
+	require.NoError(t, manager.Enable(pluginCtx(), installed.ID, []string{"write_channels", "webhook"}, nil))
 	require.NoError(t, manager.UpdateSettings(pluginCtx(), installed.ID, 0, map[string]any{
 		"threshold": 10,
 		"target":    "duty",
@@ -344,7 +352,7 @@ func installEventPlugin(t *testing.T, manager *Manager, id string, eventNames, p
 	t.Helper()
 	installed := installUI(t, manager, eventZip(t, id, eventNames, permissions, source))
 	if permissions == nil {
-		require.NoError(t, manager.Enable(pluginCtx(), installed.ID, nil))
+		require.NoError(t, manager.Enable(pluginCtx(), installed.ID, nil, nil))
 		current := manager.Current().ByID(installed.ID)
 		require.NotNil(t, current)
 		require.Equal(t, RuntimeStatusActive, current.Status, current.Reason)

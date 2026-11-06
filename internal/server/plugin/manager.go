@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -77,6 +78,7 @@ var pluginMetaColumns = []string{
 	entplugin.FieldEnabled,
 	entplugin.FieldPriority,
 	entplugin.FieldGrantedPermissions,
+	entplugin.FieldGrantedNetwork,
 	entplugin.FieldConfig,
 }
 
@@ -97,12 +99,14 @@ type RuntimeStatusEntry struct {
 	Reason   string
 }
 
-// UpgradePreview is returned when an enabled plugin gains permissions, events, hooks, or pages.
+// UpgradePreview is returned when an enabled plugin gains permissions, network
+// rules, events, hooks, or pages.
 // Nothing is written until a later Install submits the full new grant.
 type UpgradePreview struct {
 	CurrentVersion string
 	NewVersion     string
 	Permissions    []string
+	Network        []string
 	Events         []string
 	Hooks          []string
 	Pages          []string
@@ -167,6 +171,10 @@ type Manager struct {
 	// kvNow is the clock for KV expiry. Nil means time.Now.
 	// Tests in this package may set it.
 	kvNow func() time.Time
+
+	// outboundTransport, when set, handles ctx.fetch and the page fetch route.
+	// Nil uses http.DefaultTransport. Redirects are never followed.
+	outboundTransport http.RoundTripper
 
 	// callNow is the clock for the circuit breaker. Nil means time.Now.
 	// Tests in this package may set it. It is not the KV clock.
@@ -487,9 +495,13 @@ func (m *Manager) RuntimeStatuses() []RuntimeStatusEntry {
 }
 
 // Install parses a package and either inserts a disabled row or upgrades the active row.
-// submitted == nil means the caller did not send a grant. A non-nil slice, including
-// an empty one, is the full new grant for an upgrade. New installs ignore submitted.
-func (m *Manager) Install(ctx context.Context, zip []byte, submitted *[]string) (*InstallResult, error) {
+// submitted == nil means the caller did not send a permission grant. A non-nil slice,
+// including an empty one, is the full new permission grant for an upgrade.
+// New installs ignore submitted permissions.
+// submittedNetwork == nil converges the previous network grant with the new manifest.
+// A new install has no previous grant, so that result is empty. A non-nil network
+// slice is the full new grant and must be a subset of manifest.network.
+func (m *Manager) Install(ctx context.Context, zip []byte, submitted *[]string, submittedNetwork *[]string) (*InstallResult, error) {
 	pkg, err := ParsePackage(zip)
 	if err != nil {
 		return nil, err
@@ -501,15 +513,23 @@ func (m *Manager) Install(ctx context.Context, zip []byte, submitted *[]string) 
 		return nil, err
 	}
 	if len(rows) == 0 {
-		return m.insertPlugin(ctx, zip, pkg)
+		return m.insertPlugin(ctx, zip, pkg, submittedNetwork)
 	}
 	if len(rows) > 1 {
 		return nil, fmt.Errorf("plugin %q has more than one active row", pkg.Manifest.ID)
 	}
-	return m.upgradePlugin(ctx, rows[0], zip, pkg, submitted)
+	return m.upgradePlugin(ctx, rows[0], zip, pkg, submitted, submittedNetwork)
 }
 
-func (m *Manager) insertPlugin(ctx context.Context, zip []byte, pkg *Package) (*InstallResult, error) {
+func (m *Manager) insertPlugin(ctx context.Context, zip []byte, pkg *Package, submittedNetwork *[]string) (*InstallResult, error) {
+	network := []string{}
+	if submittedNetwork != nil {
+		normalized, err := networkSubset(*submittedNetwork, pkg.Manifest.NetworkGrants())
+		if err != nil {
+			return nil, err
+		}
+		network = normalized
+	}
 	var saved *ent.Plugin
 	err := m.runInTx(ctx, func(txCtx context.Context) error {
 		row, err := m.client(txCtx).Plugin.Create().
@@ -522,6 +542,7 @@ func (m *Manager) insertPlugin(ctx context.Context, zip []byte, pkg *Package) (*
 			SetPackageSha256(pkg.SHA256).
 			SetEnabled(false).
 			SetGrantedPermissions([]string{}).
+			SetGrantedNetwork(network).
 			SetConfig(map[string]any{}).
 			Save(txCtx)
 		if err != nil {
@@ -540,7 +561,7 @@ func (m *Manager) insertPlugin(ctx context.Context, zip []byte, pkg *Package) (*
 	return &InstallResult{Plugin: saved}, nil
 }
 
-func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip []byte, pkg *Package, submitted *[]string) (*InstallResult, error) {
+func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip []byte, pkg *Package, submitted *[]string, submittedNetwork *[]string) (*InstallResult, error) {
 	var (
 		saved   *ent.Plugin
 		preview *UpgradePreview
@@ -550,11 +571,11 @@ func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip [
 		if err != nil {
 			return err
 		}
-		plan, err := PrepareUpgrade(&row.Manifest, &pkg.Manifest, row.Granted, row.Config, submitted)
+		plan, err := PrepareUpgrade(&row.Manifest, &pkg.Manifest, row.Granted, row.GrantedNetwork, row.Config, submitted, submittedNetwork)
 		if err != nil {
 			return err
 		}
-		if row.Enabled && plan.Diff.NeedsPreview() && submitted == nil {
+		if row.Enabled && plan.Diff.NeedsPreview() && submitted == nil && submittedNetwork == nil {
 			preview = previewFrom(row, pkg, plan.Diff)
 			saved = row.entity()
 			return errUpgradePreview
@@ -567,6 +588,7 @@ func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip [
 			SetPackage(zip).
 			SetPackageSha256(pkg.SHA256).
 			SetGrantedPermissions(plan.Granted).
+			SetGrantedNetwork(plan.GrantedNetwork).
 			SetConfig(plan.Config).
 			Save(txCtx)
 		if err != nil {
@@ -588,8 +610,9 @@ func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip [
 	return &InstallResult{Plugin: saved}, nil
 }
 
-// Enable grants a subset of the stored manifest permissions and marks the row enabled.
-func (m *Manager) Enable(ctx context.Context, id int, granted []string) error {
+// Enable grants subsets of the stored manifest permissions and network rules,
+// then marks the row enabled. Both slices are the complete new grants.
+func (m *Manager) Enable(ctx context.Context, id int, granted []string, grantedNetwork []string) error {
 	ctx = authz.WithSystemBypass(ctx, pluginBypassReason)
 	err := m.runInTx(ctx, func(txCtx context.Context) error {
 		row, err := m.oneRecord(txCtx, id)
@@ -600,9 +623,14 @@ func (m *Manager) Enable(ctx context.Context, id int, granted []string) error {
 		if err != nil {
 			return err
 		}
+		network, err := networkSubset(grantedNetwork, row.Manifest.NetworkGrants())
+		if err != nil {
+			return err
+		}
 		return m.client(txCtx).Plugin.UpdateOneID(id).
 			SetEnabled(true).
 			SetGrantedPermissions(normalized).
+			SetGrantedNetwork(network).
 			Exec(txCtx)
 	})
 	if err != nil {
@@ -1265,6 +1293,7 @@ type LoadedPlugin struct {
 	Enabled            bool
 	Priority           int
 	GrantedPermissions []string
+	GrantedNetwork     []string
 	Config             map[string]any
 	PackageSHA256      string
 	Status             RuntimeStatus
@@ -1493,26 +1522,31 @@ type fingerprintRow struct {
 }
 
 type pluginRecord struct {
-	ID            int
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	DeletedAt     int
-	PluginID      string
-	Name          string
-	Version       string
-	Description   string
-	Manifest      objects.PluginManifest
-	PackageSHA256 string
-	Enabled       bool
-	Priority      int
-	Granted       []string
-	Config        map[string]any
+	ID             int
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeletedAt      int
+	PluginID       string
+	Name           string
+	Version        string
+	Description    string
+	Manifest       objects.PluginManifest
+	PackageSHA256  string
+	Enabled        bool
+	Priority       int
+	Granted        []string
+	GrantedNetwork []string
+	Config         map[string]any
 }
 
 func (row pluginRecord) loaded() *LoadedPlugin {
 	granted := slices.Clone(row.Granted)
 	if granted == nil {
 		granted = []string{}
+	}
+	network := slices.Clone(row.GrantedNetwork)
+	if network == nil {
+		network = []string{}
 	}
 	config := map[string]any{}
 	maps.Copy(config, row.Config)
@@ -1526,6 +1560,7 @@ func (row pluginRecord) loaded() *LoadedPlugin {
 		Enabled:            row.Enabled,
 		Priority:           row.Priority,
 		GrantedPermissions: granted,
+		GrantedNetwork:     network,
 		Config:             config,
 		PackageSHA256:      row.PackageSHA256,
 	}
@@ -1547,6 +1582,7 @@ func (row pluginRecord) entity() *ent.Plugin {
 		Enabled:            item.Enabled,
 		Priority:           item.Priority,
 		GrantedPermissions: item.GrantedPermissions,
+		GrantedNetwork:     item.GrantedNetwork,
 		Config:             item.Config,
 	}
 }
@@ -1556,6 +1592,7 @@ func previewFrom(row pluginRecord, pkg *Package, diff ManifestDiff) *UpgradePrev
 		CurrentVersion: row.Version,
 		NewVersion:     pkg.Manifest.Version,
 		Permissions:    slices.Clone(diff.Permissions),
+		Network:        slices.Clone(diff.Network),
 		Events:         slices.Clone(diff.Events),
 		Hooks:          slices.Clone(diff.Hooks),
 		Pages:          slices.Clone(diff.Pages),
@@ -1597,6 +1634,14 @@ func validateStoredConfig(schema *objects.PluginConfigSchema, config map[string]
 }
 
 func permissionsSubset(granted, declared []string) ([]string, error) {
+	return grantSubset(granted, declared, "permission")
+}
+
+func networkSubset(granted, declared []string) ([]string, error) {
+	return grantSubset(granted, declared, "network rule")
+}
+
+func grantSubset(granted, declared []string, kind string) ([]string, error) {
 	declaredSet := lo.SliceToMap(declared, func(item string) (string, struct{}) {
 		return item, struct{}{}
 	})
@@ -1604,7 +1649,7 @@ func permissionsSubset(granted, declared []string) ([]string, error) {
 	seen := make(map[string]struct{}, len(granted))
 	for _, item := range granted {
 		if _, ok := declaredSet[item]; !ok {
-			return nil, fmt.Errorf("granted permission %q is not declared by the plugin", item)
+			return nil, fmt.Errorf("granted %s %q is not declared by the plugin", kind, item)
 		}
 		if _, dup := seen[item]; dup {
 			continue

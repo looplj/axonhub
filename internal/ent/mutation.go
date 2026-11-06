@@ -12040,6 +12040,8 @@ type PluginMutation struct {
 	addpriority               *int
 	granted_permissions       *[]string
 	appendgranted_permissions []string
+	granted_network           *[]string
+	appendgranted_network     []string
 	_config                   *map[string]interface{}
 	clearedFields             map[string]struct{}
 	done                      bool
@@ -12760,6 +12762,71 @@ func (m *PluginMutation) ResetGrantedPermissions() {
 	delete(m.clearedFields, plugin.FieldGrantedPermissions)
 }
 
+// SetGrantedNetwork sets the "granted_network" field.
+func (m *PluginMutation) SetGrantedNetwork(s []string) {
+	m.granted_network = &s
+	m.appendgranted_network = nil
+}
+
+// GrantedNetwork returns the value of the "granted_network" field in the mutation.
+func (m *PluginMutation) GrantedNetwork() (r []string, exists bool) {
+	v := m.granted_network
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGrantedNetwork returns the old "granted_network" field's value of the Plugin entity.
+// If the Plugin object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginMutation) OldGrantedNetwork(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGrantedNetwork is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGrantedNetwork requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGrantedNetwork: %w", err)
+	}
+	return oldValue.GrantedNetwork, nil
+}
+
+// AppendGrantedNetwork adds s to the "granted_network" field.
+func (m *PluginMutation) AppendGrantedNetwork(s []string) {
+	m.appendgranted_network = append(m.appendgranted_network, s...)
+}
+
+// AppendedGrantedNetwork returns the list of values that were appended to the "granted_network" field in this mutation.
+func (m *PluginMutation) AppendedGrantedNetwork() ([]string, bool) {
+	if len(m.appendgranted_network) == 0 {
+		return nil, false
+	}
+	return m.appendgranted_network, true
+}
+
+// ClearGrantedNetwork clears the value of the "granted_network" field.
+func (m *PluginMutation) ClearGrantedNetwork() {
+	m.granted_network = nil
+	m.appendgranted_network = nil
+	m.clearedFields[plugin.FieldGrantedNetwork] = struct{}{}
+}
+
+// GrantedNetworkCleared returns if the "granted_network" field was cleared in this mutation.
+func (m *PluginMutation) GrantedNetworkCleared() bool {
+	_, ok := m.clearedFields[plugin.FieldGrantedNetwork]
+	return ok
+}
+
+// ResetGrantedNetwork resets all changes to the "granted_network" field.
+func (m *PluginMutation) ResetGrantedNetwork() {
+	m.granted_network = nil
+	m.appendgranted_network = nil
+	delete(m.clearedFields, plugin.FieldGrantedNetwork)
+}
+
 // SetConfig sets the "config" field.
 func (m *PluginMutation) SetConfig(value map[string]interface{}) {
 	m._config = &value
@@ -12843,7 +12910,7 @@ func (m *PluginMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PluginMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 15)
 	if m.created_at != nil {
 		fields = append(fields, plugin.FieldCreatedAt)
 	}
@@ -12883,6 +12950,9 @@ func (m *PluginMutation) Fields() []string {
 	if m.granted_permissions != nil {
 		fields = append(fields, plugin.FieldGrantedPermissions)
 	}
+	if m.granted_network != nil {
+		fields = append(fields, plugin.FieldGrantedNetwork)
+	}
 	if m._config != nil {
 		fields = append(fields, plugin.FieldConfig)
 	}
@@ -12920,6 +12990,8 @@ func (m *PluginMutation) Field(name string) (ent.Value, bool) {
 		return m.Priority()
 	case plugin.FieldGrantedPermissions:
 		return m.GrantedPermissions()
+	case plugin.FieldGrantedNetwork:
+		return m.GrantedNetwork()
 	case plugin.FieldConfig:
 		return m.Config()
 	}
@@ -12957,6 +13029,8 @@ func (m *PluginMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldPriority(ctx)
 	case plugin.FieldGrantedPermissions:
 		return m.OldGrantedPermissions(ctx)
+	case plugin.FieldGrantedNetwork:
+		return m.OldGrantedNetwork(ctx)
 	case plugin.FieldConfig:
 		return m.OldConfig(ctx)
 	}
@@ -13059,6 +13133,13 @@ func (m *PluginMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetGrantedPermissions(v)
 		return nil
+	case plugin.FieldGrantedNetwork:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGrantedNetwork(v)
+		return nil
 	case plugin.FieldConfig:
 		v, ok := value.(map[string]interface{})
 		if !ok {
@@ -13144,6 +13225,9 @@ func (m *PluginMutation) ClearedFields() []string {
 	if m.FieldCleared(plugin.FieldGrantedPermissions) {
 		fields = append(fields, plugin.FieldGrantedPermissions)
 	}
+	if m.FieldCleared(plugin.FieldGrantedNetwork) {
+		fields = append(fields, plugin.FieldGrantedNetwork)
+	}
 	if m.FieldCleared(plugin.FieldConfig) {
 		fields = append(fields, plugin.FieldConfig)
 	}
@@ -13181,6 +13265,9 @@ func (m *PluginMutation) ClearField(name string) error {
 		return nil
 	case plugin.FieldGrantedPermissions:
 		m.ClearGrantedPermissions()
+		return nil
+	case plugin.FieldGrantedNetwork:
+		m.ClearGrantedNetwork()
 		return nil
 	case plugin.FieldConfig:
 		m.ClearConfig()
@@ -13231,6 +13318,9 @@ func (m *PluginMutation) ResetField(name string) error {
 		return nil
 	case plugin.FieldGrantedPermissions:
 		m.ResetGrantedPermissions()
+		return nil
+	case plugin.FieldGrantedNetwork:
+		m.ResetGrantedNetwork()
 		return nil
 	case plugin.FieldConfig:
 		m.ResetConfig()

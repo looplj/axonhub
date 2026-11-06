@@ -42,7 +42,7 @@ func TestPluginUI(t *testing.T) {
 		"ui/other.html":         otherHTML,
 		"ui/readme.txt":         txtBody,
 	}))
-	require.NoError(t, manager.Enable(ctx, installed.ID, nil))
+	require.NoError(t, manager.Enable(ctx, installed.ID, nil, nil))
 	require.Equal(t, RuntimeStatusActive, manager.Current().ByPluginID(pluginID).Status)
 
 	bridge, err := os.ReadFile("uisdk/bridge.js")
@@ -189,7 +189,7 @@ func TestPluginUI(t *testing.T) {
 	t.Run("disabled plugin", func(t *testing.T) {
 		require.NoError(t, manager.Disable(ctx, installed.ID))
 		t.Cleanup(func() {
-			require.NoError(t, manager.Enable(ctx, installed.ID, nil))
+			require.NoError(t, manager.Enable(ctx, installed.ID, nil, nil))
 		})
 		response := request(http.MethodGet, token, "/"+entry, "null")
 		require.Equal(t, http.StatusForbidden, response.Code)

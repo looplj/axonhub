@@ -90,6 +90,7 @@ type GraphqlHandler struct {
 	Graphql       http.Handler
 	Playground    http.Handler
 	PluginGraphql http.Handler
+	PluginFetch   http.Handler
 
 	executable graphql.ExecutableSchema
 }
@@ -149,6 +150,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 		Graphql:       gqlSrv,
 		Playground:    playground.Handler("AxonHub", "/admin/graphql"),
 		PluginGraphql: newPluginGraphqlHandler(schema, deps.Ent, deps.PluginManager),
+		PluginFetch:   newPluginFetchHandler(deps.PluginManager),
 		executable:    schema,
 	}
 }
@@ -253,7 +255,6 @@ func newPluginGraphqlHandler(schema graphql.ExecutableSchema, client *ent.Client
 	return &pluginGraphqlHTTPHandler{
 		handler: srv,
 		manager: manager,
-		limiter: newPluginGraphqlLimiter(),
 	}
 }
 

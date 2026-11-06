@@ -59,6 +59,7 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 | `axonhubVersion`                      | 是   | npm 风格的 semver 范围，见 [版本兼容](#版本兼容)                                                                                                         | 运行时、市场                                     | T-01   |
 | `pluginApiVersion`                    | 是   | 整数，当前只能是 `1`，见 [版本兼容](#版本兼容)                                                                                                           | 运行时                                           | T-01   |
 | `permissions`                         | 否   | 只能取 [权限词表](#5-权限词表) 中已开放的权限；省略为 `[]`                                                                                               | 授权、宿主 API、页面 GraphQL                     | T-01   |
+| `network`                             | 否   | 最多 32 条。字符串是精确 `https` URL，必须带 path，无 userinfo、query、fragment。对象只能是 `{ "regex": "..." }`，正则全匹配且最长 256 字符。省略为 `[]`。开放前出现：`network is not enabled` | [出站请求](plugin.js.md#出站请求)                 | T-16   |
 | `configSchema`                        | 否   | 见 [configSchema](#configschema)                                                                                                                         | 管理页配置表单、`ctx.config`、页面 `init.config` | T-01   |
 | `ui.pages[].key`                      | 是   | `^[a-z0-9][a-z0-9-]{0,31}$`，在该插件内唯一                                                                                                              | [页面](pages.md) 路由                            | T-01   |
 | `ui.pages[].entry`                    | 是   | 包内 `ui/` 下存在的 `.html`                                                                                                                              | [页面](pages.md) iframe                          | T-01   |
@@ -129,7 +130,7 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 
 1. `events` 非空 → 导出 `onEvent`。
 2. `hooks.request` 为 `true` → 导出 `onRequest`；`hooks.attempt` 为 `true` → 导出 `onAttempt`。
-3. 上述导出都是函数，且不是 async。
+3. 上述导出都是函数。允许 async。顶层 `await` 拒绝。
 
 声明了 `events` 或 `hooks`、但包里没有 `plugin.js` 时，同样失败。
 
@@ -140,9 +141,9 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 | `read_channels`、`read_requests`、`read_dashboard`、`read_api_keys`、`read_projects`、`read_settings` | `internal/scopes` | 宿主 API 读接口；页面 GraphQL 上限                                                                                                                      | T-01   |
 | `write_channels`                                                                                      | `internal/scopes` | 宿主 API 的渠道和凭证启停；进入页面 GraphQL 上限，页面因此能执行全部渠道 mutation 并读取凭证明文。授权对话框高亮，见 [pages.md](pages.md#10-风险与妥协) | T-01   |
 | `webhook`                                                                                             | 插件专用          | `ctx.webhook.send` 使用已配置的 WebHook 目标                                                                                                            | T-01   |
-| `fetch`                                                                                               | 插件专用          | 出现即拒绝：`fetch is not enabled`。见 [非目标](README.md#非目标)                                                                                       | 未排期 |
+| `fetch`                                                                                               | 插件专用          | 出现即拒绝：`fetch is not enabled`。出站目标写在 `network`，不使用这个权限名                                                                             | 未排期 |
 
-- manifest 的 `permissions` 只声明插件想要什么。Owner 启用时勾选，勾选项必须是声明的子集，写入 `plugins.granted_permissions`。宿主 API 和页面 GraphQL 查的是这一列。
+- manifest 的 `permissions` 只声明插件想要什么。Owner 启用时勾选，勾选项必须是声明的子集，写入 `plugins.granted_permissions`。宿主 API 和页面 GraphQL 查的是这一列。`network` 另存为 `granted_network`，规则相同：勾选项必须是声明的子集，未提交时取旧授权与新声明的交集。
 - KV 不在词表里：插件只能读写本次安装（`plugins.id`）的数据，安装 ID 由宿主绑定，JS 和页面都不能指定。升级保留安装 ID，同名重装使用新 ID，见 [PluginStorage](README.md#pluginstorage)。
 - `read_plugins`、`write_plugins` 不在词表里：它们授予用户，不授予插件，见 [Plugin](README.md#plugin)。
 
@@ -153,6 +154,7 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 | 项            | 比较方式                             |
 | ------------- | ------------------------------------ |
 | `permissions` | 集合差                               |
+| `network`     | 集合差。精确 URL 按字符串，正则按 `regex` 原文 |
 | `events`      | 集合差                               |
 | `hooks`       | 新为 `true`、旧为 `false` 或缺省的键 |
 | `ui.pages`    | 按 `key` 的集合差                    |
@@ -161,7 +163,7 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 
 所有升级路径（已启用、已停用、本地上传、市场安装）都执行以下规则：
 
-1. **授权收敛**：没有显式提交 `grantedPermissions` 时，新授权为旧授权与新 `manifest.permissions` 的交集；不自动授予新增权限。显式提交时，该参数表示完整的新授权集合（不是增量），必须是新声明的子集，否则拒绝。包、manifest、config 和最终授权在同一事务里写入。
+1. **授权收敛**：没有显式提交 `grantedPermissions` 时，新授权为旧授权与新 `manifest.permissions` 的交集；不自动授予新增权限。显式提交时，该参数表示完整的新授权集合（不是增量），必须是新声明的子集，否则拒绝。`grantedNetwork` 使用同样的交集和完整集合规则，对应 `manifest.network`。包、manifest、config 和最终授权在同一事务里写入。
 2. **禁止 secret 降级**：旧 schema 中标为 `format: secret` 的字段，若新 schema 仍声明同名字段，该字段必须继续标为 secret；否则拒绝升级，不写库。错误只包含字段名和原因，不包含值。即使插件已停用或 Owner 确认新增权限，也不绕过此校验。
 3. **删除废弃配置**：新 config 只保留新 schema 声明的字段；被删除的字段（包括 secret）从配置中移除，不交给新版本、配置查询或页面。没有 `configSchema` 等同于没有声明字段。对保留的值按新 schema 校验，不兼容则拒绝升级，旧版本与旧配置保持不变。v1 不做隐式类型转换。
 4. **确认时重新校验**：预览阶段只计算变更，不修改配置或授权；最终写入时，基于事务内读取的当前插件行重新执行上述规则，避免预览之后的配置变更绕过校验。
@@ -170,7 +172,8 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 
 ### `internal/objects/plugin.go`
 
-- `PluginManifest`、`PluginHooksSpec`、`PluginUI`、`PluginUIPage`。
+- `PluginManifest`、`PluginHooksSpec`、`PluginUI`、`PluginUIPage`、`PluginNetworkRule`（精确 URL 或 `{ regex }`）。
+- T-16 完成前，`network` 出现即返回 `network is not enabled`，不定义授予列。开放时再写入 `granted_network`。
 - `PluginTitle`：支持字符串或语言映射的 JSON 编解码和校验，保留原始形式；页面、未来的 panel/provider 共用。
 - 固定结构按层校验字段白名单，并保留错误字段路径；动态语言映射和配置属性名按各自契约校验。为识别未开放字段，解析时记录 `ui.panels`、`providers`、`hooks.response`、`hooks.streamChunk` 是否出现，不定义它们的结构。
 - `Validate()`：结构校验。
@@ -193,7 +196,7 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 | 标题     | `title` 的字符串与多语言对象均通过且可往返序列化；非法类型、空白值、缺少 `en` 的对象被拒                                                                                    | 同上                                                      |
 | 开放     | 字段表里每个未开放字段各一个用例，错误文本与表中一致；开放任务完成后对应用例改为通过                                                                                        | 同上                                                      |
 | 版本     | `axonhubVersion: "^1.0.0"` 在 `v1.0.0-beta9` 上通过，在 `0.9.0` 和 `2.0.0` 上失败；`pluginApiVersion: 2` 失败                                                               | 同上                                                      |
-| 导出     | 缺少导出、导出为 async、声明了 `events` 但没有 `plugin.js`：安装失败                                                                                                        | `go test ./internal/server/plugin/ -run TestParsePackage` |
-| 升级     | 只改 `version` 或兼容的 `configSchema` 时直接替换；多一个权限、事件、钩子或页面时返回预览                                                                                   | `go test ./internal/server/plugin/ -run TestUpgrade`      |
+| 导出     | 缺少导出、顶层 await、声明了 `events` 但没有 `plugin.js`：安装失败。async 钩子可以通过                                                                                         | `go test ./internal/server/plugin/ -run TestParsePackage` |
+| 升级     | 只改 `version` 或兼容的 `configSchema` 时直接替换；多一个权限、出站规则、事件、钩子或页面时返回预览                                                                                   | `go test ./internal/server/plugin/ -run TestUpgrade`      |
 | 升级权限 | 新版移除 `write_channels` 后，持久化授权不再包含它，新代宿主 API 和页面渠道 mutation 被拒；停用插件升级也收敛授权；显式授权超出新声明时不写库                               | 同上，覆盖本地和市场安装                                  |
 | 升级配置 | secret 改为普通字段时升级失败，包、manifest、config、授权均不变，错误不含密钥；删除 secret 字段时一并删除旧值，配置查询与页面 init 均不返回该值；保留字段类型不兼容时不写库 | 同上，覆盖启用、停用、预览后确认及两种安装入口            |

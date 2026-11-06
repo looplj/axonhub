@@ -57,7 +57,7 @@ func TestDeleteBuiltinDoesNotRemoveRow(t *testing.T) {
 	require.ErrorContains(t, err, installed.PluginID)
 	require.NotNil(t, manager.Current().ByID(installed.ID))
 
-	require.NoError(t, manager.Enable(ctx, installed.ID, []string{"read_channels"}))
+	require.NoError(t, manager.Enable(ctx, installed.ID, []string{"read_channels"}, nil))
 	require.NoError(t, manager.Disable(ctx, installed.ID))
 	require.False(t, manager.Current().ByID(installed.ID).Enabled)
 

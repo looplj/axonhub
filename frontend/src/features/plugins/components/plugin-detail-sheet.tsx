@@ -41,6 +41,10 @@ export function PluginDetailSheet({ plugin, canWrite, onOpenChange }: PluginDeta
                     label={t('plugins.fields.grantedPermissions')}
                     value={plugin.grantedPermissions.length > 0 ? plugin.grantedPermissions.join(', ') : t('plugins.none')}
                   />
+                  <Field
+                    label={t('plugins.fields.grantedNetwork')}
+                    value={plugin.grantedNetwork.length > 0 ? plugin.grantedNetwork.join(', ') : t('plugins.none')}
+                  />
                   <Field label={t('plugins.fields.runtimeError')} value={plugin.runtimeError || t('plugins.none')} />
                 </div>
                 <Separator />
