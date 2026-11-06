@@ -20,9 +20,9 @@ func filterResolvedCandidatesForRequest(
 	ctx context.Context,
 	req *llm.Request,
 	resolvedCandidates []*resolvedAssociationCandidate,
-) []*ChannelModelsCandidate {
+) ([]*ChannelModelsCandidate, error) {
 	if len(resolvedCandidates) == 0 {
-		return []*ChannelModelsCandidate{}
+		return []*ChannelModelsCandidate{}, nil
 	}
 
 	hasConditionalCandidates := lo.ContainsBy(resolvedCandidates, func(candidate *resolvedAssociationCandidate) bool {
@@ -32,7 +32,7 @@ func filterResolvedCandidatesForRequest(
 		candidates := aggregateChannelModelCandidates(resolvedCandidates)
 		candidates = populateAPIFormat(ctx, candidates, req)
 
-		return candidates
+		return candidates, nil
 	}
 
 	promptTokens := estimatePromptTokens(req)
@@ -56,6 +56,11 @@ func filterResolvedCandidatesForRequest(
 		filtered = append(filtered, candidate)
 	}
 
+	// The model is routable, just not for this request; "model not found" would send users looking in the wrong place.
+	if len(filtered) == 0 {
+		return nil, NewNoMatchingAssociationError(req.Model)
+	}
+
 	candidates := aggregateChannelModelCandidates(filtered)
 
 	if log.DebugEnabled(ctx) {
@@ -67,7 +72,7 @@ func filterResolvedCandidatesForRequest(
 
 	candidates = populateAPIFormat(ctx, candidates, req)
 
-	return candidates
+	return candidates, nil
 }
 
 func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate, req *llm.Request) []*ChannelModelsCandidate {

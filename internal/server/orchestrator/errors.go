@@ -1,6 +1,11 @@
 package orchestrator
 
-import "fmt"
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/looplj/axonhub/llm"
+)
 
 // QuotaExhaustedError is returned when all channels are quota exhausted for a model.
 type QuotaExhaustedError struct {
@@ -30,4 +35,17 @@ func (e *StreamPolicyConflictError) Error() string {
 
 func NewStreamPolicyConflictError(modelName string) error {
 	return &StreamPolicyConflictError{ModelName: modelName}
+}
+
+// NewNoMatchingAssociationError is returned when a model has associations but
+// none of their `when` conditions match the request.
+func NewNoMatchingAssociationError(modelName string) error {
+	return &llm.ResponseError{
+		StatusCode: http.StatusUnprocessableEntity,
+		Detail: llm.ErrorDetail{
+			Message: fmt.Sprintf("no association of model %s matches this request", modelName),
+			Type:    "invalid_request_error",
+			Code:    "no_matching_association",
+		},
+	}
 }
