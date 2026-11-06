@@ -44,14 +44,14 @@
 
 ## 4. 决策
 
-| 方案 | 结论 |
-|------|------|
-| 每个插件一个 `channel.type` 枚举 | 放弃。安装插件不能改 Ent 枚举 |
-| 用请求钩子改 body，渠道仍选 openai | 放弃。钩子失败要放行；供应商转换失败必须拦住 |
-| 一种枚举值 `plugin`，设置里写 `pluginId` 和 `key` | 采用。插件的多个 provider 用 `key` 区分 |
-| JS 直接拿 API Key 拼 Header | 放弃。与事件里不下发凭证明文同一原则 |
-| JS 返回 HTTP 请求，宿主覆盖认证头并限制 URL 源 | 采用 |
-| Go 内置插件在 `Apply` 里注册同一套 provider | 采用。与 `axonhub.webhook` 同一注册表，工厂函数接收宿主给出的 `APIKeyProvider` |
+| 方案                                              | 结论                                                                                                     |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 每个插件一个 `channel.type` 枚举                  | 放弃。安装插件不能改 Ent 枚举                                                                            |
+| 用请求钩子改 body，渠道仍选 openai                | 放弃。钩子失败要放行；供应商转换失败必须拦住                                                             |
+| 一种枚举值 `plugin`，设置里写 `pluginId` 和 `key` | 采用。插件的多个 provider 用 `key` 区分                                                                  |
+| JS 直接拿 API Key 拼 Header                       | 放弃。与事件里不下发凭证明文同一原则                                                                     |
+| JS 返回 HTTP 请求，宿主覆盖认证头并限制 URL 源    | 采用                                                                                                     |
+| Go 内置插件在 `Apply` 里注册同一套 provider       | 采用。注册表见 [builtin-plugins.md](builtin-plugins.md)，未排期。工厂函数接收宿主给出的 `APIKeyProvider` |
 
 ## 5. 接入
 
@@ -87,7 +87,7 @@ JS 必须导出 `transformRequest` 和 `transformResponse`。返回 Promise 视�
 5. 上游 2xx 交给 transformResponse。非 2xx 走 TransformError：第一版不调用 JS，映射成现有的上游错误，让故障转移识别。
 ```
 
-Go 内置插件在 `Apply` 里 `RegisterProvider(key, factory)`。`factory` 收到 base URL 和 `APIKeyProvider`，返回 `transformer.Outbound`。禁用时 `OnDispose` 卸掉。一个 `key` 不能同时由 JS 导出和 Go 注册。
+Go 内置插件在 `Apply` 里 `RegisterProvider(key, factory)`，注册表见 [builtin-plugins.md](builtin-plugins.md)，当前不实现。`factory` 收到 base URL 和 `APIKeyProvider`，返回 `transformer.Outbound`。禁用时 `OnDispose` 卸掉。一个 `key` 不能同时由 JS 导出和 Go 注册。
 
 `PassThroughBody` 对插件 provider 固定关闭。客户端原始 body 不能绕过转换。
 
@@ -103,12 +103,12 @@ Go 内置插件在 `Apply` 里 `RegisterProvider(key, factory)`。`factory` 收�
 
 数值在进入任务表时并入 [运行限制](README.md#运行限制)，在此之前以本表为准：
 
-| 项 | 限制 |
-|----|------|
-| `transformRequest` / `transformResponse` | 200 ms |
-| 交给 JS 的请求或响应 | 序列化后 2 MiB，超出则本渠道失败 |
-| URL | 仅渠道 base URL 的 scheme、host、port |
-| `providers` 条目 | 每个插件最多 8 个 |
+| 项                                       | 限制                                  |
+| ---------------------------------------- | ------------------------------------- |
+| `transformRequest` / `transformResponse` | 200 ms                                |
+| 交给 JS 的请求或响应                     | 序列化后 2 MiB，超出则本渠道失败      |
+| URL                                      | 仅渠道 base URL 的 scheme、host、port |
+| `providers` 条目                         | 每个插件最多 8 个                     |
 
 ## 6. 当前交付
 
@@ -118,22 +118,22 @@ Go 内置插件在 `Apply` 里 `RegisterProvider(key, factory)`。`factory` 收�
 
 开放时：
 
-| 类别 | 标准 | 验证方式 |
-|------|------|----------|
-| 功能 | `type=plugin` 的渠道发出的 HTTP 是 `transformRequest` 的结果，认证头由宿主写入 | `go test ./internal/server/biz/ -run TestPluginChannel`，httptest 上游 |
-| 安全 | JS 返回 URL 的 scheme、host 或 port 与 base URL 不同：转换失败，不发 HTTP | 插件 Provider 测试，断言上游请求数为 0 |
-| 安全 | JS 提供 auth.header、Authorization、X-Api-Key 的大小写变体或重复值：请求继续，上游只收到宿主写入的唯一认证头和值，没有 JS 提供的认证值 | httptest 上游检查完整请求头，覆盖三类名称与重复值 |
-| 安全 | 上游返回同源或跨源重定向：不请求 Location，本次 attempt 失败，可切换其他候选渠道 | 两个 httptest 服务，覆盖 301/302/303/307/308，重定向目标请求数为 0 |
-| 功能 | 转换超时或抛错时该渠道失败，候选列表中的下一个渠道仍收到请求 | orchestrator 集成测试，两个上游 |
-| 功能 | 禁用插件后，下一次渠道缓存刷新不再选出该渠道 | biz 缓存测试 |
-| 当前交付 | 带 `providers` 的包安装失败且不写库 | `go test ./internal/server/plugin/ -run TestParsePackage` |
+| 类别     | 标准                                                                                                                                   | 验证方式                                                               |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| 功能     | `type=plugin` 的渠道发出的 HTTP 是 `transformRequest` 的结果，认证头由宿主写入                                                         | `go test ./internal/server/biz/ -run TestPluginChannel`，httptest 上游 |
+| 安全     | JS 返回 URL 的 scheme、host 或 port 与 base URL 不同：转换失败，不发 HTTP                                                              | 插件 Provider 测试，断言上游请求数为 0                                 |
+| 安全     | JS 提供 auth.header、Authorization、X-Api-Key 的大小写变体或重复值：请求继续，上游只收到宿主写入的唯一认证头和值，没有 JS 提供的认证值 | httptest 上游检查完整请求头，覆盖三类名称与重复值                      |
+| 安全     | 上游返回同源或跨源重定向：不请求 Location，本次 attempt 失败，可切换其他候选渠道                                                       | 两个 httptest 服务，覆盖 301/302/303/307/308，重定向目标请求数为 0     |
+| 功能     | 转换超时或抛错时该渠道失败，候选列表中的下一个渠道仍收到请求                                                                           | orchestrator 集成测试，两个上游                                        |
+| 功能     | 禁用插件后，下一次渠道缓存刷新不再选出该渠道                                                                                           | biz 缓存测试                                                           |
+| 当前交付 | 带 `providers` 的包安装失败且不写库                                                                                                    | `go test ./internal/server/plugin/ -run TestParsePackage`              |
 
 ## 8. 风险与妥协
 
-| 风险 | 触发条件 | 影响 | 对策 |
-|------|----------|------|------|
-| 转换把密钥抄进 body 或非认证头 | JS 从别处拼出密钥，或 Go provider 写进 body | 密钥出现在上游请求体 | JS 路径不提供密钥。管理页说明 Go provider 与内置供应商同等可信 |
-| 禁用后短时间内仍被选中 | 渠道缓存尚未刷新 | 最多约 1 分钟继续调用正在卸下的插件 | 刷新后构造失败即退出候选；进行中的请求使用开始时的 Generation |
+| 风险                           | 触发条件                                    | 影响                                | 对策                                                           |
+| ------------------------------ | ------------------------------------------- | ----------------------------------- | -------------------------------------------------------------- |
+| 转换把密钥抄进 body 或非认证头 | JS 从别处拼出密钥，或 Go provider 写进 body | 密钥出现在上游请求体                | JS 路径不提供密钥。管理页说明 Go provider 与内置供应商同等可信 |
+| 禁用后短时间内仍被选中         | 渠道缓存尚未刷新                            | 最多约 1 分钟继续调用正在卸下的插件 | 刷新后构造失败即退出候选；进行中的请求使用开始时的 Generation  |
 
 ```text
 1. 妥协：第一版只有非流式 openai/chat_completions

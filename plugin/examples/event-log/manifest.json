@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "example.event-log",
+  "name": "Event Log",
+  "version": "1.0.0",
+  "description": "Records easy-to-trigger events in this plugin's KV and shows them on a page.",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "events": [
+    "channel.credential_disabled",
+    "channel.credential_enabled",
+    "request.completed"
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "keep": {
+        "type": "integer",
+        "title": "Events to keep",
+        "description": "Newest records kept in this plugin's KV. Older keys are deleted.",
+        "minimum": 1,
+        "maximum": 50,
+        "default": 20
+      }
+    }
+  },
+  "ui": {
+    "pages": [
+      {
+        "key": "log",
+        "entry": "ui/log/index.html",
+        "title": { "en": "Event Log", "zh-CN": "事件记录" }
+      }
+    ]
+  }
+}

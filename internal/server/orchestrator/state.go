@@ -2,9 +2,11 @@ package orchestrator
 
 import (
 	"context"
+	"sync"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/events"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -124,4 +126,14 @@ type PersistenceState struct {
 
 	// PassThroughApplied records whether the inbound request body was substituted during pass-through.
 	PassThroughApplied bool
+
+	// EventBus publishes plugin events for this request. Nil skips publication.
+	// It is copied from the orchestrator; it is not stored on context.Context.
+	EventBus *events.Bus
+
+	// OutboundAttempt is the 1-based count of outbound attempts started for this
+	// request, including same-channel retries. Zero means no attempt has started.
+	OutboundAttempt int
+
+	requestFailedEvent sync.Once
 }

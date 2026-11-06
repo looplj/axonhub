@@ -10,6 +10,7 @@ require (
 	entgo.io/ent v0.14.6
 	github.com/99designs/gqlgen v0.17.86
 	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/MoeForge/moejs v0.1.0-alpha.11
 	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/andreazorzetto/yh v0.4.0
 	github.com/aptible/supercronic v0.2.51

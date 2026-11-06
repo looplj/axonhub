@@ -3,10 +3,12 @@ package biz
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/server/events"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -456,4 +459,78 @@ func decodedLimits(t *testing.T, values []any) []string {
 	}
 
 	return decoded
+}
+
+func TestWebhookNotifier_SendToTarget(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent-send-target?mode=memory&_fk=0")
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
+
+	var hits atomic.Int32
+	var body string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		body = string(raw)
+		if hits.Add(1) == 1 {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := WebhookNotifierConfig{
+		Targets: []WebhookTarget{{
+			Name:      "duty",
+			Enabled:   true,
+			URL:       server.URL,
+			TimeoutMs: 1000,
+			Body:      "{{.Message}}",
+		}},
+	}
+	systemService := newTestSystemServiceWithWebhookConfig(t, client, cfg)
+	notifier := NewWebhookNotifier(systemService, httpclient.NewHttpClient())
+	event := events.Event{
+		Type:       events.TypeRequestFailover,
+		Severity:   events.SeverityWarning,
+		OccurredAt: time.Date(2026, 11, 6, 3, 0, 0, 0, time.UTC),
+		Subject: events.Subject{Channel: &events.ChannelRef{
+			ID: 7, Name: "guard", Type: "openai", BaseURL: "https://api.openai.com/v1", Status: "enabled",
+		}},
+	}
+	require.NoError(t, notifier.SendToTarget(context.Background(), "duty", map[string]any{"message": "guard failover 10"}, event))
+	require.Equal(t, "guard failover 10", body)
+	require.Equal(t, int32(1), hits.Load())
+
+	err := notifier.SendToTarget(context.Background(), "missing", map[string]any{"message": "x"}, event)
+	require.ErrorIs(t, err, ErrWebhookTargetNotFound)
+
+	disabled := cfg
+	disabled.Targets[0].Enabled = false
+	require.NoError(t, systemService.SetWebhookNotifierConfig(authz.WithTestBypass(ent.NewContext(context.Background(), client)), &disabled))
+	err = notifier.SendToTarget(context.Background(), "duty", map[string]any{"message": "x"}, event)
+	require.ErrorIs(t, err, ErrWebhookTargetDisabled)
+	require.Equal(t, int32(1), hits.Load())
+
+	blank := cfg
+	blank.Targets[0].Enabled = true
+	blank.Targets[0].URL = " "
+	require.NoError(t, systemService.SetWebhookNotifierConfig(authz.WithTestBypass(ent.NewContext(context.Background(), client)), &blank))
+	err = notifier.SendToTarget(context.Background(), "duty", map[string]any{"message": "x"}, event)
+	require.ErrorIs(t, err, ErrWebhookTargetDisabled)
+
+	failing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(failing.Close)
+	down := cfg
+	down.Targets[0].Enabled = true
+	down.Targets[0].URL = failing.URL
+	require.NoError(t, systemService.SetWebhookNotifierConfig(authz.WithTestBypass(ent.NewContext(context.Background(), client)), &down))
+	before := hits.Load()
+	err = notifier.SendToTarget(context.Background(), "duty", map[string]any{"message": "x"}, event)
+	require.ErrorIs(t, err, ErrWebhookUnavailable)
+	require.Equal(t, before+1, hits.Load())
+	require.False(t, errors.Is(err, ErrWebhookTargetNotFound))
 }

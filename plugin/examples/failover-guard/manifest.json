@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "example.failover-guard",
+  "name": "Failover Guard",
+  "version": "1.0.0",
+  "description": "Disables a channel and notifies a configured webhook target after repeated request.failover events.",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "permissions": ["write_channels", "webhook"],
+  "events": ["request.failover"],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "threshold": {
+        "type": "integer",
+        "title": "Threshold",
+        "description": "Failovers for the same channel and model inside the window before this plugin acts. The action runs once, when the count equals this number.",
+        "minimum": 1,
+        "default": 10
+      },
+      "windowSeconds": {
+        "type": "integer",
+        "title": "Window seconds",
+        "description": "Counter window. The host accepts 1 to 86400 seconds.",
+        "minimum": 1,
+        "maximum": 86400,
+        "default": 300
+      },
+      "target": {
+        "type": "string",
+        "title": "Webhook target",
+        "description": "Name of an existing webhook target. Empty skips the notification and still disables the channel."
+      }
+    }
+  }
+}

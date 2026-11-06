@@ -15,6 +15,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/events"
 )
 
 const (
@@ -39,7 +40,7 @@ type fieldGate struct {
 }
 
 var fieldGates = []fieldGate{
-	{name: "events", message: errEventsNotEnabled},
+	{name: "events", open: true, message: errEventsNotEnabled},
 	{name: "hooks.request", message: errRequestHooksNotEnabled},
 	{name: "hooks.attempt", message: errRequestHooksNotEnabled},
 	{name: "hooks.response", message: errResponseHooksNotEnabled},
@@ -137,6 +138,9 @@ func ValidateManifest(manifest *objects.PluginManifest, axonhubVersion string) e
 		return err
 	}
 	if err := checkPermissions(manifest.Permissions); err != nil {
+		return err
+	}
+	if err := checkEvents(manifest.Events); err != nil {
 		return err
 	}
 	return nil
@@ -347,6 +351,26 @@ func normalizeAxonHubVersion(raw string) (*semver.Version, error) {
 		return nil, fmt.Errorf("invalid AxonHub version %q", raw)
 	}
 	return normalized, nil
+}
+
+func checkEvents(names []string) error {
+	if len(names) == 0 {
+		return nil
+	}
+	allowed := lo.SliceToMap(events.OpenEventTypes(), func(name string) (string, struct{}) {
+		return name, struct{}{}
+	})
+	seen := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		if _, dup := seen[name]; dup {
+			return fmt.Errorf("event %q is duplicated", name)
+		}
+		seen[name] = struct{}{}
+		if _, ok := allowed[name]; !ok {
+			return fmt.Errorf("event %q is not enabled", name)
+		}
+	}
+	return nil
 }
 
 func checkPermissions(permissions []string) error {

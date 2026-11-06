@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MoeForge/moejs"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -590,9 +591,104 @@ func TestManagerUIOnlyNoVM(t *testing.T) {
 	assertNoRuntime(t, manager.Current())
 	assertNoPayload(t, manager.Current())
 	require.Equal(t, 0, manager.VMCount())
+	require.Nil(t, manager.Current().ByID(installed.ID).resource.compiledModule())
+	require.False(t, manager.Current().ByID(installed.ID).resource.hasPluginJS)
 	script, err := manager.Current().ByID(installed.ID).ReadFile("ui/app.js")
 	require.NoError(t, err)
 	require.Equal(t, "console.log('browser')", string(script))
+}
+
+func TestManagerJSCompileReuse(t *testing.T) {
+	client := newPluginDB(t)
+	manager := newTestManager(t, client)
+	ctx := pluginCtx()
+	compiles := 0
+	manager.compileModule = func(data []byte) (*moejs.Module, error) {
+		compiles++
+		return compilePackageModule(data)
+	}
+
+	uiPlugin := installUI(t, manager, uiZip(t, nil, map[string]string{"ui/page.html": "<html>ui</html>"}))
+	require.NoError(t, manager.Enable(ctx, uiPlugin.ID, nil))
+	require.Equal(t, 0, compiles)
+	require.Nil(t, manager.Current().ByID(uiPlugin.ID).resource.compiledModule())
+	manager.compileModule = nil
+
+	jsPlugin := installUI(t, manager, uiZip(t, func(_ *testing.T, manifest map[string]any) {
+		manifest["id"] = "acme.js-tool"
+		manifest["name"] = "JS Tool"
+	}, map[string]string{
+		"ui/page.html": "<html>js</html>",
+		"plugin.js":    "import { label } from \"./lib/label.js\"\nexport function onEvent() { return label }\n",
+		"lib/label.js": "export const label = \"ok\"\n",
+	}))
+	reads := manager.PackageReads()
+	require.NoError(t, manager.Enable(ctx, jsPlugin.ID, nil))
+	require.Equal(t, 0, compiles)
+	require.Equal(t, reads+1, manager.PackageReads())
+
+	current := manager.Current().ByID(jsPlugin.ID)
+	require.Equal(t, RuntimeStatusActive, current.Status)
+	module := current.resource.compiledModule()
+	require.NotNil(t, module)
+	require.Contains(t, module.Exports(), "onEvent")
+	require.Equal(t, 0, manager.VMCount())
+	require.Equal(t, 0, manager.Current().VMCount())
+	body, err := current.ReadFile("ui/page.html")
+	require.NoError(t, err)
+	require.Equal(t, "<html>js</html>", string(body))
+
+	require.NoError(t, manager.Refresh(ctx))
+	require.Equal(t, 0, compiles)
+	require.Equal(t, reads+1, manager.PackageReads())
+	require.Same(t, module, manager.Current().ByID(jsPlugin.ID).resource.compiledModule())
+
+	require.NoError(t, manager.Disable(ctx, jsPlugin.ID))
+	require.Equal(t, RuntimeStatusDisabled, manager.Current().ByID(jsPlugin.ID).Status)
+	require.Nil(t, manager.Current().ByID(jsPlugin.ID).resource)
+	manager.resourcesMu.Lock()
+	_, resident := manager.resources[resourceKey{id: jsPlugin.ID, sha: jsPlugin.PackageSha256}]
+	uiResource := manager.resources[resourceKey{id: uiPlugin.ID, sha: uiPlugin.PackageSha256}]
+	manager.resourcesMu.Unlock()
+	require.False(t, resident)
+	require.NotNil(t, uiResource)
+	require.Nil(t, uiResource.compiledModule())
+}
+
+func TestManagerJSCompileFailure(t *testing.T) {
+	client := newPluginDB(t)
+	manager := newTestManager(t, client)
+	ctx := pluginCtx()
+	healthy := installUI(t, manager, uiZip(t, nil, map[string]string{"ui/page.html": "<html>ok</html>"}))
+	require.NoError(t, manager.Enable(ctx, healthy.ID, nil))
+
+	manager.compileModule = func([]byte) (*moejs.Module, error) {
+		return nil, errors.New("compile failed")
+	}
+	broken := installUI(t, manager, uiZip(t, func(_ *testing.T, manifest map[string]any) {
+		manifest["id"] = "acme.js-broken"
+		manifest["name"] = "Broken"
+	}, map[string]string{
+		"ui/page.html": "<html>broken</html>",
+		"plugin.js":    "export {}",
+	}))
+	reads := manager.PackageReads()
+	require.NoError(t, manager.Enable(ctx, broken.ID, nil))
+	require.Equal(t, reads+1, manager.PackageReads())
+
+	require.Equal(t, RuntimeStatusActive, manager.Current().ByID(healthy.ID).Status)
+	brokenPlugin := manager.Current().ByID(broken.ID)
+	require.Equal(t, RuntimeStatusError, brokenPlugin.Status)
+	require.Contains(t, brokenPlugin.Reason, "compile failed")
+	require.Nil(t, brokenPlugin.resource)
+	body, err := manager.Current().ByID(healthy.ID).ReadFile("ui/page.html")
+	require.NoError(t, err)
+	require.Equal(t, "<html>ok</html>", string(body))
+
+	require.NoError(t, manager.Refresh(ctx))
+	require.Equal(t, reads+2, manager.PackageReads())
+	require.Equal(t, RuntimeStatusError, manager.Current().ByID(broken.ID).Status)
+	require.Equal(t, RuntimeStatusActive, manager.Current().ByID(healthy.ID).Status)
 }
 
 func newPluginDB(t *testing.T) *ent.Client {

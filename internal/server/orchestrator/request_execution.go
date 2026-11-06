@@ -230,6 +230,7 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 	// Update request execution with the real error message when request fails
 	state := m.outbound.state
 	if state == nil || state.RequestExec == nil {
+		publishRequestAttemptFailed(ctx, state, err)
 		return
 	}
 
@@ -271,6 +272,8 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 	if updateErr != nil {
 		log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(updateErr))
 	}
+
+	publishRequestAttemptFailed(ctx, state, err)
 }
 
 // ExtractErrorInfo extracts HTTP status code and sanitized response body from error.
