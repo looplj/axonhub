@@ -93,6 +93,8 @@ func (t *testOutboundWithHeaders) AggregateStreamChunks(ctx context.Context, _ *
 
 // trackingMiddleware tracks the order of middleware calls.
 type trackingMiddleware struct {
+	DummyMiddleware
+
 	name                      string
 	callOrder                 *[]string
 	inboundRequestCalled      bool

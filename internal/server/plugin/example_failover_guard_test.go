@@ -14,7 +14,7 @@ import (
 )
 
 func TestExampleFailoverGuardPackage(t *testing.T) {
-	root := filepath.Join("..", "..", "..", "plugin", "examples", "failover-guard")
+	root := filepath.Join("..", "..", "..", "plugins", "examples", "failover-guard")
 	files := map[string][]byte{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {

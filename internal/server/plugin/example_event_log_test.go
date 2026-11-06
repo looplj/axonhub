@@ -14,7 +14,7 @@ import (
 )
 
 func TestExampleEventLogPackage(t *testing.T) {
-	root := filepath.Join("..", "..", "..", "plugin", "examples", "event-log")
+	root := filepath.Join("..", "..", "..", "plugins", "examples", "event-log")
 	files := map[string][]byte{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {

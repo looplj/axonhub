@@ -66,10 +66,10 @@ func requiredExports(manifest *objects.PluginManifest) []string {
 	if len(manifest.Events) > 0 {
 		required = append(required, "onEvent")
 	}
-	if manifest.Hooks != nil && manifest.Hooks.Request {
+	if manifest.Hooks != nil && manifest.Hooks.Request.IsEnabled() {
 		required = append(required, "onRequest")
 	}
-	if manifest.Hooks != nil && manifest.Hooks.Attempt {
+	if manifest.Hooks != nil && manifest.Hooks.Attempt.IsEnabled() {
 		required = append(required, "onAttempt")
 	}
 	return required

@@ -26,11 +26,29 @@ type InstalledPlugin struct {
 	GrantedPermissions  []string
 	GrantedNetwork      []string
 	ManifestPermissions []string
+	ManifestHooks       ManifestHooks
 	ManifestNetwork     []string
 	ConfigFields        []ConfigField
 	Config              map[string]any
 	RuntimeStatus       string
 	RuntimeError        string
+}
+
+// ManifestHooks is the typed public view of the manifest's request hooks.
+// A nil hook is undeclared; a declared but disabled hook retains its scope.
+type ManifestHooks struct {
+	Request *ManifestRequestHook
+	Attempt *ManifestAttemptHook
+}
+
+type ManifestRequestHook struct {
+	Enabled      bool
+	RequestTypes []string
+}
+
+type ManifestAttemptHook struct {
+	Enabled    bool
+	APIFormats []string
 }
 
 // ConfigField is one configSchema property for the admin form.
@@ -45,14 +63,18 @@ type ConfigField struct {
 	Minimum     *float64
 	Maximum     *float64
 	DefaultJSON string
+	Required    bool
 }
 
 // RuntimeStatusView is one process-local runtime status row.
 type RuntimeStatusView struct {
-	ID       objects.GUID
-	PluginID string
-	Status   string
-	Reason   string
+	ID                      objects.GUID
+	PluginID                string
+	Status                  string
+	Reason                  string
+	Overloaded              int
+	ProtectedDrops          int
+	OverriddenByPassThrough int
 }
 
 // InstallView is the GraphQL install payload. UpgradePreview is set when
@@ -102,16 +124,30 @@ func (m *Manager) Get(ctx context.Context, id int) (*InstalledPlugin, error) {
 	return &item, nil
 }
 
+func clampCounter(value int64) int {
+	if value > int64(^uint(0)>>1) {
+		return int(^uint(0) >> 1)
+	}
+	if value < 0 {
+		return 0
+	}
+	return int(value)
+}
+
 // RuntimeStatusViews returns this process's runtime status rows.
 func (m *Manager) RuntimeStatusViews() []*RuntimeStatusView {
 	entries := m.RuntimeStatuses()
 	out := make([]*RuntimeStatusView, 0, len(entries))
 	for _, entry := range entries {
+		counter := m.hookCounter(entry.ID)
 		out = append(out, &RuntimeStatusView{
-			ID:       pluginGUID(entry.ID),
-			PluginID: entry.PluginID,
-			Status:   string(entry.Status),
-			Reason:   entry.Reason,
+			ID:                      pluginGUID(entry.ID),
+			PluginID:                entry.PluginID,
+			Status:                  string(entry.Status),
+			Reason:                  entry.Reason,
+			Overloaded:              clampCounter(counter.overloaded),
+			ProtectedDrops:          clampCounter(counter.protectedDrops),
+			OverriddenByPassThrough: clampCounter(counter.overridden),
 		})
 	}
 	return out
@@ -165,6 +201,7 @@ func (m *Manager) presentRecord(row pluginRecord, statuses map[int]RuntimeStatus
 		GrantedNetwork:      cloneStrings(row.GrantedNetwork),
 		ManifestPermissions: cloneStrings(row.Manifest.Permissions),
 		ManifestNetwork:     cloneStrings(row.Manifest.NetworkGrants()),
+		ManifestHooks:       presentHooks(row.Manifest.Hooks),
 		ConfigFields:        configFields(row.Manifest.ConfigSchema),
 		Config:              maskConfig(row.Manifest.ConfigSchema, row.Config),
 		RuntimeStatus:       status,
@@ -237,6 +274,7 @@ func configFields(schema *objects.PluginConfigSchema) []ConfigField {
 			Minimum:     prop.Minimum,
 			Maximum:     prop.Maximum,
 			DefaultJSON: defaultJSON(prop.Default),
+			Required:    slices.Contains(schema.Required, name),
 		})
 	}
 	return fields
@@ -307,4 +345,18 @@ func cloneConfig(config map[string]any) map[string]any {
 	out := make(map[string]any, len(config))
 	maps.Copy(out, config)
 	return out
+}
+
+func presentHooks(hooks *objects.PluginHooksSpec) ManifestHooks {
+	result := ManifestHooks{}
+	if hooks == nil {
+		return result
+	}
+	if hooks.Request != nil {
+		result.Request = &ManifestRequestHook{Enabled: hooks.Request.Enabled, RequestTypes: cloneStrings(hookScope(hooks, "request"))}
+	}
+	if hooks.Attempt != nil {
+		result.Attempt = &ManifestAttemptHook{Enabled: hooks.Attempt.Enabled, APIFormats: cloneStrings(hookScope(hooks, "attempt"))}
+	}
+	return result
 }

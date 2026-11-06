@@ -76,6 +76,7 @@ var (
 	configSchemaFieldNames = map[string]struct{}{
 		"type":       {},
 		"properties": {},
+		"required":   {},
 	}
 	configPropertyFieldNames = map[string]struct{}{
 		"type":        {},
@@ -137,13 +138,13 @@ func (r PluginNetworkRule) Grant() string {
 	return r.Exact
 }
 
-// PluginHooksSpec holds the opened request-hook booleans.
+// PluginHooksSpec holds explicitly enabled, scoped hooks.
 // response and streamChunk are presence-only until those hooks are scheduled.
 type PluginHooksSpec struct {
-	Request            bool `json:"request,omitempty"`
-	Attempt            bool `json:"attempt,omitempty"`
-	ResponsePresent    bool `json:"-"`
-	StreamChunkPresent bool `json:"-"`
+	Request            *PluginRequestHook `json:"request,omitempty"`
+	Attempt            *PluginAttemptHook `json:"attempt,omitempty"`
+	ResponsePresent    bool               `json:"-"`
+	StreamChunkPresent bool               `json:"-"`
 }
 
 // PluginUI is the opened page list. panels is presence-only.
@@ -164,6 +165,7 @@ type PluginUIPage struct {
 type PluginConfigSchema struct {
 	Type       string                          `json:"type"`
 	Properties map[string]PluginConfigProperty `json:"properties,omitempty"`
+	Required   []string                        `json:"required,omitempty"`
 }
 
 // PluginConfigProperty is one configSchema property.
@@ -361,6 +363,16 @@ func (s *PluginConfigSchema) Validate() error {
 		if err := s.Properties[name].validate("configSchema.properties." + name); err != nil {
 			return err
 		}
+	}
+	seen := make(map[string]struct{}, len(s.Required))
+	for i, name := range s.Required {
+		if _, ok := s.Properties[name]; !ok {
+			return fmt.Errorf("configSchema.required[%d] %q is not a declared property", i, name)
+		}
+		if _, ok := seen[name]; ok {
+			return fmt.Errorf("configSchema.required[%d] %q is duplicated", i, name)
+		}
+		seen[name] = struct{}{}
 	}
 	return nil
 }
@@ -756,18 +768,16 @@ func (h *PluginHooksSpec) UnmarshalJSON(data []byte) error {
 		h.StreamChunkPresent = true
 	}
 	if value, ok := raw["request"]; ok {
-		parsed, err := decodeJSONBool(value, "hooks.request")
-		if err != nil {
+		h.Request = new(PluginRequestHook)
+		if err := json.Unmarshal(value, h.Request); err != nil {
 			return err
 		}
-		h.Request = parsed
 	}
 	if value, ok := raw["attempt"]; ok {
-		parsed, err := decodeJSONBool(value, "hooks.attempt")
-		if err != nil {
+		h.Attempt = new(PluginAttemptHook)
+		if err := json.Unmarshal(value, h.Attempt); err != nil {
 			return err
 		}
-		h.Attempt = parsed
 	}
 	return nil
 }
@@ -867,6 +877,13 @@ func (s *PluginConfigSchema) UnmarshalJSON(data []byte) error {
 			return err
 		}
 		s.Type = parsed
+	}
+	if value, ok := raw["required"]; ok {
+		parsed, err := decodeJSONStringSlice(value, "configSchema.required")
+		if err != nil {
+			return err
+		}
+		s.Required = parsed
 	}
 	propsRaw, ok := raw["properties"]
 	if !ok {

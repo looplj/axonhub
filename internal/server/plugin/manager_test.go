@@ -225,6 +225,55 @@ func TestManagerDisableAndSettings(t *testing.T) {
 	require.Equal(t, html, string(restored))
 }
 
+func TestManagerEnableRequiresConfig(t *testing.T) {
+	client := newPluginDB(t)
+	manager := newTestManager(t, client)
+	ctx := pluginCtx()
+	installed := installUI(t, manager, uiZip(t, func(_ *testing.T, manifest map[string]any) {
+		manifest["configSchema"].(map[string]any)["required"] = []any{"token", "threshold"}
+	}, nil))
+
+	view, err := manager.Get(ctx, installed.ID)
+	require.NoError(t, err)
+	required := map[string]bool{}
+	for _, field := range view.ConfigFields {
+		required[field.Name] = field.Required
+	}
+	require.Equal(t, map[string]bool{"threshold": true, "target": false, "token": true, "my.custom-prop": false}, required)
+
+	require.ErrorContains(t, manager.Enable(ctx, installed.ID, nil, nil), "required config fields are missing: token")
+	require.False(t, manager.Current().ByID(installed.ID).Enabled)
+
+	// A disabled plugin may save partial config; threshold still uses its default.
+	require.NoError(t, manager.UpdateSettings(ctx, installed.ID, 100, map[string]any{"target": "https://example.com"}))
+	require.ErrorContains(t, manager.Enable(ctx, installed.ID, nil, nil), "token")
+
+	require.NoError(t, manager.UpdateSettings(ctx, installed.ID, 100, map[string]any{"token": "s3cret"}))
+	require.NoError(t, manager.Enable(ctx, installed.ID, nil, nil))
+	require.True(t, manager.Current().ByID(installed.ID).Enabled)
+
+	// An enabled plugin keeps its stored secret through the mask and cannot drop a required field.
+	require.NoError(t, manager.UpdateSettings(ctx, installed.ID, 100, map[string]any{"token": SecretMask}))
+	err = manager.UpdateSettings(ctx, installed.ID, 100, map[string]any{"token": ""})
+	require.ErrorContains(t, err, "required config fields are missing: token")
+	err = manager.UpdateSettings(ctx, installed.ID, 100, map[string]any{})
+	require.ErrorContains(t, err, "token")
+	require.Equal(t, "s3cret", manager.Current().ByID(installed.ID).Config["token"])
+
+	// A new version that requires config the enabled plugin lacks is refused until it is disabled.
+	nextZip := uiZip(t, func(_ *testing.T, manifest map[string]any) {
+		manifest["version"] = "1.2.0"
+		manifest["configSchema"].(map[string]any)["required"] = []any{"token", "target"}
+	}, nil)
+	_, err = manager.Install(ctx, nextZip, nil, nil)
+	require.ErrorContains(t, err, "required config fields are missing: target")
+	require.NoError(t, manager.Disable(ctx, installed.ID))
+	result, err := manager.Install(ctx, nextZip, nil, nil)
+	require.NoError(t, err)
+	require.False(t, result.Plugin.Enabled)
+	require.Equal(t, "1.2.0", result.Plugin.Version)
+}
+
 func TestManagerConfigValidation(t *testing.T) {
 	client := newPluginDB(t)
 	manager := newTestManager(t, client)

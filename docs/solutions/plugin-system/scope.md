@@ -2,11 +2,11 @@
 
 [插件系统](README.md)的可选能力：Owner 把某个插件的请求钩子收窄到指定的 project、API Key 或模型。不匹配的请求不借 VM、不序列化请求。
 
-本篇不在 [任务表](README.md#9-任务管理) 里。当前交付中，请求钩子对全部请求生效，插件在 `ctx.request` 里自行判断，见 [request.md](request.md#4-钩子)。下面的设计是排期时的实现合同。排期后加入任务表，依赖 T-03 和 T-13。
+本篇不在 [任务表](README.md#9-任务管理) 里。请求钩子基础的 enabled、RequestType/APIFormat 匹配见 request.md；本篇额外按 project/API Key/模型过滤，插件也可在 `ctx.request` 里自行判断，见 [request.md](request.md#4-钩子)。下面的设计是排期时的实现合同。排期后加入任务表，依赖 T-03 和 T-13。
 
 ## 1. 背景
 
-当前交付中，声明了请求钩子的插件对每个请求都会执行。插件可以读 `ctx.request.projectId`、`apiKeyId`、`model`，然后提前返回 `undefined`，但这时宿主已经借出 VM，并把请求序列化给了 JS。100 KiB 的请求体，单次 `onRequest` 的预算是 5 ms（[request.md](request.md#7-验收)）。一个只服务一个 project 的插件，也会让所有 project 的请求都付出这部分开销。
+基础注册范围内的请求仍可能跨 project，插件可以读 `ctx.request.projectId`、`apiKeyId`、`model`，然后提前返回 `undefined`，但这时宿主已经借出 VM，并把请求序列化给了 JS。100 KiB 的请求体，单次 `onRequest` 的预算是 5 ms（[request.md](request.md#7-验收)）。一个只服务一个 project 的插件，也会让所有 project 的请求都付出这部分开销。
 
 当前交付允许插件自行判断是否处理请求；宿主侧收窄用于省掉不匹配请求的执行开销，作为可选能力单独排期。
 
@@ -20,7 +20,7 @@
 
 1. Owner 能给插件设置 `match`：`projectIDs`、`apiKeyIDs`、`models`。不设置就是全部请求。
 2. 不匹配的插件由宿主跳过：不借 VM、不序列化请求、不调用 JS。
-3. 同一请求的 `onRequest`、`onAttempt` 使用同一个匹配结果；开放 [响应钩子](response.md) 后，响应钩子也沿用。
+3. 同一请求的 `onRequest`、`onAttempt` 复用 project/API Key/客户端模型的范围匹配结果，再分别进行 RequestType/APIFormat 匹配；开放 [响应钩子](response.md) 后，响应钩子也沿用。
 
 ### 非目标
 
@@ -83,8 +83,8 @@ project 或 API Key 后来被删除时不级联。失效的 id 永远匹配不�
    - project = contexts.GetProjectID(ctx)，apiKey = contexts.GetAPIKey(ctx)，model = req.Model
    - 按 projectIDs、apiKeyIDs、models 过滤 Generation 里的钩子插件，结果存进请求状态
    - 列表为空：直接返回 req，不借 VM
-   - 否则按 priority 调用剩下插件的 onRequest
-3. onAttempt（以及开放后的响应钩子）只调用第 2 步留下的插件，不重新匹配
+   - 否则存储业务范围匹配结果；再按 request.enabled 和 RequestType 选择 onRequest
+3. onAttempt 复用 project/API Key/客户端模型匹配结果，再按本次实际 APIFormat 独立匹配；不要求执行过 onRequest
 ```
 
 第 2 步发生在 `enforceQuota`、`checkApiKeyModelAccess`、`applyModelMapping` 之前，用的是客户端请求的 model，不是映射后的 model。某个插件在 `onRequest` 里改了 model，不会让后面的插件重新匹配。
@@ -101,7 +101,7 @@ Generation 构建时把 `projectIDs`、`apiKeyIDs` 转成集合，并预编译 `
 
 #### `internal/server/plugin/hooks.go`
 - `OnInboundLlmRequest` 里取 project、API Key、model 并匹配，匹配通过的插件才借 VM。`Middleware(ctx)` 和 `RequestHookProvider` 接口不变，`Process` 不改。
-- 请求状态里保存过滤后的插件列表，后续钩子复用。
+- 请求状态里保存过滤后的插件列表，后续钩子复用业务范围结果，但分别按各自注册维度筛选。
 
 #### `internal/server/plugin/manager.go`
 - Generation 中预计算匹配集合和编译后的模型模式。
@@ -133,7 +133,7 @@ Generation 构建时把 `projectIDs`、`apiKeyIDs` 转成集合，并预编译 `
 | 功能 | `models=["claude-.*"]` 时，`gpt-5` 请求不借 VM、不调用 JS；`claude-sonnet-4` 请求调用 | 同上 |
 | 功能 | Gemini 入口按路径里的模型匹配 | orchestrator 集成测试，Gemini 入口加 httptest 上游 |
 | 功能 | 第一个插件在 `onRequest` 里把 model 改成不匹配第二个插件的值，第二个插件仍然执行 | 同上 |
-| 功能 | 同一请求的 `onAttempt` 只调用 `onRequest` 阶段留下的插件，重试和切换渠道后也一样 | 同上，流式和非流式各一组 |
+| 功能 | 同一请求复用业务范围匹配结果；onAttempt 独立按本次实际 APIFormat 匹配，覆盖仅 attempt 插件以及切渠道后格式变化 | 同上，流式和非流式各一组 |
 | 错误处理 | API Key 不属于已选 project、模式不是合法正则、超过数量上限：保存失败，可读错误 | resolver 单测 |
 | 兼容 | `match` 为 null 的插件行为与当前交付完全一致 | 复用 request.md 的兼容测试 |
 | 迁移 | 三种数据库升级成功 | `make migration-test-all-dbs` |

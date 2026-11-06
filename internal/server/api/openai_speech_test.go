@@ -200,7 +200,7 @@ func TestOpenAIHandlers_CreateSpeech_AudioStreamEndToEnd(t *testing.T) {
 		biz.NewLiveStreamRegistry(),
 		orchestrator.NewChannelLimiterManager(),
 		nil,
-	).WithChannelSelector(selector)
+		orchestrator.PluginIntegration{}).WithChannelSelector(selector)
 	speechOrchestrator.PipelineFactory = pipeline.NewFactory(executor)
 
 	handlers := &OpenAIHandlers{

@@ -11,6 +11,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
@@ -751,6 +752,14 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		outboundFormat = llm.APIFormat(candidate.APIFormat)
 	}
 
+	if candidate.Channel != nil {
+		ctx = contexts.WithAttemptChannel(ctx, contexts.AttemptChannel{
+			ID:   candidate.Channel.ID,
+			Name: candidate.Channel.Name,
+			Type: string(candidate.Channel.Type),
+		})
+	}
+
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
 	llmRequest = applyReasoningEffortMapping(llmRequest, candidate.Channel.Settings)
@@ -758,6 +767,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	for _, middleware := range p.outboundLlmRequestMiddlewares {
 		transformedRequest, err := middleware.OnOutboundLlmRequest(ctx, llmRequest, outboundFormat)
 		if err != nil {
+			if isPluginOverloaded(err) {
+				p.state.PluginOverloaded = true
+			}
 			return nil, fmt.Errorf("failed to apply %s middleware: %w", middleware.Name(), err)
 		}
 		llmRequest = transformedRequest
@@ -789,8 +801,12 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		return nil, err
 	}
 
+	// Resolve the emitted protocol once for raw middleware, plugin matching,
+	// pass-through, and persistence. Transformers may omit the request field.
 	if httpRequest.APIFormat != "" {
 		outboundFormat = llm.APIFormat(httpRequest.APIFormat)
+	} else {
+		httpRequest.APIFormat = string(outboundFormat)
 	}
 	if hasAdditionalTools && !isResponsesFormat(outboundFormat) && outboundFormat != llm.APIFormatOpenAIResponseCompact {
 		return nil, fmt.Errorf(
@@ -968,6 +984,9 @@ func (p *PersistentOutboundTransformer) GetRequestedModel() string {
 // HasMoreChannels returns true if there are more candidates available for retry.
 // It implements the pipeline.Retryable interface.
 func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
+	if p.state.PluginOverloaded {
+		return false
+	}
 	return p.state.CurrentCandidateIndex+1 < len(p.state.ChannelModelsCandidates)
 }
 
@@ -1048,9 +1067,10 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return false
 	}
 
-	// Local admission rejection: the same channel cannot make progress until the
-	// local queue/RPM state changes, so bounce immediately to the next channel.
-	if isChannelQueueError(err) || isLocalRPMExhaustedError(err) {
+	// Retrying the same channel cannot resolve local capacity rejection.
+	// Plugin overload also disables failover through state.PluginOverloaded;
+	// queue/RPM rejections can still move to the next channel.
+	if isLocalAdmissionError(err) {
 		return false
 	}
 

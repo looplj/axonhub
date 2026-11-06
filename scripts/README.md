@@ -4,8 +4,6 @@
 
 ## 📁 脚本列表
 
-插件开发工具和示例统一放在 [`plugin/`](../plugin/README.md)。
-
 ### E2E 测试脚本
 
 #### `e2e/e2e-test.sh`

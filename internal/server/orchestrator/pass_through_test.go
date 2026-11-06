@@ -337,7 +337,7 @@ func TestResponsesCrossTransportBodyPreservation(t *testing.T) {
 			outbound := &PersistentOutboundTransformer{state: state}
 			request := &httpclient.Request{APIFormat: tt.target.String()}
 
-			body, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(context.Background(), request)
+			body, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(context.Background(), request)
 			require.NoError(t, err)
 			adapted, err := applyResponsesTransportRequestBody(outbound, nil).OnOutboundRawRequest(context.Background(), body)
 			require.NoError(t, err)
@@ -1711,7 +1711,7 @@ func TestPassThroughResponsesStream_DeepSeekReasoningDoesNotDeadlock(t *testing.
 		pipeline.WithEmptyResponseDetection(),
 		pipeline.WithMiddlewares(
 			applyPassThroughStream(outbound, nil),
-			applyPassThroughRequestBody(outbound, nil),
+			applyPassThroughRequestBody(outbound, nil, nil),
 			captureRawProviderStream(outbound, nil),
 		),
 	)
@@ -1845,7 +1845,7 @@ func TestPassThroughAnthropicStream_RetryPreReadDoesNotDeadlock(t *testing.T) {
 		pipeline.WithRetry(0, 1, 0),
 		pipeline.WithMiddlewares(
 			applyPassThroughStream(outbound, nil),
-			applyPassThroughRequestBody(outbound, nil),
+			applyPassThroughRequestBody(outbound, nil, nil),
 			captureRawProviderStream(outbound, nil),
 		),
 	)
@@ -2021,7 +2021,7 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 		Body:      []byte(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.True(t, outbound.state.PassThroughApplied)
 	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
@@ -2071,7 +2071,7 @@ func TestOpenAIJSONRequestBodyRoutingContracts(t *testing.T) {
 				Body:      []byte(`{"model":"provider-model","converted_only":true}`),
 			}
 
-			processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(t.Context(), transformed)
+			processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(t.Context(), transformed)
 			require.NoError(t, err)
 			require.True(t, outbound.state.PassThroughApplied)
 			require.Equal(t, "provider-model", gjson.GetBytes(processed.Body, "model").String())
@@ -2103,7 +2103,7 @@ func TestOpenAIJSONRequestBodyRoutingContracts(t *testing.T) {
 				Body:      []byte(`{"model":"provider-model","converted_only":true}`),
 			}
 
-			processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(t.Context(), transformed)
+			processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(t.Context(), transformed)
 			require.NoError(t, err)
 			require.False(t, outbound.state.PassThroughApplied)
 			require.Equal(t, transformed, processed)
@@ -2217,7 +2217,7 @@ func TestApplyPassThroughBodySkipsWhenOutboundPolicyRejects(t *testing.T) {
 		Body:      []byte(`{"model":"gpt-5.4-mini","input":[{"role":"user","content":"hi"}],"stream":true}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.False(t, outbound.state.PassThroughApplied)
 	require.Equal(t, request, processed)
@@ -2346,7 +2346,7 @@ func TestApplyPassThroughBodyMasksPromptProtectedOpenAIContent(t *testing.T) {
 		Body:      []byte(`{"model":"gpt-4o","messages":[]}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	assert.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
 	assert.Equal(t, "secret-001", gjson.GetBytes(processed.Body, "messages.0.content").String())
@@ -2397,7 +2397,7 @@ func TestApplyPassThroughBodyKeepsProtectedBodyForUnsupportedPromptLayout(t *tes
 		Body:      []byte(`{"messages":[{"role":"user","content":"[MASKED]"}]}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	assert.Equal(t, string(request.Body), string(processed.Body))
 	assert.NotContains(t, string(processed.Body), `"content":"secret"`)
@@ -2435,7 +2435,7 @@ func TestApplyPassThroughBodyPreservesMappedModelForJinaRerank(t *testing.T) {
 		Body:      []byte(`{"model":"Qwen/Qwen3-Reranker-8B","query":"what is ai","documents":["a","b"]}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, "Qwen/Qwen3-Reranker-8B", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, float64(2), gjson.GetBytes(processed.Body, "top_n").Float())
@@ -2474,7 +2474,7 @@ func TestApplyPassThroughBodyPreservesMappedModelForJinaEmbedding(t *testing.T) 
 		Body:      []byte(`{"model":"jina-embeddings-v3","input":"hello"}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, "jina-embeddings-v3", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, "retrieval.query", gjson.GetBytes(processed.Body, "task").String())
@@ -2514,7 +2514,7 @@ func TestApplyPassThroughBodySkipsPassThroughWhenSupportedStreamParameterChanges
 		},
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, string(request.Body), string(processed.Body))
 	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
@@ -2556,7 +2556,7 @@ func TestApplyPassThroughBodyPreservesAlignedStreamWithoutPatchingIt(t *testing.
 		Body:      []byte(`{"model":"gpt-4o","stream":true,"messages":[{"role":"user","content":"hi"}]}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
 	require.True(t, gjson.GetBytes(processed.Body, "stream").Bool())
@@ -2829,7 +2829,7 @@ func TestApplyPassThroughBodySkipsMultipartFormats(t *testing.T) {
 				Body:      outboundBody,
 			}
 
-			processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+			processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
 			require.NoError(t, err)
 			require.Equal(t, outboundBody, processed.Body)
 			require.False(t, outbound.state.PassThroughApplied)
@@ -2865,7 +2865,7 @@ func TestApplyPassThroughBodySkipsMultipartVideo(t *testing.T) {
 		Body:      outboundBody,
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(t.Context(), request)
+	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(t.Context(), request)
 	require.NoError(t, err)
 	require.False(t, outbound.state.PassThroughApplied)
 	require.Equal(t, outboundBody, processed.Body)
@@ -2909,7 +2909,7 @@ func TestApplyPassThroughBodyAppliesJSONImageEdit(t *testing.T) {
 		Body:        outboundBody,
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.True(t, outbound.state.PassThroughApplied)
 
@@ -2979,7 +2979,7 @@ func TestApplyPassThroughBodyAppliesSpeechModelPatch(t *testing.T) {
 		Body:      []byte(`{"model":"tts-1-hd","input":"hello","voice":"alloy"}`),
 	}
 
-	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	processed, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
 	require.Equal(t, "tts-1-hd", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, "alloy", gjson.GetBytes(processed.Body, "voice").String())

@@ -1,189 +1,175 @@
 # 请求钩子
 
-[插件系统](README.md)的一个扩展点。插件在统一的 `llm.Request` 上改写，一次实现对所有入口协议生效。当前交付只有 `onRequest` 和 `onAttempt`；改写响应的 `onResponse`、`onStreamChunk` 见 [response.md](response.md)，不在当前交付。manifest 的 `hooks` 字段见 [manifest.md](manifest.md)。数值限制见 [运行限制](README.md#运行限制)。任务见 [任务表](README.md#9-任务管理)。
+[插件系统](README.md)的请求扩展点。`onRequest(ctx, request)` 修改统一请求的公开字段，`onAttempt(ctx, body)` 修改当前尝试的上游 JSON 请求体。所有入口统一以 `ctx` 为第一个参数。manifest 见 [manifest.md](manifest.md)，宿主 API 见 [plugin.js.md](plugin.js.md)，限制见 [运行限制](README.md#运行限制)。
+
+> 本篇是未发布接口的修订设计，`schemaVersion` 和 `pluginApiVersion` 保持 `1`，不保留旧签名或布尔 hooks 的兼容层。运行时、示例和回归测试已同步此契约，见 T-13。
 
 ## 1. 背景
 
-请求中间件在 `internal/server/orchestrator/orchestrator.go` 279–357 行写死。按租户改写请求、注入参数都要改这条链。
-
-`NewChatCompletionOrchestrator` 的固定前两项是 `cc.SystemCacheCompatibility()` 和 `stream.EnsureUsage()`。其后是 billing、`enforce-quota`、模型权限、模型映射、选路。`OnOutboundLlmRequest` 在 `orchestrator/outbound.go` 里、provider transformer 序列化之前调用，只有实现了 `OutboundLlmRequestMiddleware` 的中间件会进入这个列表。
+统一请求适合协议无关的业务处理，上游请求体适合供应商协议适配。两个钩子分别处理这两个阶段，避免为了增加一个上游字段而扩展 `llm.Request`，也允许在 pass-through 渠道上精确修改上游 body。
 
 ## 2. 目标
 
-1. JS 插件可声明 `onRequest`、`onAttempt`。
-2. 钩子抛错、超时、返回非法值时，请求按钩子前的值继续，响应状态码不变。钩子可以是 async；宿主等待 Promise，结算后的值按上一条处理。Promise 被拒绝视同抛错。
-3. 取不到 VM 时返回 429 `plugin_overloaded`，不跳过插件，不发上游，不影响渠道健康统计和插件熔断。
-4. 没有声明请求钩子的插件时，`Process` 的中间件数量和分配次数与现在相同。
+1. `onRequest` 按 `RequestType` 注册，每个匹配请求调用一次。
+2. `onAttempt` 按当前尝试的实际出站 `APIFormat` 注册，每次尝试重新匹配。
+3. 两个钩子返回对象表示整体替换，返回数组表示 RFC 6902 JSON Patch，返回 `undefined` 表示不修改。
+4. 非法返回、patch 失败、抛错、超时保留调用前请求并计一次失败；VM 过载返回 429，不跳过插件。
+5. 不匹配时不借 VM、不为插件序列化请求。插件不引入统一请求的 attempt 隔离复制。没有请求插件时不增加插件中间件。
 
 ### 非目标
 
-- 用请求钩子实现新的 channel provider 或路由策略。自定义 Provider 见 [provider.md](provider.md)。
-- 用钩子改 `stream`。客户端要的响应形态不能被插件换掉。
-- 改写响应和流式 chunk。见 [response.md](response.md)。
-- 宿主按 project、API Key、模型收窄钩子。见 [scope.md](scope.md)。
+- 新的 channel provider、路由策略、响应改写，分别见 [provider.md](provider.md)、[response.md](response.md)。
+- `onAttempt` 修改 HTTP URL、方法、头、凭证、multipart 或二进制 body。
+- 按 project、API Key、模型收窄；这是 [scope.md](scope.md) 的额外可选过滤。
 
-## 3. User Stories
+## 3. 注册与匹配
 
-1. 作为 API 使用方，我希望没装插件或插件出错时，响应和现在一样，以便插件不是新的故障点。
-2. 作为插件作者，我希望 `onRequest` 改了 model 之后仍走原来的模型权限和映射，以便不能绕过 API Key 的模型限制。
-3. 作为插件作者，我希望对某次 attempt 的改写不影响下一次重试，以便按渠道改参数时不会污染故障转移。
-4. 作为系统 Owner，我希望插件处理不过来时请求被拒绝，而不是绕过插件发给上游，以便依赖插件的规则在高负载下也成立。
+```json
+{
+  "hooks": {
+    "request": {
+      "enabled": true,
+      "requestTypes": ["chat", "completion"]
+    },
+    "attempt": {
+      "enabled": true,
+      "apiFormats": ["openai/chat_completions", "anthropic/messages"]
+    }
+  }
+}
+```
+
+- 省略整个钩子对象表示未声明；声明时 `enabled` 必填且为布尔值，不从列表内容推断启停。`enabled: false` 保留范围配置但不调度；`true` 要求对应范围列表非空，并有同名函数导出。没有隐含的“全部”，空列表不是通配符。
+- `requestTypes` 和 `apiFormats` 各自只接受 `llm/constants.go` 对应枚举的精确值；列表内部为 OR，重复项、未知值、错误类型和未知字段安装时拒绝。禁用配置中的非空列表也照常校验。
+- `onRequest` 使用进入中间件时的 RequestType；兼容已有请求中空 RequestType 表示 chat 的约定。不依赖入站 API 格式。
+- `onAttempt` 使用统一解析的出站格式：优先 `httpclient.Request.APIFormat`，为空时回退到 candidate APIFormat，再回退到 wrapped transformer 的 APIFormat。orchestrator 在上游转换完成后将解析结果写回 HTTP 请求；钩子匹配、`ctx.attempt.apiFormat`、pass-through 和持久化共用该结果。同渠道重试和故障转移都重新匹配，不使用入站 `ctx.request.apiFormat`。已启用的 attempt 钩子因格式不匹配而跳过时记录 Debug，包含 plugin_id、channel_id、api_format、reason；格式仍无法确定时 reason 为 api_format_unresolved，否则为 api_format_not_matched。
+- 两个钩子独立匹配。只声明 attempt 或 request 不匹配时，attempt 仍可执行，此时该插件尚未写入的 `ctx.state` 为 `{}`。
+- 整个插件的安装记录 `enabled` 是总开关；manifest 内的 `enabled` 是对应钩子的开关，两者均开启才调度。
+- 请求固定持有进入时的 Generation；重试只重新匹配该 Generation 内的插件，不切换版本。各阶段按 priority 顺序调用。
 
 ## 4. 钩子
 
-脚本的导出形式、返回值语义、`ctx` 和示例见 [plugin.js.md](plugin.js.md)。本节说明钩子在请求链路中的位置及约束。
-
-脚本来自包内的 `plugin.js` 及其 import 闭包，启用或升级加载时编译，按 [资源加载与释放](README.md#资源加载与释放) 保存在内存。每次钩子调用借用已初始化的 VM，池未满且没有空闲 VM 时可按需创建并初始化；调用路径不重新读库、读 UI 临时文件或解压编译。
-
-`plugins.Hooks.Middleware(ctx)` 在 `orchestrator.Process` 组装中间件时调用。当前 Generation 里没有已启用、声明了 `hooks.request` 或 `hooks.attempt` 的插件时返回 nil，不追加。有则返回一个同时实现 `OutboundLlmRequestMiddleware` 的 `pipeline.Middleware`。
-
-插入位置：`processor.Middlewares` 和 billing 中间件之后、`NewPersistentTransformers` 之前（`orchestrator.go` 283 行后）。这样 `onAttempt` 能进入 `outboundLlmRequestMiddlewares`。
-
-钩子对全部请求生效，宿主不按请求收窄。每个钩子的 `ctx.request` 提供 `projectId`（`contexts.GetProjectID`）、`apiKeyId`（`contexts.GetAPIKey`，playground 为 null）、`model`（进入钩子中间件时的 `llm.Request.Model`，即客户端请求的模型）、`apiFormat`。插件按这些字段自行判断，不处理时返回 `undefined`。宿主侧收窄是可选能力，见 [scope.md](scope.md)。
+### 输入与执行顺序
 
 ```text
-1. OnInboundLlmRequest，每请求一次，早于 enforce-quota、模型权限、模型映射、选路。
-   按 priority 调用 onRequest(req, ctx)。
-   - 返回对象：反序列化成 llm.Request，作为下一个插件的输入。
-   - 修改 stream：非法，整次修改回滚。
-   - 修改 model：合法。后面的 check-api-key-model-access 和 apply-model-mapping 按新 model 校验。
-   - ctx.reject(status, message)：status 只能是 400、403、429。错误构造与 enforceQuota 返回 403 的方式相同。
-2. OnOutboundLlmRequest，每次 attempt。输入是当次请求的副本。
-   此时 model 已换成实际模型，渠道的 transform options、reasoning 映射、默认 max_tokens 已应用（outbound.go 741–756 行）。
-   onAttempt(req, ctx)，ctx.attempt 含 channel、actual model 和上游 API 格式。
-   返回值只作用于这次 attempt。修改 model 或 stream 视为非法，丢弃本次全部请求修改，后续插件收到该次调用前的值。
-3. 每次钩子调用借一个 VM，返回即归还。
-   同一请求内的钩子用 ctx.state 共享数据。ctx.state 由宿主按请求、按插件保存，请求结束释放。
+客户端请求 → inbound transformer → 统一 llm.Request
+→ processor middlewares、billing
+→ onRequest(ctx, request)
+→ 配额、模型权限、模型映射、选路、提示词处理
+→ 每次尝试：实际模型、渠道 transform options、reasoning 映射、默认参数
+→ provider transformer → 上游 HTTP 请求
+→ pass-through body、Responses 传输与续接 body 适配
+→ onAttempt(ctx, body)
+→ 渠道 override body / headers
+→ 最终协议校验、传输整理、持久化、限流与发送
 ```
 
-一次请求从 `Process` 开始固定使用当时的 Generation，重试中途不换钩子列表。
+`onRequest` 的 `request` 是统一请求的公开 JSON 对象，沿用 snake_case 标签。宿主保留 `RawRequest`、`RequestType`、`APIFormat`、`TransformOptions`、`TransformerMetadata`、`ProviderExtensions` 及嵌套的非公开字段；这些字段不交付 JS，也不接受通过 replace 或 patch 注入。音频文件及文件名、图片字节与 mask、AlphaSearch/Decisions 原始正文等不因公开对象回填而丢失。它们不进入 JS，onRequest 回填时由插件内部保留原引用，不复制文件，也不参与 attempt 隔离；未修改的业务类型仍可正常发送。
 
-attempt 隔离要求：宿主保存请求钩子及后续公共入站处理完成后的请求基线；每次尝试都在应用当前渠道变换和调用 onAttempt 之前，从基线建立独立的可变副本。同渠道重试或切换渠道必须重新建立副本，不能从上一次 attempt 的结果继续修改。隔离覆盖嵌套 slice、map 和指针指向的可变值；浅拷贝不足以满足要求。具体复制方式、内部字段保留及写回映射按用户决定留到 T-13 实施时明确，本节先固定“尝试之间不互相污染”的可观察结果。
+`onAttempt` 的 `body` 是目标协议的 JSON 对象，不是 `llm.Request`、JSON 字符串、字节数组或整个 HTTP 请求。它已包含实际模型、渠道变换、pass-through 与续接适配的结果，字段保持上游协议本身的命名。只调度 JSON 对象 body；multipart、二进制、空 body、JSON 标量或数组 body 跳过，不计插件失败。声明的 APIFormat 不会让非 JSON body 自动变成 JSON。
 
-失败：抛错、超时、非法返回、输入超过 2 MiB，都使用钩子前的值继续，并计一次失败。不改变响应状态码。熔断期间该插件的钩子直接跳过，不借 VM。
+`ctx.request` 使用 camelCase：`projectId`、`apiKeyId`、`model`、`requestType`、`apiFormat`，保存中间件进入时的元数据，Playground 的 apiKeyId 为 null。`ctx.attempt` 提供 `channel: {id, name, type}`、实际 `model` 和出站 `apiFormat`，不含凭证。模型在 URL 中编码的协议也通过 `ctx.attempt.model` 读取实际模型，不能假定 body 一定存在 model。
 
-### VM 不足
+### 返回值：replace / patch
 
-取不到 VM 时拒绝请求，不跳过插件。插件可能负责脱敏、拦截这类规则，高负载时悄悄放行会让规则失效。
+两种请求钩子使用同一套返回契约；async Promise 的结算值也适用。
 
-```text
-1. 取 VM 最多等 100 ms，不计入 10 s 的调用超时。等不到就是过载。
-2. onRequest 过载：OnInboundLlmRequest 返回 llm.ResponseError
-   {status 429, code plugin_overloaded, type rate_limit_error, message "plugin <id> is at capacity; please retry shortly"}。
-   与 ctx.reject、enforceQuota 走同一条错误路径。请求不进选路，不发上游。
-3. onAttempt 过载：OnOutboundLlmRequest 返回 PluginOverloadedError，它包装第 2 步的 429。
-   - PersistentOutboundTransformer.TransformRequest 在 outboundLlmRequestMiddlewares 循环里（outbound.go 757–763 行）识别这个错误，
-     设置 state.PluginOverloaded = true。
-   - CanRetry 对它返回 false，HasMoreChannels 在 PluginOverloaded 时返回 false。
-     pipeline 的重试循环因此既不做同渠道重试，也不切渠道，直接返回这个错误。不需要改 llm/。
-     不切渠道的原因：VM 池按插件共享，换渠道也取不到 VM，切换只会消耗候选并发出错误的 request.failover。
-   - 错误发生在 TransformRequest 里，不经过 OnOutboundRawError，渠道冷却、错误统计、模型熔断都不受影响。
-   - 客户端收到和第 2 步相同的 429。
-4. 两种情况都：
-   - 不计入插件失败次数，不触发熔断。过载是容量不够，不是插件出错。
-   - 运行状态里的 overloaded 加一，记 Warn 日志：plugin_id、hook、request_id。
+| 返回值 | 含义 |
+| --- | --- |
+| JSON 对象（非 null、非数组） | replace：整体替换本次输入的公开对象，不做 merge；省略字段即删除，onRequest 解码后为对应零值 |
+| JSON 数组 | patch：按 RFC 6902 依次应用操作；不是把 body 替换成数组 |
+| `undefined` 或无返回 | 保持调用前值，忽略对参数对象的原地修改 |
+| `null`、标量、非法 JSON 值 | 调用失败，保留原值并计一次失败 |
+
+patch 使用 [JSON Patch（RFC 6902）](https://www.rfc-editor.org/rfc/rfc6902) 的 `add`、`remove`、`replace`、`move`、`copy`、`test` 六种操作，路径使用 [JSON Pointer（RFC 6901）](https://www.rfc-editor.org/rfc/rfc6901)。不使用 sjson 点号路径或 Merge Patch。`add` 对对象属性可新增或覆盖；`replace`、`remove` 要求目标存在；数组 `/-` 用于追加且父数组必须存在；`~0`、`~1` 分别表示键名中的 `~`、`/`。空数组是成功的无修改操作。
+
+宿主把 patch 应用到调用前对象的副本，而非插件可能原地修改过的参数。任一步非法、目标不存在、test 失败或最终结果不是 JSON 对象，都回滚整组操作。根路径 `""` 也按 RFC 处理，但最终必须通过对象形态和保护字段校验。没有部分成功提交。
+
+replace 和 patch 都在提交前完成 JSON 校验、onRequest 的类型解码及保护字段校验。只有全部通过才记录调用成功、保存 body/request 和 `ctx.state`，然后作为下一个插件的输入。失败时不得先清空连续失败计数。`undefined`、空 patch 是成功调用，可提交 state；KV 等已经发生的宿主副作用不随请求修改回滚。
+
+```js
+export function onRequest(ctx, request) {
+  // replace：未修改的公开字段仍需保留。
+  return { ...request, temperature: 0.2 };
+}
+
+export function onAttempt(ctx, body) {
+  // patch：只修改本次上游请求中的一个字段。
+  return [{ op: "add", path: "/temperature", value: 0.2 }];
+}
 ```
 
-用 429 而不用 503，沿用 `ChannelQueueError`（`channel_queue_error.go`）和本地 RPM（`rate_limit_admission_error.go`）的做法：本地容量不足返回 429，客户端 SDK 按退避重试，前置负载均衡也不会把它当成实例故障。
+### 保护字段与隔离
 
-### 与渠道配置的先后
+- `onRequest` 可以改 model，随后仍过模型权限检查和映射；不能改变流式/非流式语义，nil 与 false 均为非流式。
+- `onAttempt` 不能改变已选定的模型和响应传输模式。宿主按实际 APIFormat 校验协议对应的模型、stream/传输控制字段，包括删除字段和根替换；模型在 URL、流式由 endpoint 或 WebSocket 控制时，插件不能通过 body 覆盖或矛盾地声明这些值。不向 JS 暴露 URL 修改能力。
+- 保护字段变化时丢弃本次全部修改及 state，每次调用累加一次 protectedDrops，并记录 Warn（plugin_id、hook、request_id、api_format、changed_fields、reason=protected_fields_changed），不记录请求内容。这不是成功或失败，不增加也不清零连续失败计数；非法返回、patch 失败和类型解码失败计一次失败。protectedDrops 与 overloaded 一样按插件、按实例累计，通过 pluginRuntimeStatuses 和管理页卡片/详情展示。
+- 每次 attempt 由 provider transformer 重新生成上游请求；onAttempt 只修改当次 HTTP 请求的 body，不写回 llm.Request，也不复用上次被插件修改的 body。因此不保存 HookBaseline，不为插件深拷贝统一请求或对其做 JSON 往返；有无插件均沿用同一套 orchestrator 请求处理。渠道 transform options 自身是否跨尝试污染属于独立问题，不能通过启用插件才触发的隔离机制解决。
+- `ctx.state` 按请求、插件保存，跨 attempt 保留；body 修改只影响当前 attempt。响应流结束前若仍可能重试，Generation 和请求状态不得提前释放。
 
-两个钩子都改的是 `llm.Request`。序列化之后，`OnOutboundRawRequest` 阶段还有两类渠道配置会改上游请求，顺序见 `orchestrator.go` 304–325 行：
+### 按协议定义保护规则
 
-1. **pass-through body**：渠道开启 pass-through 时，用客户端原始 body 替换序列化结果。插件改写在这类渠道上的处理见 [§5](#5-pass-through-渠道)。
-2. **override body / headers**：`applyOverrideRequestBody`、`applyOverrideRequestHeaders` 在 pass-through 之后执行。插件和渠道 override 改了同一个字段时，以渠道配置为准。
+规则集中在 `plugin/protected_fields.go`，使用本次解析后的 APIFormat。只检查最终 replace/patch 结果，删除、根替换、move/copy 不能绕过检查；同一 patch 临时修改再恢复原值可以通过。
+
+| 协议 | 保护语义 |
+| --- | --- |
+| OpenAI chat/completions、HTTP Responses、Anthropic | model 值及存在性不变；stream 缺省与 false 等价 |
+| Ollama chat | model 不变；stream 缺省与 true 等价，删除显式 false 会被丢弃 |
+| Responses WebSocket | model 不变；stream 按适配前请求语义保护；type 缺省为 response.create、generate 缺省为 true，不能改成其他帧或切换 warmup |
+| OpenAI speech | model 不变；stream_format 缺省与 audio 等价，不能切换 audio/SSE |
+| Gemini contents | URL 控制模型和流式动作；新增 body.model / body.stream 不得与宿主选定模型和 URL 动作冲突；type、generate 不作为通用保护字段 |
+| Gemini embeddings | URL 与 body.model 必须一致；批量请求的 requests 中各 model 也不能指向其他模型 |
+| 其他已支持格式 | 按表中对应协议只保护其实际控制字段，不全局保留 type/generate/stream_format |
+
+新增 APIFormat 时须显式补充规则及测试；缺少规则时拒绝该次改写并计 protectedDrops，不推断未知协议的控制字段。
+
+### 拒绝、失败与 VM 不足
+
+`ctx.reject(status, message)` 仅在 onRequest 提供，status 为 400、403、429，message 非空。合法拒绝停止后续钩子，沿 `llm.ResponseError` 返回对应状态，不计失败；捕获内部控制异常仍然拒绝。非法参数按宿主 API 错误处理。
+
+抛错、超时、非法返回、patch 失败、类型解码失败、序列化输入超过 2 MiB：保留调用前值，丢弃本次 state，计一次失败，不改变 HTTP 状态。熔断时跳过钩子。调用预算 10 秒，含已等待的 Promise 和 ctx.fetch；state 限制 64 KiB。
+
+借 VM 最多等待 100 ms，不计入调用预算。取不到时返回 429 `plugin_overloaded` / `rate_limit_error`，消息为 `plugin <id> is at capacity; please retry shortly`；记 overloaded 和 Warn，不计插件失败、不发上游、不重试同渠道、不切渠道、不发布 failover、不影响渠道或凭证健康。
+
+onAttempt 在 raw-request 阶段过载时设置 PluginOverloaded 标记。渠道队列、RPM、插件容量三类本地拒绝统一由 isLocalAdmissionError 分类，性能统计、模型熔断、渠道冷却和凭证失败规则共用它，不能将本地拒绝当成上游故障；同渠道重试也使用该分类，但插件过载禁止故障转移，队列/RPM 仍可换渠道。
+
+ApplyRequestHookAttempt 位于性能记录、执行持久化、渠道限流之前。它提前失败时，后续 OnOutboundRawRequest 没有执行，但 pipeline 仍向所有中间件广播 OnOutboundRawError，因此 state.Perf / RequestExec 可能仍属于上一轮 attempt。插件过载时，错误回调及 orchestrator 最终收尾都不能覆盖上一轮执行记录；队列/RPM 拒绝通常已有本次记录，仍需持久化失败。资源清理回调仍须执行并支持尚未初始化的情况。
 
 ## 5. pass-through 渠道
 
-### 现状
+pass-through 仍先回放客户端原始 body，并合并实际模型及 prompt protection 结果。onRequest 的非 model 改写仍可能在此被覆盖；宿主只对这些 onRequest 改写记录 `overriddenByPassThrough`，按插件、每次 attempt 至多计一次，并记 Warn。
 
-渠道开启 pass-through，且 `allowPassThroughBody` 和 `passThroughBodySupported` 都通过时，`applyPassThroughRequestBody`（`pass_through.go` 215 行）用客户端的原始 body 替换序列化结果，再用 sjson 合并 model 和 prompt protection 的改动（241–245 行）。multipart 请求不走 pass-through。
+onAttempt 在 pass-through 和协议 body 适配完成后运行，因此它的 replace/patch 正常生效，不记入 `overriddenByPassThrough`。未知上游字段在 patch 模式下保持；replace 模式下由插件负责返回希望保留的完整对象。之后渠道 override 对同一字段具有最终优先级，最终协议校验仍由宿主执行。
 
-所以在这类渠道上，`onRequest` 改的 model 经过模型权限和映射后照常到达上游；`onRequest`、`onAttempt` 对参数、消息、工具等其他字段的改写都会丢失。
-
-Owner 开 pass-through，是为了保留 `llm.Request` 表达不了的上游字段。插件改写和这个目的冲突时，需要定一个优先级。
-
-### 方案对比
-
-| 方案 | 做法 | 优点 | 缺点 | 结论 |
-|------|------|------|------|------|
-| A | 保持现有规则：除 model 外的插件改写丢弃。宿主记录被丢弃的插件，记 Warn 日志并计数 | 不改变 pass-through 语义；不增加序列化；改动集中在一个回调 | 插件在这类渠道上不能改参数和消息 | 采用 |
-| B | 钩子前后各序列化一次，按顶层字段求差，用 sjson 把差异写回原始 body | 插件不用改，改写大多能生效 | 每次 attempt 多一次 `TransformRequest`；顶层字段整体覆盖，会把原始 body 里 `llm.Request` 表达不了的嵌套字段一起冲掉，正好破坏 pass-through 要保留的东西 | 放弃 |
-| C | `ctx.attempt.passThrough` 告诉插件本次走 pass-through；`onAttempt` 可返回 `patch` / `remove`（上游格式的 JSON 路径），宿主用 sjson 应用到原始 body | 改动精确，不丢字段，合并方式与 prompt protection 一致 | 新增一套对外契约；插件要按上游格式写路径，并处理不同 API 格式；目前没有明确需求 | 暂缓，作为后续方向 |
-| D | 插件改了 model 以外的字段时，本次 attempt 不走 pass-through，改用序列化结果 | 插件改写全部生效 | 丢掉 Owner 依赖 pass-through 保留的字段；装一个插件就能悄悄改变渠道配置的语义 | 放弃 |
-
-### 决策
-
-采用 A。
-
-1. pass-through 是渠道 Owner 的显式配置，插件不应在 Owner 不知情时削弱它。
-2. A 不增加热路径上的序列化，也不新增插件 API，当前交付范围最小。
-3. A 不排斥 C。以后有需求时，C 只在 `ctx.attempt` 和 `onAttempt` 返回值上增加字段，A 的计数和日志继续保留。
-
-当前交付不提供 `ctx.attempt.passThrough`，插件无法事先知道改写会被丢弃，只能从运行状态和日志看到。
-
-### 处理流程
-
-```text
-1. 钩子中间件比较每个插件的返回值和输入（去掉 model）。
-   不同则把插件记入改写列表：onRequest 的记录作用于整次请求，onAttempt 的记录只作用于当次 attempt。
-2. applyPassThroughRequestBody 设置 PassThroughApplied = true 后，
-   调用 RequestHookProvider.PassThroughApplied(ctx, channelID)。
-3. 对改写列表里的每个插件：
-   - 记 Warn 日志：plugin_id、channel_id、request_id。
-   - 运行状态里的 overriddenByPassThrough 加一，同一 attempt 内同一插件最多加一。管理页显示该计数。
-4. 请求本身不变：上游收到原始 body 加 model、prompt protection 的合并结果，响应状态码不受影响。
-```
-
-开发者文档写明：pass-through 渠道上只有 model 的改写生效，看到 `overriddenByPassThrough` 增长时，让 Owner 关闭该渠道的 pass-through；固定值的改写也可以改用渠道 override body。
+需要在 pass-through 上改供应商参数时，应注册对应 APIFormat 的 onAttempt；无须关闭 pass-through。multipart/二进制请求不进入 onAttempt。
 
 ## 6. 改动清单
 
-### `internal/server/orchestrator/`
-- `plugins.go`：`PluginIntegration{Hooks RequestHookProvider; Events *events.Bus}`、`RequestHookProvider`（`Middleware(ctx) pipeline.Middleware`、`PassThroughApplied(ctx, channelID int)`）。`Events` 的发布点在 [events.md](events.md)。
-- `orchestrator.go`：`NewChatCompletionOrchestrator` 末尾增加参数 `plugins PluginIntegration`。283 行后插入钩子中间件。
-- `plugin_overload_error.go`：新增 `PluginOverloadedError`，`Unwrap` 返回 429 的 `*llm.ResponseError`。写法参照 `channel_queue_error.go`。
-- `outbound.go`：`TransformRequest` 遇到 `PluginOverloadedError` 时设置 `state.PluginOverloaded`；`CanRetry` 对它返回 false；`HasMoreChannels` 在 `PluginOverloaded` 时返回 false。
-- `pass_through.go`：`applyPassThroughRequestBody` 增加 `RequestHookProvider` 参数，设置 `PassThroughApplied = true` 后调用 `PassThroughApplied`。参数为 nil 时跳过。
-- `internal/server/plugin/hooks.go`：实现 `RequestHookProvider`。取 VM 失败时按 [VM 不足](#vm-不足) 返回错误、计 `overloaded`。插件返回新对象时，比较返回值和输入去掉 `model` 后是否相同，不同就记入改写列表；`PassThroughApplied` 按 [§5 处理流程](#处理流程) 记日志和计数。
-
-### `internal/server/api/*.go`
-- `openai.go`、`anthropic.go`、`gemini.go`、`aisdk.go`、`jina.go`、`doubao.go`、`playground.go`、`typesafe.go` 的 Params 增加 `Plugins`。生产代码里 23 处 `NewChatCompletionOrchestrator` 调用补上这个参数（openai 15、jina 2，其余各 1），另有 6 个测试文件里的 8 处一并更新。事件发布也用同一个参数，不要为事件再加一次构造函数参数。
+- `internal/objects/plugin.go`、`plugin/manifest.go`：hooks 从布尔值改为包含显式 enabled 和匹配列表的对象；未知字段、枚举、重复值、非空范围、导出校验；升级范围扩大提示。
+- `plugin/invoke.go`、事件派发：所有入口以 ctx 为第一个参数；在成功计数前完成返回契约校验。
+- `plugin/hooks.go`：request 类型匹配，attempt 出站格式匹配；统一 replace/patch 处理、原子提交、保护字段、state、失败计数。
+- `orchestrator`：将 onAttempt 从 OutboundLlmRequestMiddleware 移到 pass-through/Responses body 适配之后、渠道 override 之前的 raw-request 中间件；使用实际出站格式，修正过载分类和 pass-through 计数；不引入统一请求的隔离复制。
+- manifest 展示、安装/升级预览、授权 UI：展示 enabled 与范围，新启用或扩大范围触发已有升级确认流程。
+- 示例插件、运行时测试、双语开发指南：同步签名、manifest 和返回约定；保持 pluginApiVersion 1，不兼容未发布的旧契约。
 
 ## 7. 验收
 
-| 类别 | 标准 | 验证方式 |
-|------|------|----------|
-| 对外兼容 | 钩子抛错、`while(true)` 超时、返回非法值时，OpenAI 和 Anthropic 入口的响应与无插件时一致 | orchestrator 集成测试，httptest 上游，覆盖流式和非流式 |
-| 功能 | `onRequest` 修改 model 后，没有该模型权限的 API Key 被拒绝 | 同上，断言 403 |
-| 功能 | `onAttempt` 对渠道 A 的改写不出现在切到渠道 B 的请求里；同渠道重试也从基线开始，嵌套消息、工具参数等可变对象不残留上次修改 | 同上，两个上游各记录收到的 body，增加同渠道重试用例 |
-| 功能 | `onAttempt` 返回对象修改 model 或 stream：该次请求修改全部丢弃，后续插件与上游收到调用前的值；客户端流式/非流式响应形态保持原请求约定 | orchestrator 契约测试，覆盖流式和非流式 |
-| 功能 | 开启 pass-through 的渠道：上游收到客户端原始 body，`onRequest` 改的 model 生效、其他字段不生效，改了其他字段的插件 `overriddenByPassThrough` 加一并有 Warn 日志，只改 model 的插件不计数 | 同上，pass-through 渠道加 httptest 上游 |
-| 功能 | 插件和渠道 override 改同一字段时，上游收到渠道 override 的值 | 同上 |
-| 错误处理 | 插件 VM 全部占用时：`onRequest` 声明的插件让请求返回 429 `plugin_overloaded`，上游没收到请求；`onAttempt` 过载时不切渠道，第二个上游也没收到请求；插件失败次数不变，`overloaded` 加一，渠道没有冷却和错误记录 | orchestrator 集成测试，用阻塞的插件占满 16 个 VM |
-| 性能 | 无请求钩子插件时，中间件数量和分配次数与改动前一致 | `go test -bench Orchestrator ./internal/server/orchestrator/` |
-| 性能 | 100 KiB 请求体上，改一个字段的 `onRequest` ≤ 5 ms（开发机） | `go test -bench Hook ./internal/server/plugin/` |
-
-启用钩子后 24 小时内看请求延迟。p95 增加超过上面的单次预算时，禁用插件，或让插件按 `ctx.request` 尽早返回。
+| 类别 | 标准 |
+| --- | --- |
+| 注册 | enabled 必填；true 配空列表拒绝；false 保留列表但不执行；未知/重复枚举拒绝；省略不注册 |
+| 匹配 | RequestType 相同但入站协议不同均进入 onRequest；onAttempt 按实际出站格式匹配，切渠道重新判断；只声明 attempt 也可执行 |
+| 性能 | 不匹配时不借 VM、不做插件序列化；有无插件均不引入统一请求的 attempt 深拷贝 |
+| replace | 对象整体替换，省略字段删除；onRequest 内部和二进制字段保留，音频/图片等接口不回归 |
+| patch | 六种操作、嵌套对象、数组插入/追加/移动、Pointer 转义、根路径、空 patch；中途失败整组回滚 |
+| 校验 | 各 APIFormat 的默认值与业务字段差异、保护丢弃的 Warn/计数/state 回滚、失败计数保持；patch 基于调用前对象；对象与数组返回都经过最终形态、类型和保护字段校验；连续解码失败可触发熔断 |
+| 状态 | 成功含 undefined/空 patch 提交 state；失败、保护字段变化、reject 丢弃 state；跨 attempt 保留成功 state |
+| 隔离 | 同渠道重试、故障转移均重新生成 wire body，不残留上次插件修改；私有 Go 值和 state.LlmRequest 的模型更新行为不因启用插件而改变；Generation 不因重试切换或提前释放 |
+| 协议 | onAttempt 接收目标协议对象；multipart、二进制、非对象 JSON 跳过；模型在 URL、流式在 endpoint/WS 的情况也受保护 |
+| 优先级 | pass-through 后 onAttempt 改写可达上游；仅 onRequest 被覆盖时增加计数；渠道 override 同字段优先 |
+| 错误 | 抛错/超时与无插件行为一致；过载 429 不调用上游、不重试、不影响渠道/凭证健康和插件熔断 |
+| 本地拒绝 | 队列/RPM/插件过载不推进凭证自动禁用计数，真实上游错误仍按阈值处理；第一次上游 500、第二次插件过载时客户端收到 429，第一次执行记录保留 500，主请求标为失败；队列/RPM 本次记录仍保存拒绝原因 |
+| 签名 | onEvent(ctx, event)、onRequest(ctx, request)、onAttempt(ctx, body)；示例和调用端一致 |
 
 ## 8. 风险与妥协
 
-| 风险 | 触发条件 | 影响 | 对策 |
-|------|----------|------|------|
-| 钩子拖慢热路径 | 插件逻辑重或请求体大 | 延迟上升 | 超时、2 MiB 上限、VM 池、熔断。只服务部分请求的插件可启用 [scope.md](scope.md) 的宿主侧收窄 |
-| 插件改写被渠道配置覆盖 | 渠道开启 pass-through，或 override 改了同一字段 | 插件以为生效，上游实际没收到 | 按 [§5](#5-pass-through-渠道) 计数并记 Warn 日志；开发者文档写明先后规则 |
-| 慢插件把请求挡成 429 | 插件单次调用接近 10 s，且请求并发高 | 每插件每实例 16 个 VM。调用若占满 10 s，约 1.6 次每秒就会过载，之后的请求收到 429。提前返回的调用会立刻归还 VM | 超时计入熔断，连续 20 次超时后插件暂停 5 分钟，钩子跳过；没超时但持续过载时，管理页显示 `overloaded` 计数，Owner 禁用插件、缩短外部调用或加实例。只服务部分请求的插件启用 [scope.md](scope.md) |
-
-```text
-1. 妥协：当前交付不能改写响应
-   - 原因：流式 chunk 逐个进 JS 的调用次数和延迟需要单独设计，不阻塞请求钩子
-   - 影响：需要改写或过滤响应的插件暂时只能做请求侧和事件侧
-   - 升级触发：出现明确的响应改写需求
-   - 后续方向：按 response.md 开放 onResponse 和按 chunk 类型过滤的 onStreamChunk
-
-2. 妥协：pass-through 渠道上只有 model 的改写生效
-   - 原因：pass-through 回放客户端原始 body，只合并 model 和 prompt protection
-   - 影响：在这类渠道上，插件对参数、消息的改写不会到达上游
-   - 升级触发：需要在 pass-through 渠道上改写参数
-   - 后续方向：§5 方案 C，提供 `ctx.attempt.passThrough`，允许 `onAttempt` 返回 `patch` / `remove`，用 sjson 合并进原始 body
-```
+onAttempt 第一版只支持 JSON 对象 body；multipart、二进制修改需另立契约。replace 由插件负责保留所需字段，patch 适合局部修改。插件仍受调用预算、输入限制、VM 池和熔断约束。响应钩子尚未开放，见 [response.md](response.md)。

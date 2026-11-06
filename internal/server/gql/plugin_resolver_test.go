@@ -11,8 +11,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2"
 
 	entsql "entgo.io/ent/dialect/sql"
 
@@ -38,7 +40,11 @@ const pluginSelection = `
   grantedNetwork
   manifestPermissions
   manifestNetwork
-  configFields { name type title description format enumValues minimum maximum defaultJSON }
+  manifestHooks {
+    request { enabled requestTypes }
+    attempt { enabled apiFormats }
+  }
+  configFields { name type title description format enumValues minimum maximum defaultJSON required }
   config
   runtimeStatus
   runtimeError
@@ -46,7 +52,7 @@ const pluginSelection = `
 
 const pluginsQuery = `query Plugins {
   pluginCountersArePerInstance
-  pluginRuntimeStatuses { id pluginID status reason }
+  pluginRuntimeStatuses { id pluginID status reason overloaded protectedDrops overriddenByPassThrough }
   plugins {` + pluginSelection + `}
 }`
 
@@ -203,7 +209,10 @@ func TestPluginGraphQL(t *testing.T) {
 	require.NotContains(t, errorText(denied), "owner access required")
 	require.NotContains(t, errorText(denied), "read_plugins")
 
-	firstZip := uiPluginZip(t, "1.0.0", []string{"read_channels"})
+	firstZip := uiPluginZip(t, "1.0.0", []string{"read_channels"}, map[string]any{
+		"request": map[string]any{"enabled": true, "requestTypes": []string{"chat", "completion"}},
+		"attempt": map[string]any{"enabled": false},
+	})
 	current = owner
 	installed, raw := install(firstZip, nil)
 	installData := mustData(installed, raw)["installPlugin"].(map[string]any)
@@ -216,6 +225,15 @@ func TestPluginGraphQL(t *testing.T) {
 	require.Equal(t, "disabled", created["runtimeStatus"])
 	require.NotContains(t, raw, "PK")
 	pluginID := created["id"].(string)
+	expectedHooks := map[string]any{
+		"request": map[string]any{"enabled": true, "requestTypes": []any{"chat", "completion"}},
+		"attempt": map[string]any{"enabled": false, "apiFormats": []any{}},
+	}
+	require.Equal(t, expectedHooks, created["manifestHooks"])
+	_, invalid := gqlparser.LoadQuery(handler.executable.Schema(), `query { plugins { manifestHooks } }`)
+	require.ErrorContains(t, invalid, "must have a selection")
+	_, invalid = gqlparser.LoadQuery(handler.executable.Schema(), `query { plugins { manifestHooks { request { apiFormats } } } }`)
+	require.ErrorContains(t, invalid, "Cannot query field")
 
 	current = reader
 	listed, raw = post(pluginsQuery, nil)
@@ -223,6 +241,10 @@ func TestPluginGraphQL(t *testing.T) {
 	plugins := data["plugins"].([]any)
 	require.Len(t, plugins, 1)
 	require.Equal(t, "acme.failover-guard", plugins[0].(map[string]any)["pluginID"])
+	require.Equal(t, expectedHooks, plugins[0].(map[string]any)["manifestHooks"])
+	statuses := data["pluginRuntimeStatuses"].([]any)
+	require.Len(t, statuses, 1)
+	require.Equal(t, float64(0), statuses[0].(map[string]any)["protectedDrops"])
 
 	current = reader
 	denied, _ = install(uiPluginZip(t, "9.9.9", []string{"read_channels"}), nil)
@@ -251,6 +273,7 @@ func TestPluginGraphQL(t *testing.T) {
 	require.Equal(t, plugin.SecretMask, updatedPlugin["config"].(map[string]any)["token"])
 	require.NotContains(t, raw, secret)
 	require.Equal(t, float64(12), updatedPlugin["priority"])
+	require.Equal(t, expectedHooks, updatedPlugin["manifestHooks"])
 
 	current = reader
 	listed, raw = post(pluginsQuery, nil)
@@ -279,6 +302,7 @@ func TestPluginGraphQL(t *testing.T) {
 	enabledPlugin := mustData(enabled, raw)["enablePlugin"].(map[string]any)
 	require.Equal(t, true, enabledPlugin["enabled"])
 	require.Equal(t, []any{"read_channels"}, enabledPlugin["grantedPermissions"])
+	require.Equal(t, expectedHooks, enabledPlugin["manifestHooks"])
 
 	nextZip := uiPluginZip(t, "1.1.0", []string{"read_channels", "write_channels"})
 	previewed, raw := install(nextZip, nil)
@@ -299,12 +323,13 @@ func TestPluginGraphQL(t *testing.T) {
 	confirmedData := mustData(confirmed, raw)["installPlugin"].(map[string]any)
 	require.Nil(t, confirmedData["upgradePreview"])
 	require.Equal(t, "1.1.0", confirmedData["plugin"].(map[string]any)["version"])
+	require.Equal(t, map[string]any{"request": nil, "attempt": nil}, confirmedData["plugin"].(map[string]any)["manifestHooks"])
 	require.Equal(t, true, confirmedData["plugin"].(map[string]any)["enabled"])
 	require.Equal(t, "1.1.0", stored().Version)
 	require.Equal(t, secret, stored().Config["token"])
 }
 
-func uiPluginZip(t *testing.T, version string, permissions []string) []byte {
+func uiPluginZip(t *testing.T, version string, permissions []string, hooks ...map[string]any) []byte {
 	t.Helper()
 	encoded, err := json.Marshal(permissions)
 	require.NoError(t, err)
@@ -336,8 +361,166 @@ func uiPluginZip(t *testing.T, version string, permissions []string) []byte {
 		_, err = io.WriteString(entry, content)
 		require.NoError(t, err)
 	}
+	if len(hooks) > 0 {
+		var fields map[string]any
+		require.NoError(t, json.Unmarshal([]byte(manifest), &fields))
+		fields["hooks"] = hooks[0]
+		encoded, err := json.Marshal(fields)
+		require.NoError(t, err)
+		manifest = string(encoded)
+		write("plugin.js", `export function onRequest(ctx, request) { return request; }
+export function onAttempt(ctx, body) { return body; }`)
+	}
 	write("manifest.json", manifest)
 	write("ui/page.html", "<html>ui</html>")
 	require.NoError(t, writer.Close())
 	return buf.Bytes()
+}
+
+const pluginMarketQuery = `query PluginMarket {
+  pluginMarket {
+    id
+    name
+    description
+    version
+    axonhubVersion
+    installedVersion
+    updateFrom
+  }
+}`
+
+const installPluginFromMarketMutation = `mutation InstallPluginFromMarket($pluginID: String!, $version: String!) {
+  installPluginFromMarket(pluginID: $pluginID, version: $version) {
+    plugin { id }
+    upgradePreview { currentVersion newVersion permissions }
+  }
+}`
+
+func TestPluginMarket(t *testing.T) {
+	db := enttest.NewEntClient(t, "sqlite3", "file:plugin_market_graphql?mode=memory&cache=shared&_fk=0")
+	t.Cleanup(func() { _ = db.Close() })
+	db.Driver().(*entsql.Driver).DB().SetMaxOpenConns(4)
+
+	manager, err := plugin.NewManager(plugin.ManagerParams{
+		Client: db,
+		Cache:  xcache.Config{Mode: xcache.ModeMemory},
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, manager.Stop(context.Background()))
+	})
+
+	const index = `{
+	  "schemaVersion": 1,
+	  "plugins": [{
+	    "id": "acme.failover-guard",
+	    "name": "Failover Guard",
+	    "description": "Notify and disable channels on failover storms",
+	    "versions": [{
+	      "version": "1.2.0",
+	      "url": "https://example.com/failover-guard-1.2.0.axplugin",
+	      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	      "axonhubVersion": "^1.0.0"
+	    }]
+	  }]
+	}`
+	hits := 0
+	manager.SetMarketClient(&http.Client{
+		Transport: pluginRoundTrip(func(r *http.Request) (*http.Response, error) {
+			if r.URL.String() != plugin.MarketIndexURL {
+				return nil, fmt.Errorf("unexpected market url %s", r.URL)
+			}
+			hits++
+			return &http.Response{
+				StatusCode:    http.StatusOK,
+				Header:        make(http.Header),
+				Body:          io.NopCloser(bytes.NewReader([]byte(index))),
+				ContentLength: int64(len(index)),
+				Request:       r,
+			}, nil
+		}),
+	})
+	manager.SetMarketClock(func() time.Time { return time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC) })
+
+	reader := &ent.User{ID: 2, Scopes: []string{"read_plugins"}}
+	writer := &ent.User{ID: 3, Scopes: []string{"write_plugins"}}
+	neither := &ent.User{ID: 4, Scopes: []string{"read_settings"}}
+	current := reader
+
+	handler := NewGraphqlHandlers(Dependencies{Ent: db, PluginManager: manager})
+	server := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := ent.NewContext(r.Context(), db)
+		ctx = contexts.WithUser(ctx, current)
+		handler.Graphql.ServeHTTP(w, r.WithContext(ctx))
+	})
+	post := func(query string, variables map[string]any) (map[string]any, string) {
+		t.Helper()
+		payload := map[string]any{"query": query}
+		if variables != nil {
+			payload["variables"] = variables
+		}
+		body, err := json.Marshal(payload)
+		require.NoError(t, err)
+		req := httptest.NewRequest(http.MethodPost, "/admin/graphql", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+		server.ServeHTTP(recorder, req)
+		require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
+		var result map[string]any
+		require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &result), recorder.Body.String())
+		return result, recorder.Body.String()
+	}
+	errorText := func(result map[string]any) string {
+		t.Helper()
+		items, _ := result["errors"].([]any)
+		require.NotEmpty(t, items)
+		first, _ := items[0].(map[string]any)
+		message, _ := first["message"].(string)
+		return message
+	}
+
+	current = neither
+	denied, _ := post(pluginMarketQuery, nil)
+	require.Contains(t, errorText(denied), "read_plugins")
+
+	current = writer
+	denied, _ = post(pluginMarketQuery, nil)
+	require.Contains(t, errorText(denied), "read_plugins")
+
+	current = reader
+	listed, raw := post(pluginMarketQuery, nil)
+	require.NotContains(t, listed, "errors", raw)
+	data := listed["data"].(map[string]any)
+	market := data["pluginMarket"].([]any)
+	require.Len(t, market, 1)
+	entry := market[0].(map[string]any)
+	require.Equal(t, "acme.failover-guard", entry["id"])
+	require.Equal(t, "Failover Guard", entry["name"])
+	require.Equal(t, "Notify and disable channels on failover storms", entry["description"])
+	require.Equal(t, "1.2.0", entry["version"])
+	require.Equal(t, "^1.0.0", entry["axonhubVersion"])
+	require.Nil(t, entry["installedVersion"])
+	require.Nil(t, entry["updateFrom"])
+	require.Equal(t, 1, hits)
+
+	current = reader
+	denied, _ = post(installPluginFromMarketMutation, map[string]any{
+		"pluginID": "acme.failover-guard",
+		"version":  "1.2.0",
+	})
+	require.Contains(t, errorText(denied), "owner access required")
+
+	current = writer
+	denied, _ = post(installPluginFromMarketMutation, map[string]any{
+		"pluginID": "acme.failover-guard",
+		"version":  "1.2.0",
+	})
+	require.Contains(t, errorText(denied), "owner access required")
+	require.Equal(t, 1, hits)
+}
+
+type pluginRoundTrip func(*http.Request) (*http.Response, error)
+
+func (f pluginRoundTrip) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }

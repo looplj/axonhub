@@ -108,7 +108,7 @@ WebHook 改为订阅者、以及把上表 4 个旧事件搬上总线，见 [buil
 ```text
 1. 渠道 A 失败，NextChannel 切到 B，发布 request.failover（channel=A, model=gpt-5）
 2. 声明了 `request.failover` 的 JS 插件入队。没有内置 WebHook 订阅者
-3. worker 从该插件的 VM 池借一个 VM 调用 onEvent(event, ctx)，返回后归还。
+3. worker 从该插件的 VM 池借一个 VM 调用 onEvent(ctx, event)，返回后归还。
    池子被请求钩子占满时 worker 等到有空闲 VM，事件留在队列里，不丢弃、不计失败
 4. 插件：
    const n = ctx.counter.add(`failover:${ch.id}:${event.subject.model}`, 300);

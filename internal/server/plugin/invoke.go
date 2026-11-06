@@ -38,6 +38,14 @@ var (
 // Config nil starts at {}. Timeout bounds JavaScript after a runtime is
 // borrowed and does not include time spent waiting for one. Zero uses ctx
 // as the only script deadline.
+//
+// Generation, when set, is the snapshot captured for this request. The call
+// uses it even if a newer generation has been published. BorrowWait limits
+// how long to wait for a runtime. Zero waits until ctx ends. The wait is not
+// part of Timeout. ValidateReturn runs after a successful script return and
+// before the success counter. A non-nil error is a call failure.
+// HostRequest and HostAttempt are optional JSON objects placed on ctx.
+// AllowReject adds ctx.reject for onRequest.
 type InvokeRequest struct {
 	InstallationID int
 	Export         string
@@ -45,6 +53,12 @@ type InvokeRequest struct {
 	State          json.RawMessage
 	Config         map[string]any
 	Timeout        time.Duration
+	Generation     *Generation
+	BorrowWait     time.Duration
+	ValidateReturn func(json.RawMessage) error
+	HostRequest    json.RawMessage
+	HostAttempt    json.RawMessage
+	AllowReject    bool
 }
 
 // InvokeResult is a successful call.
@@ -83,12 +97,22 @@ func (m *Manager) Invoke(ctx context.Context, req InvokeRequest) (InvokeResult, 
 		return InvokeResult{}, err
 	}
 
-	gen := m.current()
+	gen := req.Generation
+	pinned := gen != nil
+	if gen == nil {
+		gen = m.current()
+	}
 	if gen == nil {
 		return InvokeResult{}, ErrGenerationClosed
 	}
-	if err := gen.Acquire(); err != nil {
-		return InvokeResult{}, err
+	var acquireErr error
+	if pinned {
+		acquireErr = gen.acquirePinned()
+	} else {
+		acquireErr = gen.Acquire()
+	}
+	if acquireErr != nil {
+		return InvokeResult{}, acquireErr
 	}
 	defer gen.Release()
 
@@ -108,7 +132,15 @@ func (m *Manager) Invoke(ctx context.Context, req InvokeRequest) (InvokeResult, 
 	if exec.rejectCall(m.nowCall()) {
 		return InvokeResult{}, ErrCircuitOpen
 	}
-	vm, err := exec.borrow(ctx, module)
+	borrowCtx := ctx
+	cancelBorrow := func() {}
+	if req.BorrowWait > 0 {
+		var cancel context.CancelFunc
+		borrowCtx, cancel = context.WithTimeout(ctx, req.BorrowWait)
+		cancelBorrow = cancel
+	}
+	vm, err := exec.borrow(borrowCtx, module)
+	cancelBorrow()
 	if err != nil {
 		return InvokeResult{}, err
 	}
@@ -127,12 +159,23 @@ func (m *Manager) Invoke(ctx context.Context, req InvokeRequest) (InvokeResult, 
 		timeout:        req.Timeout,
 		granted:        loaded.GrantedPermissions,
 		network:        loaded.GrantedNetwork,
+		requestJSON:    req.HostRequest,
+		attemptJSON:    req.HostAttempt,
+		allowReject:    req.AllowReject,
 	})
 	if callErr != nil {
 		if countsAsCallFailure(callErr) {
 			exec.recordFailure(m.nowCall())
 		}
 		return InvokeResult{}, callErr
+	}
+	if req.ValidateReturn != nil {
+		if err := req.ValidateReturn(result.Value); err != nil {
+			if !errors.Is(err, errProtectedRewrite) {
+				exec.recordFailure(m.nowCall())
+			}
+			return InvokeResult{}, err
+		}
 	}
 	exec.recordSuccess()
 	return result, nil
@@ -148,6 +191,9 @@ type callExportInput struct {
 	timeout        time.Duration
 	granted        []string
 	network        []string
+	requestJSON    json.RawMessage
+	attemptJSON    json.RawMessage
+	allowReject    bool
 }
 
 func (m *Manager) callExport(ctx context.Context, vm *pluginVM, in callExportInput) (InvokeResult, error, bool) {
@@ -176,12 +222,16 @@ func (m *Manager) callExport(ctx context.Context, vm *pluginVM, in callExportInp
 	fired, cause := disarm()
 	if fired {
 		discard = true
-		if callErr == nil || isInterrupt(callErr) {
+		if host.rejected == nil && (callErr == nil || isInterrupt(callErr)) {
 			if cause == nil {
 				cause = errors.New("plugin call interrupted")
 			}
 			callErr = fmt.Errorf("plugin call failed: %w", cause)
 		}
+	}
+	// A caught or uncaught ctx.reject still rejects. It is not a call failure.
+	if host.rejected != nil {
+		return InvokeResult{}, host.rejected, discard
 	}
 	if callErr != nil {
 		return InvokeResult{}, callErr, discard
@@ -193,7 +243,7 @@ func (h *hostCall) run(vm *pluginVM, in callExportInput) (discard bool, err erro
 	if err := vm.ensureLoaded(); err != nil {
 		return true, callFailed(err)
 	}
-	ctxValue, err := h.build(in.config, in.state)
+	ctxValue, err := h.build(in.config, in.state, in.requestJSON, in.attemptJSON, in.allowReject)
 	if err != nil {
 		return isFatalRuntime(err), callFailed(err)
 	}
@@ -202,7 +252,7 @@ func (h *hostCall) run(vm *pluginVM, in callExportInput) (discard bool, err erro
 	if err != nil {
 		return isFatalRuntime(err), callFailed(err)
 	}
-	args = append(args, ctxValue)
+	args = append([]moejs.Value{ctxValue}, args...)
 	fn, ok := vm.rt.Export(in.export)
 	if !ok || !fn.IsObject() || !fn.AsObject().IsCallable() {
 		return false, fmt.Errorf("plugin export %q is not a function", in.export)
@@ -380,7 +430,25 @@ func countsAsCallFailure(err error) bool {
 		xerrors.Is(err, context.Canceled) {
 		return false
 	}
-	return true
+	_, rejected := errors.AsType[*requestRejectedError](err)
+	return !rejected
+}
+
+// ConsecutiveFailures is the process-local circuit streak for one installation.
+// Overload does not increment it. Zero means the plugin is not in a failure streak.
+func (m *Manager) ConsecutiveFailures(installationID int) int {
+	if m == nil || installationID <= 0 {
+		return 0
+	}
+	m.execMu.Lock()
+	exec := m.execs[installationID]
+	m.execMu.Unlock()
+	if exec == nil {
+		return 0
+	}
+	exec.mu.Lock()
+	defer exec.mu.Unlock()
+	return exec.failures
 }
 
 func isInterrupt(err error) bool {

@@ -1,7 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { IconAlertTriangle, IconArrowRight } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -12,14 +15,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import type { PluginUpgradePreview } from '../data/plugins';
+import type { Plugin, PluginUpgradePreview } from '../data/plugins';
+import type { PluginGrantMode } from '../hooks/use-plugin-grant-flow';
+import { PluginAvatar } from './plugin-visuals';
 
 interface PluginGrantDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  mode: 'install' | 'upgrade';
+  mode: PluginGrantMode;
+  pluginID: string;
+  pluginName: string;
+  manifestHooks?: Plugin['manifestHooks'];
   permissions: string[];
   network: string[];
   initialGranted: string[];
@@ -29,10 +36,31 @@ interface PluginGrantDialogProps {
   onConfirm: (grantedPermissions: string[], grantedNetwork: string[]) => void;
 }
 
+const TITLE_KEYS: Record<PluginGrantMode, string> = {
+  install: 'plugins.grant.installTitle',
+  upgrade: 'plugins.grant.upgradeTitle',
+  edit: 'plugins.grant.editTitle',
+};
+
+const DESCRIPTION_KEYS: Record<PluginGrantMode, string> = {
+  install: 'plugins.grant.installDescription',
+  upgrade: 'plugins.grant.upgradeDescription',
+  edit: 'plugins.grant.editDescription',
+};
+
+const CONFIRM_KEYS: Record<PluginGrantMode, string> = {
+  install: 'plugins.grant.confirmInstall',
+  upgrade: 'plugins.grant.confirmUpgrade',
+  edit: 'plugins.grant.confirmEdit',
+};
+
 export function PluginGrantDialog({
   open,
   onOpenChange,
   mode,
+  pluginID,
+  pluginName,
+  manifestHooks,
   permissions,
   network,
   initialGranted,
@@ -63,81 +91,124 @@ export function PluginGrantDialog({
     return current.filter((item) => item !== value);
   };
 
-  const added = (items: string[] | undefined) => items ?? [];
+  const showPreview = mode === 'upgrade' && preview;
+  // Only items the upgrade adds are flagged; carried-over grants were already reviewed once.
+  const newPermissions = new Set(showPreview ? (preview.permissions ?? []) : []);
+  const newNetwork = new Set(showPreview ? (preview.network ?? []) : []);
+  const hasWrite = permissions.some((permission) => permission.startsWith('write_'));
+  const otherAdditions = showPreview
+    ? [
+        { label: t('plugins.grant.addedEvents'), items: preview.events ?? [] },
+        { label: t('plugins.grant.addedHooks'), items: preview.hooks ?? [] },
+        { label: t('plugins.grant.addedPages'), items: preview.pages ?? [] },
+      ].filter((group) => group.items.length > 0)
+    : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{mode === 'upgrade' ? t('plugins.grant.upgradeTitle') : t('plugins.grant.installTitle')}</DialogTitle>
-          <DialogDescription>
-            {mode === 'upgrade' ? t('plugins.grant.upgradeDescription') : t('plugins.grant.installDescription')}
-          </DialogDescription>
+        <DialogHeader className='flex-row items-center gap-3 space-y-0 text-left'>
+          <PluginAvatar id={pluginID} name={pluginName} />
+          <div className='min-w-0 space-y-1'>
+            <DialogTitle>{t(TITLE_KEYS[mode])}</DialogTitle>
+            <DialogDescription>{t(DESCRIPTION_KEYS[mode], { name: pluginName })}</DialogDescription>
+          </div>
         </DialogHeader>
-        <div className='space-y-4'>
-          <p className='text-sm'>{t('plugins.grant.writeWarning')}</p>
-          <p className='text-sm'>{t('plugins.grant.writeChannelsWarning')}</p>
-          {mode === 'upgrade' && preview && (
-            <div className='space-y-2 text-sm'>
-              <p>{t('plugins.grant.versionChange', { current: preview.currentVersion, next: preview.newVersion })}</p>
-              <AddedList label={t('plugins.grant.addedPermissions')} items={added(preview.permissions)} empty={t('plugins.grant.none')} />
-              <AddedList label={t('plugins.grant.addedNetwork')} items={added(preview.network)} empty={t('plugins.grant.none')} />
-              <AddedList label={t('plugins.grant.addedEvents')} items={added(preview.events)} empty={t('plugins.grant.none')} />
-              <AddedList label={t('plugins.grant.addedHooks')} items={added(preview.hooks)} empty={t('plugins.grant.none')} />
-              <AddedList label={t('plugins.grant.addedPages')} items={added(preview.pages)} empty={t('plugins.grant.none')} />
+        <div className='space-y-5'>
+          {!showPreview && manifestHooks && (manifestHooks.request || manifestHooks.attempt) && (
+            <div className='space-y-2 rounded-lg border p-3 text-sm'>
+              <p className='font-medium'>{t('plugins.hooks.title')}</p>
+              {[
+                { label: t('plugins.hooks.request'), hook: manifestHooks.request, scope: manifestHooks.request?.requestTypes },
+                { label: t('plugins.hooks.attempt'), hook: manifestHooks.attempt, scope: manifestHooks.attempt?.apiFormats },
+              ].filter((entry) => entry.hook).map((entry) => (
+                <div key={entry.label}>
+                  <span>{entry.label} · {t(entry.hook?.enabled ? 'plugins.hooks.enabled' : 'plugins.hooks.disabled')}</span>
+                  <p className='text-muted-foreground break-words'>{entry.scope?.join(', ') || t('plugins.none')}</p>
+                </div>
+              ))}
             </div>
           )}
-          <div className='space-y-2'>
-            <p className='text-sm font-medium'>{t('plugins.grant.permissions')}</p>
-            {permissions.length === 0 && <p className='text-muted-foreground text-sm'>{t('plugins.grant.none')}</p>}
+          {showPreview && (
+            <div className='bg-muted/40 space-y-3 rounded-lg border p-3 text-sm'>
+              <div className='flex items-center gap-2'>
+                <Badge variant='outline'>{preview.currentVersion}</Badge>
+                <IconArrowRight className='text-muted-foreground size-4' />
+                <Badge>{preview.newVersion}</Badge>
+              </div>
+              {otherAdditions.map((group) => (
+                <div key={group.label} className='space-y-1'>
+                  <div className='text-muted-foreground text-xs'>{group.label}</div>
+                  <div className='flex flex-wrap gap-1'>
+                    {group.items.map((item) => (
+                      <Badge key={item} variant='secondary' className='font-mono font-normal'>
+                        {item}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {otherAdditions.length === 0 && newPermissions.size === 0 && newNetwork.size === 0 && (
+                <p className='text-muted-foreground text-xs'>{t('plugins.grant.noAdditions')}</p>
+              )}
+            </div>
+          )}
+
+          {(hasWrite || network.length > 0) && (
+            <Alert variant='destructive'>
+              <IconAlertTriangle />
+              <AlertDescription>
+                {hasWrite && <p>{t('plugins.grant.writeWarning')}</p>}
+                {network.length > 0 && <p>{t('plugins.grant.networkWarning')}</p>}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <GrantSection
+            title={t('plugins.grant.permissions')}
+            items={permissions}
+            selected={selected}
+            pending={pending}
+            onSelectedChange={setSelected}
+          >
             {permissions.map((permission) => {
               const writePermission = permission.startsWith('write_');
               const inputID = `plugin-grant-${permission}`;
               return (
-                <div
+                <GrantItem
                   key={permission}
-                  className={cn(
-                    'flex items-start gap-3 rounded-md border p-3',
-                    writePermission && 'border-destructive/60 bg-destructive/10'
-                  )}
-                >
-                  <Checkbox
-                    id={inputID}
-                    checked={selected.includes(permission)}
-                    onCheckedChange={(value) => setSelected((current) => toggle(current, permission, value === true))}
-                    disabled={pending}
-                  />
-                  <div className='space-y-1'>
-                    <Label htmlFor={inputID} className='font-normal'>
-                      {permission}
-                    </Label>
-                    {writePermission && <p className='text-destructive text-xs'>{t('plugins.grant.writeAccess')}</p>}
-                  </div>
-                </div>
+                  id={inputID}
+                  checked={selected.includes(permission)}
+                  disabled={pending}
+                  danger={writePermission}
+                  isNew={newPermissions.has(permission)}
+                  onCheckedChange={(checked) => setSelected((current) => toggle(current, permission, checked))}
+                  label={permission}
+                  hint={writePermission ? t('plugins.grant.writeAccess') : undefined}
+                />
               );
             })}
-          </div>
-          <div className='space-y-2'>
-            <p className='text-sm font-medium'>{t('plugins.grant.network')}</p>
-            {network.length > 0 && <p className='text-destructive text-sm'>{t('plugins.grant.networkWarning')}</p>}
-            {network.length === 0 && <p className='text-muted-foreground text-sm'>{t('plugins.grant.none')}</p>}
-            {network.map((rule, index) => {
-              const inputID = `plugin-grant-network-${index}`;
-              return (
-                <div key={`${index}:${rule}`} className='flex items-start gap-3 rounded-md border p-3'>
-                  <Checkbox
-                    id={inputID}
-                    checked={selectedNetwork.includes(rule)}
-                    onCheckedChange={(value) => setSelectedNetwork((current) => toggle(current, rule, value === true))}
-                    disabled={pending}
-                  />
-                  <Label htmlFor={inputID} className='font-normal break-all'>
-                    {rule}
-                  </Label>
-                </div>
-              );
-            })}
-          </div>
+          </GrantSection>
+
+          <GrantSection
+            title={t('plugins.grant.network')}
+            items={network}
+            selected={selectedNetwork}
+            pending={pending}
+            onSelectedChange={setSelectedNetwork}
+          >
+            {network.map((rule, index) => (
+              <GrantItem
+                key={`${index}:${rule}`}
+                id={`plugin-grant-network-${index}`}
+                checked={selectedNetwork.includes(rule)}
+                disabled={pending}
+                isNew={newNetwork.has(rule)}
+                onCheckedChange={(checked) => setSelectedNetwork((current) => toggle(current, rule, checked))}
+                label={rule}
+              />
+            ))}
+          </GrantSection>
         </div>
         <DialogFooter>
           <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={pending}>
@@ -153,11 +224,7 @@ export function PluginGrantDialog({
             }
             disabled={pending}
           >
-            {pending
-              ? t('plugins.grant.pending')
-              : mode === 'upgrade'
-                ? t('plugins.grant.confirmUpgrade')
-                : t('plugins.grant.confirmInstall')}
+            {pending ? t('plugins.grant.pending') : t(CONFIRM_KEYS[mode])}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -165,11 +232,95 @@ export function PluginGrantDialog({
   );
 }
 
-function AddedList({ label, items, empty }: { label: string; items: string[]; empty: string }) {
+function GrantSection({
+  title,
+  items,
+  selected,
+  pending,
+  onSelectedChange,
+  children,
+}: {
+  title: string;
+  items: string[];
+  selected: string[];
+  pending: boolean;
+  onSelectedChange: (next: string[]) => void;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const allSelected = items.length > 0 && items.every((item) => selected.includes(item));
+
   return (
-    <p>
-      <span className='text-muted-foreground'>{label}: </span>
-      {items.length > 0 ? items.join(', ') : empty}
-    </p>
+    <div className='space-y-2'>
+      <div className='flex items-center justify-between gap-2'>
+        <p className='text-sm font-medium'>
+          {title}
+          {items.length > 0 && (
+            <span className='text-muted-foreground ml-2 font-normal'>
+              {selected.length}/{items.length}
+            </span>
+          )}
+        </p>
+        {items.length > 1 && (
+          <Button
+            type='button'
+            variant='link'
+            size='sm'
+            className='h-auto p-0'
+            disabled={pending}
+            onClick={() => onSelectedChange(allSelected ? [] : [...items])}
+          >
+            {allSelected ? t('plugins.grant.clearAll') : t('plugins.grant.selectAll')}
+          </Button>
+        )}
+      </div>
+      {items.length === 0 ? (
+        <p className='text-muted-foreground rounded-xl border border-dashed px-3 py-2.5 text-sm'>{t('plugins.grant.none')}</p>
+      ) : (
+        <div className='divide-y overflow-hidden rounded-xl border'>{children}</div>
+      )}
+    </div>
+  );
+}
+
+function GrantItem({
+  id,
+  label,
+  hint,
+  checked,
+  disabled,
+  danger = false,
+  isNew,
+  onCheckedChange,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  checked: boolean;
+  disabled: boolean;
+  danger?: boolean;
+  isNew: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <label
+      htmlFor={id}
+      className={cn(
+        'hover:bg-muted/40 flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors',
+        checked && 'bg-muted/30',
+        disabled && 'cursor-not-allowed opacity-60'
+      )}
+    >
+      <Checkbox id={id} checked={checked} onCheckedChange={(value) => onCheckedChange(value === true)} disabled={disabled} />
+      <span className={cn('min-w-0 flex-1 font-mono text-sm break-all', danger && 'text-destructive')}>{label}</span>
+      {isNew && <Badge className='h-5'>{t('plugins.grant.new')}</Badge>}
+      {hint && (
+        <Badge variant='outline' className='border-destructive/40 text-destructive h-5'>
+          {hint}
+        </Badge>
+      )}
+    </label>
   );
 }

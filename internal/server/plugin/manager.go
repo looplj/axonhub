@@ -42,7 +42,7 @@ import (
 
 const (
 	pluginBypassReason = "plugin-manager"
-	pluginCacheName    = "axonhub:plugins"
+	pluginCacheName    = "axonhub:plugins:scoped-hooks"
 	pluginRedisChannel = "axonhub:cache:plugins"
 
 	// errDatabasePacketTooLarge is returned when the database rejects the package blob.
@@ -180,11 +180,32 @@ type Manager struct {
 	// Tests in this package may set it. It is not the KV clock.
 	callNow func() time.Time
 
+	// marketHTTP, when set, fetches the market index and packages.
+	// Nil uses http.DefaultTransport. The index URL stays MarketIndexURL.
+	marketHTTP *http.Client
+	// marketNow is the clock for the market index cache. Nil means time.Now.
+	marketNow   func() time.Time
+	marketMu    sync.Mutex
+	marketCache *marketIndexCache
+
 	execMu sync.Mutex
 	execs  map[int]*pluginExec
 
+	hookMu       sync.Mutex
+	hookCounters map[int]hookCounter
+	// hookTimeout overrides the 10s request-hook budget. Zero uses the default.
+	// Tests set it so a timeout case does not wait the full budget.
+	hookTimeout time.Duration
+
 	stopOnce sync.Once
 	stopErr  error
+}
+
+// hookCounter holds process-local request-hook counters for one installation.
+type hookCounter struct {
+	overloaded     int64
+	protectedDrops int64
+	overridden     int64
 }
 
 type managerConfig struct {
@@ -575,6 +596,12 @@ func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip [
 		if err != nil {
 			return err
 		}
+		// An enabled plugin must stay runnable, so a new version that needs config it lacks is applied only while disabled.
+		if row.Enabled {
+			if err := checkConfigForEnable(pkg.Manifest.ConfigSchema, plan.Config); err != nil {
+				return fmt.Errorf("disable the plugin before upgrading, then configure it: %w", err)
+			}
+		}
 		if row.Enabled && plan.Diff.NeedsPreview() && submitted == nil && submittedNetwork == nil {
 			preview = previewFrom(row, pkg, plan.Diff)
 			saved = row.entity()
@@ -612,11 +639,15 @@ func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip [
 
 // Enable grants subsets of the stored manifest permissions and network rules,
 // then marks the row enabled. Both slices are the complete new grants.
+// It fails while any configSchema.required field is missing.
 func (m *Manager) Enable(ctx context.Context, id int, granted []string, grantedNetwork []string) error {
 	ctx = authz.WithSystemBypass(ctx, pluginBypassReason)
 	err := m.runInTx(ctx, func(txCtx context.Context) error {
 		row, err := m.oneRecord(txCtx, id)
 		if err != nil {
+			return err
+		}
+		if err := checkConfigForEnable(row.Manifest.ConfigSchema, row.Config); err != nil {
 			return err
 		}
 		normalized, err := permissionsSubset(granted, row.Manifest.Permissions)
@@ -655,6 +686,7 @@ func (m *Manager) Disable(ctx context.Context, id int) error {
 }
 
 // UpdateSettings validates config against the stored schema and saves priority and config.
+// An enabled plugin must keep every required field set; a disabled one may save partial config.
 func (m *Manager) UpdateSettings(ctx context.Context, id int, priority int, config map[string]any) error {
 	ctx = authz.WithSystemBypass(ctx, pluginBypassReason)
 	err := m.runInTx(ctx, func(txCtx context.Context) error {
@@ -665,6 +697,11 @@ func (m *Manager) UpdateSettings(ctx context.Context, id int, priority int, conf
 		config = keepSecretValues(row.Manifest.ConfigSchema, row.Config, config)
 		if err := validateStoredConfig(row.Manifest.ConfigSchema, config); err != nil {
 			return err
+		}
+		if row.Enabled {
+			if err := checkConfigForEnable(row.Manifest.ConfigSchema, config); err != nil {
+				return err
+			}
 		}
 		return m.client(txCtx).Plugin.UpdateOneID(id).
 			SetPriority(priority).
@@ -1205,6 +1242,16 @@ func (g *Generation) ByPluginID(pluginID string) *LoadedPlugin {
 
 // Acquire pins this generation until Release. A closed generation returns ErrGenerationClosed.
 func (g *Generation) Acquire() error {
+	return g.acquire(false)
+}
+
+// acquirePinned pins a generation a request already captured, including after a
+// refresh has closed it. A stopping manager still rejects the pin.
+func (g *Generation) acquirePinned() error {
+	return g.acquire(true)
+}
+
+func (g *Generation) acquire(allowClosed bool) error {
 	if g == nil || g.manager == nil {
 		return ErrGenerationClosed
 	}
@@ -1214,7 +1261,7 @@ func (g *Generation) Acquire() error {
 		return ErrGenerationClosed
 	}
 	g.mu.Lock()
-	if g.closed {
+	if g.closed && !allowClosed {
 		g.mu.Unlock()
 		g.manager.callsMu.Unlock()
 		return ErrGenerationClosed
@@ -1619,18 +1666,7 @@ func validateStoredConfig(schema *objects.PluginConfigSchema, config map[string]
 	if err := schema.Validate(); err != nil {
 		return err
 	}
-	names := keys(config)
-	slices.Sort(names)
-	for _, name := range names {
-		prop, ok := schema.Properties[name]
-		if !ok {
-			return fmt.Errorf("config field %q is not declared", name)
-		}
-		if err := prop.CheckValue(config[name]); err != nil {
-			return fmt.Errorf("config field %q: %s", name, err.Error())
-		}
-	}
-	return nil
+	return validateConfigValues(schema, config, false)
 }
 
 func permissionsSubset(granted, declared []string) ([]string, error) {
@@ -1686,14 +1722,6 @@ func validSHA(sha string) bool {
 func sha256Hex(data []byte) string {
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])
-}
-
-func keys(config map[string]any) []string {
-	out := make([]string, 0, len(config))
-	for key := range config {
-		out = append(out, key)
-	}
-	return out
 }
 
 // sqlTime scans the timestamp shapes SQLite and Ent drivers return.

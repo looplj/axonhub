@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Star history</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <main>
+      <header class="masthead">
+        <svg class="mark" viewBox="0 0 36 36" width="36" height="36" aria-hidden="true">
+          <rect width="36" height="36" rx="10"></rect>
+          <path d="M18 8.2l2.4 6.4 6.8.4-5.2 4.3 1.7 6.6L18 22.4l-5.7 3.5 1.7-6.6-5.2-4.3 6.8-.4L18 8.2Z"></path>
+        </svg>
+        <div>
+          <p class="eyebrow">example.star-history</p>
+          <h1 id="heading">Star history</h1>
+        </div>
+      </header>
+      <p id="lead" class="lead"></p>
+      <dl class="meta" id="meta"></dl>
+      <p id="status" class="status" role="status"></p>
+      <figure class="card" id="chart-card" hidden>
+        <img id="chart" alt="">
+      </figure>
+    </main>
+    <!-- ui/stars/index.html is two levels below the package root. -->
+    <script crossorigin="anonymous" src="../../_axonhub/bridge.js"></script>
+    <script type="module" crossorigin="anonymous" src="./app.js"></script>
+  </body>
+</html>

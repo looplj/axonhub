@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm"
 )
 
 func TestValidateExports(t *testing.T) {
@@ -97,7 +98,7 @@ func TestValidateExports(t *testing.T) {
 	})
 
 	t.Run("request and attempt hooks", func(t *testing.T) {
-		manifest := &objects.PluginManifest{Hooks: &objects.PluginHooksSpec{Request: true, Attempt: true}}
+		manifest := &objects.PluginManifest{Hooks: &objects.PluginHooksSpec{Request: &objects.PluginRequestHook{Enabled: true, RequestTypes: []llm.RequestType{llm.RequestTypeChat}}, Attempt: &objects.PluginAttemptHook{Enabled: true, APIFormats: []llm.APIFormat{llm.APIFormatOpenAIChatCompletion}}}}
 		exports := evaluatedExports(t, map[string]string{
 			"plugin.js": "export function onRequest() {}\nexport function onAttempt() {}\n",
 		})
@@ -108,7 +109,7 @@ func TestValidateExports(t *testing.T) {
 		})
 		require.ErrorContains(t, err, "must export onAttempt")
 
-		err = ValidateExports(&objects.PluginManifest{Hooks: &objects.PluginHooksSpec{Request: true}}, nil)
+		err = ValidateExports(&objects.PluginManifest{Hooks: &objects.PluginHooksSpec{Request: &objects.PluginRequestHook{Enabled: true, RequestTypes: []llm.RequestType{llm.RequestTypeChat}}}}, nil)
 		require.ErrorContains(t, err, "plugin.js is required")
 	})
 

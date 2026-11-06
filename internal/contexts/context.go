@@ -152,6 +152,56 @@ func WithProjectID(ctx context.Context, projectID int) context.Context {
 	return withContainer(ctx, container)
 }
 
+// AttemptChannel is the selected channel for one outbound attempt.
+// Request hooks read it to build ctx.attempt. It does not include credentials.
+type AttemptChannel struct {
+	ID   int
+	Name string
+	Type string
+}
+
+type attemptChannelKey struct{}
+
+// WithAttemptChannel attaches the channel selected for the current attempt.
+func WithAttemptChannel(ctx context.Context, channel AttemptChannel) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, attemptChannelKey{}, channel)
+}
+
+// GetAttemptChannel returns the channel attached by WithAttemptChannel.
+func GetAttemptChannel(ctx context.Context) (AttemptChannel, bool) {
+	if ctx == nil {
+		return AttemptChannel{}, false
+	}
+	channel, ok := ctx.Value(attemptChannelKey{}).(AttemptChannel)
+	return channel, ok
+}
+
+// SetRequestHookState stores plugin request-hook bookkeeping on the request container.
+// The context must already carry a container; EnsureContainer does that.
+func SetRequestHookState(ctx context.Context, state any) {
+	if ctx == nil {
+		return
+	}
+	container := getContainer(ctx)
+	container.mu.Lock()
+	container.RequestHookState = state
+	container.mu.Unlock()
+}
+
+// GetRequestHookState returns the value stored by SetRequestHookState.
+func GetRequestHookState(ctx context.Context) any {
+	if ctx == nil {
+		return nil
+	}
+	container := getContainer(ctx)
+	container.mu.RLock()
+	defer container.mu.RUnlock()
+	return container.RequestHookState
+}
+
 // GetProjectID retrieves the project ID from the context.
 func GetProjectID(ctx context.Context) (int, bool) {
 	container := getContainer(ctx)

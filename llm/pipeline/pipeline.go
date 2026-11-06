@@ -288,6 +288,12 @@ func (p *pipeline) applyLlmStreamMiddlewares(ctx context.Context, stream streams
 }
 
 func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*Result, error) {
+	// Register separately so every middleware is cleaned up even if another
+	// OnProcessEnd panics. Defers execute in reverse registration order.
+	for _, middleware := range p.middlewares {
+		defer middleware.OnProcessEnd()
+	}
+
 	// Step 1: Transform httpclient.Request to llm.Request using inbound transformer
 	llmRequest, err := p.Inbound.TransformRequest(ctx, request)
 	if err != nil {

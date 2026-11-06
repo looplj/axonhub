@@ -73,7 +73,7 @@ func TestImagesDoNotUseResponsesBridge(t *testing.T) {
 					}),
 					applyPassThroughResponse(outbound, nil),
 					applyPassThroughStream(outbound, nil),
-					applyPassThroughRequestBody(outbound, nil),
+					applyPassThroughRequestBody(outbound, nil, nil),
 					pipeline.OnRawRequest("link-test-response", func(_ context.Context, req *httpclient.Request) (*httpclient.Request, error) {
 						executor.response.Request = req
 						return req, nil

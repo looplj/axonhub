@@ -27,7 +27,7 @@ func TestInvokeCancelsSynchronousKV(t *testing.T) {
 			client := newPluginDB(t)
 			manager := newTestManager(t, client)
 			installed := installGrantedJS(t, manager, "acme.kv-cancel", `
-export function onEvent(op, ctx) { return ctx.kv.get("key"); }
+export function onEvent(ctx, op) { return ctx.kv.get("key"); }
 `, []string{})
 			parent, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -142,15 +142,15 @@ func TestFetchOnRequestAndAttempt(t *testing.T) {
 	manager := newTestManager(t, newPluginDB(t))
 	manager.SetOutboundTransport(&gateTripper{})
 	installed := installGrantedJS(t, manager, "acme.fetch-hooks", `
-export function onEvent(op, ctx) {
+export function onEvent(ctx, op) {
   if (typeof fetch !== "undefined") return { globalFetch: true };
   return ctx.fetch(op.url).then(function (res) { return { from: "event", status: res.status, body: res.body }; });
 }
-export function onRequest(op, ctx) {
+export function onRequest(ctx, op) {
   if (typeof fetch !== "undefined") return { globalFetch: true };
   return ctx.fetch(op.url).then(function (res) { return { from: "request", status: res.status }; });
 }
-export function onAttempt(op, ctx) {
+export function onAttempt(ctx, op) {
   if (typeof fetch !== "undefined") return { globalFetch: true };
   return ctx.fetch(op.url).then(function (res) { return { from: "attempt", status: res.status }; });
 }
@@ -173,7 +173,7 @@ func TestFetchAsyncExportAwaits(t *testing.T) {
 	manager := newTestManager(t, newPluginDB(t))
 	manager.SetOutboundTransport(&gateTripper{})
 	installed := installGrantedJS(t, manager, "acme.fetch-async", `
-export async function onEvent(op, ctx) {
+export async function onEvent(ctx, op) {
   const res = await ctx.fetch(op.url);
   return { status: res.status, body: res.body };
 }
@@ -188,7 +188,7 @@ func TestFetchDeniedDoesNotSend(t *testing.T) {
 	gate := &gateTripper{}
 	manager.SetOutboundTransport(gate)
 	installed := installGrantedJS(t, manager, "acme.fetch-deny", `
-export function onEvent(op, ctx) {
+export function onEvent(ctx, op) {
   return ctx.fetch(op.url).then(function () { return "sent"; }, function (err) { return err.code; });
 }
 `, []string{fetchExact})
@@ -222,7 +222,7 @@ func installGrantedJS(t *testing.T, manager *Manager, id, source string, network
 
 const fetchAsyncScript = `
 let mark = 0;
-export function onEvent(op, ctx) {
+export function onEvent(ctx, op) {
   if (op.op === "forget") {
     ctx.fetch(op.url).then(function () { mark = 1; ctx.state.late = true; });
     ctx.state.early = true;

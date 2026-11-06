@@ -25,7 +25,7 @@ import (
 )
 
 const failoverGuardScript = `
-export function onEvent(event, ctx) {
+export function onEvent(ctx, event) {
   const ch = event.subject.channel;
   const n = ctx.counter.add("failover:" + ch.id + ":" + event.subject.model, 300);
   if (n === ctx.config.threshold) {
@@ -43,7 +43,7 @@ func TestEventDeliveryFollowsManifest(t *testing.T) {
 	manager := newEventManager(t, client, xcache.Config{Mode: xcache.ModeMemory}, bus, nil, nil)
 
 	installed := installEventPlugin(t, manager, "acme.events", []string{"request.failover"}, nil, `
-export function onEvent(event, ctx) {
+export function onEvent(ctx, event) {
   const prev = ctx.kv.get("seen") || "";
   ctx.kv.set("seen", prev + event.type + "\n");
 }
@@ -88,7 +88,7 @@ func TestEventPermissionDeniedHasNoSideEffect(t *testing.T) {
 	ch := createEventChannel(t, client, "denied-channel", []string{"sk-denied"})
 
 	installed := installEventPlugin(t, manager, "acme.denied", []string{"request.failover"}, []string{"write_channels"}, `
-export function onEvent(event, ctx) {
+export function onEvent(ctx, event) {
   try {
     ctx.axonhub.channels.disable(event.subject.channel.id, { reason: "nope" });
     ctx.kv.set("result", "wrote");
@@ -134,7 +134,7 @@ func TestCredentialDisablePublishesPluginOrigin(t *testing.T) {
 		received <- event
 	})
 	installed := installEventPlugin(t, manager, "acme.cred", []string{"request.failover"}, []string{"write_channels"}, fmt.Sprintf(`
-export function onEvent(event, ctx) {
+export function onEvent(ctx, event) {
   try {
     ctx.axonhub.channels.disableCredential(1, "oauth");
     ctx.kv.set("oauth", "wrote");
@@ -212,7 +212,7 @@ func TestWriteLimitHasNoSideEffect(t *testing.T) {
 	now := time.Date(2026, 11, 6, 4, 0, 0, 0, time.UTC)
 	manager.kvNow = func() time.Time { return now }
 	installed := installJS(t, manager, "acme.writes", `
-export function onEvent(op, ctx) {
+export function onEvent(ctx, op) {
   try {
     if (op.op === "burst") {
       for (let i = 0; i < op.n; i++) ctx.kv.set("w" + i, "v");

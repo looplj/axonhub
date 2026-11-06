@@ -22,7 +22,7 @@ const validManifestJSON = `{
   "axonhubVersion": "^1.0.0",
   "pluginApiVersion": 1,
   "permissions": ["read_channels", "webhook"],
-  "hooks": {"request": false, "attempt": false},
+  "hooks": {"request": {"enabled": false}, "attempt": {"enabled": false}},
   "configSchema": {
     "type": "object",
     "properties": {
@@ -44,8 +44,8 @@ func TestManifest(t *testing.T) {
 		manifest, err := ParseManifest([]byte(validManifestJSON), "v1.0.0-beta9")
 		require.NoError(t, err)
 		require.Equal(t, "acme.failover-guard", manifest.ID)
-		require.False(t, manifest.Hooks.Request)
-		require.False(t, manifest.Hooks.Attempt)
+		require.False(t, manifest.Hooks.Request.IsEnabled())
+		require.False(t, manifest.Hooks.Attempt.IsEnabled())
 		require.Contains(t, manifest.ConfigSchema.Properties, "my.custom-prop")
 	})
 
@@ -105,6 +105,30 @@ func TestManifest(t *testing.T) {
 		})
 		_, err := ParseManifest(raw, "v1.0.0-beta9")
 		require.NoError(t, err)
+	})
+
+	t.Run("configSchema required lists declared properties", func(t *testing.T) {
+		raw := mutateManifest(t, func(_ *testing.T, manifest map[string]any) {
+			manifest["configSchema"].(map[string]any)["required"] = []any{"token", "target"}
+		})
+		manifest, err := ParseManifest(raw, "v1.0.0-beta9")
+		require.NoError(t, err)
+		require.Equal(t, []string{"token", "target"}, manifest.ConfigSchema.Required)
+
+		for _, tc := range []struct {
+			required any
+			want     string
+		}{
+			{[]any{"missing"}, "configSchema.required[0] \"missing\" is not a declared property"},
+			{[]any{"token", "token"}, "configSchema.required[1] \"token\" is duplicated"},
+			{"token", "configSchema.required must be an array of strings"},
+		} {
+			raw := mutateManifest(t, func(_ *testing.T, manifest map[string]any) {
+				manifest["configSchema"].(map[string]any)["required"] = tc.required
+			})
+			_, err := ParseManifest(raw, "v1.0.0-beta9")
+			require.ErrorContains(t, err, tc.want)
+		}
 	})
 
 	t.Run("omitted optional fields use defaults", func(t *testing.T) {
@@ -492,16 +516,14 @@ func TestManifest(t *testing.T) {
 		{
 			name: "hooks.request true",
 			mutate: func(t *testing.T, manifest map[string]any) {
-				hooksOf(t, manifest)["request"] = true
+				hooksOf(t, manifest)["request"] = map[string]any{"enabled": true, "requestTypes": []string{"chat"}}
 			},
-			want: "request hooks are not enabled",
 		},
 		{
 			name: "hooks.attempt true",
 			mutate: func(t *testing.T, manifest map[string]any) {
-				hooksOf(t, manifest)["attempt"] = true
+				hooksOf(t, manifest)["attempt"] = map[string]any{"enabled": true, "apiFormats": []string{"openai/chat_completions"}}
 			},
-			want: "request hooks are not enabled",
 		},
 		{
 			name: "hooks.response present",

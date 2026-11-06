@@ -180,12 +180,12 @@ test('plugin page copy exists in en and zh-CN', () => {
     'plugins.page.retry',
     'plugins.grant.network',
     'plugins.grant.networkWarning',
-    'plugins.grant.addedNetwork',
+    'plugins.grant.new',
     'plugins.fields.grantedNetwork',
   ]) {
-    assert.equal(typeof en[key], 'string');
-    assert.equal(typeof zh[key], 'string');
-    assert.notEqual(en[key], '');
-    assert.notEqual(zh[key], '');
+    assert.equal(typeof en[key], 'string', `Missing English translation: ${key}`);
+    assert.equal(typeof zh[key], 'string', `Missing Chinese translation: ${key}`);
+    assert.notEqual(en[key], '', `Empty English translation: ${key}`);
+    assert.notEqual(zh[key], '', `Empty Chinese translation: ${key}`);
   }
 });
