@@ -30,6 +30,7 @@ const (
 	hostCanceled         = "CANCELED"
 	hostInvalidState     = "INVALID_STATE"
 	hostUnavailable      = "UNAVAILABLE"
+	hostDeadlineExceeded = "DEADLINE_EXCEEDED"
 	hostInternal         = "INTERNAL"
 )
 
@@ -45,6 +46,10 @@ type hostCall struct {
 	export         string
 	alive          bool
 	granted        map[string]struct{}
+	network        []string
+	async          *callAsync
+	ioCtx          context.Context // Async HTTP is canceled after result delivery closes.
+	cancelIO       context.CancelFunc
 	writes         int
 	ctxValue       moejs.Value
 	result         InvokeResult
@@ -100,6 +105,9 @@ func (h *hostCall) build(config, state json.RawMessage) (moejs.Value, error) {
 		return moejs.Undefined(), err
 	}
 	if err := defineValue(h.rt, ctxObj, "log", engine.ObjectValue(logger)); err != nil {
+		return moejs.Undefined(), err
+	}
+	if err := defineHostFn(h.rt, ctxObj, "fetch", 1, h.fetch); err != nil {
 		return moejs.Undefined(), err
 	}
 	if err := h.attachEventAPI(ctxObj); err != nil {

@@ -281,7 +281,7 @@ func TestKVSurvivesDisableAndRestart(t *testing.T) {
 	installed := installUI(t, manager, uiZip(t, nil, nil))
 	_, err := manager.KVSet(ctx, installed.PluginID, installed.ID, "", "cursor", "42", 0)
 	require.NoError(t, err)
-	require.NoError(t, manager.Enable(ctx, installed.ID, nil))
+	require.NoError(t, manager.Enable(ctx, installed.ID, nil, nil))
 	require.NoError(t, manager.Disable(ctx, installed.ID))
 
 	got, err := manager.KVGet(ctx, installed.PluginID, installed.ID, "default", "cursor")
@@ -370,7 +370,7 @@ func TestKVLateWriteIsolation(t *testing.T) {
 	require.NoError(t, err)
 
 	disabled := installUI(t, writer, otherUIZip(t))
-	require.NoError(t, writer.Enable(ctx, disabled.ID, nil))
+	require.NoError(t, writer.Enable(ctx, disabled.ID, nil, nil))
 	_, err = writer.KVSet(ctx, disabled.PluginID, disabled.ID, "", "cursor", "kept", 0)
 	require.NoError(t, err)
 	require.NoError(t, writer.Disable(ctx, disabled.ID))

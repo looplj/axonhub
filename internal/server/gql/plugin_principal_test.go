@@ -12,7 +12,7 @@ import (
 func TestPluginPrincipalPrivateResources(t *testing.T) {
 	fx := newPluginEndpointFixture(t, "plugin_principal_private")
 	template := fx.db.ChannelOverrideTemplate.Create().SetUserID(fx.readerID).SetName("private-template-secret").SaveX(fx.setupCtx)
-	require.NoError(t, fx.manager.Enable(fx.setupCtx, fx.pages.ID, []string{"read_channels", "write_channels"}))
+	require.NoError(t, fx.manager.Enable(fx.setupCtx, fx.pages.ID, []string{"read_channels", "write_channels"}, nil))
 	id := fmt.Sprintf("gid://axonhub/ChannelOverrideTemplate/%d", template.ID)
 	queries := []string{
 		`{ channelOverrideTemplates(first: 5) { edges { node { id name } } } }`,
@@ -34,7 +34,7 @@ func TestPluginPrincipalPrivateResources(t *testing.T) {
 
 func TestPluginPrincipalEmptyGrantAndProfile(t *testing.T) {
 	fx := newPluginEndpointFixture(t, "plugin_principal_empty")
-	require.NoError(t, fx.manager.Enable(fx.setupCtx, fx.pages.ID, []string{}))
+	require.NoError(t, fx.manager.Enable(fx.setupCtx, fx.pages.ID, []string{}, nil))
 	_, payload, raw := fx.postPlugin(fx.ownerToken, pluginPagesID, `{ channels(first: 1) { edges { node { name } } } }`)
 	require.Contains(t, payload, "errors", raw)
 	_, payload, raw = fx.postPlugin(fx.ownerToken, pluginPagesID, `{ me { firstName isOwner scopes projects { isOwner } oidcIdentities { email } } }`)

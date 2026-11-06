@@ -323,6 +323,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			plugin.FieldEnabled:            {Type: field.TypeBool, Column: plugin.FieldEnabled},
 			plugin.FieldPriority:           {Type: field.TypeInt, Column: plugin.FieldPriority},
 			plugin.FieldGrantedPermissions: {Type: field.TypeJSON, Column: plugin.FieldGrantedPermissions},
+			plugin.FieldGrantedNetwork:     {Type: field.TypeJSON, Column: plugin.FieldGrantedNetwork},
 			plugin.FieldConfig:             {Type: field.TypeJSON, Column: plugin.FieldConfig},
 		},
 	}
@@ -2851,6 +2852,11 @@ func (f *PluginFilter) WherePriority(p entql.IntP) {
 // WhereGrantedPermissions applies the entql json.RawMessage predicate on the granted_permissions field.
 func (f *PluginFilter) WhereGrantedPermissions(p entql.BytesP) {
 	f.Where(p.Field(plugin.FieldGrantedPermissions))
+}
+
+// WhereGrantedNetwork applies the entql json.RawMessage predicate on the granted_network field.
+func (f *PluginFilter) WhereGrantedNetwork(p entql.BytesP) {
+	f.Where(p.Field(plugin.FieldGrantedNetwork))
 }
 
 // WhereConfig applies the entql json.RawMessage predicate on the config field.

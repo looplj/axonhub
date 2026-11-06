@@ -30,9 +30,9 @@ func TestPluginTokenStatsActualQuery(t *testing.T) {
 	req := fx.db.Request.Create().SetProjectID(project.ID).SetModelID("test-model").SetRequestBody([]byte(`{}`)).SetStream(false).SetStatus(request.StatusCompleted).SaveX(fx.setupCtx)
 	usage := fx.db.UsageLog.Create().SetRequestID(req.ID).SetProjectID(project.ID).SetModelID("test-model").SetPromptTokens(123).SetCompletionTokens(0).SetTotalTokens(123).SaveX(fx.setupCtx)
 	install := func(id string, grants []string) int {
-		result, err := fx.manager.Install(fx.setupCtx, pluginEndpointZip(t, id, []string{"read_dashboard"}, true), nil)
+		result, err := fx.manager.Install(fx.setupCtx, pluginEndpointZip(t, id, []string{"read_dashboard"}, true), nil, nil)
 		require.NoError(t, err)
-		require.NoError(t, fx.manager.Enable(fx.setupCtx, result.Plugin.ID, grants))
+		require.NoError(t, fx.manager.Enable(fx.setupCtx, result.Plugin.ID, grants, nil))
 		return result.Plugin.ID
 	}
 	query := `{ tokenStats { totalInputTokensToday totalInputTokensThisWeek totalInputTokensThisMonth totalInputTokensAllTime } }`
@@ -110,7 +110,7 @@ func TestPluginTokenStatsActualQuery(t *testing.T) {
 	require.Len(t, dimensions, 1)
 	require.Equal(t, float64(345), dimensions[0].(map[string]any)["inputTokens"])
 
-	require.NoError(t, fx.manager.Enable(fx.setupCtx, other, nil))
+	require.NoError(t, fx.manager.Enable(fx.setupCtx, other, nil, nil))
 	_, payload, raw = fx.postPlugin(fx.ownerToken, "acme.tokens-b", query)
 	require.Contains(t, payload, "errors", raw)
 	require.NotContains(t, raw, `"totalInputTokensAllTime"`, "revoked plugin must not read the shared cache")

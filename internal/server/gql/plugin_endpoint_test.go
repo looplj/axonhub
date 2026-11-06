@@ -46,7 +46,7 @@ func TestPluginGraphql(t *testing.T) {
 	fx := newPluginEndpointFixture(t, "plugin_endpoint")
 	ctx := fx.setupCtx
 
-	require.NoError(t, fx.manager.Enable(ctx, fx.pages.ID, []string{"read_channels", "webhook"}))
+	require.NoError(t, fx.manager.Enable(ctx, fx.pages.ID, []string{"read_channels", "webhook"}, nil))
 
 	code, _, raw := fx.postPlugin("", pluginPagesID, `{ __typename }`)
 	require.Equal(t, http.StatusUnauthorized, code, raw)
@@ -77,7 +77,7 @@ func TestPluginGraphql(t *testing.T) {
 	require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, payload), raw)
 	require.True(t, fx.channelExists(t))
 
-	require.NoError(t, fx.manager.Enable(ctx, fx.pages.ID, []string{"read_channels", "write_channels"}))
+	require.NoError(t, fx.manager.Enable(ctx, fx.pages.ID, []string{"read_channels", "write_channels"}, nil))
 	code, payload, raw = fx.postPlugin(fx.readerToken, pluginPagesID, deleteQuery)
 	require.Equal(t, http.StatusOK, code, raw)
 	require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, payload), raw)
@@ -89,7 +89,7 @@ func TestPluginGraphql(t *testing.T) {
 	require.Equal(t, true, payload["data"].(map[string]any)["deleteChannel"])
 	require.False(t, fx.channelExists(t))
 
-	require.NoError(t, fx.manager.Enable(ctx, fx.pages.ID, []string{"read_requests"}))
+	require.NoError(t, fx.manager.Enable(ctx, fx.pages.ID, []string{"read_requests"}, nil))
 	code, payload, raw = fx.postPlugin(fx.writerToken, pluginPagesID, `query { requests(first: 1) { edges { node { id } } } }`)
 	require.Equal(t, http.StatusOK, code, raw)
 	require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, payload), raw)
@@ -132,12 +132,11 @@ func TestPluginGraphql(t *testing.T) {
 	require.Contains(t, raw, "exceeds the limit of 1000")
 	require.Contains(t, raw, `"data":null`)
 
-	for range pluginGraphqlRateBurst {
-		code, _, raw = fx.postPlugin(fx.rateToken, pluginPagesID, `{ __typename }`)
+	// Requests beyond the former burst limit must continue to succeed.
+	for range 20 {
+		code, _, raw = fx.postPlugin(fx.writerToken, pluginPagesID, `{ __typename }`)
 		require.Equal(t, http.StatusOK, code, raw)
 	}
-	code, _, raw = fx.postPlugin(fx.rateToken, pluginPagesID, `{ __typename }`)
-	require.Equal(t, http.StatusTooManyRequests, code, raw)
 
 	require.Equal(t, 2<<20, pluginGraphqlMaxResponseBytes)
 	recorder := httptest.NewRecorder()
@@ -153,7 +152,7 @@ func TestPluginGraphql(t *testing.T) {
 func TestPluginKVGraphqlPagination(t *testing.T) {
 	fx := newPluginEndpointFixture(t, "plugin_kv_pagination")
 	ctx := fx.setupCtx
-	require.NoError(t, fx.manager.Enable(ctx, fx.pages.ID, []string{"read_channels"}))
+	require.NoError(t, fx.manager.Enable(ctx, fx.pages.ID, []string{"read_channels"}, nil))
 	for _, key := range []string{"note.a", "note.b", "other"} {
 		_, err := fx.manager.KVSet(ctx, pluginPagesID, fx.pages.ID, "", key, key, 0)
 		require.NoError(t, err)
@@ -190,8 +189,8 @@ func TestPluginKVGraphqlPagination(t *testing.T) {
 func TestPluginKVGraphql(t *testing.T) {
 	fx := newPluginEndpointFixture(t, "plugin_kv_endpoint")
 	ctx := fx.setupCtx
-	require.NoError(t, fx.manager.Enable(ctx, fx.pages.ID, []string{"read_channels"}))
-	require.NoError(t, fx.manager.Enable(ctx, fx.other.ID, []string{"read_channels"}))
+	require.NoError(t, fx.manager.Enable(ctx, fx.pages.ID, []string{"read_channels"}, nil))
+	require.NoError(t, fx.manager.Enable(ctx, fx.other.ID, []string{"read_channels"}, nil))
 
 	setQuery := `mutation($key: String!, $value: String!) {
 		setPluginKV(key: $key, value: $value) { namespace key value expiresAt }
@@ -282,7 +281,6 @@ type pluginEndpointFixture struct {
 	ownerToken     string
 	writerToken    string
 	readerToken    string
-	rateToken      string
 	serviceAccount string
 	readerID       int
 	channelID      int
@@ -330,7 +328,6 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 	owner := makeUser("owner-"+suffix+"@example.com", "Owner", true, nil)
 	writer := makeUser("writer-"+suffix+"@example.com", "Writer", false, []string{"read_channels", "write_channels"})
 	reader := makeUser("reader-"+suffix+"@example.com", "Reader", false, []string{"read_channels"})
-	rateUser := makeUser("rate-"+suffix+"@example.com", "Rate", false, []string{"read_channels"})
 
 	proj := db.Project.Create().
 		SetName("plugin-endpoint-" + suffix).
@@ -387,9 +384,12 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 
 	engine := gin.New()
 	engine.Use(middleware.WithEntClient(db))
-	pluginGroup := engine.Group("/admin/plugins", middleware.WithJWTAuth(authSvc), middleware.WithProjectID(), middleware.WithTimeout(PluginGraphqlTimeout))
-	pluginGroup.POST("/:pluginId/graphql", func(c *gin.Context) {
+	pluginGroup := engine.Group("/admin/plugins", middleware.WithJWTAuth(authSvc), middleware.WithProjectID())
+	pluginGroup.POST("/:pluginId/graphql", middleware.WithTimeout(PluginGraphqlTimeout), func(c *gin.Context) {
 		handler.PluginGraphql.ServeHTTP(c.Writer, c.Request)
+	})
+	pluginGroup.POST("/:pluginId/fetch", middleware.WithTimeout(PluginFetchTimeout), func(c *gin.Context) {
+		handler.PluginFetch.ServeHTTP(c.Writer, c.Request)
 	})
 	adminGroup := engine.Group("/admin", middleware.WithAdminGraphqlAuth(authSvc), middleware.WithProjectID())
 	adminGroup.POST("/graphql", func(c *gin.Context) {
@@ -404,7 +404,7 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 	}
 	install := func(id string, permissions []string, withPage bool) *ent.Plugin {
 		t.Helper()
-		result, err := manager.Install(setupCtx, pluginEndpointZip(t, id, permissions, withPage), nil)
+		result, err := manager.Install(setupCtx, pluginEndpointZip(t, id, permissions, withPage), nil, nil)
 		require.NoError(t, err)
 		return result.Plugin
 	}
@@ -413,7 +413,7 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 	other := install(pluginOtherID, []string{"read_channels"}, true)
 	pageless := install(pluginPagelessID, []string{"read_channels"}, false)
 	_ = install(pluginDisabledID, []string{"read_channels"}, true)
-	require.NoError(t, manager.Enable(setupCtx, pageless.ID, []string{"read_channels"}))
+	require.NoError(t, manager.Enable(setupCtx, pageless.ID, []string{"read_channels"}, nil))
 
 	return &pluginEndpointFixture{
 		db:             db,
@@ -424,7 +424,6 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 		ownerToken:     token(owner),
 		writerToken:    token(writer),
 		readerToken:    token(reader),
-		rateToken:      token(rateUser),
 		serviceAccount: serviceKey,
 		readerID:       reader.ID,
 		channelID:      ch.ID,

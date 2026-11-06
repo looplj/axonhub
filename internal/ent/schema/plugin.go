@@ -80,6 +80,10 @@ func (Plugin) Fields() []ent.Field {
 			Optional().
 			Default([]string{}).
 			Comment("Permissions the owner granted. Must stay a subset of manifest.permissions."),
+		field.JSON("granted_network", []string{}).
+			Optional().
+			Default([]string{}).
+			Comment("Owner-granted subset of manifest.network."),
 		field.JSON("config", map[string]any{}).
 			Optional().
 			Default(map[string]any{}).

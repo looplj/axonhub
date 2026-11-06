@@ -567,8 +567,12 @@ func init() {
 	pluginDescGrantedPermissions := pluginFields[9].Descriptor()
 	// plugin.DefaultGrantedPermissions holds the default value on creation for the granted_permissions field.
 	plugin.DefaultGrantedPermissions = pluginDescGrantedPermissions.Default.([]string)
+	// pluginDescGrantedNetwork is the schema descriptor for granted_network field.
+	pluginDescGrantedNetwork := pluginFields[10].Descriptor()
+	// plugin.DefaultGrantedNetwork holds the default value on creation for the granted_network field.
+	plugin.DefaultGrantedNetwork = pluginDescGrantedNetwork.Default.([]string)
 	// pluginDescConfig is the schema descriptor for config field.
-	pluginDescConfig := pluginFields[10].Descriptor()
+	pluginDescConfig := pluginFields[11].Descriptor()
 	// plugin.DefaultConfig holds the default value on creation for the config field.
 	plugin.DefaultConfig = pluginDescConfig.Default.(map[string]interface{})
 	pluginstorageMixin := schema.PluginStorage{}.Mixin()

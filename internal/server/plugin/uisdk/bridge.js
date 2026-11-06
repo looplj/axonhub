@@ -15,6 +15,7 @@
     TIMEOUT: "Timed out",
     DISPOSED: "Disposed",
     NETWORK_ERROR: "Network error",
+    INVALID_STATE: "Invalid state",
     INTERNAL: "Internal error"
   };
 
@@ -91,8 +92,8 @@
       mapped = "NOT_FOUND";
     } else if (status === 429) {
       mapped = "RATE_LIMITED";
-    } else if (code === "TIMEOUT") {
-      mapped = "TIMEOUT";
+    } else if (code === "TIMEOUT" || code === "NETWORK_ERROR" || code === "INVALID_STATE") {
+      mapped = code;
     } else if (typeof status === "number") {
       mapped = "INTERNAL";
     } else if (Object.prototype.hasOwnProperty.call(MESSAGES, code)) {
@@ -669,6 +670,49 @@
     return call("toast", { message: message, kind: kind });
   }
 
+  function isFetchMethod(method) {
+    return method === "GET" || method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
+  }
+
+  function fetch(url, init) {
+    if (typeof url !== "string" || url === "") {
+      return Promise.reject(bridgeError("INVALID_ARGUMENT"));
+    }
+    var params = { url: url };
+    if (init !== undefined) {
+      if (!isPlainObject(init)) {
+        return Promise.reject(bridgeError("INVALID_ARGUMENT"));
+      }
+      if (init.method !== undefined) {
+        if (!isFetchMethod(init.method)) {
+          return Promise.reject(bridgeError("INVALID_ARGUMENT"));
+        }
+        params.method = init.method;
+      }
+      if (init.headers !== undefined) {
+        if (!isPlainObject(init.headers)) {
+          return Promise.reject(bridgeError("INVALID_ARGUMENT"));
+        }
+        var keys = Object.keys(init.headers);
+        var headers = {};
+        for (var i = 0; i < keys.length; i++) {
+          if (typeof init.headers[keys[i]] !== "string") {
+            return Promise.reject(bridgeError("INVALID_ARGUMENT"));
+          }
+          headers[keys[i]] = init.headers[keys[i]];
+        }
+        params.headers = headers;
+      }
+      if (init.body !== undefined) {
+        if (typeof init.body !== "string") {
+          return Promise.reject(bridgeError("INVALID_ARGUMENT"));
+        }
+        params.body = init.body;
+      }
+    }
+    return call("fetch", params);
+  }
+
   window.addEventListener("message", onMessage);
   window.addEventListener("error", onError);
   window.addEventListener("unhandledrejection", onRejection);
@@ -680,7 +724,8 @@
     onTheme: onTheme,
     graphql: graphql,
     navigate: navigate,
-    toast: toast
+    toast: toast,
+    fetch: fetch
   };
   window.__axonhubDispose = dispose;
 })();

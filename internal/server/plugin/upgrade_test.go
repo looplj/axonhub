@@ -59,6 +59,12 @@ func TestUpgrade(t *testing.T) {
 		diff = DiffManifest(&old, &withPage)
 		require.True(t, diff.NeedsPreview())
 		require.Equal(t, []string{"logs"}, diff.Pages)
+
+		withNetwork := sampleManifest(t)
+		withNetwork.Network = []objects.PluginNetworkRule{{Exact: "https://example.com/v1/check"}}
+		diff = DiffManifest(&old, &withNetwork)
+		require.True(t, diff.NeedsPreview())
+		require.Equal(t, []string{"https://example.com/v1/check"}, diff.Network)
 	})
 
 	t.Run("removed permission is not a preview", func(t *testing.T) {
@@ -96,7 +102,7 @@ func TestUpgrade(t *testing.T) {
 		old.Permissions = []string{"read_channels", "write_channels"}
 		next := sampleManifest(t)
 		next.Permissions = []string{"read_channels"}
-		plan, err := PrepareUpgrade(&old, &next, old.Permissions, map[string]any{}, &outside)
+		plan, err := PrepareUpgrade(&old, &next, old.Permissions, nil, map[string]any{}, &outside, nil)
 		require.ErrorContains(t, err, "write_channels")
 		require.Nil(t, plan)
 	})
@@ -110,7 +116,7 @@ func TestUpgrade(t *testing.T) {
 		next.ConfigSchema.Properties["token"] = token
 		oldConfig := map[string]any{"token": secret, "threshold": 3}
 
-		plan, err := PrepareUpgrade(&old, &next, nil, oldConfig, nil)
+		plan, err := PrepareUpgrade(&old, &next, nil, nil, oldConfig, nil, nil)
 		require.Error(t, err)
 		require.Nil(t, plan)
 		require.ErrorContains(t, err, "token")
@@ -126,7 +132,7 @@ func TestUpgrade(t *testing.T) {
 		delete(next.ConfigSchema.Properties, "token")
 		oldConfig := map[string]any{"token": secret, "threshold": 3}
 
-		plan, err := PrepareUpgrade(&old, &next, nil, oldConfig, nil)
+		plan, err := PrepareUpgrade(&old, &next, nil, nil, oldConfig, nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, plan)
 		require.NotContains(t, plan.Config, "token")
@@ -148,7 +154,7 @@ func TestUpgrade(t *testing.T) {
 		require.ErrorContains(t, err, "threshold")
 		require.Equal(t, "10", oldConfig["threshold"])
 
-		plan, err := PrepareUpgrade(&old, &next, nil, oldConfig, nil)
+		plan, err := PrepareUpgrade(&old, &next, nil, nil, oldConfig, nil, nil)
 		require.Error(t, err)
 		require.Nil(t, plan)
 		require.Equal(t, "10", oldConfig["threshold"])

@@ -44,7 +44,7 @@ v1 只有 `axonhub.webhook`。它默认启用。配置继续读 `systems.webhook
 
 Codex 兼容让 Codex CLI 用 AxonHub 的 API Key 接入 `/codex`，模型目录取自 Owner 选定的 Codex 渠道。它可选、默认关闭、关闭时整组路由返回 404，与核心网关逻辑解耦，形态上就是一个内置插件。记为 `axonhub.webhook` 之后的第二个迁移对象，随注册表一起排期。
 
-不做成 JS 插件：它要在网关上挂 HTTP 与 WebSocket 路由（`internal/server/codex_routes.go`），走 API Key 鉴权、配额和请求日志，并从渠道拉取上游目录。这些都不在 JS 插件的扩展点里，主动发 HTTP 还是[非目标](README.md#非目标)；放在模型请求关键路径上也不能接受 VM 不足时的 429。
+不做成 JS 插件：它要在网关上挂 HTTP 与 WebSocket 路由（`internal/server/codex_routes.go`），走 API Key 鉴权、配额和请求日志，并从渠道拉取上游目录。这些都不在 JS 插件的扩展点里。出站 HTTP 只覆盖已授权的路径，见 [出站请求](plugin.js.md#出站请求)，不能用来挂这组路由。放在模型请求关键路径上也不能接受 VM 不足时的 429。
 
 排期时：
 

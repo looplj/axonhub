@@ -11,6 +11,7 @@ const BRIDGE_MESSAGES = {
   TIMEOUT: 'Timed out',
   DISPOSED: 'Disposed',
   NETWORK_ERROR: 'Network error',
+  INVALID_STATE: 'Invalid state',
   INTERNAL: 'Internal error',
 } as const;
 
@@ -209,6 +210,104 @@ export function pluginHTTPBridgeError(status: number): PluginBridgeError {
   }
   if (status === 429) {
     return bridgeError('RATE_LIMITED', status);
+  }
+  return bridgeError('INTERNAL', status);
+}
+
+const PLUGIN_FETCH_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
+
+export type PluginFetchMethod = (typeof PLUGIN_FETCH_METHODS)[number];
+
+export interface PluginFetchCall {
+  url: string;
+  method?: PluginFetchMethod;
+  headers?: Record<string, string>;
+  body?: string;
+}
+
+export interface PluginFetchResult {
+  status: number;
+  headers: Record<string, string>;
+  body: string;
+}
+
+function isPluginFetchMethod(value: unknown): value is PluginFetchMethod {
+  return PLUGIN_FETCH_METHODS.some((method) => method === value);
+}
+
+function stringRecord(value: unknown): Record<string, string> | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const headers: Record<string, string> = {};
+  for (const [key, header] of Object.entries(value)) {
+    if (typeof header !== 'string') {
+      return null;
+    }
+    headers[key] = header;
+  }
+  return headers;
+}
+
+// Keeps only the outbound fields. Identity in the message cannot override the frame.
+export function pluginFetchCallParams(params: Record<string, unknown> | null): PluginFetchCall | null {
+  if (!params || typeof params.url !== 'string' || params.url === '') {
+    return null;
+  }
+  const call: PluginFetchCall = { url: params.url };
+  if (params.method !== undefined) {
+    if (!isPluginFetchMethod(params.method)) {
+      return null;
+    }
+    call.method = params.method;
+  }
+  if (params.headers !== undefined) {
+    const headers = stringRecord(params.headers);
+    if (!headers) {
+      return null;
+    }
+    call.headers = headers;
+  }
+  if (params.body !== undefined) {
+    if (typeof params.body !== 'string') {
+      return null;
+    }
+    call.body = params.body;
+  }
+  return call;
+}
+
+export function pluginFetchResult(payload: unknown): PluginFetchResult | null {
+  if (!isRecord(payload) || typeof payload.status !== 'number' || !Number.isFinite(payload.status) || typeof payload.body !== 'string') {
+    return null;
+  }
+  const headers = stringRecord(payload.headers);
+  if (!headers) {
+    return null;
+  }
+  return { status: payload.status, headers, body: payload.body };
+}
+
+// Host HTTP status for POST /admin/plugins/:pluginId/fetch.
+// Upstream status stays inside a 2xx JSON body and is not mapped here.
+export function pluginFetchHTTPError(status: number, payload: unknown): PluginBridgeError {
+  if (isRecord(payload) && payload.code === 'INVALID_STATE') {
+    return bridgeError('INVALID_STATE', status);
+  }
+  if (status === 401) {
+    return bridgeError('UNAUTHENTICATED', status);
+  }
+  if (status === 403) {
+    return bridgeError('FORBIDDEN', status);
+  }
+  if (status === 404) {
+    return bridgeError('NOT_FOUND', status);
+  }
+  if (status === 504) {
+    return bridgeError('TIMEOUT', status);
+  }
+  if (status === 502) {
+    return bridgeError('NETWORK_ERROR', status);
   }
   return bridgeError('INTERNAL', status);
 }

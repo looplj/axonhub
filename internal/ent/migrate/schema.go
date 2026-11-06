@@ -414,6 +414,7 @@ var (
 		{Name: "enabled", Type: field.TypeBool, Default: false},
 		{Name: "priority", Type: field.TypeInt, Default: 100},
 		{Name: "granted_permissions", Type: field.TypeJSON, Nullable: true},
+		{Name: "granted_network", Type: field.TypeJSON, Nullable: true},
 		{Name: "config", Type: field.TypeJSON, Nullable: true},
 	}
 	// PluginsTable holds the schema information for the "plugins" table.

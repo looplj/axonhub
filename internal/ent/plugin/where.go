@@ -714,6 +714,16 @@ func GrantedPermissionsNotNil() predicate.Plugin {
 	return predicate.Plugin(sql.FieldNotNull(FieldGrantedPermissions))
 }
 
+// GrantedNetworkIsNil applies the IsNil predicate on the "granted_network" field.
+func GrantedNetworkIsNil() predicate.Plugin {
+	return predicate.Plugin(sql.FieldIsNull(FieldGrantedNetwork))
+}
+
+// GrantedNetworkNotNil applies the NotNil predicate on the "granted_network" field.
+func GrantedNetworkNotNil() predicate.Plugin {
+	return predicate.Plugin(sql.FieldNotNull(FieldGrantedNetwork))
+}
+
 // ConfigIsNil applies the IsNil predicate on the "config" field.
 func ConfigIsNil() predicate.Plugin {
 	return predicate.Plugin(sql.FieldIsNull(FieldConfig))

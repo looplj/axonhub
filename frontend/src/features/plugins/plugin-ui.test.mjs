@@ -94,6 +94,51 @@ test('theme resolution and plugin HTTP errors stay stable', () => {
   assert.deepEqual(ui.pluginHTTPBridgeError(429), { code: 'RATE_LIMITED', message: 'Rate limited', status: 429 });
   assert.equal(ui.pluginHTTPBridgeError(500).code, 'INTERNAL');
   assert.equal(ui.pluginHTTPBridgeError(500).message, 'Internal error');
+
+  assert.deepEqual(ui.pluginFetchHTTPError(401, null), { code: 'UNAUTHENTICATED', message: 'Unauthenticated', status: 401 });
+  assert.deepEqual(ui.pluginFetchHTTPError(403, { code: 'FORBIDDEN' }), { code: 'FORBIDDEN', message: 'Forbidden', status: 403 });
+  assert.deepEqual(ui.pluginFetchHTTPError(404, null), { code: 'NOT_FOUND', message: 'Not found', status: 404 });
+  assert.equal(ui.pluginFetchHTTPError(429, null).code, 'INTERNAL');
+  assert.deepEqual(ui.pluginFetchHTTPError(504, { code: 'TIMEOUT' }), { code: 'TIMEOUT', message: 'Timed out', status: 504 });
+  assert.deepEqual(ui.pluginFetchHTTPError(502, null), { code: 'NETWORK_ERROR', message: 'Network error', status: 502 });
+  assert.equal(ui.pluginFetchHTTPError(500, { code: 'INTERNAL' }).code, 'INTERNAL');
+  assert.deepEqual(ui.pluginFetchHTTPError(409, { code: 'INVALID_STATE', message: 'redirect' }), {
+    code: 'INVALID_STATE',
+    message: 'Invalid state',
+    status: 409,
+  });
+  assert.equal(ui.pluginFetchHTTPError(504, { code: 'INVALID_STATE' }).code, 'INVALID_STATE');
+});
+
+test('plugin fetch calls keep outbound fields and accept a non-2xx result', () => {
+  assert.equal(ui.pluginFetchCallParams(null), null);
+  assert.equal(ui.pluginFetchCallParams({ url: '' }), null);
+  assert.equal(ui.pluginFetchCallParams({ url: 'https://example.com/v1', method: 'get' }), null);
+  assert.equal(ui.pluginFetchCallParams({ url: 'https://example.com/v1', headers: { accept: 1 } }), null);
+  assert.equal(ui.pluginFetchCallParams({ url: 'https://example.com/v1', headers: ['accept'] }), null);
+  assert.equal(ui.pluginFetchCallParams({ url: 'https://example.com/v1', body: { text: 'no' } }), null);
+  assert.deepEqual(
+    ui.pluginFetchCallParams({
+      url: 'https://example.com/v1/check',
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+      pluginId: 'ignored',
+    }),
+    {
+      url: 'https://example.com/v1/check',
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    }
+  );
+  assert.deepEqual(ui.pluginFetchResult({ status: 403, headers: { 'content-type': 'text/plain' }, body: 'no' }), {
+    status: 403,
+    headers: { 'content-type': 'text/plain' },
+    body: 'no',
+  });
+  assert.equal(ui.pluginFetchResult({ status: 200, headers: { ok: 1 }, body: '' }), null);
+  assert.equal(ui.pluginFetchResult({ status: 200, body: '' }), null);
 });
 
 test('computed style tokens keep the bridge whitelist and drop unsafe values', () => {
@@ -128,7 +173,16 @@ test('computed style tokens keep the bridge whitelist and drop unsafe values', (
 test('plugin page copy exists in en and zh-CN', () => {
   const en = JSON.parse(readFileSync(join(dir, '../../locales/en/plugins.json'), 'utf8'));
   const zh = JSON.parse(readFileSync(join(dir, '../../locales/zh-CN/plugins.json'), 'utf8'));
-  for (const key of ['plugins.nav.group', 'plugins.page.notFound', 'plugins.page.error', 'plugins.page.retry']) {
+  for (const key of [
+    'plugins.nav.group',
+    'plugins.page.notFound',
+    'plugins.page.error',
+    'plugins.page.retry',
+    'plugins.grant.network',
+    'plugins.grant.networkWarning',
+    'plugins.grant.addedNetwork',
+    'plugins.fields.grantedNetwork',
+  ]) {
     assert.equal(typeof en[key], 'string');
     assert.equal(typeof zh[key], 'string');
     assert.notEqual(en[key], '');

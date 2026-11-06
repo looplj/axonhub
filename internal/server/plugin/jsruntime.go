@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MoeForge/moejs"
+	"github.com/MoeForge/moejs/syntax"
 	"go.uber.org/zap"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -55,9 +56,6 @@ func ValidateExports(manifest *objects.PluginManifest, exports map[string]Export
 		}
 		if !exported.Function {
 			return fmt.Errorf("plugin.js export %s must be a function", name)
-		}
-		if exported.Async {
-			return fmt.Errorf("plugin.js export %s must not be async", name)
 		}
 	}
 	return nil
@@ -119,6 +117,9 @@ func compilePluginSources(contents *packageContents) (*pluginProgram, error) {
 		if err != nil {
 			return err
 		}
+		if err := rejectTopLevelAwait(name, string(source)); err != nil {
+			return err
+		}
 		prog.compiled[name] = mod
 		for _, specifier := range mod.Requests() {
 			resolved, err := resolveImport(name, specifier)
@@ -161,6 +162,19 @@ func (p *pluginProgram) resolve(referrer moejs.Referrer, specifier string) (*moe
 		return nil, fmt.Errorf("import %q does not exist in the package", specifier)
 	}
 	return mod, nil
+}
+
+// rejectTopLevelAwait refuses await outside a function.
+// Async hook exports are allowed; a top-level await is not.
+func rejectTopLevelAwait(name, source string) error {
+	parsed, err := syntax.ParseModule(name, source, syntax.Options{})
+	if err != nil {
+		return err
+	}
+	if !parsed.Async {
+		return nil
+	}
+	return fmt.Errorf("%s: top-level await is not allowed", name)
 }
 
 // resolveImport accepts only package-relative specifiers that stay inside the archive.

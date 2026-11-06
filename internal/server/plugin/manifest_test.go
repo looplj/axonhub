@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -117,6 +118,7 @@ func TestManifest(t *testing.T) {
 		manifest, err := ParseManifest(raw, "v1.0.0-beta9")
 		require.NoError(t, err)
 		require.Empty(t, manifest.Permissions)
+		require.Empty(t, manifest.Network)
 		require.Nil(t, manifest.Hooks)
 		require.Empty(t, manifest.Description)
 		require.Nil(t, manifest.ConfigSchema)
@@ -614,6 +616,76 @@ func page0(t *testing.T, manifest map[string]any) map[string]any {
 	page, ok := pages[0].(map[string]any)
 	require.True(t, ok)
 	return page
+}
+
+func TestManifestNetwork(t *testing.T) {
+	regex := `^https://api\.example\.com/v1/items/[0-9]+$`
+	raw := mutateManifest(t, func(_ *testing.T, manifest map[string]any) {
+		manifest["network"] = []any{
+			"https://example.com/v1/check",
+			map[string]any{"regex": regex},
+		}
+	})
+	manifest, err := ParseManifest(raw, "v1.0.0-beta9")
+	require.NoError(t, err)
+	require.Equal(t, []string{"https://example.com/v1/check", regex}, manifest.NetworkGrants())
+	encoded, err := json.Marshal(manifest.Network)
+	require.NoError(t, err)
+	var again []objects.PluginNetworkRule
+	require.NoError(t, json.Unmarshal(encoded, &again))
+	require.Equal(t, manifest.Network, again)
+
+	rejected := []struct {
+		name string
+		rule any
+		want string
+	}{
+		{name: "bare origin", rule: "https://example.com", want: "path"},
+		{name: "userinfo", rule: "https://user:pw@example.com/v1", want: "userinfo"},
+		{name: "query", rule: "https://example.com/v1?x=1", want: "query"},
+		{name: "fragment", rule: "https://example.com/v1#x", want: "fragment"},
+		{name: "http", rule: "http://example.com/v1", want: "https"},
+		{name: "unanchored regex", rule: map[string]any{"regex": "https://example.com/v1"}, want: "^"},
+		{name: "invalid regex", rule: map[string]any{"regex": "^($"}, want: "invalid"},
+	}
+	for _, item := range rejected {
+		t.Run(item.name, func(t *testing.T) {
+			raw := mutateManifest(t, func(_ *testing.T, manifest map[string]any) {
+				manifest["network"] = []any{item.rule}
+			})
+			_, err := ParseManifest(raw, "v1.0.0-beta9")
+			require.ErrorContains(t, err, item.want)
+		})
+	}
+
+	raw = mutateManifest(t, func(_ *testing.T, manifest map[string]any) {
+		manifest["network"] = []any{map[string]any{"regex": regex, "url": "https://example.com/v1"}}
+	})
+	_, err = ParseManifest(raw, "v1.0.0-beta9")
+	require.ErrorContains(t, err, "unknown field network[0].url")
+
+	raw = mutateManifest(t, func(_ *testing.T, manifest map[string]any) {
+		manifest["network"] = []any{"https://example.com/v1/check", "https://example.com/v1/check"}
+	})
+	_, err = ParseManifest(raw, "v1.0.0-beta9")
+	require.ErrorContains(t, err, "duplicated")
+
+	long := "^" + strings.Repeat("a", objects.MaxPluginNetworkRegex) + "$"
+	raw = mutateManifest(t, func(_ *testing.T, manifest map[string]any) {
+		manifest["network"] = []any{map[string]any{"regex": long}}
+	})
+	_, err = ParseManifest(raw, "v1.0.0-beta9")
+	require.ErrorContains(t, err, "256")
+
+	rules := make([]any, objects.MaxPluginNetworkRules+1)
+	for i := range rules {
+		rules[i] = fmt.Sprintf("https://example.com/v1/%d", i)
+	}
+	raw = mutateManifest(t, func(_ *testing.T, manifest map[string]any) {
+		manifest["network"] = rules
+	})
+	_, err = ParseManifest(raw, "v1.0.0-beta9")
+	require.ErrorContains(t, err, "32")
 }
 
 func propertiesOf(t *testing.T, manifest map[string]any) map[string]any {

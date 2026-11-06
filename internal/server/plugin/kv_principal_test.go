@@ -35,6 +35,6 @@ func TestPluginPrincipalKV(t *testing.T) {
 		require.Error(t, err)
 		// A plugin context never gains System authority; generic bypass paths fail closed.
 		require.Error(t, manager.KVDeleteInstallation(ctx, installed.PluginID, installed.ID))
-		require.Error(t, manager.Enable(ctx, installed.ID, nil))
+		require.Error(t, manager.Enable(ctx, installed.ID, nil, nil))
 	}
 }

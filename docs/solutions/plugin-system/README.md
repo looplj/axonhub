@@ -45,8 +45,8 @@
 2. 包签名与发布者校验。市场只校验索引里的 sha256。
 3. 声明式规则引擎。v1 用 JS 插件加计数器，见 [events.md](events.md)。
 4. 插件选择渠道或实现路由策略。自定义 channel provider 见 [provider.md](provider.md)，不在当前任务表。
-5. 插件页面直接访问网络。页面的写权限不细分到 mutation，见 [pages.md](pages.md#10-风险与妥协)。
-6. 插件主动发 HTTP（`ctx.fetch`）。插件只能用 `ctx.webhook.send` 发到 Owner 已配置的 WebHook 目标。
+5. 页面的写权限不细分到 mutation，见 [pages.md](pages.md#10-风险与妥协)。
+6. 浏览器直连外部 URL。`plugin.js` 和页面的外部请求都由宿主代发，目标必须匹配已授权的路径或正则，见 [出站请求](plugin.js.md#出站请求)。`ctx.models` 本轮不提供。
 7. 插件插槽：dashboard 面板、渠道编辑对话框、系统设置。v1 只有独立页面，见 [slots.md](slots.md)。
 8. Owner 自定义市场源。只用官方索引，地址写在代码里，见 [市场](#市场)。
 9. 宿主按 project、API Key、模型收窄请求钩子。当前请求钩子对全部请求生效，插件自行判断，见 [scope.md](scope.md)。
@@ -84,12 +84,13 @@
 | VM 生命周期      | 按次借用，调用返回即归还；请求内状态存宿主                                                    | 按请求独占：流式请求整段占着 VM，并发流一多池子就满                              |
 | 钩子执行出错     | 跳过该插件，请求按钩子前的值继续。插件要拦截请求就显式调 `ctx.reject`                         | 按插件配置失败时拒绝请求：脚本异常会中断正常网关请求                             |
 | 取不到 VM        | 请求钩子返回 429 `plugin_overloaded`，见 [VM 不足](request.md#vm-不足)                        | 跳过插件放行：高负载时插件规则悄悄失效。返回 503：前置负载均衡可能把实例判为故障 |
+| 外部请求         | manifest 登记到路径；精确 URL 或一条正则。Owner 授权子集。宿主代发，页面 CSP 的 `connect-src` 仍是 `'none'` | 只登记主机：一条规则会放开该主机的全部路径。浏览器直连：沙箱 origin 为 null，还要对方放行 CORS |
 
 原则：
 
 1. 没有订阅者的事件不构造对象。没有请求钩子的插件时，不追加中间件。
 2. 事件处理和请求钩子执行出错（抛错、超时、非法返回）时 fail-open。请求钩子取不到 VM 时拒绝请求，不跳过。权限判断 fail-closed。
-3. 事件只有白名单字段，不含请求体、响应体和凭证明文。插件后端代码的副作用只通过宿主 API；页面的写入只通过插件 GraphQL 端点。
+3. 事件只有白名单字段，不含请求体、响应体和凭证明文。插件后端代码的副作用只通过宿主 API；页面的写入只通过插件 GraphQL 端点，页面的外部请求只通过 Bridge 交给宿主代发。
 4. 插件定义在 `plugins`，KV 在 `plugin_storages`。编译结果、熔断、统计、市场索引缓存不跨实例共享。
 5. `internal/server/events` 不依赖 biz。biz 只发布事件，不 import 插件包。
 
@@ -117,6 +118,7 @@ plugin
 - enabled: 默认 false
 - priority: 默认 100，越小越先执行
 - granted_permissions: []string，默认 []。Owner 实际授予的权限，必须是 manifest.permissions 的子集
+- granted_network: []string，默认 []。Owner 实际授予的出站规则，必须是 manifest.network 的子集。精确 URL 与正则都按声明原文保存
 - config: JSON，默认 {}
 - created_at, updated_at
 - deleted_at：SoftDeleteMixin，未删除为 0
@@ -174,14 +176,14 @@ ui/**              html/js/css/svg/png/woff2
 | 写类宿主 API                                        | 每次调用最多 10 次；每插件每实例每分钟 60 次                                                                                            |
 | 事件队列                                            | 每插件每实例 1024；满则丢弃并计数                                                                                                       |
 | 事件链深度                                          | 插件动作产生的事件 `Depth+1`，`Depth > 2` 丢弃；不投递给 `Origin` 对应的插件                                                            |
-| `onRequest` / `onAttempt`                           | 200 ms                                                                                                                                  |
+| `onRequest` / `onAttempt`                           | 10 s，含 `await ctx.fetch`。不发起外部请求的改写仍按 [request.md](request.md) 的 5 ms 基准观察                                        |
 | 钩子输入                                            | 序列化后超过 2 MiB 则跳过并计数                                                                                                         |
 | VM 池                                               | 每插件每实例最多 16 个 VM，按次借用、调用返回即归还。事件 worker 每插件一个，最多占 1 个                                                |
 | 取 VM                                               | 请求钩子最多等 100 ms，不计入调用超时；等不到返回 429，不计入熔断。事件 worker 一直等到有空闲 VM，等待不计入 `onEvent` 的 10 s          |
 | `ctx.state`                                         | 每请求每插件 64 KiB，只存 JSON 值                                                                                                       |
 | 熔断                                                | 同一插件连续 20 次失败，本实例暂停 5 分钟。过载不算失败                                                                                 |
 | 计数器                                              | 窗口 1 s–24 h；key ≤ 128 字符                                                                                                           |
-| 页面 GraphQL                                        | 复杂度 ≤ 1000；响应 ≤ 2 MiB；超时 10 s；每用户每插件 5 req/s，突发 10                                                                   |
+| 页面 GraphQL                                        | 复杂度 ≤ 1000；响应 ≤ 2 MiB；超时 10 s                                                                   |
 | UI 资源 token                                       | 1 h                                                                                                                                     |
 | 页面握手                                            | 10 s 内需发 `hello`                                                                                                                     |
 | 页面 Bridge 调用                                    | 握手等待与调用分开计时；握手完成后每次调用最多 15 s，覆盖 GraphQL 的 10 s 服务端预算及消息传输                                          |
@@ -192,8 +194,10 @@ ui/**              html/js/css/svg/png/woff2
 | KV list                                             | 按 key 升序游标分页；first 默认 100，范围 1–100；nextCursor 为空表示末页                                                                |
 | 市场索引                                            | 只接受 `https`；不跟随重定向；超时 15 s；响应最大 1 MiB；内存缓存 5 分钟                                                                |
 | 市场包下载                                          | 同样只接受 `https`、不跟随重定向、超时 15 s；大小用包大小上限；sha256 必须与索引一致                                                    |
+| 出站 `network`                                      | 最多 32 条。精确 URL 含 scheme、host、path；正则全文最长 256 字符，用 Go `regexp` 全匹配                                                |
+| `ctx.fetch` / `axonhub.fetch`                      | 只匹配已授权规则的 scheme、host、port、path；query 不参与匹配。不跟随重定向。请求体 ≤ 1 MiB，响应体 ≤ 2 MiB，均为 UTF-8。时间用所在钩子或 Bridge 调用的剩余预算 |
 
-VM 复用：事件和请求钩子的每次 JS 调用都从该插件的池子借一个 VM。调用结束后，宿主清除中断标记、释放本次调用的参数引用，再把 VM 放回池子。被 `Runtime.Interrupt` 中断的 VM 直接丢弃，下次按需新建。模块级变量会跨调用、跨请求保留，只能放常量和缓存。需要跨钩子保留的请求数据放 `ctx.state`，由宿主保存，下次调用时再交给 JS。
+VM 复用：事件和请求钩子的每次 JS 调用都从该插件的池子借一个 VM。调用结束后，先按 [异步调用收尾](plugin.js.md#异步调用收尾) 关闭本次调用并清理任务，再释放参数引用、归还可复用的 VM。被 `Runtime.Interrupt` 中断的 VM 直接丢弃，下次按需新建。模块级变量会跨调用、跨请求保留，只能放常量和缓存。需要跨钩子保留的请求数据放 `ctx.state`，由宿主保存，下次调用时再交给 JS。
 
 ### PluginStorage
 
@@ -273,17 +277,17 @@ System(webhook_notifier_config) 仍由现有 WebhookNotifier 读取。内置插�
    → installPlugin(file: Upload!, grantedPermissions: [String!])，复用 backup restore 的 multipart transport
 2. ParsePackage 校验 ZIP → 按 [安装校验](manifest.md#4-安装校验) 校验 manifest；有 plugin.js 时编译、链接包内模块并做导出校验
 3. 新装：写入 plugins，enabled=false → 通知管理器刷新
-   → 授权对话框列出 permissions、events、hooks、ui
-   → enablePlugin(id, grantedPermissions)：granted ⊆ manifest.permissions，然后 enabled=true
+   → 授权对话框列出 permissions、network、events、hooks、ui
+   → enablePlugin(id, grantedPermissions, grantedNetwork)：两者都是对应声明的子集，然后 enabled=true
 4. 升级（plugin_id 已存在）：
    - 所有路径先执行 manifest.md「升级比较」中的授权收敛、secret 降级校验和配置迁移；失败不写库
-   - 插件已停用，或新版本没有多出权限、事件、钩子、UI 入口：直接替换包和 manifest，
-     同一事务写入迁移后的 config 和收敛后的 grantedPermissions，enabled 不变 → 通知管理器刷新
+   - 插件已停用，或新版本没有多出权限、出站规则、事件、钩子、UI 入口：直接替换包和 manifest，
+     同一事务写入迁移后的 config、收敛后的 grantedPermissions 和 grantedNetwork，enabled 不变 → 通知管理器刷新
    - 插件已启用且有多出的项：不写库，返回 PluginUpgradePreview
-     （当前版本、新版本、多出的 permissions、events、hooks、ui）
-     → 前端弹出确认对话框，Owner 勾选要授予的新权限
-     → 前端用同一个文件再调 installPlugin(file, grantedPermissions)，提交完整的新授权集合
-     → 后端基于事务内的当前行重新校验，一个事务里替换包、manifest、迁移后的 config、grantedPermissions，enabled 不变 → 通知管理器刷新
+     （当前版本、新版本、多出的 permissions、network、events、hooks、ui）
+     → 前端弹出确认对话框，Owner 勾选要授予的新权限和新的出站规则
+     → 前端用同一个文件再调 installPlugin(file, grantedPermissions, grantedNetwork)，提交完整的新授权集合
+     → 后端基于事务内的当前行重新校验，一个事务里替换包、manifest、迁移后的 config、grantedPermissions、grantedNetwork，enabled 不变 → 通知管理器刷新
      → Owner 取消就不写库，旧版本继续运行
    - 「多出」、授权收敛和配置迁移的定义见 [升级比较](manifest.md#6-升级比较)
 
@@ -340,7 +344,7 @@ System(webhook_notifier_config) 仍由现有 WebhookNotifier 读取。内置插�
 
 - `fx_module.go`：`*Manager`。`OnStart` 加载插件；`OnStop` 停止。内置插件的 `Apply` 见 [builtin-plugins.md](builtin-plugins.md)，当前不注册。
 - `package.go`、`manifest.go`、`manager.go`：解析、校验、代际；后端模块与 UI 资源分离加载，独占临时目录、资源引用计数、缓存重建与退出清理。
-- `jsruntime.go`：编译缓存、`DisableDynamicCode`、`Runtime.Interrupt`、`*moejs.InterruptedError`、返回 Promise 视为非法、VM 池与取 VM 等待（等不到返回 `ErrVMUnavailable`）、熔断、`ctx.state` 存储。
+- `jsruntime.go`：编译缓存、`DisableDynamicCode`、`Runtime.Interrupt`、`*moejs.InterruptedError`、等待钩子返回的 Promise、VM 池与取 VM 等待（等不到返回 `ErrVMUnavailable`）、熔断、`ctx.state` 存储。
 - `kv.go`、`market.go`。
 - 事件、请求、UI 的文件见各篇。`builtin/registry.go` 见 [builtin-plugins.md](builtin-plugins.md)，当前不建。
 
@@ -450,14 +454,14 @@ MySQL 的 `max_allowed_packet` 至少要 8 MiB，才能写入 5 MiB 的包。8.0
 
 ## 9. 任务管理
 
-核对日期：2026-11-06。第 1、2 段（T-01 至 T-07）已在当前分支落地。本段从 T-08 开始。响应钩子见 [response.md](response.md)，自定义 channel provider 见 [provider.md](provider.md)，按 project / API Key / 模型收窄见 [scope.md](scope.md)，内置插件见 [builtin-plugins.md](builtin-plugins.md)，都不在本段实现范围。
+核对日期：2026-11-07。第 1、2、3 段（T-01 至 T-12）和 T-16 已在当前分支落地。仍待办的是 T-13、T-14、T-15。响应钩子见 [response.md](response.md)，自定义 channel provider 见 [provider.md](provider.md)，按 project / API Key / 模型收窄见 [scope.md](scope.md)，内置插件见 [builtin-plugins.md](builtin-plugins.md)，`ctx.models` 都不在本段实现范围。
 
 实施分五段，按段推进；段内在依赖允许时可以并行。分段只表示顺序，不对应发布版本。
 
 1. 插件基础设施：T-01 至 T-03。本地上传、授权、升级确认、启停、删除、配置。这一段只接受不带 `plugin.js` 的包。
 2. UI 插件：T-04 至 T-07。独立页面、插件 GraphQL（含 mutation）、页面读写本插件 KV。不需要 JS。
 3. 事件插件：T-08 至 T-12。引入事件总线和 moejs，一次发布 [events.md](events.md) 里的 8 种新事件，开始接受带 `plugin.js` 的包，开放 JS `onEvent`。现有 4 条 WebHook 调用不改，不做内置插件。
-4. 请求插件：T-13。放在最后：按 [关键假设](#4-决策)，moejs 性能不达标时只推迟这一段，前三段不受影响。
+4. 请求插件与出站：T-13、T-16。T-16 已落地，事件钩子和页面共用这一套出站。T-13 仍按 [关键假设](#4-决策)，moejs 性能不达标时只推迟请求钩子。
 5. 市场与收尾：T-14、T-15。T-14 只依赖 T-01、T-03，人手富余时可在第 1 段之后并行。
 
 | ID   | 任务                                           | 状态 | 依赖                         | 当前记录                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -469,13 +473,14 @@ MySQL 的 `max_allowed_packet` 至少要 8 MiB，才能写入 5 MiB 的包。8.0
 | T-05 | [插件 GraphQL 端点](pages.md#7-插件-graphql)   | 已完成 | T-03, T-04                   | `scoped_user.go`、`graphql.go` 抽取、路由；开放 mutation、业务主体鉴权与根字段快照；KV 字段与 `write_plugins` 校验；插件权限矩阵测试                                                                                                                                                                                                                                                                                                                                        |
 | T-06 | [UI 资源与桥接](pages.md#6-资源与桥接)         | 已完成 | T-02                         | `ui.go`、`uisdk/bridge.js`、CSP；token 绑定入口，允许同包 UI 白名单资源与宿主 bridge；从版本临时目录流式返回并持有资源引用；路径和包版本校验、资源路由匿名 CORS 与 MIME、缓存丢失重建、后端文件访问拒绝测试、ES module/Vite 页面加载验收                                                                                                                                                                                                                                          |
 | T-07 | [页面挂载](pages.md#5-路由与侧栏)              | 已完成 | T-03, T-05, T-06             | `plugin-frame.tsx`、页面路由、侧栏插件分组；单测与真实 sandbox 的模块加载及隔离 E2E                                                                                                                                                                                                                                                                                                                                                                                               |
-| T-08 | [事件总线与事件类型](events.md#5-事件)         | 待办 | 无                           | 新建 `internal/server/events`，含 Bus、8 种事件常量、凭证指纹、FX 模块与单测。不发布事件，不改 WebHook                                                                                                                                                                                                                                                                                                                                                                            |
-| T-09 | [8 种新事件的发布点](events.md#6-发布)         | 待办 | T-08                         | 一次接上 events.md 的 8 个发布点。无订阅者不构造事件。`EventBus` 为空时跳过。不改 4 条 `NotifyXxx`，不改 `webhook-settings.tsx`，不注册内置插件                                                                                                                                                                                                                                                                                                                                   |
-| T-10 | [JS 编译与安装校验](manifest.md#4-安装校验)    | 待办 | T-01, T-02                   | 引入 moejs v0.1.0-alpha.11；ESM 编译与包内链接、`DisableDynamicCode`、顶层执行 1 s 超时、检查命名导出存在且不是 async；管理器刷新时编译并按 `package_sha256` 复用编译结果；去掉对 `plugin.js` 的临时拒绝。`events` 字段仍拒绝，到 T-12 才开放                                                                                                                                                                                                                                     |
-| T-11 | [JS 执行运行时](#运行限制)                     | 待办 | T-04, T-10                   | 按次借还的 VM 池、`Runtime.Interrupt` 超时中断并丢弃被中断的 VM、返回 Promise 视为非法、熔断；按 [宿主 API 契约](plugin.js.md#公共类型与调用规则) 实现签名、错误码、KV 与上下文状态语义。渠道启停、`ctx.webhook.send`、`ctx.counter` 留到 T-12                                                                                                                                                                                                                                    |
-| T-12 | [事件插件与宿主 API](events.md#7-js-处置)      | 待办 | T-09, T-11                   | `dispatcher.go`、`hostapi.go`、`counter.go`；manifest 的 `events` 只开放这 8 种；故障转移阈值集成测试                                                                                                                                                                                                                                                                                                                                                                             |
-| T-13 | [请求钩子](request.md#4-钩子)                  | 待办 | T-11                         | 按用户决定，请求对象的字段命名、可编辑范围及内部字段保留/合并在本任务实施时明确；先跑 `go test -bench Hook ./internal/server/plugin/`，不达标按 [关键假设](#4-决策) 处理；`onRequest`、`onAttempt`、`ctx.state`；`hooks.go`、orchestrator 插入点与构造参数；[VM 不足](request.md#vm-不足) 等待 100 ms 后返回 429，`onAttempt` 过载时不切渠道；[pass-through 渠道](request.md#5-pass-through-渠道) 的计数和日志；开放 manifest 的 `hooks.request`、`hooks.attempt`；兼容与性能测试 |
+| T-08 | [事件总线与事件类型](events.md#5-事件)         | 已完成 | 无                           | 新建 `internal/server/events`，含 Bus、8 种事件常量、凭证指纹、FX 模块与单测。不发布事件，不改 WebHook                                                                                                                                                                                                                                                                                                                                                                            |
+| T-09 | [8 种新事件的发布点](events.md#6-发布)         | 已完成 | T-08                         | 一次接上 events.md 的 8 个发布点。无订阅者不构造事件。`EventBus` 为空时跳过。不改 4 条 `NotifyXxx`，不改 `webhook-settings.tsx`，不注册内置插件                                                                                                                                                                                                                                                                                                                                   |
+| T-10 | [JS 编译与安装校验](manifest.md#4-安装校验)    | 已完成 | T-01, T-02                   | 引入 moejs v0.1.0-alpha.11；ESM 编译与包内链接、`DisableDynamicCode`、顶层执行 1 s 超时、顶层禁止 await；钩子导出允许 async。管理器刷新时编译并按 `package_sha256` 复用编译结果；去掉对 `plugin.js` 的临时拒绝。`events` 字段仍拒绝，到 T-12 才开放。`network` 在 T-16 开放前出现即拒绝 |
+| T-11 | [JS 执行运行时](#运行限制)                     | 已完成 | T-04, T-10                   | 按次借还的 VM 池、`Runtime.Interrupt` 超时中断并丢弃被中断的 VM、等待钩子返回的 Promise 直到结算或预算耗尽、熔断；按 [宿主 API 契约](plugin.js.md#公共类型与调用规则) 实现签名、错误码、KV 与上下文状态语义。渠道启停、`ctx.webhook.send`、`ctx.counter` 留到 T-12，`ctx.fetch` 留到 T-16 |
+| T-12 | [事件插件与宿主 API](events.md#7-js-处置)      | 已完成 | T-09, T-11                   | `dispatcher.go`、`hostapi.go`、`counter.go`；manifest 的 `events` 只开放这 8 种；故障转移阈值集成测试                                                                                                                                                                                                                                                                                                                                                                             |
+| T-13 | [请求钩子](request.md#4-钩子)                  | 待办 | T-11                         | 按用户决定，请求对象的字段命名、可编辑范围及内部字段保留/合并在本任务实施时明确；先跑 `go test -bench Hook ./internal/server/plugin/`，不达标按 [关键假设](#4-决策) 处理；`onRequest`、`onAttempt`、`ctx.state`；`hooks.go`、orchestrator 插入点与构造参数；[VM 不足](request.md#vm-不足) 等待 100 ms 后返回 429，`onAttempt` 过载时不切渠道；[pass-through 渠道](request.md#5-pass-through-渠道) 的计数和日志；开放 manifest 的 `hooks.request`、`hooks.attempt`；兼容与性能测试。钩子预算 10 s，含已等待的 Promise |
 | T-14 | [插件市场](#市场)                              | 待办 | T-01, T-03                   | `market.go`、`MarketIndexURL`、市场页；sha256 不一致不写库；`looplj/axonhub-plugins` 仓库的 `index.json` 与校验工具                                                                                                                                                                                                                                                                                                                                                               |
-| T-15 | [迁移、E2E 与开发者文档](#6-验收)              | 待办 | T-07, T-09, T-12, T-13, T-14 | `make migration-test-all-dbs`、`make e2e-test`；`docs/` 中英文开发者文档与示例插件                                                                                                                                                                                                                                                                                                                                                                                                |
+| T-15 | [迁移、E2E 与开发者文档](#6-验收)              | 待办 | T-07, T-09, T-12, T-13, T-14, T-16 | `make migration-test-all-dbs`、`make e2e-test`；`docs/` 中英文开发者文档与示例插件                                                                                                                                                                                                                                                                                                                                                                                                |
+| T-16 | [出站请求](plugin.js.md#出站请求)              | 已完成 | T-07, T-11                   | `network` 与 `granted_network`；精确路径与正则；`ctx.fetch` 与 `axonhub.fetch` 都由宿主代发；不跟随重定向；CSP `connect-src` 保持 `'none'`。不实现 `ctx.models` |
 
 本方案参考了 new-api、CLIProxyAPI、sub2api 和 magpie。

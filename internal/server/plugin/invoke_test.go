@@ -71,18 +71,38 @@ func TestInvokePromiseDoesNotCommitState(t *testing.T) {
 	manager := newTestManager(t, client)
 	installed := installJS(t, manager, "acme.promise", `
 export function onEvent(op, ctx) {
-  if (op.promise) {
+  if (op.hang) {
     ctx.state.dirty = true;
     return new Promise(function () {});
+  }
+  if (op.resolve) {
+    ctx.state.dirty = true;
+    return Promise.resolve({ ok: true, dirty: ctx.state.dirty === true, keep: ctx.state.keep });
+  }
+  if (op.reject) {
+    ctx.state.dirty = true;
+    return Promise.reject(new Error("rejected"));
   }
   return { dirty: ctx.state.dirty === true, keep: ctx.state.keep };
 }
 `)
 	started := time.Now()
-	_, err := invokeCall(t, manager, installed.ID, map[string]any{"promise": true}, map[string]any{"keep": true}, nil, 2*time.Second)
-	require.Less(t, time.Since(started), 500*time.Millisecond)
-	require.ErrorIs(t, err, errPromiseReturn)
+	_, err := invokeCall(t, manager, installed.ID, map[string]any{"hang": true}, map[string]any{"keep": true}, nil, 200*time.Millisecond)
+	require.GreaterOrEqual(t, time.Since(started), 150*time.Millisecond)
+	require.Less(t, time.Since(started), time.Second)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
 	require.NotErrorIs(t, err, ErrVMUnavailable)
+	require.Zero(t, manager.VMCount())
+
+	resolved, err := invokeCall(t, manager, installed.ID, map[string]any{"resolve": true}, map[string]any{"keep": true}, nil, time.Second)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"ok": true, "dirty": true, "keep": true}, decodeValue(t, resolved.Value))
+	require.Equal(t, map[string]any{"dirty": true, "keep": true}, decodeState(t, resolved.State))
+
+	_, err = invokeCall(t, manager, installed.ID, map[string]any{"reject": true}, map[string]any{"keep": true}, nil, time.Second)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "rejected")
+	require.NotErrorIs(t, err, context.DeadlineExceeded)
 
 	result, err := invokeCall(t, manager, installed.ID, map[string]any{}, map[string]any{"keep": true}, nil, time.Second)
 	require.NoError(t, err)
@@ -542,7 +562,7 @@ func installJS(t *testing.T, manager *Manager, id, source string) *ent.Plugin {
 		"ui/page.html": "<html></html>",
 		"plugin.js":    source,
 	}))
-	require.NoError(t, manager.Enable(pluginCtx(), installed.ID, nil))
+	require.NoError(t, manager.Enable(pluginCtx(), installed.ID, nil, nil))
 	current := manager.Current().ByID(installed.ID)
 	require.NotNil(t, current)
 	require.Equal(t, RuntimeStatusActive, current.Status, current.Reason)
@@ -683,7 +703,7 @@ func TestInvokePoolReleasedAfterRetirement(t *testing.T) {
 			require.Zero(t, manager.VMCount())
 			require.Empty(t, manager.execs)
 			if action == "disable" {
-				require.NoError(t, manager.Enable(context.Background(), installed.ID, nil))
+				require.NoError(t, manager.Enable(context.Background(), installed.ID, nil, nil))
 				_, err = invokeCall(t, manager, installed.ID, nil, nil, nil, time.Second)
 				require.NoError(t, err)
 				require.Equal(t, 1, manager.VMCount())
@@ -706,7 +726,7 @@ func TestRetiredResourceKeepsNewModulePool(t *testing.T) {
 	}, map[string]string{
 		"ui/page.html": "<html></html>",
 		"plugin.js":    `let calls = 0; export function onEvent() { return ++calls; }`,
-	}), nil)
+	}), nil, nil)
 	require.NoError(t, err)
 	result, err := invokeCall(t, manager, installed.ID, nil, nil, nil, time.Second)
 	require.NoError(t, err)

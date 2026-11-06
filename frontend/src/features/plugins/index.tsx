@@ -68,7 +68,7 @@ export default function PluginsManagement() {
     pendingFile.current = selectedFile;
     const known = new Set(plugins.map((plugin) => plugin.pluginID));
     try {
-      const result = await installPlugin.mutateAsync({ file: selectedFile, grantedPermissions: null });
+      const result = await installPlugin.mutateAsync({ file: selectedFile, grantedPermissions: null, grantedNetwork: null });
       if (result.upgradePreview && result.plugin) {
         setInstallOpen(false);
         setGrant({ mode: 'upgrade', plugin: result.plugin, preview: result.upgradePreview });
@@ -87,7 +87,7 @@ export default function PluginsManagement() {
     }
   };
 
-  const confirmGrant = async (granted: string[]) => {
+  const confirmGrant = async (grantedPermissions: string[], grantedNetwork: string[]) => {
     if (!grant) {
       return;
     }
@@ -97,14 +97,14 @@ export default function PluginsManagement() {
         if (!file) {
           return;
         }
-        const result = await installPlugin.mutateAsync({ file, grantedPermissions: granted });
+        const result = await installPlugin.mutateAsync({ file, grantedPermissions, grantedNetwork });
         if (result.upgradePreview && result.plugin) {
           setGrant({ mode: 'upgrade', plugin: result.plugin, preview: result.upgradePreview });
           return;
         }
         toast.success(t('plugins.upload.success'));
       } else {
-        await enablePlugin.mutateAsync({ id: grant.plugin.id, grantedPermissions: granted });
+        await enablePlugin.mutateAsync({ id: grant.plugin.id, grantedPermissions, grantedNetwork });
       }
       setGrant(null);
       resetInstall();
@@ -184,7 +184,9 @@ export default function PluginsManagement() {
         }}
         mode={grant?.mode ?? 'install'}
         permissions={grant?.plugin.manifestPermissions ?? []}
+        network={grant?.plugin.manifestNetwork ?? []}
         initialGranted={grant?.plugin.grantedPermissions ?? []}
+        initialGrantedNetwork={grant?.plugin.grantedNetwork ?? []}
         preview={grant?.preview}
         pending={installPlugin.isPending || enablePlugin.isPending}
         onConfirm={confirmGrant}

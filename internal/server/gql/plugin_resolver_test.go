@@ -35,7 +35,9 @@ const pluginSelection = `
   priority
   builtin
   grantedPermissions
+  grantedNetwork
   manifestPermissions
+  manifestNetwork
   configFields { name type title description format enumValues minimum maximum defaultJSON }
   config
   runtimeStatus
@@ -51,12 +53,12 @@ const pluginsQuery = `query Plugins {
 const installPluginMutation = `mutation InstallPlugin($file: Upload!, $grantedPermissions: [String!]) {
   installPlugin(file: $file, grantedPermissions: $grantedPermissions) {
     plugin {` + pluginSelection + `}
-    upgradePreview { currentVersion newVersion permissions events hooks pages }
+    upgradePreview { currentVersion newVersion permissions network events hooks pages }
   }
 }`
 
-const enablePluginMutation = `mutation EnablePlugin($id: ID!, $grantedPermissions: [String!]!) {
-  enablePlugin(id: $id, grantedPermissions: $grantedPermissions) {` + pluginSelection + `}
+const enablePluginMutation = `mutation EnablePlugin($id: ID!, $grantedPermissions: [String!]!, $grantedNetwork: [String!]! = []) {
+  enablePlugin(id: $id, grantedPermissions: $grantedPermissions, grantedNetwork: $grantedNetwork) {` + pluginSelection + `}
 }`
 
 const disablePluginMutation = `mutation DisablePlugin($id: ID!) {

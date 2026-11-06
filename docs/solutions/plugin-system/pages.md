@@ -26,7 +26,7 @@
 ### 非目标
 
 - 插槽：dashboard 面板、渠道编辑对话框、系统设置。见 [slots.md](slots.md)。
-- 页面直接访问网络。
+- 浏览器直连外部 URL。页面用 `axonhub.fetch` 请宿主代发，目标必须匹配已授权的路径或正则，见 [出站请求](plugin.js.md#出站请求)。CSP 的 `connect-src` 保持 `'none'`。
 - 按 mutation 细分插件权限。授予 `write_channels` 就是授予渠道的全部写能力，见 [妥协 1](#10-风险与妥协)。
 - 把用户 token 交给 iframe；向页面传入请求体。
 - 用插件页面替换 dashboard、渠道、请求这些内置页面。
@@ -186,7 +186,7 @@ UI token 的资源读取范围：
 - **响应**：该路由固定返回 `Access-Control-Allow-Origin: *`，不反射请求 Origin，也不使用 `Access-Control-Allow-Origin: null`。不返回 `Access-Control-Allow-Credentials` 或 Set-Cookie；不开放 Authorization 等自定义请求头。固定通配符不需要增加 `Vary: Origin`，保留其他已有 Vary 值。成功、条件响应（若返回 304）及错误响应均保留相同 CORS 头，错误响应不能包含受保护的资源内容。
 - **鉴权**：URL token 是资源访问凭据；CORS 不替代签名、有效期、启用状态、包版本和路径范围校验。所有读取（含 HEAD、条件请求）均先鉴权，不能因有 Cookie、用户 JWT 或 `Origin: null` 而放行无效 token。持有有效 token 的调用方可匿名读取其范围内的静态资源，因此包内 UI 文件不得包含密钥。
 - **加载方式**：示例使用 `crossorigin="anonymous"`，Vite 产物的模块脚本和 modulepreload 也使用匿名模式；禁止 `crossorigin="use-credentials"`。不向模块请求附加 Cookie、HTTP 身份认证或用户 Bearer token，不需要 SDK 在 JS 中拼接认证头。
-- **隔离保持**：iframe 和响应 CSP 仍为 `sandbox allow-scripts allow-forms`，不增加 `allow-same-origin`，不放宽 `connect-src 'none'` 和 `form-action 'none'`。这套静态资源 CORS 不能挂到整个 `/admin`，也不能应用到主 GraphQL 或插件 GraphQL 端点；数据访问继续由父页面 Bridge 代理。CORS 不改变 SDK 的 source/session 校验。
+- **隔离保持**：iframe 和响应 CSP 仍为 `sandbox allow-scripts allow-forms`，不增加 `allow-same-origin`，不放宽 `connect-src 'none'` 和 `form-action 'none'`。页面要访问已登记的外部 URL 时，调用 `axonhub.fetch`，由宿主代发；浏览器不直接连接该 URL，因此不需要放宽 `connect-src`。这套静态资源 CORS 不能挂到整个 `/admin`，也不能应用到主 GraphQL 或插件 GraphQL 端点；数据访问继续由父页面 Bridge 代理。CORS 不改变 SDK 的 source/session 校验。
 - **响应类型**：JS 模块及其依赖返回 `Content-Type: text/javascript`，CSS 返回 `text/css`，字体返回 `font/woff2`，保留 `nosniff`。缺失的 JS 返回真实 404，不能用 HTML 入口兜底，否则模块会因 MIME 不匹配失败。
 
 `navigate` 只允许站内路径。`toast` 走宿主的通知。主题变化用 `onTheme` 再推一次。
@@ -212,7 +212,7 @@ UI token 的资源读取范围：
 
 ## 7. 插件 GraphQL
 
-`POST /admin/plugins/:pluginId/graphql` 放在新的 JWT 组：`WithJWTAuth` 只接受用户 JWT，不接受 service account，加 `WithProjectID`、限流和 10 秒超时。
+`POST /admin/plugins/:pluginId/graphql` 放在新的 JWT 组：`WithJWTAuth` 只接受用户 JWT，不接受 service account，加 `WithProjectID` 和 10 秒超时。
 
 ```text
 a. 插件存在、已启用、声明了 ui.pages；否则 404
@@ -316,7 +316,7 @@ extend type Mutation {
 1. 妥协：页面的写权限按 scope 整类授予，不细分到 mutation
    - 原因：scope 只有 read / write 两档，按 mutation 细分要为插件单独设计一套权限
    - 影响：授予 write_channels 后，页面能执行全部渠道 mutation，并能读取凭证明文。
-     iframe 不能联网，但改渠道地址后，凭证会随下一次请求发到该地址
+     页面不能自己联网。已经授权的出站规则上，页面可以通过 `axonhub.fetch` 把读到的数据发给对应路径，授权对话框列出这些 URL。
    - 升级触发：出现需要写权限、但不应接触凭证的插件，或要开放给不可信第三方
    - 后续方向：增加插件专用的细分权限（例如只允许启停渠道），或改为插件动作 onAction
 

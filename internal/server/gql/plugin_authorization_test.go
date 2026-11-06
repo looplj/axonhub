@@ -37,7 +37,7 @@ func TestPluginBypassErrorPresentation(t *testing.T) {
 
 func TestPluginPersonalOperationsUseBusinessAuthorization(t *testing.T) {
 	fx := newPluginEndpointFixture(t, "personal_business_auth")
-	require.NoError(t, fx.manager.Enable(fx.setupCtx, fx.pages.ID, []string{"read_channels", "write_channels"}))
+	require.NoError(t, fx.manager.Enable(fx.setupCtx, fx.pages.ID, []string{"read_channels", "write_channels"}, nil))
 	queries := []string{
 		`mutation { alias: updateMe(input: { firstName: "denied" }) { id } }`,
 		`mutation { ...Fields } fragment Fields on Mutation { updateMyPassword(input: { newPassword: "denied" }) }`,
@@ -55,7 +55,7 @@ func TestPluginPersonalOperationsUseBusinessAuthorization(t *testing.T) {
 
 func TestPluginChannelTestsReturnForbidden(t *testing.T) {
 	fx := newPluginEndpointFixture(t, "plugin_channel_tests_denied")
-	require.NoError(t, fx.manager.Enable(fx.setupCtx, fx.pages.ID, []string{"read_channels", "write_channels"}))
+	require.NoError(t, fx.manager.Enable(fx.setupCtx, fx.pages.ID, []string{"read_channels", "write_channels"}, nil))
 	id := fmt.Sprintf("gid://axonhub/Channel/%d", fx.channelID)
 	for _, query := range []string{
 		fmt.Sprintf(`mutation { alias: testChannel(input: {channelID: %q}) { success } }`, id),

@@ -6,13 +6,10 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/samber/lo"
-	"golang.org/x/time/rate"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
@@ -24,10 +21,11 @@ import (
 const (
 	// PluginGraphqlTimeout is the budget for POST /admin/plugins/:pluginId/graphql.
 	PluginGraphqlTimeout = 10 * time.Second
+	// PluginFetchTimeout is the budget for POST /admin/plugins/:pluginId/fetch.
+	PluginFetchTimeout = 15 * time.Second
 
 	pluginGraphqlComplexityLimit  = 1000
 	pluginGraphqlMaxResponseBytes = 2 << 20
-	pluginGraphqlRateBurst        = 10
 )
 
 var errPluginResponseTooLarge = errors.New("plugin graphql response exceeds 2 MiB")
@@ -35,7 +33,6 @@ var errPluginResponseTooLarge = errors.New("plugin graphql response exceeds 2 Mi
 type pluginGraphqlHTTPHandler struct {
 	handler http.Handler
 	manager *plugin.Manager
-	limiter *pluginGraphqlLimiter
 }
 
 func (h *pluginGraphqlHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -47,10 +44,6 @@ func (h *pluginGraphqlHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	user, ok := contexts.GetUser(r.Context())
 	if !ok || user == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	if h.limiter != nil && !h.limiter.allow(user.ID, manifestID) {
-		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 		return
 	}
 
@@ -141,29 +134,6 @@ func pluginCallCeiling(granted []string) []string {
 		out = append(out, item)
 	}
 	return out
-}
-
-type pluginGraphqlLimiter struct {
-	mu       sync.Mutex
-	limiters map[string]*rate.Limiter
-}
-
-func newPluginGraphqlLimiter() *pluginGraphqlLimiter {
-	return &pluginGraphqlLimiter{
-		limiters: map[string]*rate.Limiter{},
-	}
-}
-
-func (l *pluginGraphqlLimiter) allow(userID int, manifestID string) bool {
-	key := strconv.Itoa(userID) + "\x00" + manifestID
-	l.mu.Lock()
-	limiter := l.limiters[key]
-	if limiter == nil {
-		limiter = rate.NewLimiter(5, pluginGraphqlRateBurst)
-		l.limiters[key] = limiter
-	}
-	l.mu.Unlock()
-	return limiter.Allow()
 }
 
 type cappedResponseWriter struct {
