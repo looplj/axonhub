@@ -20,6 +20,7 @@ import (
 type Executor struct {
 	inner         pipeline.Executor         // The underlying executor (usually httpclient.HttpClient)
 	modelName     string                    // The current model being requested
+	baseURL       string                    // Configured channel base URL preference
 	healthTracker *AntigravityHealthTracker // Tracks endpoint health per model
 }
 
@@ -52,6 +53,11 @@ func (e *Executor) extractModelName(request *httpclient.Request) string {
 // This is used to determine the initial endpoint preference.
 func (e *Executor) SetModelName(modelName string) {
 	e.modelName = modelName
+}
+
+// SetBaseURL sets the base URL preference from the channel configuration.
+func (e *Executor) SetBaseURL(baseURL string) {
+	e.baseURL = strings.TrimRight(baseURL, "/")
 }
 
 // Do executes an HTTP request with endpoint fallback logic.
@@ -297,20 +303,19 @@ func (e *Executor) DoStream(ctx context.Context, request *httpclient.Request) (s
 
 // getEndpointsInOrder returns the ordered list of endpoints to try based on model preference.
 func (e *Executor) getEndpointsInOrder(modelName string) []string {
-	if modelName == "" {
-		// No model specified, use default fallback order
-		return GetFallbackEndpoints()
+	var initialEndpoint string
+	if e.baseURL != "" {
+		initialEndpoint = e.baseURL
+	} else if modelName != "" {
+		quotaPreference := DetermineQuotaPreference(modelName)
+		initialEndpoint = GetInitialEndpoint(quotaPreference)
+	} else {
+		initialEndpoint = EndpointDaily
 	}
 
-	// Determine quota preference for this model
-	quotaPreference := DetermineQuotaPreference(modelName)
-	initialEndpoint := GetInitialEndpoint(quotaPreference)
-
-	// Get all fallback endpoints
 	fallbacks := GetFallbackEndpoints()
 
-	// Reorder so the preferred endpoint is first
-	ordered := make([]string, 0, len(fallbacks))
+	ordered := make([]string, 0, len(fallbacks)+1)
 	ordered = append(ordered, initialEndpoint)
 
 	for _, ep := range fallbacks {

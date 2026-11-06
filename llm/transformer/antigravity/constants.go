@@ -19,6 +19,8 @@ const (
 
 	// EndpointDaily is the primary endpoint (daily sandbox).
 	EndpointDaily = "https://daily-cloudcode-pa.sandbox.googleapis.com"
+	// EndpointDailyDirect is the direct daily endpoint.
+	EndpointDailyDirect = "https://daily-cloudcode-pa.googleapis.com"
 	// EndpointAutopush is a fallback endpoint.
 	EndpointAutopush = "https://autopush-cloudcode-pa.sandbox.googleapis.com"
 	// EndpointProd is the production endpoint.

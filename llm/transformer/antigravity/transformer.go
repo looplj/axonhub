@@ -545,5 +545,10 @@ func (t *Transformer) TransformStream(ctx context.Context, req *httpclient.Reque
 // CustomizeExecutor implements pipeline.ChannelCustomizedExecutor.
 // It wraps the standard executor with Antigravity-specific endpoint fallback logic.
 func (t *Transformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
-	return NewExecutor(executor)
+	exec := NewExecutor(executor)
+	if t.config.BaseURL != "" {
+		exec.SetBaseURL(t.config.BaseURL)
+	}
+
+	return exec
 }
