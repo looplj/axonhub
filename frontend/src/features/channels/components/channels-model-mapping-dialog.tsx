@@ -3,6 +3,7 @@ import type { KeyboardEvent } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { Plus, X, Lightbulb } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -94,6 +95,7 @@ const extractAllPrefixes = (models: string[]): string[] => {
 export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
   const updateChannel = useUpdateChannel();
+  const queryClient = useQueryClient();
 
   const [modelMappings, setModelMappings] = useState<ModelMapping[]>(currentRow.settings?.modelMappings || []);
   const [newMapping, setNewMapping] = useState({ from: '', to: '' });
@@ -292,14 +294,15 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     }
 
     try {
-      const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
+      const modelNameSettings = {
         extraModelPrefix: values.extraModelPrefix,
         modelMappings: values.modelMappings,
         autoTrimedModelPrefixes: values.autoTrimedModelPrefixes || [],
         hideOriginalModels: values.hideOriginalModels,
         hideMappedModels: values.hideMappedModels,
         lowercaseModelId: values.lowercaseModelId,
-      });
+      };
+      const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, modelNameSettings);
 
       await updateChannel.mutateAsync({
         id: currentRow.id,
@@ -307,6 +310,12 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
           settings: nextSettings,
         },
       });
+      // The detail refetch started by the mutation may still be running when the
+      // model list reopens. Publish the saved fields now; the mutation response
+      // omits credentials and some settings, so only these fields are replaced.
+      queryClient.setQueryData<Channel>(['channel', currentRow.id], (cached) =>
+        cached ? { ...cached, settings: { ...cached.settings, ...modelNameSettings } } : cached
+      );
       toast.success(t('channels.messages.updateSuccess'));
       onOpenChange(false);
     } catch (_error) {

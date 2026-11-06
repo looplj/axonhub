@@ -424,6 +424,20 @@ function extractCodexAuthJSONText(apiKey: string | undefined): string | undefine
   }
 }
 
+type AuthMode = 'official' | 'auth-json' | 'third-party';
+
+// Codex and Claude Code rows derive these values from stored credentials. The
+// form state starts from them, so opening a saved channel is not an unsaved edit.
+function getSavedAuthMode(row: Channel | undefined): AuthMode | undefined {
+  if (row?.type === 'codex') return isOfficialCodexChannel(row) ? 'official' : 'third-party';
+  if (row?.type === 'claudecode') return isOfficialClaudeCodeChannel(row) ? 'official' : 'third-party';
+  return undefined;
+}
+
+function getSavedCodexAuthJSONText(row: Channel | undefined): string {
+  return row?.type === 'codex' ? extractCodexAuthJSONText(row.credentials?.apiKey) || '' : '';
+}
+
 // Codex forms edit only an HTTP(S) Base URL: official and auth.json rows show the
 // canonical Base URL and legacy WS(S) third-party rows their HTTP(S) equivalent.
 // Opening the form never changes the stored channel.
@@ -567,8 +581,8 @@ export function ChannelsActionDialog({
   const [confirmRemoveSelectedOpen, setConfirmRemoveSelectedOpen] = useState(false);
   const [confirmRemoveKey, setConfirmRemoveKey] = useState<string | null>(null);
   const [confirmDisableKey, setConfirmDisableKey] = useState<string | null>(null);
-  const [authMode, setAuthMode] = useState<'official' | 'auth-json' | 'third-party'>('official');
-  const [codexAuthJSONText, setCodexAuthJSONText] = useState('');
+  const [authMode, setAuthMode] = useState<AuthMode>(() => getSavedAuthMode(initialRow) ?? 'official');
+  const [codexAuthJSONText, setCodexAuthJSONText] = useState(() => getSavedCodexAuthJSONText(initialRow));
   const [xaiSSOToken, setXaiSSOToken] = useState('');
   const [isImportingXAISSO, setIsImportingXAISSO] = useState(false);
   const [patternError, setPatternError] = useState<string | null>(null);
@@ -679,7 +693,7 @@ export function ChannelsActionDialog({
     exchangeFn: codexOAuthExchange,
     proxyConfig,
     onSuccess: (credentials) => {
-      form.setValue('credentials.apiKey', credentials);
+      form.setValue('credentials.apiKey', credentials, { shouldDirty: true });
     },
   });
 
@@ -688,7 +702,7 @@ export function ChannelsActionDialog({
     exchangeFn: claudecodeOAuthExchange,
     proxyConfig,
     onSuccess: (credentials) => {
-      form.setValue('credentials.apiKey', credentials);
+      form.setValue('credentials.apiKey', credentials, { shouldDirty: true });
     },
   });
 
@@ -697,7 +711,7 @@ export function ChannelsActionDialog({
     exchangeFn: xaiOAuthExchange,
     proxyConfig,
     onSuccess: (credentials) => {
-      form.setValue('credentials.apiKey', credentials);
+      form.setValue('credentials.apiKey', credentials, { shouldDirty: true });
     },
   });
 
@@ -706,7 +720,7 @@ export function ChannelsActionDialog({
     exchangeFn: antigravityOAuthExchange,
     proxyConfig,
     onSuccess: (credentials) => {
-      form.setValue('credentials.apiKey', credentials);
+      form.setValue('credentials.apiKey', credentials, { shouldDirty: true });
     },
   });
   const { reset: resetCodexOAuth } = codexOAuth;
@@ -771,12 +785,9 @@ export function ChannelsActionDialog({
     setUseKimiCoding(initialRow.type === 'moonshot_coding');
 
     // Detect authMode for codex and claudecode
-    if (initialRow.type === 'codex') {
-      setAuthMode(isOfficialCodexChannel(initialRow) ? 'official' : 'third-party');
-      setCodexAuthJSONText(extractCodexAuthJSONText(initialRow.credentials?.apiKey) || '');
-    } else if (initialRow.type === 'claudecode') {
-      setAuthMode(isOfficialClaudeCodeChannel(initialRow) ? 'official' : 'third-party');
-    }
+    const savedAuthMode = getSavedAuthMode(initialRow);
+    if (savedAuthMode) setAuthMode(savedAuthMode);
+    if (initialRow.type === 'codex') setCodexAuthJSONText(getSavedCodexAuthJSONText(initialRow));
   }, [initialRow]);
 
   useEffect(() => {
@@ -2168,82 +2179,93 @@ export function ChannelsActionDialog({
     overscan: 5,
   });
 
+  // Restores every edit to the saved row; used when closing and when switching
+  // to alias settings after the user agreed to discard unsaved changes.
+  const resetDialogState = () => {
+    form.reset();
+    setSupportedModels(initialRow?.supportedModels || []);
+    setManualModels(initialRow?.manualModels || []);
+    setSelectedDefaultModels([]);
+    setFetchedModels([]);
+    setUseFetchedModels(false);
+    // Reset expandable panel states
+    setShowFetchedModelsPanel(false);
+    setShowSupportedModelsPanel(false);
+    setShowApiKeysPanel(false);
+    setFetchedModelsSearch('');
+    setSupportedModelsSearch('');
+    setSelectedFetchedModels([]);
+    setShowNotAddedModelsOnly(false);
+    setApplyPatternFilter(false);
+    setSupportedModelsExpanded(false);
+    setApiKeysSearch('');
+    setSelectedKeysToRemove(new Set());
+    setConfirmRemoveSelectedOpen(false);
+    setConfirmRemoveKey(null);
+    setConfirmDisableKey(null);
+    setShowApiKey(false);
+    // Reset proxy state
+    if (initialRow?.settings?.proxy?.type) {
+      setProxyType(initialRow.settings.proxy.type as ProxyType);
+    } else {
+      setProxyType(ProxyType.ENVIRONMENT);
+    }
+    setProxyUrl(initialRow?.settings?.proxy?.url || '');
+    setProxyUsername(initialRow?.settings?.proxy?.username || '');
+    setProxyPassword(initialRow?.settings?.proxy?.password || '');
+    setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
+    setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
+    setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
+    setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
+    setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
+    setMaxSingleChannelRetriesText(formatMaxSingleChannelRetries(initialRow?.settings?.maxSingleChannelRetries));
+    setApiKeyStrategy(initialRow?.settings?.apiKeyStrategy ?? 'sticky');
+    setApiKeyRoundRobinSwitchAfter(initialRow?.settings?.apiKeyRoundRobinSwitchAfter ?? 1);
+
+    setResponseTimeoutMode(initialRow?.settings?.responseTimeout?.mode === 'CUSTOM' ? 'CUSTOM' : 'INHERIT');
+    setStreamFirstEventTimeoutText(
+      formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.streamFirstEventTimeoutSeconds)
+    );
+    setNonStreamResponseTimeoutText(
+      formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.nonStreamResponseTimeoutSeconds)
+    );
+    // Reset provider and API format state
+    if (initialRow) {
+      setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
+      setSelectedApiFormat(
+        getInitialApiFormatForChannel(
+          initialRow.type,
+          CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS,
+          initialRow.settings?.modelProtocols
+        )
+      );
+      setResponsesTransport(getResponsesTransportFromChannel(initialRow));
+      setUseGeminiVertex(initialRow.type === 'gemini_vertex');
+      setUseAnthropicAws(initialRow.type === 'anthropic_aws');
+      setUseKimiCoding(initialRow.type === 'moonshot_coding');
+    } else {
+      setSelectedProvider('openai');
+      setSelectedApiFormat(OPENAI_CHAT_COMPLETIONS);
+      setResponsesTransport('http');
+      setUseGeminiVertex(false);
+      setUseAnthropicAws(false);
+      setUseKimiCoding(false);
+    }
+  };
+
+  // A controlled open change does not run the Dialog close handler, so discard
+  // edits explicitly before switching to alias settings.
+  const openModelMapping = () => {
+    resetDialogState();
+    onOpenModelMapping?.();
+  };
+
   return (
     <>
       <Dialog
         open={open}
         onOpenChange={(state) => {
-          if (!state) {
-            form.reset();
-            setSupportedModels(initialRow?.supportedModels || []);
-            setManualModels(initialRow?.manualModels || []);
-            setSelectedDefaultModels([]);
-            setFetchedModels([]);
-            setUseFetchedModels(false);
-            // Reset expandable panel states
-            setShowFetchedModelsPanel(false);
-            setShowSupportedModelsPanel(false);
-            setShowApiKeysPanel(false);
-            setFetchedModelsSearch('');
-            setSupportedModelsSearch('');
-            setSelectedFetchedModels([]);
-            setShowNotAddedModelsOnly(false);
-            setApplyPatternFilter(false);
-            setSupportedModelsExpanded(false);
-            setApiKeysSearch('');
-            setSelectedKeysToRemove(new Set());
-            setConfirmRemoveSelectedOpen(false);
-            setConfirmRemoveKey(null);
-            setConfirmDisableKey(null);
-            setShowApiKey(false);
-            // Reset proxy state
-            if (initialRow?.settings?.proxy?.type) {
-              setProxyType(initialRow.settings.proxy.type as ProxyType);
-            } else {
-              setProxyType(ProxyType.ENVIRONMENT);
-            }
-            setProxyUrl(initialRow?.settings?.proxy?.url || '');
-            setProxyUsername(initialRow?.settings?.proxy?.username || '');
-            setProxyPassword(initialRow?.settings?.proxy?.password || '');
-            setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
-            setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
-            setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
-            setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
-            setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
-            setMaxSingleChannelRetriesText(formatMaxSingleChannelRetries(initialRow?.settings?.maxSingleChannelRetries));
-            setApiKeyStrategy(initialRow?.settings?.apiKeyStrategy ?? 'sticky');
-            setApiKeyRoundRobinSwitchAfter(initialRow?.settings?.apiKeyRoundRobinSwitchAfter ?? 1);
-
-            setResponseTimeoutMode(initialRow?.settings?.responseTimeout?.mode === 'CUSTOM' ? 'CUSTOM' : 'INHERIT');
-            setStreamFirstEventTimeoutText(
-              formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.streamFirstEventTimeoutSeconds)
-            );
-            setNonStreamResponseTimeoutText(
-              formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.nonStreamResponseTimeoutSeconds)
-            );
-            // Reset provider and API format state
-            if (initialRow) {
-              setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
-              setSelectedApiFormat(
-                getInitialApiFormatForChannel(
-                  initialRow.type,
-                  CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS,
-                  initialRow.settings?.modelProtocols
-                )
-              );
-              setResponsesTransport(getResponsesTransportFromChannel(initialRow));
-              setUseGeminiVertex(initialRow.type === 'gemini_vertex');
-              setUseAnthropicAws(initialRow.type === 'anthropic_aws');
-              setUseKimiCoding(initialRow.type === 'moonshot_coding');
-            } else {
-              setSelectedProvider('openai');
-              setSelectedApiFormat(OPENAI_CHAT_COMPLETIONS);
-              setResponsesTransport('http');
-              setUseGeminiVertex(false);
-              setUseAnthropicAws(false);
-              setUseKimiCoding(false);
-            }
-          }
+          if (!state) resetDialogState();
           onOpenChange(state);
         }}
       >
@@ -4133,7 +4155,7 @@ export function ChannelsActionDialog({
                       ) {
                         setConfirmOpenModelMapping(true);
                       } else {
-                        onOpenModelMapping();
+                        openModelMapping();
                       }
                     }}
                   >
@@ -4208,7 +4230,7 @@ export function ChannelsActionDialog({
         confirmText={t('channels.modelPreview.openSettings')}
         handleConfirm={() => {
           setConfirmOpenModelMapping(false);
-          onOpenModelMapping?.();
+          openModelMapping();
         }}
       />
     </>
