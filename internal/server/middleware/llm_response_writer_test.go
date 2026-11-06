@@ -18,7 +18,7 @@ func TestUnlimitedLLMWaitBeyondServerWriteTimeout(t *testing.T) {
 	for _, http2 := range []bool{false, true} {
 		t.Run(map[bool]string{false: "HTTP1", true: "HTTP2"}[http2], func(t *testing.T) {
 			router := gin.New()
-			router.Use(WithLLMTimeout(0))
+			router.Use(WithLLMTimeout(0, 0))
 			router.GET("/", func(c *gin.Context) {
 				c.Writer.(*llmResponseWriter).timeout = 25 * time.Millisecond
 				_, _ = c.Writer.WriteString("start ")
@@ -48,7 +48,7 @@ func TestUnlimitedLLMBlockedDownstreamWrites(t *testing.T) {
 		t.Run(operation, func(t *testing.T) {
 			writeErr := make(chan error, 1)
 			router := gin.New()
-			router.Use(WithLLMTimeout(0))
+			router.Use(WithLLMTimeout(0, 0))
 			router.GET("/", func(c *gin.Context) {
 				c.Writer.(*llmResponseWriter).timeout = 25 * time.Millisecond
 				payload := strings.Repeat("x", 16<<20)
@@ -96,7 +96,7 @@ func TestUnlimitedLLMBlockedDownstreamWrites(t *testing.T) {
 func TestUnlimitedLLMBlockedHTTP2Write(t *testing.T) {
 	writeErr := make(chan error, 1)
 	router := gin.New()
-	router.Use(WithLLMTimeout(0))
+	router.Use(WithLLMTimeout(0, 0))
 	router.GET("/", func(c *gin.Context) {
 		c.Writer.(*llmResponseWriter).timeout = 25 * time.Millisecond
 		c.Writer.Flush()

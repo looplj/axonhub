@@ -13,7 +13,8 @@ server:
   base_path: ""                 # Base path for API routes (env: AXONHUB_SERVER_BASE_PATH)
   # pid_file: "~/.config/axonhub/axonhub.pid"  # PID file for axonhub reload (env: AXONHUB_SERVER_PID_FILE)
   request_timeout: "30s"        # Request timeout duration (env: AXONHUB_SERVER_REQUEST_TIMEOUT)
-  llm_request_timeout: "1800s"  # Total LLM request timeout; 0 disables (env: AXONHUB_SERVER_LLM_REQUEST_TIMEOUT)
+  llm_request_timeout: "600s"   # Non-streaming LLM total timeout; 0 disables (env: AXONHUB_SERVER_LLM_REQUEST_TIMEOUT)
+  llm_stream_request_timeout: "1800s" # Streaming LLM total timeout; 0 disables (env: AXONHUB_SERVER_LLM_STREAM_REQUEST_TIMEOUT)
   llm_stream_idle_timeout: "600s" # Upstream stream read idle timeout; 0 disables (env: AXONHUB_SERVER_LLM_STREAM_IDLE_TIMEOUT)
   # Optional Claude Code auto-mode reviewer; empty classifier_model disables it.
   # Select a model exposed by an existing channel, accessible to the calling API key.

@@ -15,6 +15,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/internal/server/safeguards"
 	"github.com/looplj/axonhub/llm"
@@ -88,6 +89,13 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 }
 
 func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context, genericReq *httpclient.Request) {
+	if genericReq != nil {
+		cancel := middleware.SelectLLMTimeout(c, requestStreams(genericReq))
+		defer cancel()
+		if genericReq.RawRequest != nil {
+			genericReq.RawRequest = genericReq.RawRequest.WithContext(c.Request.Context())
+		}
+	}
 	started := time.Now()
 	ctx := c.Request.Context()
 

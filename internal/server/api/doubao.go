@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/internal/server/plugin"
 	"github.com/looplj/axonhub/llm"
@@ -68,6 +69,8 @@ func NewDoubaoHandlers(params DoubaoHandlersParams) *DoubaoHandlers {
 }
 
 func (h *DoubaoHandlers) CreateTask(c *gin.Context) {
+	cancel := middleware.SelectLLMTimeout(c, false)
+	defer cancel()
 	ctx := c.Request.Context()
 
 	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
