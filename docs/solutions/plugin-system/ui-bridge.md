@@ -14,6 +14,7 @@
 interface ThemeState {
   theme: "light" | "dark"; // 宿主解析 system 设置后的实际主题
   colorScheme: string; // 宿主配色名称，页面不应枚举固定名单
+  tokens: Record<string, string>; // 宿主 <html> 上已计算的样式变量
 }
 interface UIInit extends ThemeState {
   locale: string;
@@ -58,7 +59,8 @@ interface AxonhubBridge {
 上下文由宿主根据挂载位置构造：当前独立页面设置 page，panel/slot 为 null；未来面板设置 panel/slot，page 为 null。预留这些字段不代表当前开放 panels。每个 iframe 拥有独立会话和 pending 调用表，同一插件的多个页面或面板不能串用消息。
 
 - ready 首次调用发送 hello，收到 init 后 resolve；重复调用返回同一个 Promise，不重复握手。握手超过总览预算则 reject `TIMEOUT`，宿主显示错误和重试；重试创建新的 iframe 会话。它不是顶层窗口登录 API。
-- onInit 注册监听，返回取消订阅函数。初始化成功后调用一次；初始化后才注册的监听在下一次微任务收到缓存的 init，取消后不再回调。onTheme 同样返回取消订阅函数，初始化后先交付当前值，之后只在实际主题或配色变化时通知。回调收到只读快照，修改不影响宿主；回调抛错交给页面错误处理，不破坏其他回调。
+- onInit 注册监听，返回取消订阅函数。初始化成功后调用一次；初始化后才注册的监听在下一次微任务收到缓存的 init，取消后不再回调。onTheme 同样返回取消订阅函数，初始化后先交付当前值，之后在主题、配色或 `tokens` 变化时通知。回调收到只读快照，修改不影响宿主；回调抛错交给页面错误处理，不破坏其他回调。
+- `tokens` 是父页面 `<html>` 的计算样式。白名单和页面用法见 [插件开发文档](../../../plugin/DEVELOPMENT.md#页面主题)。空值，以及含控制字符、`;`、`{}`、`<>`、`\` 的值不发送。`bridge.js` 在通知监听之前把这些值写到 iframe 的 `documentElement`，白名单里这次没有的项会移除，并按 `theme` 设置 `color-scheme`。名单以外的变量仍由页面自己的 CSS 定义。宿主在微任务里读取，等配色 class 写上 `<html>` 之后再取计算值。切换主题沿用原来的 `theme` 消息，不轮询。
 - graphql/navigate/toast 在握手完成前等待 ready；握手失败则一起失败。query 必须是非空字符串，variables 默认 `{}`，不接受非 JSON 值；多 operation 文档须提供 operationName。页面没有直接 KV 方法，通过插件 GraphQL 的 KV 字段访问。
 - graphql 返回完整的 GraphQL envelope，不自动提取 data；HTTP 成功且包含 `errors` 时仍 resolve，保留部分 data。页面检查 `errors[].extensions.code` 处理业务错误。网络失败或非成功 HTTP 状态则 reject BridgeError：401/403/404/429 分别映射到 `UNAUTHENTICATED`/`FORBIDDEN`/`NOT_FOUND`/`RATE_LIMITED`，超时为 `TIMEOUT`，其他 HTTP 错误为 `INTERNAL`；message 不暴露服务端内部信息。
 - navigate 只接受以单个 `/` 开头的站内路径，可带 query/hash；拒绝 `//`、反斜杠、控制字符及解析后不同源的地址。沿用宿主路由权限检查，不能绕过 AuthGuard。宿主接受导航动作即 ack；若导航使页面卸载，尚未完成的调用按销毁规则结束。

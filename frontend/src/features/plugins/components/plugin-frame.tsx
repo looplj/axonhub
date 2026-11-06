@@ -16,6 +16,7 @@ import {
   matchPluginBridgeMessage,
   pluginHTTPBridgeError,
   pluginProjectId,
+  readPluginUITokens,
   resolvePluginTheme,
   type PluginBridgeMatch,
 } from '../plugin-ui';
@@ -105,11 +106,18 @@ function PluginFrameAttempt({
     return () => media.removeEventListener('change', onChange);
   }, []);
 
-  function initPayload() {
-    const data = sessionDataRef.current;
+  function themePayload() {
     return {
       theme: themeRef.current.theme,
       colorScheme: themeRef.current.colorScheme,
+      tokens: readPluginUITokens(window.getComputedStyle(document.documentElement)),
+    };
+  }
+
+  function initPayload() {
+    const data = sessionDataRef.current;
+    return {
+      ...themePayload(),
       locale: localeRef.current,
       projectId: pluginProjectId(projectRef.current),
       page: pageKeyRef.current,
@@ -349,27 +357,40 @@ function PluginFrameAttempt({
   }, []);
 
   useEffect(() => {
-    const session = sessionRef.current;
-    const frame = iframeRef.current?.contentWindow;
-    if (!session?.ready || session.disposed || !frame) {
-      return;
-    }
-    const next = themeRef.current;
-    const previous = lastThemeRef.current;
-    if (previous && previous.theme === next.theme && previous.colorScheme === next.colorScheme) {
-      return;
-    }
-    lastThemeRef.current = next;
-    frame.postMessage(
-      {
-        protocol: PLUGIN_UI_PROTOCOL,
-        version: PLUGIN_UI_VERSION,
-        type: 'theme',
-        sessionId: session.id,
-        payload: { theme: next.theme, colorScheme: next.colorScheme },
-      },
-      '*'
-    );
+    // ThemeProvider writes the theme class in its own effect, which runs after
+    // this child effect. Read the computed values in a microtask so the class
+    // is already on <html>.
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) {
+        return;
+      }
+      const session = sessionRef.current;
+      const frame = iframeRef.current?.contentWindow;
+      if (!session?.ready || session.disposed || !frame) {
+        return;
+      }
+      const next = themeRef.current;
+      const previous = lastThemeRef.current;
+      if (previous && previous.theme === next.theme && previous.colorScheme === next.colorScheme) {
+        return;
+      }
+      const payload = themePayload();
+      lastThemeRef.current = { theme: payload.theme, colorScheme: payload.colorScheme };
+      frame.postMessage(
+        {
+          protocol: PLUGIN_UI_PROTOCOL,
+          version: PLUGIN_UI_VERSION,
+          type: 'theme',
+          sessionId: session.id,
+          payload,
+        },
+        '*'
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [resolvedTheme, colorScheme]);
 
   if (sessionQuery.isError || failed) {

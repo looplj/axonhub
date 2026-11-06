@@ -64,10 +64,6 @@ let writing = false;
 if (!axonhub) {
   status.textContent = "AxonHub bridge did not load";
 } else {
-  axonhub.onTheme(({ theme }) => {
-    document.documentElement.dataset.theme = theme === "dark" ? "dark" : "light";
-  });
-
   openChannels.addEventListener("click", () => {
     axonhub.navigate("/channels").catch(showStatus);
   });

@@ -1,39 +1,14 @@
-:root {
-    color-scheme: light;
-    --bg: #f4f5f7;
-    --card: #ffffff;
-    --text: #1c1f24;
-    --muted: #5e6772;
-    --line: #e3e6eb;
-    --accent: #1f6b4a;
-    --accent-text: #ffffff;
-    --danger: #9f3a34;
-}
-
-:root[data-theme="dark"] {
-    color-scheme: dark;
-    --bg: #14171b;
-    --card: #1d2127;
-    --text: #f3f5f7;
-    --muted: #a7b0ba;
-    --line: #313740;
-    --accent: #3d9a6e;
-    --accent-text: #07140d;
-    --danger: #e0a19c;
-}
-
 * {
     box-sizing: border-box;
 }
 
 body {
     margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font:
-        15px/1.5 ui-sans-serif,
-        system-ui,
-        sans-serif;
+    background: var(--background, #f4f5f7);
+    color: var(--foreground, #1c1f24);
+    font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+    font-size: 15px;
+    line-height: 1.5;
 }
 
 main {
@@ -44,7 +19,7 @@ main {
 
 .eyebrow {
     margin: 0;
-    color: var(--muted);
+    color: var(--muted-foreground, #5e6772);
     font-size: 12px;
     letter-spacing: 0.04em;
 }
@@ -65,14 +40,15 @@ h2 {
 .status {
     min-height: 1.4em;
     margin: 12px 0;
-    color: var(--danger);
+    color: var(--destructive, #9f3a34);
 }
 
 .card {
     padding: 16px;
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    background: var(--card);
+    border: 1px solid var(--border, #e3e6eb);
+    border-radius: var(--radius, 0.75rem);
+    background: var(--card, #ffffff);
+    color: var(--card-foreground, inherit);
 }
 
 .section-head {
@@ -83,23 +59,23 @@ h2 {
 }
 
 .muted {
-    color: var(--muted);
+    color: var(--muted-foreground, #5e6772);
 }
 
 button {
     padding: 8px 12px;
     border: 0;
-    border-radius: 10px;
-    background: var(--accent);
-    color: var(--accent-text);
+    border-radius: var(--radius, 0.75rem);
+    background: var(--primary, #1f6b4a);
+    color: var(--primary-foreground, #ffffff);
     font: inherit;
     cursor: pointer;
 }
 
 button.secondary {
     background: transparent;
-    color: var(--text);
-    border: 1px solid var(--line);
+    color: var(--foreground, #1c1f24);
+    border: 1px solid var(--border, #e3e6eb);
 }
 
 button:disabled {
@@ -121,7 +97,7 @@ button:disabled {
 
 .list li {
     padding-top: 10px;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--border, #e3e6eb);
 }
 
 .list strong,
@@ -130,7 +106,7 @@ button:disabled {
 }
 .list time,
 .list p {
-    color: var(--muted);
+    color: var(--muted-foreground, #5e6772);
     font-size: 13px;
 }
 .list p {

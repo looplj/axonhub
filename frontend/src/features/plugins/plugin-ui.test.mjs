@@ -96,6 +96,35 @@ test('theme resolution and plugin HTTP errors stay stable', () => {
   assert.equal(ui.pluginHTTPBridgeError(500).message, 'Internal error');
 });
 
+test('computed style tokens keep the bridge whitelist and drop unsafe values', () => {
+  const bridge = readFileSync(join(dir, '../../../../internal/server/plugin/uisdk/bridge.js'), 'utf8');
+  const listed = bridge.match(/var TOKEN_NAMES = \[([\s\S]*?)\];/);
+  assert.ok(listed);
+  const bridgeNames = [...listed[1].matchAll(/"(--[^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(bridgeNames, [...ui.PLUGIN_UI_TOKEN_NAMES]);
+
+  const style = {
+    getPropertyValue(name) {
+      const values = {
+        '--background': '  oklch(0.16 0.03 264.695) ',
+        '--foreground': '#f5f5f4',
+        '--card': 'red; color: blue',
+        '--radius': '0.75rem',
+        '--font-sans': 'Inter, ui-sans-serif, system-ui, sans-serif',
+        '--sidebar': '#111111',
+        '--muted': 'bad\nvalue',
+      };
+      return values[name] ?? '';
+    },
+  };
+  assert.deepEqual(ui.readPluginUITokens(style), {
+    '--background': 'oklch(0.16 0.03 264.695)',
+    '--foreground': '#f5f5f4',
+    '--radius': '0.75rem',
+    '--font-sans': 'Inter, ui-sans-serif, system-ui, sans-serif',
+  });
+});
+
 test('plugin page copy exists in en and zh-CN', () => {
   const en = JSON.parse(readFileSync(join(dir, '../../locales/en/plugins.json'), 'utf8'));
   const zh = JSON.parse(readFileSync(join(dir, '../../locales/zh-CN/plugins.json'), 'utf8'));
