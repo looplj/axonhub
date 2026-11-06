@@ -407,7 +407,7 @@ function isOfficialCodexChannel(channel: { credentials?: { apiKey?: string | nul
   }
 }
 
-function isOfficialClaudeCodeChannel(channel: { credentials?: { apiKey?: string }; baseURL: string }): boolean {
+function isOfficialClaudeCodeChannel(channel: { credentials?: { apiKey?: string | null } | null; baseURL: string }): boolean {
   const apiKey = channel.credentials?.apiKey || '';
   const defaultURL = getDefaultBaseURL('claudecode');
   return apiKey.includes('sk-ant-oat') || apiKey.includes('sk-ant-api03') || channel.baseURL === defaultURL;
@@ -435,7 +435,7 @@ function getSavedAuthMode(row: Channel | undefined): AuthMode | undefined {
 }
 
 function getSavedCodexAuthJSONText(row: Channel | undefined): string {
-  return row?.type === 'codex' ? extractCodexAuthJSONText(row.credentials?.apiKey) || '' : '';
+  return row?.type === 'codex' ? extractCodexAuthJSONText(row.credentials?.apiKey ?? undefined) || '' : '';
 }
 
 // Codex forms edit only an HTTP(S) Base URL: official and auth.json rows show the
@@ -2183,6 +2183,8 @@ export function ChannelsActionDialog({
   // to alias settings after the user agreed to discard unsaved changes.
   const resetDialogState = () => {
     form.reset();
+    setAuthMode(getSavedAuthMode(initialRow) ?? 'official');
+    setNewModel('');
     setSupportedModels(initialRow?.supportedModels || []);
     setManualModels(initialRow?.manualModels || []);
     setSelectedDefaultModels([]);
