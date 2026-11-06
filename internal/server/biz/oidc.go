@@ -694,16 +694,20 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 
 			log.Warn(ctx, "Failed to fetch UserInfo", log.String("provider", providerIdentifier), zap.Error(err))
 		} else {
-			if subject == "" {
+			// UserInfo claims must belong to the authenticated ID-token subject.
+			if rawIDToken != "" && (subject == "" || userInfoClaims.Sub != subject) {
+				return "", "", fmt.Errorf("UserInfo subject does not match ID token subject")
+			}
+
+			if rawIDToken == "" {
 				subject = userInfoClaims.Sub
 			}
 
 			// Merge claims (UserInfo usually has more up-to-date data)
 			if userInfoClaims.Email != "" {
 				claims.Email = userInfoClaims.Email
-			}
-
-			if userInfoClaims.EmailVerified {
+				// Verification applies only to the email from the same response.
+				// Missing or false verification must clear any ID-token value.
 				claims.EmailVerified = userInfoClaims.EmailVerified
 			}
 
