@@ -193,6 +193,11 @@ type ChannelLimiterStats struct {
 	QueueSize int `json:"queueSize"`
 }
 
+type ChannelModelPreviewInput struct {
+	SupportedModels []string                 `json:"supportedModels"`
+	Settings        *objects.ChannelSettings `json:"settings,omitempty"`
+}
+
 // Performance statistics for a specific channel on a given date
 type ChannelPerformanceStat struct {
 	Date         string   `json:"date"`

@@ -207,6 +207,11 @@ type ChannelModelEntry {
   source: String!
 }
 
+input ChannelModelPreviewInput {
+  supportedModels: [String!]!
+  settings: ChannelSettingsInput
+}
+
 type UnassociatedChannel {
   channel: Channel!
   models: [String!]!
@@ -217,6 +222,10 @@ extend type Model {
 }
 
 extend type Query {
+  """
+  Preview exposed model names for unsaved channel settings without persisting changes.
+  """
+  previewChannelModelEntries(input: ChannelModelPreviewInput!): [ChannelModelEntry!]!
   fetchModels(input: FetchModelsInput!): FetchModelsPayload!
   queryModels(input: QueryModelsInput!): [ModelIdentityWithStatus!]!
   queryModelChannelConnections(
