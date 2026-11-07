@@ -54,6 +54,19 @@
   --table-background: var(--card);
   --table-border: oklch(0.985 0.003 90);
   --table-header: var(--muted);
+
+  /* Metric colour tiers: text stays dark enough for small table cells (>=4.5:1),
+     band fills stay lighter so the wide bars do not shout. Neutral text inherits. */
+  --metric-tier-red-fg: #aa302b;
+  --metric-tier-red-fill: #cf6d63;
+  --metric-tier-yellow-fg: #8d4c00;
+  --metric-tier-yellow-fill: #b67e1d;
+  --metric-tier-neutral-fill: #8a8983;
+  --metric-tier-blue-fg: #2b59b1;
+  --metric-tier-blue-fill: #6288cf;
+  --metric-tier-green-fg: #006c2d;
+  --metric-tier-green-fill: #4f9760;
+  --metric-tier-marker: #76756e;
 }
 
 .dark {
@@ -144,6 +157,19 @@
   --table-background: var(--card);
   --table-border: #f8f7f6;
   --table-header: var(--muted);
+
+  /* Metric colour tiers: dark text lifts to >=6:1, dark fills drop so the wide
+     bands sit behind the warm neutral UI instead of competing with it. */
+  --metric-tier-red-fg: #f7958a;
+  --metric-tier-red-fill: #a84b43;
+  --metric-tier-yellow-fg: #daa750;
+  --metric-tier-yellow-fill: #8f5d00;
+  --metric-tier-neutral-fill: #686862;
+  --metric-tier-blue-fg: #83b1f5;
+  --metric-tier-blue-fill: #3e68a6;
+  --metric-tier-green-fg: #70c087;
+  --metric-tier-green-fill: #2c7545;
+  --metric-tier-marker: #8e8c84;
 }
 
 .dark.claude {
