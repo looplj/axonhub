@@ -189,8 +189,11 @@ func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
 		return NewChannelAPIKeyContextProvider(auth.NewStaticKeyProvider(enabled[0]))
 	}
 
-	panic(fmt.Errorf("no enabled api key configured for channel %s", ch.Name))
+	panic(fmt.Errorf("%w for channel %s", errNoEnabledAPIKey, ch.Name))
 }
+
+// errNoEnabledAPIKey is the panic value raised by getAPIKeyProvider when a channel has no enabled API key.
+var errNoEnabledAPIKey = errors.New("no enabled api key configured")
 
 // BuildOutboundByAPIFormat returns the outbound transformer for a resolved endpoint API format.
 // If the channel does not support the format, returns an error.
@@ -432,7 +435,21 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	c *ent.Channel,
 	ch *Channel,
 	ep objects.ChannelEndpoint,
-) (transformer.Outbound, error) {
+) (out transformer.Outbound, err error) {
+	// Channels without API keys (e.g. OAuth-only types) make getAPIKeyProvider panic
+	// when a generic transformer is requested for them. Report that as an error so
+	// callers such as endpoint detection can treat the format as unavailable.
+	defer func() {
+		if r := recover(); r != nil {
+			if e, ok := r.(error); ok && errors.Is(e, errNoEnabledAPIKey) {
+				out, err = nil, fmt.Errorf("cannot build outbound for api_format %q: %w", ep.APIFormat, e)
+				return
+			}
+
+			panic(r)
+		}
+	}()
+
 	apiKeyProvider := func() auth.APIKeyProvider {
 		return getAPIKeyProvider(ch)
 	}
