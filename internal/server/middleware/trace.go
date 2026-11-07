@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -108,6 +110,12 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 		}
 
 		if traceID == "" {
+			if thread, ok := contexts.GetThread(c.Request.Context()); ok && thread != nil {
+				traceID = tracing.GenerateTraceID()
+			}
+		}
+
+		if traceID == "" {
 			// WithLoggingTracing creates an ID for log correlation, but that alone
 			// must not opt the request into persisted tracing. Only explicitly
 			// configured trace sources should create a trace record.
@@ -168,7 +176,19 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 		ctx := contexts.WithTrace(c.Request.Context(), trace)
 
 		// Set session ID in context if available, to let the provider use it for cache if needed.
-		ctx = shared.WithSessionID(ctx, traceID)
+		// When a thread is present, use the thread's stable identifier so upstream prompt-cache
+		// keys remain consistent across turns instead of rotating on auto-generated trace IDs.
+		// Bound identifiers longer than 64 characters to a stable hash to prevent upstream
+		// backends (e.g. OpenAI prompt_cache_key / Codex) from rejecting overlong values.
+		sessionID := traceID
+		if thread, ok := contexts.GetThread(c.Request.Context()); ok && thread != nil && thread.ThreadID != "" {
+			sessionID = thread.ThreadID
+			if len(sessionID) > 64 {
+				h := sha256.Sum256([]byte(sessionID))
+				sessionID = hex.EncodeToString(h[:16])
+			}
+		}
+		ctx = shared.WithSessionID(ctx, sessionID)
 
 		c.Request = c.Request.WithContext(ctx)
 

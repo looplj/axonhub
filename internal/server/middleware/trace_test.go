@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -991,6 +992,122 @@ func TestWithTraceID_WithThread(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "trace-with-thread-123", trace.TraceID)
 	require.Equal(t, testThread.ID, trace.ThreadID)
+}
+
+func TestWithTraceID_ThreadWithoutTraceHeaderCreatesTrace(t *testing.T) {
+	config := tracing.Config{}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
+	ctx = ent.NewContext(ctx, client)
+
+	// Create a test project
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Create a test thread
+	testThread, err := client.Thread.Create().
+		SetThreadID("thread-auto-trace-123").
+		SetProjectID(testProject.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Setup middleware and test endpoint
+	router.Use(func(c *gin.Context) {
+		ctx := authz.WithTestBypass(c.Request.Context())
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		ctx = contexts.WithThread(ctx, testThread)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+	router.GET("/test", func(c *gin.Context) {
+		trace, ok := contexts.GetTrace(c.Request.Context())
+		if !ok {
+			c.JSON(400, gin.H{"error": "trace not found"})
+			return
+		}
+
+		sessionID, _ := shared.GetSessionID(c.Request.Context())
+		c.JSON(200, gin.H{"trace_id": trace.TraceID, "thread_id": trace.ThreadID, "session_id": sessionID})
+	})
+
+	// Request without AH-Trace-Id header (only thread in context)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]any
+	err = json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+
+	autoTraceID, ok := resp["trace_id"].(string)
+	require.True(t, ok)
+	require.NotEmpty(t, autoTraceID)
+
+	// Verify trace was persisted and linked to the thread
+	trace, err := traceService.GetTraceByID(ctx, autoTraceID, testProject.ID)
+	require.NoError(t, err)
+	require.Equal(t, autoTraceID, trace.TraceID)
+	require.Equal(t, testThread.ID, trace.ThreadID)
+
+	// Verify shared session ID uses the stable thread identifier rather than the per-turn trace ID
+	require.Equal(t, testThread.ThreadID, resp["session_id"])
+
+	// Verify overlong thread ID (> 64 chars) is bounded to a safe stable hash
+	longThread, err := client.Thread.Create().
+		SetThreadID(strings.Repeat("a", 100)).
+		SetProjectID(testProject.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router2 := gin.New()
+	router2.Use(func(c *gin.Context) {
+		ctx := authz.WithTestBypass(c.Request.Context())
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		ctx = contexts.WithThread(ctx, longThread)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router2.Use(WithTrace(config, traceService))
+	router2.GET("/test-long", func(c *gin.Context) {
+		sessionID, _ := shared.GetSessionID(c.Request.Context())
+		c.JSON(200, gin.H{"session_id": sessionID})
+	})
+
+	req2 := httptest.NewRequest(http.MethodGet, "/test-long", nil)
+	w2 := httptest.NewRecorder()
+	router2.ServeHTTP(w2, req2)
+	require.Equal(t, http.StatusOK, w2.Code)
+
+	var resp2 map[string]any
+	err = json.Unmarshal(w2.Body.Bytes(), &resp2)
+	require.NoError(t, err)
+	boundedSessionID, ok := resp2["session_id"].(string)
+	require.True(t, ok)
+	require.LessOrEqual(t, len(boundedSessionID), 64)
+	require.NotEmpty(t, boundedSessionID)
+
+	// Verify session-ID stability across repeated requests on the same thread
+	req3 := httptest.NewRequest(http.MethodGet, "/test-long", nil)
+	w3 := httptest.NewRecorder()
+	router2.ServeHTTP(w3, req3)
+	require.Equal(t, http.StatusOK, w3.Code)
+
+	var resp3 map[string]any
+	err = json.Unmarshal(w3.Body.Bytes(), &resp3)
+	require.NoError(t, err)
+	require.Equal(t, boundedSessionID, resp3["session_id"])
 }
 
 func TestWithTraceID_NoHeader(t *testing.T) {

@@ -2,6 +2,8 @@ package responses
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -317,6 +319,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			// conversation so they do not evict each other upstream.
 			if anchor := conversationAnchor(llmReq.Messages); anchor != "" {
 				sessionID = sessionID + "-" + anchor
+			}
+
+			if len(sessionID) > 64 {
+				h := sha256.Sum256([]byte(sessionID))
+				sessionID = hex.EncodeToString(h[:16])
 			}
 
 			payload.PromptCacheKey = lo.ToPtr(sessionID)
