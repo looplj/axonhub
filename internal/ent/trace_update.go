@@ -64,6 +64,20 @@ func (_u *TraceUpdate) SetNillableStatus(v *trace.Status) *TraceUpdate {
 	return _u
 }
 
+// SetLastRequestAt sets the "last_request_at" field.
+func (_u *TraceUpdate) SetLastRequestAt(v time.Time) *TraceUpdate {
+	_u.mutation.SetLastRequestAt(v)
+	return _u
+}
+
+// SetNillableLastRequestAt sets the "last_request_at" field if the given value is not nil.
+func (_u *TraceUpdate) SetNillableLastRequestAt(v *time.Time) *TraceUpdate {
+	if v != nil {
+		_u.SetLastRequestAt(*v)
+	}
+	return _u
+}
+
 // AddRequestIDs adds the "requests" edge to the Request entity by IDs.
 func (_u *TraceUpdate) AddRequestIDs(ids ...int) *TraceUpdate {
 	_u.mutation.AddRequestIDs(ids...)
@@ -187,6 +201,9 @@ func (_u *TraceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(trace.FieldStatus, field.TypeEnum, value)
 	}
+	if value, ok := _u.mutation.LastRequestAt(); ok {
+		_spec.SetField(trace.FieldLastRequestAt, field.TypeTime, value)
+	}
 	if _u.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -284,6 +301,20 @@ func (_u *TraceUpdateOne) SetStatus(v trace.Status) *TraceUpdateOne {
 func (_u *TraceUpdateOne) SetNillableStatus(v *trace.Status) *TraceUpdateOne {
 	if v != nil {
 		_u.SetStatus(*v)
+	}
+	return _u
+}
+
+// SetLastRequestAt sets the "last_request_at" field.
+func (_u *TraceUpdateOne) SetLastRequestAt(v time.Time) *TraceUpdateOne {
+	_u.mutation.SetLastRequestAt(v)
+	return _u
+}
+
+// SetNillableLastRequestAt sets the "last_request_at" field if the given value is not nil.
+func (_u *TraceUpdateOne) SetNillableLastRequestAt(v *time.Time) *TraceUpdateOne {
+	if v != nil {
+		_u.SetLastRequestAt(*v)
 	}
 	return _u
 }
@@ -440,6 +471,9 @@ func (_u *TraceUpdateOne) sqlSave(ctx context.Context) (_node *Trace, err error)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(trace.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.LastRequestAt(); ok {
+		_spec.SetField(trace.FieldLastRequestAt, field.TypeTime, value)
 	}
 	if _u.mutation.RequestsCleared() {
 		edge := &sqlgraph.EdgeSpec{

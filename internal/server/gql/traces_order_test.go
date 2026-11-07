@@ -14,7 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 )
 
-func TestTracesResolverOrdersByUpdatedAt(t *testing.T) {
+func TestTracesResolverOrdersByLastRequestAt(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:traces_order?mode=memory&_fk=1")
 	t.Cleanup(func() { client.Close() })
 
@@ -27,16 +27,20 @@ func TestTracesResolverOrdersByUpdatedAt(t *testing.T) {
 	require.NoError(t, err)
 
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	older, err := client.Trace.Create().
-		SetProjectID(testProject.ID).
-		SetTraceID("trace-ordered-older").
-		SetUpdatedAt(base).
-		Save(ctx)
-	require.NoError(t, err)
+	// The trace created first is the one with the most recent request, so
+	// creation order and last-request order disagree.
 	newer, err := client.Trace.Create().
 		SetProjectID(testProject.ID).
 		SetTraceID("trace-ordered-newer").
-		SetUpdatedAt(base.Add(time.Hour)).
+		SetCreatedAt(base).
+		SetLastRequestAt(base.Add(2 * time.Hour)).
+		Save(ctx)
+	require.NoError(t, err)
+	older, err := client.Trace.Create().
+		SetProjectID(testProject.ID).
+		SetTraceID("trace-ordered-older").
+		SetCreatedAt(base.Add(time.Hour)).
+		SetLastRequestAt(base.Add(time.Hour)).
 		Save(ctx)
 	require.NoError(t, err)
 
@@ -45,7 +49,7 @@ func TestTracesResolverOrdersByUpdatedAt(t *testing.T) {
 
 	conn, err := resolver.Traces(ctx, nil, &first, nil, nil, &ent.TraceOrder{
 		Direction: entgql.OrderDirectionDesc,
-		Field:     ent.TraceOrderFieldUpdatedAt,
+		Field:     ent.TraceOrderFieldLastRequestAt,
 	}, &ent.TraceWhereInput{})
 	require.NoError(t, err)
 	require.Len(t, conn.Edges, 2)

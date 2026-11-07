@@ -75,13 +75,3 @@ export function buildDateRangeWhereClause(dateRange: DateTimeRangeValue | undefi
 
   return where
 }
-
-export function buildUpdatedAtDateRangeWhereClause(dateRange: DateTimeRangeValue | undefined) {
-  const where: { updatedAtGTE?: string; updatedAtLTE?: string } = {}
-  const { gte, lte } = resolveRangeBounds(dateRange)
-
-  if (gte) where.updatedAtGTE = gte
-  if (lte) where.updatedAtLTE = lte
-
-  return where
-}

@@ -100,5 +100,6 @@
   "traces.messages.unretainSuccess": "已取消保留",
   "traces.status.active": "正常",
   "traces.status.archived": "已归档",
-  "traces.status.retained": "已保留"
+  "traces.status.retained": "已保留",
+  "traces.columns.lastRequestAt": "最后请求时间"
 }

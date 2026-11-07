@@ -24,6 +24,7 @@ function buildTracesQuery() {
             status
             createdAt
             updatedAt
+            lastRequestAt
             thread {
               id
               threadID
@@ -122,7 +123,7 @@ function buildTraceWithRequestTracesQuery() {
 export function useTraces(variables?: {
   first?: number;
   after?: string;
-  orderBy?: { field: 'CREATED_AT' | 'UPDATED_AT'; direction: 'ASC' | 'DESC' };
+  orderBy?: { field: 'LAST_REQUEST_AT'; direction: 'ASC' | 'DESC' };
   where?: {
     projectID?: string;
     threadID?: string;

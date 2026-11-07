@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { SortingState } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
-import { buildUpdatedAtDateRangeWhereClause, type DateTimeRangeValue } from '@/utils/date-range';
+import { buildDateRangeWhereClause, type DateTimeRangeValue } from '@/utils/date-range';
 import { useAutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
@@ -12,8 +12,8 @@ import { TracesTable } from './components';
 import { TracesProvider } from './context';
 import { useTraces } from './data';
 
-const DEFAULT_SORTING: SortingState = [{ id: 'updatedAt', desc: true }];
-const SORTABLE_COLUMN_IDS = new Set(['createdAt', 'updatedAt']);
+const DEFAULT_SORTING: SortingState = [{ id: 'lastRequestAt', desc: true }];
+const SORTABLE_COLUMN_IDS = new Set(['lastRequestAt']);
 const SORTING_STORAGE_KEY = 'traces-table-sorting';
 
 function loadSorting(): SortingState {
@@ -78,7 +78,7 @@ function TracesContent() {
   // Build where clause with filters
   const whereClause = (() => {
     const where: { [key: string]: any } = {
-      ...buildUpdatedAtDateRangeWhereClause(dateRange),
+      ...buildDateRangeWhereClause(dateRange),
     };
 
     if (debouncedTraceIdFilter.trim()) {
@@ -97,17 +97,11 @@ function TracesContent() {
 
   const currentOrderBy = useMemo(() => {
     if (sorting.length === 0) {
-      return { field: 'UPDATED_AT', direction: 'DESC' } as const;
+      return { field: 'LAST_REQUEST_AT', direction: 'DESC' } as const;
     }
 
     const [primary] = sorting;
-    switch (primary.id) {
-      case 'createdAt':
-        return { field: 'CREATED_AT', direction: primary.desc ? 'DESC' : 'ASC' } as const;
-      case 'updatedAt':
-      default:
-        return { field: 'UPDATED_AT', direction: primary.desc ? 'DESC' : 'ASC' } as const;
-    }
+    return { field: 'LAST_REQUEST_AT', direction: primary.desc ? 'DESC' : 'ASC' } as const;
   }, [sorting]);
 
   const { data, isLoading, refetch } = useTraces({

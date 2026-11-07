@@ -25999,6 +25999,7 @@ type TraceMutation struct {
 	updated_at      *time.Time
 	trace_id        *string
 	status          *trace.Status
+	last_request_at *time.Time
 	clearedFields   map[string]struct{}
 	project         *int
 	clearedproject  bool
@@ -26339,6 +26340,42 @@ func (m *TraceMutation) ResetStatus() {
 	m.status = nil
 }
 
+// SetLastRequestAt sets the "last_request_at" field.
+func (m *TraceMutation) SetLastRequestAt(t time.Time) {
+	m.last_request_at = &t
+}
+
+// LastRequestAt returns the value of the "last_request_at" field in the mutation.
+func (m *TraceMutation) LastRequestAt() (r time.Time, exists bool) {
+	v := m.last_request_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastRequestAt returns the old "last_request_at" field's value of the Trace entity.
+// If the Trace object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TraceMutation) OldLastRequestAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastRequestAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastRequestAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastRequestAt: %w", err)
+	}
+	return oldValue.LastRequestAt, nil
+}
+
+// ResetLastRequestAt resets all changes to the "last_request_at" field.
+func (m *TraceMutation) ResetLastRequestAt() {
+	m.last_request_at = nil
+}
+
 // ClearProject clears the "project" edge to the Project entity.
 func (m *TraceMutation) ClearProject() {
 	m.clearedproject = true
@@ -26481,7 +26518,7 @@ func (m *TraceMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TraceMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 7)
 	if m.created_at != nil {
 		fields = append(fields, trace.FieldCreatedAt)
 	}
@@ -26499,6 +26536,9 @@ func (m *TraceMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, trace.FieldStatus)
+	}
+	if m.last_request_at != nil {
+		fields = append(fields, trace.FieldLastRequestAt)
 	}
 	return fields
 }
@@ -26520,6 +26560,8 @@ func (m *TraceMutation) Field(name string) (ent.Value, bool) {
 		return m.ThreadID()
 	case trace.FieldStatus:
 		return m.Status()
+	case trace.FieldLastRequestAt:
+		return m.LastRequestAt()
 	}
 	return nil, false
 }
@@ -26541,6 +26583,8 @@ func (m *TraceMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldThreadID(ctx)
 	case trace.FieldStatus:
 		return m.OldStatus(ctx)
+	case trace.FieldLastRequestAt:
+		return m.OldLastRequestAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Trace field %s", name)
 }
@@ -26591,6 +26635,13 @@ func (m *TraceMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case trace.FieldLastRequestAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastRequestAt(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Trace field %s", name)
@@ -26670,6 +26721,9 @@ func (m *TraceMutation) ResetField(name string) error {
 		return nil
 	case trace.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case trace.FieldLastRequestAt:
+		m.ResetLastRequestAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Trace field %s", name)

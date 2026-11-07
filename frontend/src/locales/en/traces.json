@@ -100,5 +100,6 @@
   "traces.messages.unretainSuccess": "Trace no longer retained",
   "traces.status.active": "Active",
   "traces.status.archived": "Archived",
-  "traces.status.retained": "Retained"
+  "traces.status.retained": "Retained",
+  "traces.columns.lastRequestAt": "Last Request At"
 }

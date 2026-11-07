@@ -3,11 +3,13 @@ package schema
 import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -33,8 +35,8 @@ func (Trace) Indexes() []ent.Index {
 			StorageKey("traces_by_thread_id"),
 		index.Fields("project_id", "status").
 			StorageKey("traces_by_project_id_status"),
-		index.Fields("project_id", "updated_at").
-			StorageKey("traces_by_project_id_updated_at"),
+		index.Fields("project_id", "last_request_at").
+			StorageKey("traces_by_project_id_last_request_at"),
 	}
 }
 
@@ -55,6 +57,14 @@ func (Trace) Fields() []ent.Field {
 			Values("active", "archived", "retained").
 			Default("active").
 			Comment("Record status: active (default), archived (hidden), retained (protected from GC)"),
+		field.Time("last_request_at").
+			Default(xtime.UTCNow).
+			Comment("Time of the last request recorded for this trace").
+			Annotations(
+				entgql.OrderField("LAST_REQUEST_AT"),
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+				entsql.DefaultExpr("CURRENT_TIMESTAMP"),
+			),
 	}
 }
 

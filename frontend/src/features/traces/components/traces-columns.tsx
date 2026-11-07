@@ -195,16 +195,17 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
     {
       accessorKey: 'createdAt',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
+      enableSorting: false,
       cell: ({ row }) => {
         const date = new Date(row.getValue('createdAt'));
         return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>;
       },
     },
     {
-      accessorKey: 'updatedAt',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.updatedAt')} />,
+      accessorKey: 'lastRequestAt',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('traces.columns.lastRequestAt')} />,
       cell: ({ row }) => {
-        const date = new Date(row.getValue('updatedAt'));
+        const date = new Date(row.getValue('lastRequestAt'));
         return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>;
       },
     },

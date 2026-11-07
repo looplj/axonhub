@@ -1002,6 +1002,10 @@ func init() {
 	trace.DefaultUpdatedAt = traceDescUpdatedAt.Default.(func() time.Time)
 	// trace.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	trace.UpdateDefaultUpdatedAt = traceDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// traceDescLastRequestAt is the schema descriptor for last_request_at field.
+	traceDescLastRequestAt := traceFields[4].Descriptor()
+	// trace.DefaultLastRequestAt holds the default value on creation for the last_request_at field.
+	trace.DefaultLastRequestAt = traceDescLastRequestAt.Default.(func() time.Time)
 	usagelogMixin := schema.UsageLog{}.Mixin()
 	usagelog.Policy = privacy.NewPolicies(schema.UsageLog{})
 	usagelog.Hooks[0] = func(next ent.Mutator) ent.Mutator {

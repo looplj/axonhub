@@ -871,6 +871,7 @@ var (
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "trace_id", Type: field.TypeString, Unique: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived", "retained"}, Default: "active"},
+		{Name: "last_request_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "project_id", Type: field.TypeInt},
 		{Name: "thread_id", Type: field.TypeInt, Nullable: true},
 	}
@@ -882,13 +883,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "traces_projects_traces",
-				Columns:    []*schema.Column{TracesColumns[5]},
+				Columns:    []*schema.Column{TracesColumns[6]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "traces_threads_traces",
-				Columns:    []*schema.Column{TracesColumns[6]},
+				Columns:    []*schema.Column{TracesColumns[7]},
 				RefColumns: []*schema.Column{ThreadsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -897,7 +898,7 @@ var (
 			{
 				Name:    "traces_by_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{TracesColumns[5]},
+				Columns: []*schema.Column{TracesColumns[6]},
 			},
 			{
 				Name:    "traces_by_trace_id",
@@ -907,17 +908,17 @@ var (
 			{
 				Name:    "traces_by_thread_id",
 				Unique:  false,
-				Columns: []*schema.Column{TracesColumns[6]},
+				Columns: []*schema.Column{TracesColumns[7]},
 			},
 			{
 				Name:    "traces_by_project_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{TracesColumns[5], TracesColumns[4]},
+				Columns: []*schema.Column{TracesColumns[6], TracesColumns[4]},
 			},
 			{
-				Name:    "traces_by_project_id_updated_at",
+				Name:    "traces_by_project_id_last_request_at",
 				Unique:  false,
-				Columns: []*schema.Column{TracesColumns[5], TracesColumns[2]},
+				Columns: []*schema.Column{TracesColumns[6], TracesColumns[5]},
 			},
 		},
 	}
