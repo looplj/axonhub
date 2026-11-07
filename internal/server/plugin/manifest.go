@@ -81,7 +81,7 @@ var ReservedPluginIDs = map[string]struct{}{
 }
 
 // ManifestDiff is the set of permissions, network rules, events, hooks, and
-// pages the new manifest declares and the old one did not. Name, version,
+// UI contributions the new manifest declares and the old one did not. Name, version,
 // description, axonhubVersion, entry, and title changes are not included.
 type ManifestDiff struct {
 	Permissions []string
@@ -89,12 +89,13 @@ type ManifestDiff struct {
 	Events      []string
 	Hooks       []string
 	Pages       []string
+	Actions     []string
 }
 
 // NeedsPreview reports whether an enabled plugin must ask the owner before upgrade.
 // The enabled check itself belongs to the install transaction.
 func (d ManifestDiff) NeedsPreview() bool {
-	return len(d.Permissions) > 0 || len(d.Network) > 0 || len(d.Events) > 0 || len(d.Hooks) > 0 || len(d.Pages) > 0
+	return len(d.Permissions) > 0 || len(d.Network) > 0 || len(d.Events) > 0 || len(d.Hooks) > 0 || len(d.Pages) > 0 || len(d.Actions) > 0
 }
 
 // UpgradePlan is the pure result of comparing two manifests.
@@ -167,6 +168,7 @@ func DiffManifest(old, next *objects.PluginManifest) ManifestDiff {
 		Events:      addedStrings(next.Events, old.Events),
 		Hooks:       addedHooks(old.Hooks, next.Hooks),
 		Pages:       addedStrings(pageKeys(next.UI), pageKeys(old.UI)),
+		Actions:     addedActions(old.UI, next.UI),
 	}
 }
 
@@ -500,4 +502,24 @@ func hookScope(h *objects.PluginHooksSpec, name string) []string {
 		}
 	}
 	return out
+}
+
+func addedActions(old, next *objects.PluginUI) []string {
+	var added []string
+	if next == nil {
+		return added
+	}
+	previous := map[string]objects.PluginUIAction{}
+	if old != nil {
+		for _, action := range old.Actions {
+			previous[action.Key] = action
+		}
+	}
+	for _, action := range next.Actions {
+		before, ok := previous[action.Key]
+		if !ok || before.Slot != action.Slot || before.Effect.Type != action.Effect.Type {
+			added = append(added, action.Key)
+		}
+	}
+	return added
 }

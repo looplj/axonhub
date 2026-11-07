@@ -113,12 +113,22 @@ func checkPackManifest(contents *packageContents) error {
 			Pages []struct {
 				Entry string `json:"entry"`
 			} `json:"pages"`
+			Actions []struct {
+				Effect struct {
+					Entry string `json:"entry"`
+				} `json:"effect"`
+			} `json:"actions"`
 		} `json:"ui"`
 	}
 	if err := json.Unmarshal(raw, &manifest); err != nil {
 		return fmt.Errorf("invalid plugin manifest: %w", err)
 	}
 	if manifest.UI != nil {
+		for _, action := range manifest.UI.Actions {
+			if !slices.Contains(contents.files, action.Effect.Entry) {
+				return fmt.Errorf("ui action entry %q does not exist in the package", action.Effect.Entry)
+			}
+		}
 		for _, page := range manifest.UI.Pages {
 			if !slices.Contains(contents.files, page.Entry) {
 				return fmt.Errorf("ui page entry %q does not exist in the package", page.Entry)

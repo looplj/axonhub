@@ -4,7 +4,7 @@
 
 ## 目录
 
-- [`registry.json`](registry.json)：市场索引。AxonHub 从 `unstable` 分支的 raw URL 拉取。当前列出 Jev 请求审查。
+- [`registry.json`](registry.json)：市场索引。AxonHub 从 `unstable` 分支的 raw URL 拉取。当前列出 Jev 请求审查和重置监控。
 - [`../cmd/pack-plugin`](../cmd/pack-plugin)：独立 Go 模块的打包器。`go install github.com/looplj/axonhub/cmd/pack-plugin@unstable` 安装 `unstable` 分支上的当前提交。
 - [`examples/notes/`](examples/notes/README.md)：可安装的 Notes UI 插件示例。
 - [`examples/event-log/`](examples/event-log/README.md)：可安装的事件记录示例，用来确认事件已经送达。

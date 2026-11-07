@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "example.toolbar-notes",
+  "name": "Toolbar notes",
+  "version": "1.0.0",
+  "description": "Open a global scratchpad from the toolbar. Stores text in this plugin's KV.",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "ui": {
+    "actions": [{
+      "key": "notes",
+      "slot": "app.header.actions",
+      "title": { "en": "Quick notes", "zh-CN": "随手记" },
+      "icon": "puzzle",
+      "effect": { "type": "dialog", "entry": "ui/notes.html" }
+    }]
+  }
+}

@@ -80,6 +80,7 @@ type PluginUpgradePreview {
   events: [String!]!
   hooks: [String!]!
   pages: [String!]!
+  actions: [String!]!
 }
 
 type PluginInstallResult {
@@ -127,8 +128,24 @@ type PluginUIPage {
   title: JSONRawMessage!
 }
 
+type PluginUIActionEffect {
+  type: String!
+  entry: String!
+}
+
+type PluginUIAction {
+  pluginID: String!
+  key: String!
+  slot: String!
+  title: JSONRawMessage!
+  icon: String!
+  effect: PluginUIActionEffect!
+  revision: String!
+}
+
 type PluginUIEntries {
   pages: [PluginUIPage!]!
+  actions: [PluginUIAction!]!
 }
 
 type PluginUISession {

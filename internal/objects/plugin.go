@@ -66,8 +66,9 @@ var (
 		"streamChunk": {},
 	}
 	uiFieldNames = map[string]struct{}{
-		"pages":  {},
-		"panels": {},
+		"pages":   {},
+		"actions": {},
+		"panels":  {},
 	}
 	pageFieldNames = map[string]struct{}{
 		"key":   {},
@@ -153,10 +154,11 @@ type PluginHooksSpec struct {
 	StreamChunkPresent bool               `json:"-"`
 }
 
-// PluginUI is the opened page list. panels is presence-only.
+// PluginUI declares pages and actions. panels remains closed.
 type PluginUI struct {
-	Pages         []PluginUIPage `json:"pages,omitempty"`
-	PanelsPresent bool           `json:"-"`
+	Pages         []PluginUIPage   `json:"pages,omitempty"`
+	Actions       []PluginUIAction `json:"actions,omitempty"`
+	PanelsPresent bool             `json:"-"`
 }
 
 // PluginUIPage is one sidebar page declared by the package.
@@ -164,6 +166,40 @@ type PluginUIPage struct {
 	Key   string      `json:"key"`
 	Entry string      `json:"entry"`
 	Title PluginTitle `json:"title"`
+}
+
+// PluginUIAction contributes a host-rendered action that opens an isolated UI.
+type PluginUIAction struct {
+	Key    string               `json:"key"`
+	Slot   string               `json:"slot"`
+	Title  PluginTitle          `json:"title"`
+	Icon   string               `json:"icon,omitempty"`
+	Effect PluginUIActionEffect `json:"effect"`
+}
+
+type PluginUIActionEffect struct {
+	Type  string `json:"type"`
+	Entry string `json:"entry"`
+}
+
+// HasEntries is shared by the GraphQL and outbound UI endpoints.
+func (u *PluginUI) HasEntries() bool {
+	return u != nil && (len(u.Pages) > 0 || len(u.Actions) > 0)
+}
+
+// Entries returns every HTML entry allowed to receive a resource token.
+func (u *PluginUI) Entries() []string {
+	if u == nil {
+		return nil
+	}
+	entries := make([]string, 0, len(u.Pages)+len(u.Actions))
+	for _, page := range u.Pages {
+		entries = append(entries, page.Entry)
+	}
+	for _, action := range u.Actions {
+		entries = append(entries, action.Effect.Entry)
+	}
+	return entries
 }
 
 // PluginConfigSchema is the subset of JSON Schema accepted for plugin config.
@@ -468,7 +504,7 @@ func (p PluginConfigProperty) CheckValue(value any) error {
 	return nil
 }
 
-// Validate checks page shape. Entry existence inside the ZIP is checked by the package parser.
+// Validate checks UI contribution shape. Entry existence is checked by the package parser.
 func (u *PluginUI) Validate() error {
 	if u == nil {
 		return nil
@@ -483,6 +519,16 @@ func (u *PluginUI) Validate() error {
 		}
 		seen[page.Key] = struct{}{}
 	}
+	seen = make(map[string]struct{}, len(u.Actions))
+	for i, action := range u.Actions {
+		if err := action.Validate(); err != nil {
+			return fmt.Errorf("ui.actions[%d]: %w", i, err)
+		}
+		if _, ok := seen[action.Key]; ok {
+			return fmt.Errorf("ui.actions key %q is duplicated", action.Key)
+		}
+		seen[action.Key] = struct{}{}
+	}
 	return nil
 }
 
@@ -496,6 +542,30 @@ func (p PluginUIPage) Validate() error {
 	}
 	if err := p.Title.Validate(); err != nil {
 		return fmt.Errorf("title: %w", err)
+	}
+	return nil
+}
+
+func (a PluginUIAction) Validate() error {
+	if !pageKeyPattern.MatchString(a.Key) {
+		return fmt.Errorf("key %q must match %s", a.Key, pageKeyPattern.String())
+	}
+	if a.Slot != "app.header.actions" {
+		return fmt.Errorf("slot %q is not supported", a.Slot)
+	}
+	if err := a.Title.Validate(); err != nil {
+		return fmt.Errorf("title: %w", err)
+	}
+	switch a.Icon {
+	case "", "puzzle", "search", "activity", "settings":
+	default:
+		return fmt.Errorf("icon %q is not supported", a.Icon)
+	}
+	if a.Effect.Type != "dialog" {
+		return fmt.Errorf("effect.type %q is not supported", a.Effect.Type)
+	}
+	if err := validateUIEntry(a.Effect.Entry); err != nil {
+		return fmt.Errorf("effect: %w", err)
 	}
 	return nil
 }
@@ -808,7 +878,7 @@ func (h *PluginHooksSpec) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// UnmarshalJSON decodes pages and records ui.panels without parsing it.
+// UnmarshalJSON decodes pages/actions and records ui.panels without parsing it.
 func (u *PluginUI) UnmarshalJSON(data []byte) error {
 	raw, err := decodeObject(data, "ui")
 	if err != nil {
@@ -819,6 +889,24 @@ func (u *PluginUI) UnmarshalJSON(data []byte) error {
 	}
 	if _, ok := raw["panels"]; ok {
 		u.PanelsPresent = true
+	}
+	if actionsRaw, ok := raw["actions"]; ok {
+		actionsRaw = bytes.TrimSpace(actionsRaw)
+		if len(actionsRaw) == 0 || actionsRaw[0] != '[' {
+			return errors.New("ui.actions must be an array")
+		}
+		var elems []json.RawMessage
+		if err := json.Unmarshal(actionsRaw, &elems); err != nil {
+			return errors.New("ui.actions must be an array")
+		}
+		u.Actions = make([]PluginUIAction, 0, len(elems))
+		for i, elem := range elems {
+			var action PluginUIAction
+			if err := action.unmarshalJSONAt(elem, fmt.Sprintf("ui.actions[%d]", i)); err != nil {
+				return err
+			}
+			u.Actions = append(u.Actions, action)
+		}
 	}
 	pagesRaw, ok := raw["pages"]
 	if !ok {
@@ -841,6 +929,57 @@ func (u *PluginUI) UnmarshalJSON(data []byte) error {
 		pages = append(pages, page)
 	}
 	u.Pages = pages
+	return nil
+}
+
+func (a *PluginUIAction) UnmarshalJSON(data []byte) error {
+	return a.unmarshalJSONAt(data, "ui.actions")
+}
+
+func (a *PluginUIAction) unmarshalJSONAt(data []byte, fieldPath string) error {
+	raw, err := decodeObject(data, fieldPath)
+	if err != nil {
+		return err
+	}
+	fields := map[string]struct{}{"key": {}, "slot": {}, "title": {}, "icon": {}, "effect": {}}
+	if err := rejectUnknownFields(raw, fields, fieldPath); err != nil {
+		return err
+	}
+	for _, key := range []string{"key", "slot", "title", "effect"} {
+		if _, ok := raw[key]; !ok {
+			return fmt.Errorf("%s.%s is required", fieldPath, key)
+		}
+	}
+	for key, target := range map[string]*string{"key": &a.Key, "slot": &a.Slot, "icon": &a.Icon} {
+		if value, ok := raw[key]; ok {
+			decoded, err := decodeJSONString(value, fieldPath+"."+key)
+			if err != nil {
+				return err
+			}
+			*target = decoded
+		}
+	}
+	if err := json.Unmarshal(raw["title"], &a.Title); err != nil {
+		return fmt.Errorf("%s.title: %w", fieldPath, err)
+	}
+	effect, err := decodeObject(raw["effect"], fieldPath+".effect")
+	if err != nil {
+		return err
+	}
+	if err := rejectUnknownFields(effect, map[string]struct{}{"type": {}, "entry": {}}, fieldPath+".effect"); err != nil {
+		return err
+	}
+	for key, target := range map[string]*string{"type": &a.Effect.Type, "entry": &a.Effect.Entry} {
+		value, ok := effect[key]
+		if !ok {
+			return fmt.Errorf("%s.effect.%s is required", fieldPath, key)
+		}
+		decoded, err := decodeJSONString(value, fieldPath+".effect."+key)
+		if err != nil {
+			return err
+		}
+		*target = decoded
+	}
 	return nil
 }
 

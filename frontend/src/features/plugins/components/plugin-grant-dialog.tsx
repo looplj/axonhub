@@ -101,6 +101,7 @@ export function PluginGrantDialog({
         { label: t('plugins.grant.addedEvents'), items: preview.events ?? [] },
         { label: t('plugins.grant.addedHooks'), items: preview.hooks ?? [] },
         { label: t('plugins.grant.addedPages'), items: preview.pages ?? [] },
+        { label: t('plugins.grant.addedActions'), items: preview.actions ?? [] },
       ].filter((group) => group.items.length > 0)
     : [];
 

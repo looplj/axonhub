@@ -63,6 +63,7 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 | `permissions`                         | 否   | 只能取 [权限词表](#5-权限词表) 中已开放的权限；省略为 `[]`                                                                                               | 授权、宿主 API、页面 GraphQL                     | T-01   |
 | `network`                             | 否   | 最多 32 条。字符串是精确 `https` URL，必须带 path，无 userinfo、query、fragment。对象只能是 `{ "regex": "..." }`，正则全匹配且最长 256 字符。省略为 `[]`。开放前出现：`network is not enabled` | [出站请求](plugin.js.md#出站请求)                 | T-16   |
 | `configSchema`                        | 否   | 见 [configSchema](#configschema)                                                                                                                         | 管理页配置表单、`ctx.config`、页面 `init.config` | T-01   |
+| `ui.actions` | 否 | 数组；key/slot/title/effect 必填，icon 可选；首版仅 app.header.actions + dialog，严格字段白名单，详见 [操作插槽](slots.md#3-manifest) | 工具栏、弹窗、UI 资源 | T-17 |
 | `ui.pages[].key`                      | 是   | `^[a-z0-9][a-z0-9-]{0,31}$`，在该插件内唯一                                                                                                              | [页面](pages.md) 路由                            | T-01   |
 | `ui.pages[].entry`                    | 是   | 包内 `ui/` 下存在的 `.html`                                                                                                                              | [页面](pages.md) iframe                          | T-01   |
 | `ui.pages[].title`                    | 是   | 非空字符串，或语言 → 非空标题的对象，见 [title](#title)                                                                                                  | [页面](pages.md) 侧栏                            | T-01   |
@@ -70,14 +71,16 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 | `hooks.request` | 否 | 对象；enabled 必填。true 时 requestTypes 必须非空且导出 onRequest；false 不调度 | [请求钩子](request.md) | T-13 |
 | `hooks.attempt` | 否 | 对象；enabled 必填。true 时 apiFormats 必须非空且导出 onAttempt；false 不调度 | [请求钩子](request.md) | T-13 |
 | `hooks.response`、`hooks.streamChunk` | —    | 出现即拒绝：`response hooks are not enabled`                                                                                                             | [响应钩子](response.md#manifest)                 | 未排期 |
-| `ui.panels`                           | —    | 出现即拒绝：`ui panels are not enabled`                                                                                                                  | [插槽](slots.md#4-manifest)                      | 未排期 |
+| `ui.panels`                           | —    | 出现即拒绝：`ui panels are not enabled`                                                                                                                  | 未开放，暂无面板设计                      | 未排期 |
 | `providers`                           | —    | 出现即拒绝，包括空数组：`custom channel providers are not enabled`                                                                                       | [Provider](provider.md#5-接入)                   | 未排期 |
+
+`ui.actions` 已随 T-17 开放，接受 [操作插槽](slots.md#3-manifest) 定义的 action/effect 固定结构。`ui.panels` 继续拒绝，不再规划内嵌面板。
 
 未排期字段的设计写在各自文档里，排期时并入本表。
 
 ### title
 
-页面，以及未来的 panel、provider，统一使用 `title`，支持两种形式：
+页面、操作，以及未来的 provider，统一使用 `title`，支持两种形式：
 
 ```json
 { "title": "Overview" }
@@ -144,7 +147,7 @@ request 对象只允许 enabled、requestTypes；attempt 只允许 enabled、api
 2. 已知但未开放字段按字段表的规则拒绝，优先返回对应的专用错误，不当作普通未知字段。例如 `hooks.requset` 返回未知字段错误，`hooks.response` 返回 `response hooks are not enabled`。
 3. `axonhubVersion`、`pluginApiVersion` 与当前 AxonHub 兼容。
 
-固定结构包括 manifest 根对象、hooks、hooks.request、hooks.attempt、ui、pages 条目，以及 configSchema 的受支持关键字和每个属性的 schema。`title` 对象的语言键、`configSchema.properties` 中的属性名属于动态映射，按各自的值类型与规则校验，不能套用固定字段名单。未来开放 panels/providers 时同时增加对应的结构白名单。当前仍不接受其内容，不需要提前定义未开放结构。
+固定结构包括 manifest 根对象、hooks、hooks.request、hooks.attempt、ui、pages/actions 条目、action.effect，以及 configSchema 的受支持关键字和每个属性的 schema。`title` 对象的语言键、`configSchema.properties` 中的属性名属于动态映射，按各自的值类型与规则校验，不能套用固定字段名单。actions/effect 已有结构白名单；未来开放 providers 时再增加对应结构，当前不提前定义未开放结构。
 
 **导出校验**（`jsruntime.go`，T-10）：包里有 `plugin.js` 时，在 `DisableDynamicCode` 的临时 runtime 里编译并执行顶层（1 s），然后检查：
 
@@ -178,6 +181,7 @@ request 对象只允许 enabled、requestTypes；attempt 只允许 enabled、api
 | `events`      | 集合差                               |
 | `hooks` | 新启用的钩子，或任一 requestTypes/apiFormats 新增匹配项；禁用配置只保存、不调度，启用时再走确认 |
 | `ui.pages`    | 按 `key` 的集合差                    |
+| `ui.actions`（T-17） | 新增 key，或既有 key 的 slot/effect.type 改变；详见 slots.md |
 
 `name`、`version`、`description`、`axonhubVersion`、`entry`、`title` 的变化不需要确认。`configSchema` 的变化不单独触发确认，但必须通过下面的配置迁移校验。
 
@@ -195,7 +199,7 @@ request 对象只允许 enabled、requestTypes；attempt 只允许 enabled、api
 
 - `PluginManifest`、`PluginHooksSpec`、`PluginUI`、`PluginUIPage`、`PluginNetworkRule`（精确 URL 或 `{ regex }`）。
 - T-16 完成前，`network` 出现即返回 `network is not enabled`，不定义授予列。开放时再写入 `granted_network`。
-- `PluginTitle`：支持字符串或语言映射的 JSON 编解码和校验，保留原始形式；页面、未来的 panel/provider 共用。
+- `PluginTitle`：支持字符串或语言映射的 JSON 编解码和校验，保留原始形式；页面、操作及未来的 provider 共用。
 - 固定结构按层校验字段白名单，并保留错误字段路径；动态语言映射和配置属性名按各自契约校验。为识别未开放字段，解析时记录 `ui.panels`、`providers`、`hooks.response`、`hooks.streamChunk` 是否出现，不定义它们的结构。
 - `Validate()`：结构校验。
 
@@ -213,7 +217,7 @@ request 对象只允许 enabled、requestTypes；attempt 只允许 enabled、api
 | 类别     | 标准                                                                                                                                                                        | 验证方式                                                  |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | 结构     | 字段表每条规则各有一个违反用例，均返回可读错误且不写库                                                                                                                      | `go test ./internal/server/plugin/ -run TestManifest`     |
-| 结构     | 根对象、hooks（含 request/attempt 的 enabled 与范围）、ui、pages 条目和 configSchema 的未知固定字段均拒绝并返回完整路径；合法语言键和自定义配置属性名通过；已知未开放字段仍返回专用错误                             | 同上，包含 `hooks.requset` 与 `hooks.response` 的区分用例 |
+| 结构     | 根对象、hooks（含 request/attempt 的 enabled 与范围）、ui、pages/actions 条目、action.effect 和 configSchema 的未知固定字段均拒绝并返回完整路径；合法语言键和自定义配置属性名通过；已知未开放字段仍返回专用错误                             | 同上，包含 `hooks.requset` 与 `hooks.response` 的区分用例 |
 | 标题     | `title` 的字符串与多语言对象均通过且可往返序列化；非法类型、空白值、缺少 `en` 的对象被拒                                                                                    | 同上                                                      |
 | 开放     | 字段表里每个未开放字段各一个用例，错误文本与表中一致；开放任务完成后对应用例改为通过                                                                                        | 同上                                                      |
 | 版本     | `axonhubVersion: "^1.0.0"` 在 `v1.0.0-beta9` 上通过，在 `0.9.0` 和 `2.0.0` 上失败；`pluginApiVersion: 2` 失败                                                               | 同上                                                      |

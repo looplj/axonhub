@@ -13,6 +13,19 @@
           "axonhubVersion": "^1.0.0"
         }
       ]
+    },
+    {
+      "id": "local.reset-watch",
+      "name": "重置监控",
+      "description": "从顶栏打开 Codex、Antigravity 和 Claude 的额度重置与重置卡。数据来自 AIHOT 的公开日历，完整快照缓存在本插件的 KV 里。",
+      "versions": [
+        {
+          "version": "0.1.0",
+          "url": "https://github.com/looplj/axonhub-reset-watch/releases/download/v0.1.0/reset-watch-0.1.0.axplugin",
+          "sha256": "dc1902f3fe10b8669b162c77d3c6110b1d124711e8bb3ff0988034787c7da851",
+          "axonhubVersion": "^1.0.0"
+        }
+      ]
     }
   ]
 }
