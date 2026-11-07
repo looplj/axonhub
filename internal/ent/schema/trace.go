@@ -63,10 +63,13 @@ func (Trace) Fields() []ent.Field {
 			Annotations(
 				entgql.OrderField("LAST_REQUEST_AT"),
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
-				// Existing rows get the epoch rather than the migration time, so
-				// traces that predate this column sort as the oldest instead of
-				// looking recently active until they receive a new request.
-				entsql.DefaultExpr("'1970-01-01 00:00:00'"),
+				// Existing rows get a sentinel near the epoch rather than the
+				// migration time, so traces that predate this column sort as the
+				// oldest instead of looking recently active until they receive a
+				// new request. It is a day past the epoch because MySQL/TiDB map
+				// this field to TIMESTAMP, which cannot represent 1970-01-01
+				// 00:00:00 once the session time zone is applied.
+				entsql.DefaultExpr("'1970-01-02 00:00:00'"),
 			),
 	}
 }
