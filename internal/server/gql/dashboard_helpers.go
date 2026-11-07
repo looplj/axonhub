@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
 )
 
@@ -939,4 +940,360 @@ func (r *queryResolver) channelPerformanceStats(ctx context.Context) ([]*Channel
 	}
 
 	return buildChannelPerformanceResponse(statsMap, channelNames, startDateLocal, daysCount), nil
+}
+
+// channelModelStat is the per (channel_id, model_id) aggregate assembled from the
+// execution and usage sub-queries before channel names are resolved.
+type channelModelStat struct {
+	ChannelID    int      `json:"channel_id"`
+	ModelID      string   `json:"model_id"`
+	RequestCount int      `json:"request_count"`
+	InputTokens  int64    `json:"input_tokens"`
+	OutputTokens int64    `json:"output_tokens"`
+	TotalTokens  int64    `json:"total_tokens"`
+	TotalCost    float64  `json:"total_cost"`
+	SuccessCount int      `json:"success_count"`
+	FailedCount  int      `json:"failed_count"`
+	Throughput   *float64 `json:"throughput"`
+	TtftMs       *float64 `json:"ttft_ms"`
+}
+
+// executionStat is the per (channel_id, model_id) request/success/failed aggregate
+// sourced from request_executions — the source of truth for the success-rate
+// denominator because it records every attempt (including failures, which never
+// write a usage_log).
+type executionStat struct {
+	ChannelID    int    `json:"channel_id"`
+	ModelID      string `json:"model_id"`
+	RequestCount int    `json:"request_count"`
+	SuccessCount int    `json:"success_count"`
+	FailedCount  int    `json:"failed_count"`
+}
+
+// usageStat is the per (channel_id, model_id) token/cost/throughput/ttft aggregate
+// sourced from usage_log, joined to the latest execution per request/channel pair.
+type usageStat struct {
+	ChannelID    int      `json:"channel_id"`
+	ModelID      string   `json:"model_id"`
+	RequestCount int      `json:"request_count"`
+	SuccessCount int      `json:"success_count"`
+	FailedCount  int      `json:"failed_count"`
+	InputTokens  int64    `json:"input_tokens"`
+	OutputTokens int64    `json:"output_tokens"`
+	TotalTokens  int64    `json:"total_tokens"`
+	TotalCost    float64  `json:"total_cost"`
+	Throughput   *float64 `json:"throughput"`
+	TtftMs       *float64 `json:"ttft_ms"`
+}
+
+func (r *queryResolver) channelModelPerformanceStats(ctx context.Context, timeWindow *string, limit *int) ([]*ChannelModelPerformanceStat, error) {
+	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
+
+	executionResults, err := r.queryChannelModelExecutionStats(ctx, since, applyFilter)
+	if err != nil {
+		return nil, err
+	}
+	usageResults, err := r.queryChannelModelUsageStats(ctx, since, applyFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	results := mergeChannelModelStats(executionResults, usageResults)
+	if len(results) == 0 {
+		return []*ChannelModelPerformanceStat{}, nil
+	}
+
+	response, err := r.attachChannelNamesToChannelModelStats(ctx, results)
+	if err != nil {
+		return nil, err
+	}
+
+	limitCount := 0
+	if limit != nil && *limit > 0 {
+		limitCount = *limit
+	}
+
+	// Order by request count (descending) with a deterministic tie-breaker so a
+	// positive limit that cuts through rows with equal request count is stable
+	// across refreshes.
+	sort.Slice(response, func(i, j int) bool {
+		a, b := response[i], response[j]
+		if a.RequestCount != b.RequestCount {
+			return a.RequestCount > b.RequestCount
+		}
+		if a.ChannelName != b.ChannelName {
+			return a.ChannelName < b.ChannelName
+		}
+		if a.ChannelID != b.ChannelID {
+			return a.ChannelID < b.ChannelID
+		}
+		return a.ModelID < b.ModelID
+	})
+	if limitCount > 0 && len(response) > limitCount {
+		response = response[:limitCount]
+	}
+
+	return response, nil
+}
+
+// queryChannelModelExecutionStats aggregates request/success/failed counts per
+// (channel_id, model_id) from request_executions.
+func (r *queryResolver) queryChannelModelExecutionStats(ctx context.Context, since time.Time, applyFilter bool) ([]executionStat, error) {
+	var results []executionStat
+	err := r.client.RequestExecution.Query().
+		Modify(func(s *sql.Selector) {
+			s.Select(
+				sql.As(s.C(requestexecution.FieldChannelID), "channel_id"),
+				sql.As(s.C(requestexecution.FieldModelID), "model_id"),
+				sql.As(sql.Count(s.C(requestexecution.FieldID)), "request_count"),
+				sql.As(fmt.Sprintf("SUM(CASE WHEN %s = '%s' THEN 1 ELSE 0 END)", s.C(requestexecution.FieldStatus), requestexecution.StatusCompleted), "success_count"),
+				sql.As(fmt.Sprintf("SUM(CASE WHEN %s = '%s' THEN 1 ELSE 0 END)", s.C(requestexecution.FieldStatus), requestexecution.StatusFailed), "failed_count"),
+			).
+				Where(sql.NotNull(s.C(requestexecution.FieldChannelID))).
+				Where(sql.NEQ(s.C(requestexecution.FieldModelID), ""))
+
+			if applyFilter {
+				s.Where(sql.GTE(s.C(requestexecution.FieldCreatedAt), since))
+			}
+
+			s.GroupBy(s.C(requestexecution.FieldChannelID), s.C(requestexecution.FieldModelID))
+		}).
+		Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get channel-model execution stats: %w", err)
+	}
+	return results, nil
+}
+
+// queryChannelModelUsageStats aggregates throughput/ttft/token/cost per
+// (channel_id, model_id) from usage_log joined to its latest execution for
+// latency/stream metrics. Throughput follows biz.PerformanceRecord.Calculate and
+// queryDimensionPerformanceStats: only completion_tokens count, streaming requests
+// exclude TTFT, and generation time is clamped to biz.MinLatencyMs so cache hits
+// cannot contribute a zero duration.
+//
+// A CTE precomputes the latest execution id per (request_id, channel_id) so the
+// per-row lookup uses an indexed join rather than a correlated subquery (which is
+// too slow on SQLite with the (request_id, channel_id) composite).
+//
+// The query is executed through the ent dialect.Driver interface (not *sql.Driver
+// directly) so read-replica deployments are routed correctly.
+func (r *queryResolver) queryChannelModelUsageStats(ctx context.Context, since time.Time, applyFilter bool) ([]usageStat, error) {
+	driver := r.client.Driver()
+	dialectName := driver.Dialect()
+	useDollar := dialectName == dialect.Postgres
+
+	ph := "?"
+	if useDollar {
+		ph = "$1"
+	}
+
+	timeFilter := ""
+	args := []any{}
+	if applyFilter {
+		timeFilter = fmt.Sprintf(" AND u.created_at >= %s", ph)
+		args = append(args, since.UTC())
+	}
+
+	// generation latency: total_latency - first_token_latency for streaming rows,
+	// total_latency otherwise. The CASE-when clamp applies a MinLatencyMs lower
+	// bound so a zero-duration stream cannot produce an infinite throughput value.
+	// (SQLite does not support GREATEST before 3.38, so use CASE WHEN instead.)
+	genLatency := fmt.Sprintf(
+		"CASE WHEN CASE WHEN e.stream AND e.metrics_first_token_latency_ms IS NOT NULL "+
+			"THEN e.metrics_latency_ms - e.metrics_first_token_latency_ms "+
+			"ELSE e.metrics_latency_ms END < %d THEN %d "+
+			"ELSE CASE WHEN e.stream AND e.metrics_first_token_latency_ms IS NOT NULL "+
+			"THEN e.metrics_latency_ms - e.metrics_first_token_latency_ms "+
+			"ELSE e.metrics_latency_ms END END",
+		biz.MinLatencyMs, biz.MinLatencyMs,
+	)
+
+	query := fmt.Sprintf(`
+WITH latest_exec AS (
+    SELECT request_id, channel_id, MAX(id) AS max_id
+    FROM %[2]s
+    WHERE channel_id IS NOT NULL
+    GROUP BY request_id, channel_id
+)
+SELECT
+    u.channel_id,
+    u.model_id,
+    COUNT(u.id) AS request_count,
+    SUM(CASE WHEN e.status = '%[3]s' THEN 1 ELSE 0 END) AS success_count,
+    SUM(CASE WHEN e.status = '%[4]s' THEN 1 ELSE 0 END) AS failed_count,
+    COALESCE(SUM(u.prompt_tokens), 0)        AS input_tokens,
+    COALESCE(SUM(u.completion_tokens), 0)    AS output_tokens,
+    COALESCE(SUM(u.total_tokens), 0)         AS total_tokens,
+    COALESCE(SUM(u.total_cost), 0)           AS total_cost,
+    CASE
+        WHEN SUM(CASE WHEN e.metrics_latency_ms IS NOT NULL
+                      THEN %[1]s
+                      ELSE 0 END) > 0
+        THEN SUM(CASE WHEN e.metrics_latency_ms IS NOT NULL THEN u.completion_tokens ELSE 0 END) * 1000.0
+             / SUM(CASE WHEN e.metrics_latency_ms IS NOT NULL
+                        THEN %[1]s
+                        ELSE 0 END)
+        ELSE NULL
+    END AS throughput,
+    AVG(CASE WHEN e.stream AND e.metrics_first_token_latency_ms IS NOT NULL
+             AND e.metrics_first_token_latency_ms > 0
+             THEN e.metrics_first_token_latency_ms END) AS ttft_ms
+FROM %[5]s u
+LEFT JOIN %[2]s e ON e.id = (
+    SELECT le.max_id FROM latest_exec le
+    WHERE le.request_id = u.request_id AND le.channel_id = u.channel_id
+)
+WHERE u.channel_id IS NOT NULL AND u.model_id != ''%[6]s
+GROUP BY u.channel_id, u.model_id
+`,
+		genLatency,
+		requestexecution.Table,
+		requestexecution.StatusCompleted,
+		requestexecution.StatusFailed,
+		usagelog.Table,
+		timeFilter,
+	)
+
+	// Execute via the dialect.Driver interface so routerDriver (read-replica
+	// deployments) is used correctly. driver.Query fills a *sql.Rows value.
+	rowsPtr := &sql.Rows{}
+	err := driver.Query(ctx, query, args, rowsPtr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query channel-model usage stats: %w", err)
+	}
+	rows := *rowsPtr
+	defer func() { _ = rows.Close() }()
+
+	var results []usageStat
+	for rows.Next() {
+		var stat usageStat
+		if err := rows.Scan(
+			&stat.ChannelID,
+			&stat.ModelID,
+			&stat.RequestCount,
+			&stat.SuccessCount,
+			&stat.FailedCount,
+			&stat.InputTokens,
+			&stat.OutputTokens,
+			&stat.TotalTokens,
+			&stat.TotalCost,
+			&stat.Throughput,
+			&stat.TtftMs,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan channel-model usage stat: %w", err)
+		}
+		results = append(results, stat)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate channel-model usage stats: %w", err)
+	}
+	return results, nil
+}
+
+// mergeChannelModelStats combines the execution and usage aggregates into one row
+// per (channel_id, model_id). Execution stats are authoritative for
+// request/success/failed counts; usage stats supply token/cost/throughput/ttft for
+// pairs that produced usage data. A streaming request started just before a window
+// boundary can write its usage_log just after it, so usage-only pairs (no in-window
+// execution) are retained too — their success/failed counts come from the joined
+// execution's status (a failed/canceled stream can still report usage), so their
+// tokens and cost are not silently dropped and the success rate stays accurate.
+func mergeChannelModelStats(executionResults []executionStat, usageResults []usageStat) []channelModelStat {
+	usageByKey := lo.SliceToMap(usageResults, func(item usageStat) (string, usageStat) {
+		return fmt.Sprintf("%d\x00%s", item.ChannelID, item.ModelID), item
+	})
+
+	executionKeys := make(map[string]struct{}, len(executionResults))
+	results := make([]channelModelStat, 0, len(executionResults)+len(usageResults))
+	for _, exec := range executionResults {
+		key := fmt.Sprintf("%d\x00%s", exec.ChannelID, exec.ModelID)
+		executionKeys[key] = struct{}{}
+		stat := channelModelStat{
+			ChannelID:    exec.ChannelID,
+			ModelID:      exec.ModelID,
+			RequestCount: exec.RequestCount,
+			SuccessCount: exec.SuccessCount,
+			FailedCount:  exec.FailedCount,
+		}
+		if usage, ok := usageByKey[key]; ok {
+			stat.InputTokens = usage.InputTokens
+			stat.OutputTokens = usage.OutputTokens
+			stat.TotalTokens = usage.TotalTokens
+			stat.TotalCost = usage.TotalCost
+			stat.Throughput = usage.Throughput
+			stat.TtftMs = usage.TtftMs
+		}
+		results = append(results, stat)
+	}
+	for _, usage := range usageResults {
+		key := fmt.Sprintf("%d\x00%s", usage.ChannelID, usage.ModelID)
+		if _, ok := executionKeys[key]; ok {
+			continue
+		}
+		results = append(results, channelModelStat{
+			ChannelID:    usage.ChannelID,
+			ModelID:      usage.ModelID,
+			RequestCount: usage.RequestCount,
+			SuccessCount: usage.SuccessCount,
+			FailedCount:  usage.FailedCount,
+			InputTokens:  usage.InputTokens,
+			OutputTokens: usage.OutputTokens,
+			TotalTokens:  usage.TotalTokens,
+			TotalCost:    usage.TotalCost,
+			Throughput:   usage.Throughput,
+			TtftMs:       usage.TtftMs,
+		})
+	}
+
+	return results
+}
+
+// attachChannelNamesToChannelModelStats resolves channel names for the merged stats,
+// including soft-deleted channels so historical data stays attributable.
+func (r *queryResolver) attachChannelNamesToChannelModelStats(ctx context.Context, results []channelModelStat) ([]*ChannelModelPerformanceStat, error) {
+	channelIDSet := lo.SliceToMap(results, func(item channelModelStat) (int, struct{}) { return item.ChannelID, struct{}{} })
+	channelIDs := lo.Keys(channelIDSet)
+
+	ctx = schematype.SkipSoftDelete(ctx)
+	channels, err := r.client.Channel.Query().
+		Where(channel.IDIn(channelIDs...)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get channel details: %w", err)
+	}
+
+	channelNameMap := lo.SliceToMap(channels, func(ch *ent.Channel) (int, string) {
+		return ch.ID, ch.Name
+	})
+
+	response := make([]*ChannelModelPerformanceStat, 0, len(results))
+	for _, item := range results {
+		totalCount := item.SuccessCount + item.FailedCount
+		var successRate float64
+		if totalCount > 0 {
+			successRate = float64(item.SuccessCount) / float64(totalCount) * 100
+		}
+
+		channelName := channelNameMap[item.ChannelID]
+		if channelName == "" {
+			channelName = fmt.Sprintf("channel-%d", item.ChannelID)
+		}
+
+		response = append(response, &ChannelModelPerformanceStat{
+			ChannelID:    fmt.Sprintf("%d", item.ChannelID),
+			ChannelName:  channelName,
+			ModelID:      item.ModelID,
+			RequestCount: item.RequestCount,
+			SuccessCount: item.SuccessCount,
+			FailedCount:  item.FailedCount,
+			SuccessRate:  successRate,
+			Throughput:   item.Throughput,
+			TtftMs:       item.TtftMs,
+			TotalCost:    item.TotalCost,
+			TotalTokens:  safeIntFromInt64(item.TotalTokens),
+		})
+	}
+
+	return response, nil
 }
