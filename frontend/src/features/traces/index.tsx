@@ -58,6 +58,9 @@ function TracesContent() {
     });
   const [dateRange, setDateRange] = useState<DateTimeRangeValue | undefined>();
   const [dateRangeField, setDateRangeField] = useState<DateRangeField>('lastRequestAt');
+  // The field choice is a draft until the range is confirmed, so cancelling the
+  // picker does not repoint an already applied range at another timestamp.
+  const [pendingDateRangeField, setPendingDateRangeField] = useState<DateRangeField | null>(null);
   const [traceIdFilter, setTraceIdFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState<SortingState>(loadSorting);
@@ -151,31 +154,31 @@ function TracesContent() {
     resetCursor();
   };
 
-  const handleDateRangeFieldChange = useCallback(
-    (field: DateRangeField) => {
-      setDateRangeField(field);
-      resetCursor();
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+  const handleDateRangeFieldChange = (field: DateRangeField) => {
+    setPendingDateRangeField(field);
+  };
 
-  const handleDateRangeChange = useCallback(
-    (range: DateTimeRangeValue | undefined) => {
-      setDateRange(range);
-      resetCursor();
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
+  const handleDateRangeChange = (range: DateTimeRangeValue | undefined) => {
+    if (pendingDateRangeField) {
+      setDateRangeField(pendingDateRangeField);
+    }
+    setPendingDateRangeField(null);
+    setDateRange(range);
+    resetCursor();
+  };
+
+  const handleDateRangeOpenChange = (open: boolean) => {
+    if (!open) {
+      setPendingDateRangeField(null);
+    }
+  };
 
   const handleTraceIdFilterChange = useCallback(
     (traceId: string) => {
       setTraceIdFilter(traceId);
       resetCursor();
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [resetCursor]
   );
 
   const handleStatusFilterChange = useCallback(
@@ -183,8 +186,7 @@ function TracesContent() {
       setStatusFilter(statuses);
       resetCursor();
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [resetCursor]
   );
 
   const handleSortingChange = (updater: SortingState | ((previous: SortingState) => SortingState)) => {
@@ -204,7 +206,7 @@ function TracesContent() {
         pageSize={pageSize}
         totalCount={data?.totalCount}
         dateRange={dateRange}
-        dateRangeField={dateRangeField}
+        dateRangeField={pendingDateRangeField ?? dateRangeField}
         traceIdFilter={traceIdFilter}
         statusFilter={statusFilter}
         sorting={sorting}
@@ -213,6 +215,7 @@ function TracesContent() {
         onPageSizeChange={handlePageSizeChange}
         onDateRangeChange={handleDateRangeChange}
         onDateRangeFieldChange={handleDateRangeFieldChange}
+        onDateRangeOpenChange={handleDateRangeOpenChange}
         onTraceIdFilterChange={handleTraceIdFilterChange}
         onStatusFilterChange={handleStatusFilterChange}
         onSortingChange={handleSortingChange}

@@ -32,6 +32,7 @@ function DateRangeFieldToggle({ value, onChange }: { value: DateRangeField; onCh
           <button
             key={option.value}
             type='button'
+            aria-pressed={option.value === value}
             onClick={() => onChange(option.value)}
             className={cn(
               'rounded px-2 py-1 text-xs transition-colors',
@@ -54,6 +55,7 @@ interface DataTableToolbarProps<TData> {
   onDateRangeChange?: (range: DateTimeRangeValue | undefined) => void;
   dateRangeField?: DateRangeField;
   onDateRangeFieldChange?: (field: DateRangeField) => void;
+  onDateRangeOpenChange?: (open: boolean) => void;
   traceIdFilter: string;
   onTraceIdFilterChange: (traceId: string) => void;
   statusFilter?: string[];
@@ -70,6 +72,7 @@ export function DataTableToolbar<TData>({
   onDateRangeChange,
   dateRangeField = 'lastRequestAt',
   onDateRangeFieldChange,
+  onDateRangeOpenChange,
   traceIdFilter,
   onTraceIdFilterChange,
   statusFilter = [],
@@ -105,6 +108,7 @@ export function DataTableToolbar<TData>({
         <DateRangePicker
           value={dateRange}
           onChange={onDateRangeChange}
+          onOpenChange={onDateRangeOpenChange}
           headerExtra={
             onDateRangeFieldChange ? <DateRangeFieldToggle value={dateRangeField} onChange={onDateRangeFieldChange} /> : undefined
           }

@@ -61,6 +61,7 @@ interface TracesTableProps {
   onPageSizeChange: (pageSize: number) => void;
   onDateRangeChange: (range: DateTimeRangeValue | undefined) => void;
   onDateRangeFieldChange?: (field: DateRangeField) => void;
+  onDateRangeOpenChange?: (open: boolean) => void;
   onTraceIdFilterChange: (traceId: string) => void;
   onStatusFilterChange?: (statuses: string[]) => void;
   onSortingChange: (updater: SortingState | ((previous: SortingState) => SortingState)) => void;
@@ -87,6 +88,7 @@ export function TracesTable({
   onPageSizeChange,
   onDateRangeChange,
   onDateRangeFieldChange,
+  onDateRangeOpenChange,
   onTraceIdFilterChange,
   onStatusFilterChange,
   onSortingChange,
@@ -148,6 +150,7 @@ export function TracesTable({
         onDateRangeChange={onDateRangeChange}
         dateRangeField={dateRangeField}
         onDateRangeFieldChange={onDateRangeFieldChange}
+        onDateRangeOpenChange={onDateRangeOpenChange}
         traceIdFilter={traceIdFilter}
         onTraceIdFilterChange={onTraceIdFilterChange}
         statusFilter={statusFilter}

@@ -21,10 +21,12 @@ interface DateRangePickerProps {
   formatLabel?: (range: DateTimeRangeValue | undefined) => string;
   /** Rendered in the popover header, right of the selected range. */
   headerExtra?: React.ReactNode;
+  /** Called when the popover opens or closes, so callers can discard draft state. */
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function DateRangePicker(props: DateRangePickerProps) {
-  const { value, onChange, onCancel, onConfirm, className, formatLabel, headerExtra } = props;
+  const { value, onChange, onCancel, onConfirm, className, formatLabel, headerExtra, onOpenChange } = props;
   const { t } = useTranslation();
   const isControlled = Object.prototype.hasOwnProperty.call(props, 'value');
   const [open, setOpen] = React.useState(false);
@@ -81,7 +83,13 @@ export function DateRangePicker(props: DateRangePickerProps) {
 
   return (
     <div className={cn('grid gap-2', className)}>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          onOpenChange?.(next);
+        }}
+      >
         <PopoverTrigger asChild>
           <Button
             id='date'
