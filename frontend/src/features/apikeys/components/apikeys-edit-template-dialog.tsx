@@ -665,18 +665,16 @@ export function ApiKeyEditTemplateDialog({ open, onOpenChange, template }: ApiKe
           </div>
 
           <DialogFooter pinned>
-            <div className='flex w-full gap-2 sm:w-auto'>
-              <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-                {t('common.buttons.cancel')}
-              </Button>
-              <Button type='submit' form='edit-template-form' disabled={isSubmitting}>
-                {isSubmitting
-                  ? t('common.buttons.saving')
-                  : template.linkedProfilesCount > 0
-                    ? t('apikeys.profileTemplates.publishButton')
-                    : t('apikeys.profileTemplates.editButton')}
-              </Button>
-            </div>
+            <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+              {t('common.buttons.cancel')}
+            </Button>
+            <Button type='submit' form='edit-template-form' disabled={isSubmitting}>
+              {isSubmitting
+                ? t('common.buttons.saving')
+                : template.linkedProfilesCount > 0
+                  ? t('apikeys.profileTemplates.publishButton')
+                  : t('apikeys.profileTemplates.editButton')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

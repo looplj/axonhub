@@ -183,14 +183,12 @@ export function ApiKeysCreateDialog() {
             </div>
 
             <DialogFooter>
-              <div className='flex w-full gap-2 sm:w-auto'>
-                <Button type='button' variant='outline' onClick={handleClose} disabled={isSubmitting}>
-                  {t('common.buttons.cancel')}
-                </Button>
-                <Button type='submit' disabled={isSubmitting}>
-                  {isSubmitting ? t('common.buttons.creating') : t('common.buttons.create')}
-                </Button>
-              </div>
+              <Button type='button' variant='outline' onClick={handleClose} disabled={isSubmitting}>
+                {t('common.buttons.cancel')}
+              </Button>
+              <Button type='submit' disabled={isSubmitting}>
+                {isSubmitting ? t('common.buttons.creating') : t('common.buttons.create')}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
