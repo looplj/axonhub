@@ -3928,3 +3928,39 @@ func TestConvertGeminiToLLMResponse_GroundingMetadata_Additional(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertLLMToolResultToGeminiContent_RenamesReservedRefKey(t *testing.T) {
+	msg := &llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr("call_1"),
+		Content: llm.MessageContent{
+			Content: lo.ToPtr(`{"tools":{"open":{"parameters":{"source":{"$ref":"#/$defs/Src"},"list":[{"$ref":"#/$defs/A"}],"$defs":{"Src":{"type":"string"}}}}}}`),
+		},
+	}
+
+	content := convertLLMToolResultToGeminiContent(msg, nil)
+	require.Len(t, content.Parts, 1)
+
+	raw, err := json.Marshal(content.Parts[0].FunctionResponse.Response)
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), `"$ref"`)
+	require.JSONEq(t, `{"tools":{"open":{"parameters":{"source":{"_ref":"#/$defs/Src"},"list":[{"_ref":"#/$defs/A"}],"$defs":{"Src":{"type":"string"}}}}}}`, string(raw))
+}
+
+func TestConvertLLMToolResultToGeminiContent_RenamesNestedAndKeepsExistingRef(t *testing.T) {
+	msg := &llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr("call_1"),
+		Content: llm.MessageContent{
+			Content: lo.ToPtr(`{"a":{"$ref":{"$ref":"inner","x":[{"$ref":"deep"}]}},"b":{"$ref":"dropped","_ref":"kept"}}`),
+		},
+	}
+
+	content := convertLLMToolResultToGeminiContent(msg, nil)
+	require.Len(t, content.Parts, 1)
+
+	raw, err := json.Marshal(content.Parts[0].FunctionResponse.Response)
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), `"$ref"`)
+	require.JSONEq(t, `{"a":{"_ref":{"_ref":"inner","x":[{"_ref":"deep"}]}},"b":{"_ref":"kept"}}`, string(raw))
+}
