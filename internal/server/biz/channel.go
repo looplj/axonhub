@@ -632,8 +632,14 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		}
 	}
 
-	if err := ValidateVertexAPIKeys(input.Type, input.Credentials); err != nil {
-		return nil, err
+	var credentialErr error
+	if input.Type == channel.TypeGeminiVertex {
+		credentialErr = validateGeminiVertexCredentials(input.Credentials)
+	} else {
+		credentialErr = ValidateVertexAPIKeys(input.Type, input.Credentials)
+	}
+	if credentialErr != nil {
+		return nil, credentialErr
 	}
 
 	createBuilder := svc.entFromContext(ctx).Channel.Create().
@@ -1170,7 +1176,11 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			if credentials.ManagementAPIKey == "" && isZenmuxChannelType(effectiveType) {
 				credentials.ManagementAPIKey = existing.Credentials.ManagementAPIKey
 			}
-			if err := ValidateVertexAPIKeys(effectiveType, credentials); err != nil {
+			if effectiveType == channel.TypeGeminiVertex {
+				if err := validateGeminiVertexCredentials(credentials); err != nil {
+					return err
+				}
+			} else if err := ValidateVertexAPIKeys(effectiveType, credentials); err != nil {
 				return err
 			}
 			mut.SetCredentials(credentials)

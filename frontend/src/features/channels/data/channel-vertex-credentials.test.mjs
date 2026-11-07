@@ -95,6 +95,37 @@ test('a Vertex channel accepts a complete binding', () => {
   assert.equal(result.success, true, JSON.stringify(result.error?.issues));
 });
 
+test('a Vertex channel accepts ADC credentials with empty JSON', () => {
+  const result = createChannelInputSchema.safeParse({
+    ...baseChannel,
+    type: 'gemini_vertex',
+    credentials: {
+      gcp: {
+        projectID: 'miguo-vertex-prod-1',
+        region: 'global',
+        jsonData: '',
+      },
+    },
+  });
+
+  assert.equal(result.success, true, JSON.stringify(result.error?.issues));
+});
+
+test('a Vertex update accepts optional GCP credential fields', () => {
+  const result = updateChannelInputSchema.safeParse({
+    id: 'gid://axonhub/Channel/1',
+    type: 'gemini_vertex',
+    credentials: {
+      gcp: {
+        projectID: 'miguo-vertex-prod-1',
+        region: 'global',
+      },
+    },
+  });
+
+  assert.equal(result.success, true, JSON.stringify(result.error?.issues));
+});
+
 // An ordinary channel never submits vertexApiKeys, because onSubmit strips the field.
 // A leftover row from toggling "Use Vertex AI" on and back off must not block it: the
 // row is invisible in that state, so a save would fail with no field to correct.

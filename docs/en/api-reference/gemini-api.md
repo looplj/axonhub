@@ -164,6 +164,13 @@ The Gemini API format uses the following authentication:
 
 The API keys are managed through AxonHub's API Key management system and provide the same permissions regardless of which API format you use.
 
+For a `gemini_vertex` channel, configure either Vertex API-key bindings or a GCP credential, not both. A GCP credential contains the project ID, region, and an optional service-account JSON document. When the JSON is empty, AxonHub uses the server's Application Default Credentials. GCP credentials use OAuth Bearer authentication and project-scoped Vertex URLs for model generation:
+
+```text
+POST https://aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/publishers/google/models/{model}:generateContent
+Authorization: Bearer <access-token>
+```
+
 ## Streaming Support
 
 Gemini API format supports streaming responses for real-time content generation.

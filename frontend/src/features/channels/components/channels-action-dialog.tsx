@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -262,18 +263,6 @@ function getResponsesTransportFromChannel(channel?: Pick<Channel, 'type' | 'base
   const responsesEndpoint = channel?.endpoints?.find((endpoint) => endpoint.apiFormat === OPENAI_RESPONSES);
   if (responsesEndpoint?.transport === 'http' || responsesEndpoint?.transport === 'websocket') return responsesEndpoint.transport;
   return getResponsesTransportFromBaseURL(channel?.baseURL);
-}
-
-// Vertex credentials are project-bound triples; the form keeps the same shape as
-// the backend contract so project/region stay attached to their key.
-type VertexAPIKeyCredential = NonNullable<NonNullable<Channel['credentials']>['vertexApiKeys']>[number];
-
-function isVertexChannelType(channelType: ChannelType | undefined): boolean {
-  return channelType === 'gemini_vertex';
-}
-
-function emptyVertexAPIKey(): VertexAPIKeyCredential {
-  return { projectID: '', apiKey: '', region: 'global' };
 }
 
 function getResponsesWebSocketBaseURL(channelType: ChannelType): string | undefined {
@@ -548,6 +537,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [showCommandCodeAuthCookie, setShowCommandCodeAuthCookie] = useState(false);
   const [showOllamaAuthCookie, setShowOllamaAuthCookie] = useState(false);
   const [showApiKeysPanel, setShowApiKeysPanel] = useState(false);
+  const [vertexCredentialDialog, setVertexCredentialDialog] = useState<'express' | 'json' | null>(null);
+  const [vertexApiKeyDraft, setVertexApiKeyDraft] = useState(emptyVertexAPIKey);
+  const [vertexGcpDraft, setVertexGcpDraft] = useState({ projectID: '', region: 'global', jsonData: '' });
+  const vertexGcpFileRef = useRef<HTMLInputElement>(null);
+  const [vertexCredentialError, setVertexCredentialError] = useState<string | null>(null);
   const [apiKeysSearch, setApiKeysSearch] = useState('');
   const [selectedKeysToRemove, setSelectedKeysToRemove] = useState<Set<string>>(new Set());
   const [confirmRemoveSelectedOpen, setConfirmRemoveSelectedOpen] = useState(false);
@@ -982,7 +976,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               policies: { stream: 'unlimited' },
               credentials: {
                 apiKeys: [],
-                vertexApiKeys: isVertexChannelType(derivedChannelType) ? [emptyVertexAPIKey()] : [],
+                vertexApiKeys: [],
                 managementApiKey: undefined,
                 gcp: {
                   region: '',
@@ -999,6 +993,72 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   });
 
   const vertexApiKeyFields = useFieldArray({ control: form.control, name: 'credentials.vertexApiKeys' });
+  const vertexCredentialIdPrefix = useId();
+  const vertexApiKeys = form.watch('credentials.vertexApiKeys') || [];
+  const vertexGcp = form.watch('credentials.gcp');
+  const hasVertexGcp = Boolean(vertexGcp && (vertexGcp.projectID?.trim() || vertexGcp.region?.trim() || vertexGcp.jsonData?.trim()));
+  const hasVertexApiKeys = vertexApiKeys.length > 0;
+
+  const openVertexExpressDialog = () => {
+    setVertexCredentialError(null);
+    setVertexApiKeyDraft(emptyVertexAPIKey());
+    setVertexCredentialDialog('express');
+  };
+
+  const openVertexJsonDialog = () => {
+    setVertexCredentialError(null);
+    setVertexGcpDraft({
+      projectID: vertexGcp?.projectID || '',
+      region: vertexGcp?.region || 'global',
+      jsonData: vertexGcp?.jsonData || '',
+    });
+    setVertexCredentialDialog('json');
+  };
+
+  const saveVertexExpressCredential = () => {
+    const credential = {
+      projectID: vertexApiKeyDraft.projectID.trim(),
+      apiKey: vertexApiKeyDraft.apiKey.trim(),
+      region: vertexApiKeyDraft.region.trim() || 'global',
+    };
+    if (!credential.projectID || !credential.apiKey || !credential.region) {
+      setVertexCredentialError(t('channels.dialogs.fields.vertexApiKey.required'));
+      return;
+    }
+
+    form.setValue('credentials.gcp', { projectID: '', region: '', jsonData: '' }, { shouldDirty: true });
+    vertexApiKeyFields.append(credential);
+    setVertexCredentialDialog(null);
+  };
+
+  const saveVertexJsonCredential = () => {
+    const credential = {
+      projectID: vertexGcpDraft.projectID.trim(),
+      region: vertexGcpDraft.region.trim() || 'global',
+      jsonData: vertexGcpDraft.jsonData.trim(),
+    };
+    if (!credential.projectID || !credential.region) {
+      setVertexCredentialError(t('channels.dialogs.fields.vertexGcp.required'));
+      return;
+    }
+    if (credential.jsonData) {
+      try {
+        const parsed = JSON.parse(credential.jsonData) as unknown;
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid JSON object');
+      } catch {
+        setVertexCredentialError(t('channels.dialogs.fields.vertexGcp.invalidJson'));
+        return;
+      }
+    }
+
+    vertexApiKeyFields.replace([]);
+    form.setValue('credentials.gcp', credential, { shouldDirty: true });
+    setVertexCredentialDialog(null);
+  };
+
+  const removeVertexGcpCredential = () => {
+    form.setValue('credentials.gcp', { projectID: '', region: '', jsonData: '' }, { shouldDirty: true });
+  };
   const apiKeys = form.watch('credentials.apiKeys');
   const apiKeysCount = useMemo(() => (apiKeys || []).filter((k) => k.trim().length > 0).length, [apiKeys]);
   const isSubmitting = createChannel.isPending || duplicateChannel.isPending || updateChannelSettings.isPending;
@@ -1252,12 +1312,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       if (selectedApiFormat === 'gemini/contents') {
         const newChannelType = checked ? 'gemini_vertex' : 'gemini';
         form.setValue('type', newChannelType);
-
-        // Switching into Vertex mode needs a row to edit: an empty list would
-        // reject the submit with no visible field to fill in.
-        if (checked && !(form.getValues('credentials.vertexApiKeys') ?? []).length) {
-          form.setValue('credentials.vertexApiKeys', [emptyVertexAPIKey()]);
-        }
 
         if (!isEdit) {
           const baseURLFieldState = form.getFieldState('baseURL', form.formState);
@@ -1561,7 +1615,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                   region: credential.region.trim() || 'global',
                 })),
               }
-            : { ...submittedCredentials, vertexApiKeys: undefined }
+            : {
+                ...submittedCredentials,
+                apiKey: undefined,
+                apiKeys: undefined,
+                vertexApiKeys: undefined,
+              }
           : { ...submittedCredentials, vertexApiKeys: undefined };
 
       // A third-party Codex channel authenticates with a plain API key: reject an
@@ -1697,13 +1756,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         const apiKeys = values.credentials?.apiKeys || [];
         const hasApiKeys = apiKeys.length > 0 && apiKeys.some((k) => k.trim() !== '');
         const hasManagementApiKey = (values.credentials?.managementApiKey || '').trim().length > 0;
-        const hasGcpCredentials =
-          values.credentials?.gcp?.region &&
-          values.credentials.gcp.region.trim() !== '' &&
-          values.credentials?.gcp?.projectID &&
-          values.credentials.gcp.projectID.trim() !== '' &&
-          values.credentials?.gcp?.jsonData &&
-          values.credentials.gcp.jsonData.trim() !== '';
+        const hasGcpCredentials = Boolean(
+          values.credentials?.gcp?.region?.trim() && values.credentials.gcp.projectID?.trim()
+        );
         const hasVertexApiKeys =
           values.credentials?.vertexApiKeys && values.credentials.vertexApiKeys.some((binding) => binding.apiKey.trim() !== '');
 
@@ -1950,6 +2005,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
     const vertexApiKeys = form.watch('credentials.vertexApiKeys');
     const hasVertexApiKey = vertexApiKeys?.some((credential) => credential.apiKey.trim().length > 0);
+    const gcp = form.watch('credentials.gcp');
+    const hasGcpCredential = Boolean(gcp?.projectID?.trim() && gcp.region?.trim());
 
     if (isCodexType || isAntigravityType || isClineType || isXAISubscriptionType) {
       return !!baseURL;
@@ -1965,7 +2022,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       return !!baseURL;
     }
 
-    return !!baseURL && (isGeminiVertex ? hasVertexApiKey : hasApiKey);
+    return !!baseURL && (isGeminiVertex ? hasVertexApiKey || hasGcpCredential : hasApiKey);
   };
   // Memoize quick models to avoid re-evaluating on every render
   const currentType = form.watch('type');
@@ -2744,106 +2801,50 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       />
 
                       {isGeminiVertex && (
-                        <FormField
-                          control={form.control}
-                          name='credentials.vertexApiKeys'
-                          render={({ field }) => {
-                            const credentials = field.value || [];
-                            return (
-                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                                  {t('channels.dialogs.fields.vertexApiKey.label')}
-                                </FormLabel>
-                                <div className='space-y-3 md:col-span-6'>
-                                  {credentials.map((_, index) => (
-                                    <div className='grid gap-3 rounded-md border p-3' key={vertexApiKeyFields.fields[index]?.id ?? index}>
-                                      <div className='grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:items-end'>
-                                        <FormField
-                                          control={form.control}
-                                          name={`credentials.vertexApiKeys.${index}.projectID`}
-                                          render={({ field: rowField }) => (
-                                            <FormItem className='grid gap-1.5'>
-                                              <FormLabel className='text-muted-foreground text-xs font-medium'>
-                                                {t('channels.dialogs.fields.vertexApiKey.projectIDLabel')}
-                                              </FormLabel>
-                                              <FormControl>
-                                                <Input
-                                                  value={rowField.value}
-                                                  onChange={(event) => rowField.onChange(event.target.value)}
-                                                  placeholder={t('channels.dialogs.fields.vertexApiKey.projectIDPlaceholder')}
-                                                />
-                                              </FormControl>
-                                              <FormMessage />
-                                            </FormItem>
-                                          )}
-                                        />
-                                        <FormField
-                                          control={form.control}
-                                          name={`credentials.vertexApiKeys.${index}.region`}
-                                          render={({ field: rowField }) => (
-                                            <FormItem className='grid gap-1.5'>
-                                              <FormLabel className='text-muted-foreground text-xs font-medium'>
-                                                {t('channels.dialogs.fields.vertexApiKey.regionLabel')}
-                                              </FormLabel>
-                                              <FormControl>
-                                                <Input
-                                                  value={rowField.value}
-                                                  onChange={(event) => rowField.onChange(event.target.value)}
-                                                  placeholder='global'
-                                                />
-                                              </FormControl>
-                                              <FormMessage />
-                                            </FormItem>
-                                          )}
-                                        />
-                                        <Button
-                                          type='button'
-                                          variant='ghost'
-                                          size='icon'
-                                          onClick={() => vertexApiKeyFields.remove(index)}
-                                          disabled={credentials.length <= 1}
-                                          aria-label={t('channels.dialogs.fields.vertexApiKey.remove')}
-                                        >
-                                          <Trash2 className='h-4 w-4' />
-                                        </Button>
-                                      </div>
-                                      <FormField
-                                        control={form.control}
-                                        name={`credentials.vertexApiKeys.${index}.apiKey`}
-                                        render={({ field: rowField }) => (
-                                          <FormItem className='grid gap-1.5'>
-                                            <FormLabel className='text-muted-foreground text-xs font-medium'>
-                                              {t('channels.dialogs.fields.vertexApiKey.apiKeyLabel')}
-                                            </FormLabel>
-                                            <FormControl>
-                                              <Input
-                                                type='password'
-                                                value={rowField.value}
-                                                onChange={(event) => rowField.onChange(event.target.value)}
-                                                placeholder={t('channels.dialogs.fields.vertexApiKey.apiKeyPlaceholder')}
-                                              />
-                                            </FormControl>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                    </div>
-                                  ))}
-                                  <Button
-                                    type='button'
-                                    variant='secondary'
-                                    onClick={() => vertexApiKeyFields.append({ projectID: '', apiKey: '', region: 'global' })}
-                                  >
-                                    <Plus className='mr-2 h-4 w-4' />
-                                    {t('channels.dialogs.fields.vertexApiKey.add')}
-                                  </Button>
-                                  <FormDescription>{t('channels.dialogs.fields.vertexApiKey.description')}</FormDescription>
-                                  <FormMessage />
+                        <div className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                            {t('channels.dialogs.fields.vertexCredentials.label')}
+                          </FormLabel>
+                          <div className='space-y-3 md:col-span-6'>
+                            {vertexApiKeys.map((credential, index) => (
+                              <div className='flex items-center justify-between rounded-md border p-3' key={vertexApiKeyFields.fields[index]?.id ?? index}>
+                                <div className='min-w-0 space-y-1 text-sm'>
+                                  <p className='font-medium'>{t('channels.dialogs.fields.vertexCredentials.expressTitle')}</p>
+                                  <p className='text-muted-foreground truncate'>
+                                    {credential.projectID} / {credential.region} / {credential.apiKey.slice(0, 4)}****{credential.apiKey.slice(-4)}
+                                  </p>
                                 </div>
-                              </FormItem>
-                            );
-                          }}
-                        />
+                                <Button type='button' variant='ghost' size='icon' onClick={() => vertexApiKeyFields.remove(index)} aria-label={t('channels.dialogs.fields.vertexApiKey.remove')}>
+                                  <Trash2 className='h-4 w-4' />
+                                </Button>
+                              </div>
+                            ))}
+                            {hasVertexGcp && (
+                              <div className='flex items-center justify-between rounded-md border p-3'>
+                                <div className='min-w-0 space-y-1 text-sm'>
+                                  <p className='font-medium'>{t('channels.dialogs.fields.vertexCredentials.jsonTitle')}</p>
+                                  <p className='text-muted-foreground truncate'>
+                                    {vertexGcp?.projectID} / {vertexGcp?.region} / {vertexGcp?.jsonData?.trim() ? 'JSON' : 'ADC'}
+                                  </p>
+                                </div>
+                                <Button type='button' variant='ghost' size='icon' onClick={removeVertexGcpCredential} aria-label={t('channels.dialogs.fields.vertexGcp.remove')}>
+                                  <Trash2 className='h-4 w-4' />
+                                </Button>
+                              </div>
+                            )}
+                            <div className='flex flex-wrap gap-2'>
+                              <Button type='button' variant='secondary' onClick={openVertexExpressDialog} disabled={hasVertexGcp}>
+                                <Plus className='mr-2 h-4 w-4' />
+                                {t('channels.dialogs.fields.vertexCredentials.addExpress')}
+                              </Button>
+                              <Button type='button' variant='secondary' onClick={openVertexJsonDialog} disabled={hasVertexApiKeys}>
+                                <Plus className='mr-2 h-4 w-4' />
+                                {t('channels.dialogs.fields.vertexCredentials.addJson')}
+                              </Button>
+                            </div>
+                            <FormDescription>{t('channels.dialogs.fields.vertexCredentials.description')}</FormDescription>
+                          </div>
+                        </div>
                       )}
 
                       {(!isGeminiVertex && (!(isCodexType || isClaudeCodeType || isCopilotType || isXAISubscriptionType) || authMode === 'third-party')) &&
@@ -4156,6 +4157,84 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                   ? t('common.buttons.edit')
                   : t('common.buttons.create')}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={vertexCredentialDialog === 'express'}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setVertexCredentialError(null);
+            setVertexCredentialDialog(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('channels.dialogs.fields.vertexCredentials.addExpress')}</DialogTitle>
+            <DialogDescription>{t('channels.dialogs.fields.vertexApiKey.description')}</DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4'>
+            <div className='space-y-2'>
+              <Label htmlFor={`${vertexCredentialIdPrefix}-express-project-id`}>{t('channels.dialogs.fields.vertexApiKey.projectIDLabel')}</Label>
+              <Input id={`${vertexCredentialIdPrefix}-express-project-id`} value={vertexApiKeyDraft.projectID} onChange={(event) => setVertexApiKeyDraft((draft) => ({ ...draft, projectID: event.target.value }))} placeholder={t('channels.dialogs.fields.vertexApiKey.projectIDPlaceholder')} />
+            </div>
+            <div className='space-y-2'>
+              <Label htmlFor={`${vertexCredentialIdPrefix}-express-region`}>{t('channels.dialogs.fields.vertexApiKey.regionLabel')}</Label>
+              <Input id={`${vertexCredentialIdPrefix}-express-region`} value={vertexApiKeyDraft.region} onChange={(event) => setVertexApiKeyDraft((draft) => ({ ...draft, region: event.target.value }))} placeholder='global' />
+            </div>
+            <div className='space-y-2'>
+              <Label htmlFor={`${vertexCredentialIdPrefix}-express-api-key`}>{t('channels.dialogs.fields.vertexApiKey.apiKeyLabel')}</Label>
+              <Input id={`${vertexCredentialIdPrefix}-express-api-key`} type='password' value={vertexApiKeyDraft.apiKey} onChange={(event) => setVertexApiKeyDraft((draft) => ({ ...draft, apiKey: event.target.value }))} placeholder={t('channels.dialogs.fields.vertexApiKey.apiKeyPlaceholder')} />
+            </div>
+            {vertexCredentialError && <p className='text-destructive text-sm'>{vertexCredentialError}</p>}
+          </div>
+          <DialogFooter>
+            <Button type='button' variant='outline' onClick={() => setVertexCredentialDialog(null)}>{t('common.buttons.cancel')}</Button>
+            <Button type='button' onClick={saveVertexExpressCredential}>{t('common.buttons.confirm')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={vertexCredentialDialog === 'json'}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setVertexCredentialError(null);
+            setVertexCredentialDialog(null);
+          }
+        }}
+      >
+        <DialogContent className='max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle>{t('channels.dialogs.fields.vertexCredentials.addJson')}</DialogTitle>
+            <DialogDescription>{t('channels.dialogs.fields.vertexGcp.description')}</DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4'>
+            <div className='space-y-2'>
+              <Label htmlFor={`${vertexCredentialIdPrefix}-json-project-id`}>{t('channels.dialogs.fields.vertexGcp.projectIDLabel')}</Label>
+              <Input id={`${vertexCredentialIdPrefix}-json-project-id`} value={vertexGcpDraft.projectID} onChange={(event) => setVertexGcpDraft((draft) => ({ ...draft, projectID: event.target.value }))} placeholder={t('channels.dialogs.fields.vertexGcp.projectIDPlaceholder')} />
+            </div>
+            <div className='space-y-2'>
+              <Label htmlFor={`${vertexCredentialIdPrefix}-json-region`}>{t('channels.dialogs.fields.vertexGcp.regionLabel')}</Label>
+              <Input id={`${vertexCredentialIdPrefix}-json-region`} value={vertexGcpDraft.region} onChange={(event) => setVertexGcpDraft((draft) => ({ ...draft, region: event.target.value }))} placeholder='global' />
+            </div>
+            <div className='space-y-2'>
+              <Label htmlFor={`${vertexCredentialIdPrefix}-json-credentials`}>{t('channels.dialogs.fields.vertexGcp.jsonDataLabel')}</Label>
+              <Input id={`${vertexCredentialIdPrefix}-json-credentials`} ref={vertexGcpFileRef} type='file' accept='.json,application/json' onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                const jsonData = await file.text();
+                setVertexGcpDraft((draft) => ({ ...draft, jsonData }));
+                event.target.value = '';
+              }} />
+              <Textarea value={vertexGcpDraft.jsonData} onChange={(event) => setVertexGcpDraft((draft) => ({ ...draft, jsonData: event.target.value }))} className='min-h-[180px] resize-y font-mono text-xs' placeholder={t('channels.dialogs.fields.vertexGcp.jsonDataPlaceholder')} spellCheck={false} />
+              <FormDescription>{t('channels.dialogs.fields.vertexGcp.adcHint')}</FormDescription>
+            </div>
+            {vertexCredentialError && <p className='text-destructive text-sm'>{vertexCredentialError}</p>}
+          </div>
+          <DialogFooter>
+            <Button type='button' variant='outline' onClick={() => setVertexCredentialDialog(null)}>{t('common.buttons.cancel')}</Button>
+            <Button type='button' onClick={saveVertexJsonCredential}>{t('common.buttons.confirm')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

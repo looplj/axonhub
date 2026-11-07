@@ -402,6 +402,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		proxyConfig       *httpclient.ProxyConfig
 		headerOverrideOps []objects.OverrideOperation
 		codexChannel      *ent.Channel
+		vertexGCP         *objects.GCPCredential
 	)
 
 	if input.APIKey != nil && *input.APIKey != "" {
@@ -427,26 +428,39 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 
 		if apiKey == "" {
-			if !fetchModelsInputMatchesChannel(input, ch) {
+			isVertexGCP := ch.Type == channel.TypeGeminiVertex && hasGCPCredential(ch.Credentials.GCP)
+			if !isVertexGCP && !fetchModelsInputMatchesChannel(input, ch) {
 				return &FetchModelsResult{
 					Models: []ModelIdentify{},
 					Error:  lo.ToPtr("API key is required when channel type or base URL is changed"),
 				}, nil
 			}
 
-			apiKey = ch.Credentials.APIKey
-			if apiKey == "" && len(ch.Credentials.APIKeys) > 0 {
-				apiKey = ch.Credentials.APIKeys[0]
-			}
-			if apiKey == "" && ch.Type == channel.TypeGeminiVertex && len(ch.Credentials.VertexAPIKeys) > 0 {
-				apiKey = ch.Credentials.VertexAPIKeys[0].APIKey
+			if !isVertexGCP {
+				apiKey = ch.Credentials.APIKey
+				if apiKey == "" && len(ch.Credentials.APIKeys) > 0 {
+					apiKey = ch.Credentials.APIKeys[0]
+				}
+				if apiKey == "" && ch.Type == channel.TypeGeminiVertex && len(ch.Credentials.VertexAPIKeys) > 0 {
+					apiKey = ch.Credentials.VertexAPIKeys[0].APIKey
+				}
+			} else {
+				vertexGCP = ch.Credentials.GCP
 			}
 			input.ChannelType = ch.Type.String()
 			input.BaseURL = ch.BaseURL
 		}
 
-		if ch.Type == channel.TypeGeminiVertex {
-			if credential, ok := ch.Credentials.VertexAPIKey(apiKey); ok {
+		if ch.Type == channel.TypeGeminiVertex && vertexGCP != nil {
+			if hasGCPCredential(ch.Credentials.GCP) {
+				vertexGCP = ch.Credentials.GCP
+				if input.ProjectID == nil || strings.TrimSpace(*input.ProjectID) == "" {
+					input.ProjectID = lo.ToPtr(vertexGCP.ProjectID)
+				}
+				if input.Region == nil || strings.TrimSpace(*input.Region) == "" {
+					input.Region = lo.ToPtr(vertexGCP.Region)
+				}
+			} else if credential, ok := ch.Credentials.VertexAPIKey(apiKey); ok {
 				if input.ProjectID == nil || strings.TrimSpace(*input.ProjectID) == "" {
 					input.ProjectID = lo.ToPtr(credential.ProjectID)
 				}
@@ -473,7 +487,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	channelType := channel.Type(input.ChannelType)
 	thirdPartyCodexCatalog := channelType == channel.TypeCodex && codexChannel == nil && !isOAuthJSON(apiKey)
 
-	if apiKey == "" && codexChannel == nil {
+	if apiKey == "" && codexChannel == nil && vertexGCP == nil {
 		if isQiniuChannelType(channelType) {
 			return &FetchModelsResult{
 				Models: qiniuFallbackModels,
@@ -580,6 +594,16 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		req.Headers.Set("Authorization", "Bearer "+apiKey)
 	} else if channelType.UsesAnthropicModelAPI() {
 		req.Headers.Set("X-Api-Key", apiKey)
+	} else if channelType == channel.TypeGeminiVertex && vertexGCP != nil {
+		tokenSource, err := gcpTokenSource(ctx, vertexGCP)
+		if err != nil {
+			return &FetchModelsResult{Models: []ModelIdentify{}, Error: lo.ToPtr(fmt.Sprintf("failed to load GCP credentials: %v", err))}, nil
+		}
+		token, err := tokenSource.Token()
+		if err != nil {
+			return &FetchModelsResult{Models: []ModelIdentify{}, Error: lo.ToPtr(fmt.Sprintf("failed to obtain GCP access token: %v", err))}, nil
+		}
+		req.Headers.Set("Authorization", "Bearer "+token.AccessToken)
 	} else if channelType.IsGemini() {
 		req.Headers.Set("X-Goog-Api-Key", apiKey)
 	} else {
