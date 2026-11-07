@@ -5,16 +5,19 @@ package openapi
 import (
 	"time"
 
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/shopspring/decimal"
 )
 
 type APIKey struct {
-	ID       objects.GUID            `json:"id"`
-	Key      string                  `json:"key"`
-	Name     string                  `json:"name"`
-	Scopes   []string                `json:"scopes,omitempty"`
-	Profiles *objects.APIKeyProfiles `json:"profiles,omitempty"`
+	ID        objects.GUID            `json:"id"`
+	ProjectID int                     `json:"projectID"`
+	Status    apikey.Status           `json:"status"`
+	Key       string                  `json:"key"`
+	Name      string                  `json:"name"`
+	Scopes    []string                `json:"scopes,omitempty"`
+	Profiles  *objects.APIKeyProfiles `json:"profiles,omitempty"`
 }
 
 type APIKeyProfileQuotaUsage struct {

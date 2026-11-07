@@ -6,6 +6,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 // resolveAPIKey loads an API key through the privacy-gated read path from the
@@ -43,7 +44,7 @@ func guidID(g *objects.GUID, expectedType string) (*int, error) {
 	}
 
 	if g.Type != expectedType {
-		return nil, fmt.Errorf("invalid id: expected a %s GUID, got %s", expectedType, g.Type)
+		return nil, xerrors.ValidationError(fmt.Sprintf("invalid id: expected a %s GUID, got %s", expectedType, g.Type))
 	}
 
 	return &g.ID, nil
@@ -60,10 +61,12 @@ func toOpenAPIAPIKey(k *ent.APIKey) *APIKey {
 	}
 
 	return &APIKey{
-		ID:       objects.GUID{Type: "APIKey", ID: k.ID},
-		Key:      k.Key,
-		Name:     k.Name,
-		Scopes:   k.Scopes,
-		Profiles: k.Profiles,
+		ID:        objects.GUID{Type: "APIKey", ID: k.ID},
+		ProjectID: k.ProjectID,
+		Status:    k.Status,
+		Key:       k.Key,
+		Name:      k.Name,
+		Scopes:    k.Scopes,
+		Profiles:  k.Profiles,
 	}
 }

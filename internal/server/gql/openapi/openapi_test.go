@@ -46,6 +46,11 @@ func setupOpenAPI(t *testing.T, serviceAccountScopes []string) (*mutationResolve
 	t.Helper()
 
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	return setupOpenAPIClient(t, serviceAccountScopes, client)
+}
+
+func setupOpenAPIClient(t *testing.T, serviceAccountScopes []string, client *ent.Client) (*mutationResolver, fixtures, context.Context, *ent.Client) {
+	t.Helper()
 	t.Cleanup(func() { _ = client.Close() })
 
 	// Setup ctx for fixture construction with privacy bypass.
@@ -146,9 +151,7 @@ func setupOpenAPI(t *testing.T, serviceAccountScopes []string) (*mutationResolve
 	// Real services (memory cache, no Redis).
 	cacheCfg := xcache.Config{Mode: xcache.ModeMemory}
 
-	projectSvc := &biz.ProjectService{
-		ProjectCache: xcache.NewFromConfig[xcache.Entry[ent.Project]](cacheCfg),
-	}
+	projectSvc := biz.NewProjectService(biz.ProjectServiceParams{Ent: client, CacheConfig: cacheCfg})
 
 	apiKeySvc := biz.NewAPIKeyService(biz.APIKeyServiceParams{
 		CacheConfig:    cacheCfg,

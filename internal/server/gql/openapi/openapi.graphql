@@ -4,10 +4,18 @@ scalar Time
 
 type APIKey {
   id: ID!
+  projectID: Int!
+  status: APIKeyStatus!
   key: String!
   name: String!
   scopes: [String!]
   profiles: APIKeyProfiles
+}
+
+enum APIKeyStatus {
+  enabled
+  disabled
+  archived
 }
 
 type APIKeyProfiles {
@@ -137,6 +145,7 @@ input LoadApiKeyProfileTemplateInput {
 }
 
 extend type Mutation {
+  disableAPIKey(id: ID!): APIKey!
   createLLMAPIKey(name: String!): APIKey!
   """
   Updates the profiles of an API key. Provide exactly one of id or name;
