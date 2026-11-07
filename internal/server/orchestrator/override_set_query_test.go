@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -68,4 +69,43 @@ func TestApplyBodySet_NeverReturnsInvalidJSON(t *testing.T) {
 	out, err := applyBodySet(context.Background(), body, setOp(`messages.#.content.#(type=="image_url")#`), RenderContext{})
 	require.Error(t, err)
 	require.JSONEq(t, string(body), string(out))
+}
+
+func TestApplyBodySet_QueryPathWithSuffixSetsFieldOnEveryMatch(t *testing.T) {
+	body := []byte(`{"messages":[{"content":[` +
+		`{"type":"image_url","detail":"high"},{"type":"text"},{"type":"image_url","detail":"high"}]}]}`)
+
+	op := objects.OverrideOperation{Op: objects.OverrideOpSet, Value: "low", Path: `messages.#.content.#(type=="image_url").detail`}
+
+	out, err := applyBodySet(context.Background(), body, op, RenderContext{})
+	require.NoError(t, err)
+	require.JSONEq(t,
+		`{"messages":[{"content":[{"type":"image_url","detail":"low"},{"type":"text"},{"type":"image_url","detail":"low"}]}]}`,
+		string(out))
+}
+
+func TestApplyBodySet_QueryPathCreatesMissingFieldOnEveryMatch(t *testing.T) {
+	body := []byte(`{"messages":[{"content":[{"type":"image_url"},{"type":"text"},{"type":"image_url"}]}]}`)
+
+	op := objects.OverrideOperation{Op: objects.OverrideOpSet, Value: "low", Path: `messages.#.content.#(type=="image_url").detail`}
+
+	out, err := applyBodySet(context.Background(), body, op, RenderContext{})
+	require.NoError(t, err)
+	require.JSONEq(t,
+		`{"messages":[{"content":[{"type":"image_url","detail":"low"},{"type":"text"},{"type":"image_url","detail":"low"}]}]}`,
+		string(out))
+}
+
+func TestSpliceTargets_RewritesAllMatchesWithoutFallingBack(t *testing.T) {
+	body := []byte(`{"messages":[{"content":[{"type":"image_url"},{"type":"text"},{"type":"image_url"}]},{"content":[{"type":"image_url"}]}]}`)
+
+	targets := expandQueryPath(body, `messages.#.content.#(type=="image_url")`)
+	require.Len(t, targets, 3)
+
+	out, ok, err := spliceTargets(body, targets, map[string]any{"type": "text", "text": "[removed]"})
+	require.NoError(t, err)
+	require.True(t, ok, "targets should have verifiable offsets, so no sjson fallback is needed")
+	require.NotContains(t, string(out), "image_url")
+	require.Equal(t, 3, strings.Count(string(out), "[removed]"))
+	require.True(t, gjson.ValidBytes(out))
 }
