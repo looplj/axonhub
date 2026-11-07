@@ -100,7 +100,7 @@ type RuntimeStatusEntry struct {
 }
 
 // UpgradePreview is returned when an enabled plugin gains permissions, network
-// rules, events, hooks, or pages.
+// rules, events, hooks, pages, or actions.
 // Nothing is written until a later Install submits the full new grant.
 type UpgradePreview struct {
 	CurrentVersion string
@@ -110,6 +110,7 @@ type UpgradePreview struct {
 	Events         []string
 	Hooks          []string
 	Pages          []string
+	Actions        []string
 }
 
 // InstallResult is a new or upgraded row, or a preview that left the current row running.
@@ -1643,6 +1644,7 @@ func previewFrom(row pluginRecord, pkg *Package, diff ManifestDiff) *UpgradePrev
 		Events:         slices.Clone(diff.Events),
 		Hooks:          slices.Clone(diff.Hooks),
 		Pages:          slices.Clone(diff.Pages),
+		Actions:        slices.Clone(diff.Actions),
 	}
 }
 

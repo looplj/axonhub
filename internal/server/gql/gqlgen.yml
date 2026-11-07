@@ -853,6 +853,12 @@ models:
   PluginUIPage:
     model:
       - github.com/looplj/axonhub/internal/server/plugin.UIPage
+  PluginUIAction:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.UIAction
+  PluginUIActionEffect:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PluginUIActionEffect
   PluginUIEntries:
     model:
       - github.com/looplj/axonhub/internal/server/plugin.UIEntries

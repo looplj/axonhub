@@ -1,6 +1,6 @@
 # 页面
 
-[插件系统](README.md)的 UI 扩展点。v1 只有独立页面：侧栏入口加一个整页 iframe。dashboard 面板等插槽见 [slots.md](slots.md)，未排期，排期时复用本篇的 iframe 宿主、桥接和插件 GraphQL。manifest 的 `ui.pages` 字段见 [manifest.md](manifest.md)。数值限制见 [运行限制](README.md#运行限制)。任务见 [任务表](README.md#9-任务管理)，本篇对应 T-04 至 T-07。
+[插件系统](README.md)的 UI 扩展点。本篇定义独立页面：侧栏入口加一个整页 iframe。全局工具栏操作插槽见 [slots.md](slots.md)，T-17 复用本篇的 iframe 宿主、桥接和插件 GraphQL。manifest 的 `ui.pages` 字段见 [manifest.md](manifest.md)。数值限制见 [运行限制](README.md#运行限制)。任务见 [任务表](README.md#9-任务管理)，本篇对应 T-04 至 T-07。
 
 > 页面使用独立 Plugin Principal，context 中的用户为收窄视图（权限与插件授权取交集、无 Owner、无角色），详见 [permission.md](permission.md)。
 
@@ -25,7 +25,7 @@
 
 ### 非目标
 
-- 插槽：dashboard 面板、渠道编辑对话框、系统设置。见 [slots.md](slots.md)。
+- 操作插槽由 [slots.md](slots.md) 单独定义。
 - 浏览器直连外部 URL。页面用 `axonhub.fetch` 请宿主代发，目标必须匹配已授权的路径或正则，见 [出站请求](plugin.js.md#出站请求)。CSP 的 `connect-src` 保持 `'none'`。
 - 按 mutation 细分插件权限。授予 `write_channels` 就是授予渠道的全部写能力，见 [妥协 1](#10-风险与妥协)。
 - 把用户 token 交给 iframe；向页面传入请求体。
@@ -96,7 +96,7 @@ Plugin 主体记录真实用户 ID 用于身份和归属；context 中的用户�
    不设置 Access-Control-Allow-Credentials；只对 token 保护的 UI 资源路由启用，见下文 CORS 契约
 4. 页面加载 /admin/plugin-ui/<token>/_axonhub/bridge.js，axonhub.ready() 发 hello
 5. 宿主只接受 event.source === iframe.contentWindow 的消息
-   回 init{theme, colorScheme, tokens, locale, projectId, page, panel: null, slot: null, config, canWriteKV}
+   回 init{theme, colorScheme, tokens, locale, projectId, page, panel: null, action: null, slot: null, context: {}, config, canWriteKV}
    tokens 是宿主已计算的样式变量，规则见 [UI Bridge](ui-bridge.md#1-sdk-契约)
    config 去掉 secret；canWriteKV 是当前用户是否有 write_plugins
 6. axonhub.graphql(query, variables)
@@ -194,7 +194,7 @@ UI token 的资源读取范围：
 失败：token 过期或签名错误返回 403，重试会重新申请 token。10 秒内没有 hello，或脚本报错，主区域显示「页面出错」和重试。GraphQL `FORBIDDEN` 与主端点的 ErrorPresenter 相同，由页面自己处理。
 
 #### `internal/server/plugin/ui.go`
-- 用 `SystemKeySecretKey` 签发和校验绑定 entry 的 token。签发时校验 plugin 存在、已启用、entry 是 manifest 声明的某个 page entry；读取资源时按上文分别校验 HTML、静态资源和宿主 bridge。
+- 用 `SystemKeySecretKey` 签发和校验绑定 entry 的 token。签发时校验 plugin 存在、已启用、entry 是 manifest 声明的某个 page entry 或 action.effect.entry；读取资源时按上文分别校验 HTML、静态资源和宿主 bridge。
 - 路径校验、包版本校验与 MIME 白名单；按 UI 资源 CORS 契约返回响应头，从版本临时目录流式读取，传输期间持有资源引用，目录丢失时触发重建。嵌入 `/_axonhub/bridge.js`。
 
 #### `internal/server/plugin/uisdk/bridge.js`
@@ -208,14 +208,14 @@ UI token 的资源读取范围：
 
 ### 共用 UI Bridge
 
-浏览器 SDK 的方法签名、初始化上下文、消息格式、错误和会话生命周期统一见 [ui-bridge.md](ui-bridge.md)。页面与未来的 slots 共用这套契约，本篇只定义页面挂载、资源和 GraphQL 端点。
+浏览器 SDK 的方法签名、初始化上下文、消息格式、错误和会话生命周期统一见 [ui-bridge.md](ui-bridge.md)。页面与操作插槽共用这套契约，本篇只定义页面挂载、资源和 GraphQL 端点。
 
 ## 7. 插件 GraphQL
 
 `POST /admin/plugins/:pluginId/graphql` 放在新的 JWT 组：`WithJWTAuth` 只接受用户 JWT，不接受 service account，加 `WithProjectID` 和 10 秒超时。
 
 ```text
-a. 插件存在、已启用、声明了 ui.pages；否则 404
+a. 插件存在、已启用且运行有效，ui.pages 或 ui.actions 至少一项非空；否则 404
 b. kvWritable = 委托用户是 Owner，或有系统级 write_plugins。写入 context
 c. ceiling = granted_permissions 去掉 webhook，即插件被授予的 read_* 与 write_channels
 d. authz.DelegatePlugin 派生 Plugin 主体，复制授权快照并隔离请求容器；pluginID 和步骤 a 解析到的 installationID（plugins.id）绑定本次操作

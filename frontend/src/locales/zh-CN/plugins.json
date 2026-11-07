@@ -99,5 +99,9 @@
   "plugins.hooks.request": "请求类型",
   "plugins.hooks.attempt": "上游 API 格式",
   "plugins.hooks.enabled": "已启用",
-  "plugins.hooks.disabled": "未启用"
+  "plugins.hooks.disabled": "未启用",
+  "plugins.actions.more": "更多插件操作",
+  "plugins.actions.error": "插件操作加载失败",
+  "plugins.actions.loadError": "插件操作加载失败，点击重试",
+  "plugins.grant.addedActions": "新增操作"
 }

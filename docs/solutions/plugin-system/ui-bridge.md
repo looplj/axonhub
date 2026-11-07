@@ -1,10 +1,10 @@
 # UI Bridge：页面与插槽共用 SDK
 
-[插件系统](README.md)所有 iframe UI 共用的宿主通信契约。当前供独立页面使用，未来的 dashboard 面板复用同一份 bridge.js、PluginFrame、消息协议和 GraphQL 权限规则。本文是待实现方案。
+[插件系统](README.md)所有 iframe UI 共用的宿主通信契约。当前供独立页面使用，T-17 的工具栏操作弹窗复用同一份 bridge.js、PluginFrame、消息协议和 GraphQL 权限规则。工具栏扩展实施状态见总览 T-17。
 
-[pages.md](pages.md)定义页面入口、资源加载和插件 GraphQL；[slots.md](slots.md)定义面板挂载、尺寸及 resize 扩展。后端 JS 的 ctx API 见 [plugin.js.md](plugin.js.md)，不与浏览器 SDK 混用。数值预算只在[总览运行限制](README.md#运行限制)维护；实施归入总览 T-06/T-07，不另建任务表。
+[pages.md](pages.md)定义页面入口、资源加载和插件 GraphQL；[slots.md](slots.md)定义操作注册、弹窗及 action 上下文。后端 JS 的 ctx API 见 [plugin.js.md](plugin.js.md)，不与浏览器 SDK 混用。数值预算只在[总览运行限制](README.md#运行限制)维护；实施归入总览 T-06/T-07，不另建任务表。
 
-页面和未来面板的模块脚本均遵循 [UI 资源 CORS 契约](pages.md#ui-资源-cors-契约)：匿名加载 token 保护的静态资源，保持 sandbox 的不透明 origin。资源 CORS 不开放直接 GraphQL 访问，也不改变本文的父窗口消息校验。
+页面和操作弹窗的模块脚本均遵循 [UI 资源 CORS 契约](pages.md#ui-资源-cors-契约)：匿名加载 token 保护的静态资源，保持 sandbox 的不透明 origin。资源 CORS 不开放直接 GraphQL 访问，也不改变本文的父窗口消息校验。
 
 ## 1. SDK 契约
 
@@ -19,9 +19,11 @@ interface ThemeState {
 interface UIInit extends ThemeState {
   locale: string;
   projectId: number | null;
-  page: string | null; // 独立页面的 key；面板为 null
-  panel: string | null; // 面板的 key；独立页面为 null
-  slot: "dashboard" | null; // 面板插槽；独立页面为 null
+  page: string | null; // 独立页面的 key；操作弹窗为 null
+  panel: null; // 兼容旧字段，不开放 panels
+  action: string | null; // T-17：操作 key，独立页面为 null
+  context: JSONObject; // T-17：全局操作为 {}
+  slot: "app.header.actions" | null; // T-17 操作插槽；独立页面为 null
   config: JSONObject; // 不含 secret
   canWriteKV: boolean;
 }
@@ -61,7 +63,7 @@ interface AxonhubBridge {
 }
 ```
 
-上下文由宿主根据挂载位置构造：当前独立页面设置 page，panel/slot 为 null；未来面板设置 panel/slot，page 为 null。预留这些字段不代表当前开放 panels。每个 iframe 拥有独立会话和 pending 调用表，同一插件的多个页面或面板不能串用消息。
+上下文由宿主根据挂载位置构造：独立页面设置 page，action/slot 为 null；操作弹窗设置 action/slot，page/panel 为 null，context 为 {}，projectId 为 null。T-17 新增 action/context 字段，panel 兼容保留为 null。每个 iframe 独立签发 token、建立会话和 pending 调用表；同插件同 entry 的不同实例也不能复用凭据或串用消息。
 
 - ready 首次调用发送 hello，收到 init 后 resolve；重复调用返回同一个 Promise，不重复握手。握手超过总览预算则 reject `TIMEOUT`，宿主显示错误和重试；重试创建新的 iframe 会话。它不是顶层窗口登录 API。
 - onInit 注册监听，返回取消订阅函数。初始化成功后调用一次；初始化后才注册的监听在下一次微任务收到缓存的 init，取消后不再回调。onTheme 同样返回取消订阅函数，初始化后先交付当前值，之后在主题、配色或 `tokens` 变化时通知。回调收到只读快照，修改不影响宿主；回调抛错交给页面错误处理，不破坏其他回调。
@@ -71,7 +73,7 @@ interface AxonhubBridge {
 - navigate 只接受以单个 `/` 开头的站内路径，可带 query/hash；拒绝 `//`、反斜杠、控制字符及解析后不同源的地址。沿用宿主路由权限检查，不能绕过 AuthGuard。宿主接受导航动作即 ack；若导航使页面卸载，尚未完成的调用按销毁规则结束。
 - toast 的 kind 默认 info，message 必须非空，按纯文本显示；宿主接收并显示通知后 ack，不等待通知消失。
 - fetch 与 `ctx.fetch` 使用同一套 [出站规则](plugin.js.md#出站请求)。目标不匹配已授权的路径或正则时返回 `FORBIDDEN`，不发出请求。非 2xx 仍 resolve，传输失败 reject `NETWORK_ERROR`。浏览器不直接连接该 URL。
-- 不自动重试 graphql（可能含 mutation）或其他动作。页面卸载、重试、切换语言或 project 时销毁旧会话；切换语言/project 重新创建 PluginFrame，让 init、请求头和配置视图保持一致。
+- 不自动重试 graphql（可能含 mutation）或其他动作。页面卸载、重试、切换语言时销毁旧会话；独立页面切换 project 也重新创建 PluginFrame，让 init、请求头和配置视图保持一致。全局操作不使用当前项目，选中项目变化不重建它。
 
 ```js
 axonhub.onTheme(({ theme }) => {
@@ -134,14 +136,14 @@ params 按方法对应：graphql 为 `{query, variables, operationName?}`，navi
 
 父页面收到 `fetch` 消息后，使用自己的用户 JWT 调用 `POST /admin/plugins/:pluginId/fetch`，JSON 请求体为 `{url, method?, headers?, body?}`。pluginId 取当前 PluginFrame；用户 JWT 只用于宿主接口认证，不转发给目标 URL。成功响应为 `{status, headers, body}`，外部 HTTP 状态放在 `status`，不作为宿主接口的 HTTP 状态。
 
-该路由复用插件 GraphQL 的 `WithJWTAuth`（仅用户 JWT）、`WithProjectID` 和已启用页面插件的查找逻辑。服务端独立验证用户身份，解析安装 ID，并从当前插件加载 `granted_network`；不接受客户端提交的授权规则或安装身份。插件不存在、已停用或未声明页面返回 404，目标未授权返回 403。检查通过后调用与 `ctx.fetch` 共用的出站服务。无需增加 GraphQL 数据权限或新的出站次数、并发限制；页面 GraphQL 同样不设请求频率限制。
+该路由复用插件 GraphQL 的 `WithJWTAuth`（仅用户 JWT）、`WithProjectID` 和已启用 UI 插件的查找逻辑（T-17 接受 pages/actions）。服务端独立验证用户身份，解析安装 ID，并从当前插件加载 `granted_network`；不接受客户端提交的授权规则或安装身份。插件不存在、已停用或未声明页面或操作返回 404，目标未授权返回 403。检查通过后调用与 `ctx.fetch` 共用的出站服务。无需增加 GraphQL 数据权限或新的出站次数、并发限制；页面 GraphQL 同样不设请求频率限制。
 
 该路由单独设置总览中 Bridge 调用的超时预算，并继承请求取消；父页面的 Bridge 超时或会话销毁时中止该请求。鉴权错误沿用 GraphQL 的 Bridge 映射；出站超时为 `TIMEOUT`，传输失败为 `NETWORK_ERROR`，重定向或非法 UTF-8 为 `INVALID_STATE`。升级、停用和授权变更按管理器现有代际同步生效，新调用重新读取当前授权，已经开始的调用沿用其快照。
 
 验收覆盖直接请求接口时缺少 JWT、service account、已停用或无页面插件、未授权目标，以及管理器刷新后撤销的规则不再接受新调用；同时验证用户 JWT 和 Cookie 不会被附加到出站请求。
 
-## 3. 面板复用与验收
+## 3. 操作弹窗复用与验收
 
-未来开放 slots 时，ready/onInit/onTheme/graphql/navigate/toast/fetch 的签名与行为保持一致，只增加面板上下文和 slots.md 中的 resize 能力。当前调用未开放的 resize 必须拒绝，不能因为共享 Bridge 而提前开放面板。插件 GraphQL 的 pages-or-panels 准入调整仍随 slots 一起实施。fetch 随 T-16 开放；在此之前调用返回未支持的方法。
+T-17 复用 ready/onInit/onTheme/graphql/navigate/toast/fetch，只增加 action/slot/context 初始化信息，不增加 resize。全局操作不继承当前项目；navigate 成功及路由变化时关闭弹窗。关闭、语言切换、重试均销毁会话，细则见 [slots.md](slots.md)。GraphQL 与 fetch 的准入同时扩展为 pages-or-actions，只有 actions 的插件也可使用原有数据及出站能力。
 
-公共验收覆盖重复握手、初始化后订阅、取消订阅、并发乱序回复、错误 source/session、超时、销毁、GraphQL 部分结果与错误码。页面 E2E 使用实际资源 URL 和 sandbox 配置；面板开放时复用同一套契约测试，另加同屏多个 iframe 的消息隔离及 resize 测试。
+公共验收覆盖重复握手、初始化后订阅、取消订阅、并发乱序回复、错误 source/session、超时、销毁、GraphQL 部分结果与错误码。操作弹窗复用实际资源 URL 和 sandbox 测试，另加与独立页面同屏时的实例隔离、关闭清理及全局项目作用域测试。

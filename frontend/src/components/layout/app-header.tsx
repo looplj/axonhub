@@ -7,6 +7,7 @@ import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { LanguageSwitch } from '@/components/language-switch';
 import { ThemeSwitch } from '@/components/theme-switch';
+import { PluginHeaderActions } from '@/features/plugins/components/plugin-header-actions';
 import { QuotaBadges } from '@/components/quota-badges';
 import { PermissionGuard } from '@/components/permission-guard';
 import { checkProviderQuotas } from '@/features/system/data/quotas';
@@ -83,6 +84,8 @@ export function AppHeader({ sidebarData }: { sidebarData: SidebarData }) {
           <PermissionGuard requiredSystemScope='read_channels'>
             <QuotaBadges onRefresh={handleRefresh} isRefreshing={isRefreshing} />
           </PermissionGuard>
+
+          <PluginHeaderActions isMobile={isMobile} />
 
           {/* Desktop-only controls - hidden on mobile */}
           {!isMobile && (

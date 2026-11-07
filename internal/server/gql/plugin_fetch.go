@@ -35,7 +35,7 @@ func (h *pluginFetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	row := activePluginPage(h.manager, manifestID)
+	row := activePluginUI(h.manager, manifestID)
 	if row == nil {
 		writeFetchCode(w, http.StatusNotFound, "NOT_FOUND", "plugin not found")
 		return

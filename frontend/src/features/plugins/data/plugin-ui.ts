@@ -4,6 +4,10 @@ import { graphqlRequest } from '@/gql/graphql';
 const PLUGIN_UI_ENTRIES_QUERY = `
   query PluginUIEntries {
     pluginUIEntries {
+      actions {
+        pluginID key slot title icon revision
+        effect { type entry }
+      }
       pages {
         pluginID
         key
@@ -31,9 +35,20 @@ export interface PluginUIPage {
   title: string | Record<string, string>;
 }
 
+export interface PluginUIAction {
+  pluginID: string;
+  key: string;
+  slot: 'app.header.actions';
+  title: string | Record<string, string>;
+  icon: 'puzzle' | 'search' | 'activity' | 'settings';
+  effect: { type: 'dialog'; entry: string };
+  revision: string;
+}
+
 export interface PluginUIEntriesResult {
   pluginUIEntries: {
     pages: PluginUIPage[];
+    actions: PluginUIAction[];
   };
 }
 
@@ -50,11 +65,16 @@ export function usePluginUIEntries() {
   });
 }
 
-export function createPluginUISession(pluginID: string, entry: string) {
-  return graphqlRequest<{ createPluginUISession: PluginUISession }>(CREATE_PLUGIN_UI_SESSION_MUTATION, {
-    pluginID,
-    entry,
-  }).then((result) => result.createPluginUISession);
+export function createPluginUISession(pluginID: string, entry: string, signal?: AbortSignal) {
+  return graphqlRequest<{ createPluginUISession: PluginUISession }>(
+    CREATE_PLUGIN_UI_SESSION_MUTATION,
+    {
+      pluginID,
+      entry,
+    },
+    undefined,
+    { signal }
+  ).then((result) => result.createPluginUISession);
 }
 
 export function pluginFrameSrc(token: string, entry: string) {

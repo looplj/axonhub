@@ -71,6 +71,7 @@ const INSTALL_PLUGIN_MUTATION = `
         events
         hooks
         pages
+        actions
       }
     }
   }
@@ -134,6 +135,7 @@ const INSTALL_PLUGIN_FROM_MARKET_MUTATION = `
         events
         hooks
         pages
+        actions
       }
     }
   }
@@ -222,6 +224,7 @@ export interface PluginUpgradePreview {
   events: string[];
   hooks: string[];
   pages: string[];
+  actions: string[];
 }
 
 export interface PluginInstallResult {

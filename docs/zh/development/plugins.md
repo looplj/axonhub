@@ -156,6 +156,7 @@ go run -C cmd/pack-plugin . ../../plugins/examples/<name>
 | `hooks.attempt` | 否 | 对象：enabled 必填；true 时 apiFormats 必须非空且导出 onAttempt；false 保留配置但不执行 |
 | `configSchema` | 否 | JSON Schema 对象，见下文 |
 | `ui.pages` | 否 | 侧栏页面，见下文 |
+| `ui.actions` | 否 | 全局工具栏操作，点击打开插件弹窗 |
 
 已开放的权限：`read_channels`、`read_requests`、`read_dashboard`、`read_api_keys`、`read_projects`、`read_settings`、`write_channels`、`webhook`。出站 URL 写在 `network`。`read_plugins` 和 `write_plugins` 是用户 scope，不是插件权限。KV 不占用权限。
 
@@ -318,6 +319,28 @@ export function onEvent(ctx, event) {
 
 页面通过 `axonhub.graphql` 调用 `pluginKVList(namespace, prefix, first, after)`，返回字段也是 `entries` 和 `nextCursor`，但需要在 GraphQL selection 中显式选择。GraphQL 的 `after` 可以传 `null` 表示第一页。`pluginKV` 返回完整条目或 `null`，`setPluginKV` 返回条目，`deletePluginKV` 返回 boolean；与返回字符串的 `ctx.kv.get` 区分。
 
+## 全局工具栏操作
+
+`ui.actions` 将操作注册到公共布局右上角。宿主渲染按钮，点击后才加载插件 iframe；桌面最多直接展示两个按钮，其余进入更多菜单，移动端统一使用菜单。示例：
+
+```json
+"ui": {
+  "actions": [{
+    "key": "notes",
+    "slot": "app.header.actions",
+    "title": { "en": "Quick notes", "zh-CN": "随手记" },
+    "icon": "puzzle",
+    "effect": { "type": "dialog", "entry": "ui/notes.html" }
+  }]
+}
+```
+
+首版 `slot` 只接受 `app.header.actions`，`effect.type` 只接受 `dialog`。key、title 和 entry 遵循页面规则，action key 在 actions 内唯一。icon 可省略（默认 puzzle），支持 puzzle/search/activity/settings。未知字段、插槽或 effect 会被拒绝；不支持 panels 和渠道操作菜单。
+
+弹窗使用同一份 Bridge、资源规则和权限机制，只有 actions、没有 pages 的插件也可调用 GraphQL、KV 和已授权的 fetch。初始化包含 `action` key、`slot`、`context: {}`、`page: null`、`panel: null`。全局操作的 `projectId` 固定为 null，调用不携带当前项目头；普通页面继续使用原有项目上下文。关闭弹窗取消在途请求，重新打开使用独立会话。navigate 会关闭弹窗。
+
+新增 action 会进入升级预览。可打包示例见 [toolbar-notes](../../../plugins/examples/toolbar-notes/README.md)。
+
 ## 页面
 
 每个页面是认证布局主区域里的 iframe。侧栏入口在「插件」分组。路由是 `/plugins/<插件 id>/pages/<key>`。iframe 读不到宿主的 cookie 和 `localStorage`。
@@ -341,9 +364,11 @@ type ThemeSnapshot = {
 type InitSnapshot = ThemeSnapshot & {
   locale: string;
   projectId: number | null;
-  page: string;
+  page: string | null;
   panel: null;
-  slot: null;
+  action: string | null;
+  slot: "app.header.actions" | null;
+  context: Record<string, unknown>;
   config: Record<string, unknown>;
   canWriteKV: boolean;
 };

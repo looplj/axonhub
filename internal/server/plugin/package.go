@@ -71,9 +71,9 @@ func ParsePackage(data []byte) (*Package, error) {
 		fileSet[name] = struct{}{}
 	}
 	if manifest.UI != nil {
-		for _, page := range manifest.UI.Pages {
-			if _, ok := fileSet[page.Entry]; !ok {
-				return nil, fmt.Errorf("ui page entry %q does not exist in the package", page.Entry)
+		for _, entry := range manifest.UI.Entries() {
+			if _, ok := fileSet[entry]; !ok {
+				return nil, fmt.Errorf("ui page entry %q does not exist in the package", entry)
 			}
 		}
 	}

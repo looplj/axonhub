@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quick notes</title>
+  <style>
+    :root { font-family: var(--font-sans, system-ui); background: var(--background, white); color: var(--foreground, #222); }
+    body { margin: 0; padding: 16px; }
+    textarea { box-sizing: border-box; width: 100%; min-height: 240px; padding: 12px; border: 1px solid var(--border, #ccc); border-radius: 8px; background: var(--background, white); color: inherit; font: inherit; }
+    button { margin-top: 12px; padding: 8px 20px; border: 0; border-radius: 6px; background: var(--primary, #222); color: var(--primary-foreground, white); cursor: pointer; }
+    button:disabled { opacity: .5; cursor: default; }
+    #status { color: var(--muted-foreground, #666); }
+  </style>
+</head>
+<body>
+  <label id="label" for="note">Shared notes</label>
+  <textarea id="note" disabled></textarea>
+  <button id="save" disabled>Save</button>
+  <p id="status" role="status"></p>
+  <script src="../_axonhub/bridge.js"></script>
+  <script src="./notes.js"></script>
+</body>
+</html>

@@ -16,7 +16,7 @@
 | 请求      | [request.md](request.md)                 | `onRequest` / `onAttempt`                                                   |
 | 响应      | [response.md](response.md)               | `onResponse` / `onStreamChunk`，按 chunk 类型过滤。未排期                   |
 | 页面      | [pages.md](pages.md)                     | 插件独立页面、侧栏入口、iframe、插件 GraphQL（含 mutation 与 KV）           |
-| 插槽      | [slots.md](slots.md)                     | dashboard 面板。未排期                                                      |
+| 插槽      | [slots.md](slots.md)                     | 全局工具栏操作插槽。T-17                                                      |
 | Provider  | [provider.md](provider.md)               | 自定义 channel 的出站转换。未排期                                           |
 | 作用范围  | [scope.md](scope.md)                     | 按 project、API Key、模型收窄请求钩子。可选，未排期                         |
 
@@ -47,7 +47,7 @@
 4. 插件选择渠道或实现路由策略。自定义 channel provider 见 [provider.md](provider.md)，不在当前任务表。
 5. 页面的写权限不细分到 mutation，见 [pages.md](pages.md#10-风险与妥协)。
 6. 浏览器直连外部 URL。`plugin.js` 和页面的外部请求都由宿主代发，目标必须匹配已授权的路径或正则，见 [出站请求](plugin.js.md#出站请求)。`ctx.models` 本轮不提供。
-7. 插件插槽：dashboard 面板、渠道编辑对话框、系统设置。v1 只有独立页面，见 [slots.md](slots.md)。
+7. 内嵌面板、渠道菜单和系统设置扩展不在首版插槽范围；T-17 只实现全局工具栏操作，见 [slots.md](slots.md)。
 8. Owner 自定义市场源。只用一份索引，地址写在代码里，见 [市场](#市场)。
 9. 宿主按 project、API Key、模型收窄请求钩子。基础钩子按 RequestType / 出站 APIFormat 注册；project、API Key、模型的额外业务范围由插件自行判断，见 [scope.md](scope.md)。
 
@@ -481,5 +481,7 @@ MySQL 的 `max_allowed_packet` 至少要 8 MiB，才能写入 5 MiB 的包。8.0
 | T-14 | [插件市场](#市场)                              | 已完成 | T-01, T-03                   | `market.go`、`plugins/registry.json`、市场页；有条目时 sha256 不一致不写库。示例插件不注册                                                                                                                                                                                                                                                                                                                                                                     |
 | T-15 | [迁移、E2E 与开发者文档](#6-验收)              | 部分完成 | T-07, T-09, T-12, T-13, T-14, T-16 | `docs/zh/development/plugins.md`、`docs/en/development/plugins.md` 与 `plugins/examples/temperature-cap` 已落地。`make migration-test-all-dbs` 与 `make e2e-test` 这次不做                                                                                                                                                                                                                                                                                                         |
 | T-16 | [出站请求](plugin.js.md#出站请求)              | 已完成 | T-07, T-11                   | `network` 与 `granted_network`；精确路径与正则；`ctx.fetch` 与 `axonhub.fetch` 都由宿主代发；不跟随重定向；CSP `connect-src` 保持 `'none'`。不实现 `ctx.models` |
+
+| T-17 | [全局工具栏操作插槽](slots.md) | 已完成 | T-07, T-16 | `ui.actions`、`app.header.actions`、点击打开插件 Dialog；actions-only 后端测试、4 项独立浏览器测试通过；toolbar-notes 示例。不实现 panel 或渠道菜单 |
 
 本方案参考了 new-api、CLIProxyAPI、sub2api 和 magpie。

@@ -47,7 +47,7 @@ func (h *pluginGraphqlHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	row := activePluginPage(h.manager, manifestID)
+	row := activePluginUI(h.manager, manifestID)
 	if row == nil {
 		http.NotFound(w, r)
 		return
@@ -97,7 +97,7 @@ func pluginManifestID(r *http.Request) (string, bool) {
 	return decoded, true
 }
 
-func activePluginPage(manager *plugin.Manager, manifestID string) *plugin.LoadedPlugin {
+func activePluginUI(manager *plugin.Manager, manifestID string) *plugin.LoadedPlugin {
 	if manager == nil || manifestID == "" {
 		return nil
 	}
@@ -109,7 +109,7 @@ func activePluginPage(manager *plugin.Manager, manifestID string) *plugin.Loaded
 	if row == nil || !row.Enabled || row.Status != plugin.RuntimeStatusActive {
 		return nil
 	}
-	if row.Manifest.UI == nil || len(row.Manifest.UI.Pages) == 0 {
+	if !row.Manifest.UI.HasEntries() {
 		return nil
 	}
 	return row

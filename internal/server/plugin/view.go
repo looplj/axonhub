@@ -253,6 +253,7 @@ func normalizePreview(preview *UpgradePreview) *UpgradePreview {
 		Events:         cloneStrings(preview.Events),
 		Hooks:          cloneStrings(preview.Hooks),
 		Pages:          cloneStrings(preview.Pages),
+		Actions:        cloneStrings(preview.Actions),
 	}
 }
 

@@ -99,5 +99,9 @@
   "plugins.hooks.request": "Request types",
   "plugins.hooks.attempt": "Upstream API formats",
   "plugins.hooks.enabled": "Enabled",
-  "plugins.hooks.disabled": "Disabled"
+  "plugins.hooks.disabled": "Disabled",
+  "plugins.actions.more": "More plugin actions",
+  "plugins.actions.error": "Plugin action could not load",
+  "plugins.actions.loadError": "Could not load plugin actions. Click to retry.",
+  "plugins.grant.addedActions": "New actions"
 }
