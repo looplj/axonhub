@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"syscall"
 
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -53,9 +54,27 @@ func IsUpstreamTransportError(err error) bool {
 		return true
 	}
 
+	if isHTTP2ConnectionError(err) {
+		return true
+	}
+
 	var netErr net.Error
 
 	return errors.As(err, &netErr) && (netErr.Timeout() || netErr.Temporary())
+}
+
+// isHTTP2ConnectionError reports whether err is an HTTP/2 stream reset or GOAWAY from
+// the peer. net/http keeps these error types unexported (they live in its bundled h2
+// copy), so the only way to recognize them is by message.
+func isHTTP2ConnectionError(err error) bool {
+	msg := err.Error()
+
+	if strings.Contains(msg, "stream error: stream ID ") &&
+		(strings.Contains(msg, "INTERNAL_ERROR") || strings.Contains(msg, "REFUSED_STREAM")) {
+		return true
+	}
+
+	return strings.Contains(msg, "http2: server sent GOAWAY")
 }
 
 // ClassifyUpstreamTransportError converts a transport-level upstream failure into a
