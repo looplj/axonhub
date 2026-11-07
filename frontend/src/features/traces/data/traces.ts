@@ -123,7 +123,7 @@ function buildTraceWithRequestTracesQuery() {
 export function useTraces(variables?: {
   first?: number;
   after?: string;
-  orderBy?: { field: 'LAST_REQUEST_AT'; direction: 'ASC' | 'DESC' };
+  orderBy?: { field: 'CREATED_AT' | 'LAST_REQUEST_AT'; direction: 'ASC' | 'DESC' };
   where?: {
     projectID?: string;
     threadID?: string;

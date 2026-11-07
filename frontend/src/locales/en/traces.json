@@ -15,6 +15,7 @@
   "traces.actions.viewDetails": "View Details",
   "traces.actions.openMenu": "Open menu",
   "traces.filters.filterTraceId": "Filter by Trace ID...",
+  "traces.filters.dateField": "Filter by",
   "traces.detail.title": "Trace Details",
   "traces.detail.notFound": "Trace not found",
   "traces.detail.noTraceData": "No trace data available",

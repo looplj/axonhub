@@ -4,7 +4,7 @@ import { Table } from '@tanstack/react-table';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import type { DateTimeRangeValue } from '@/utils/date-range';
+import type { DateRangeField, DateTimeRangeValue } from '@/utils/date-range';
 import type { AutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
 import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { Badge } from '@/components/ui/badge';
@@ -17,10 +17,43 @@ import { AutoRefreshControl } from '@/components/auto-refresh-control';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { DataTableViewOptions } from './data-table-view-options';
 
+function DateRangeFieldToggle({ value, onChange }: { value: DateRangeField; onChange: (field: DateRangeField) => void }) {
+  const { t } = useTranslation();
+  const options: { value: DateRangeField; label: string }[] = [
+    { value: 'lastRequestAt', label: t('traces.columns.lastRequestAt') },
+    { value: 'createdAt', label: t('common.columns.createdAt') },
+  ];
+
+  return (
+    <div className='flex items-center gap-2'>
+      <span className='text-muted-foreground text-xs'>{t('traces.filters.dateField')}</span>
+      <div className='inline-flex items-center rounded-md border border-gray-200 p-0.5 dark:border-white/10'>
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type='button'
+            onClick={() => onChange(option.value)}
+            className={cn(
+              'rounded px-2 py-1 text-xs transition-colors',
+              option.value === value
+                ? 'bg-gray-100 font-medium text-gray-900 dark:bg-white/10 dark:text-white'
+                : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
   dateRange?: DateTimeRangeValue;
   onDateRangeChange?: (range: DateTimeRangeValue | undefined) => void;
+  dateRangeField?: DateRangeField;
+  onDateRangeFieldChange?: (field: DateRangeField) => void;
   traceIdFilter: string;
   onTraceIdFilterChange: (traceId: string) => void;
   statusFilter?: string[];
@@ -35,6 +68,8 @@ export function DataTableToolbar<TData>({
   table,
   dateRange,
   onDateRangeChange,
+  dateRangeField = 'lastRequestAt',
+  onDateRangeFieldChange,
   traceIdFilter,
   onTraceIdFilterChange,
   statusFilter = [],
@@ -67,7 +102,13 @@ export function DataTableToolbar<TData>({
           onChange={(event) => onTraceIdFilterChange(event.target.value)}
           className='h-8 w-[150px] lg:w-[250px]'
         />
-        <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
+        <DateRangePicker
+          value={dateRange}
+          onChange={onDateRangeChange}
+          headerExtra={
+            onDateRangeFieldChange ? <DateRangeFieldToggle value={dateRangeField} onChange={onDateRangeFieldChange} /> : undefined
+          }
+        />
         {onStatusFilterChange && (
           <Popover>
             <PopoverTrigger asChild>

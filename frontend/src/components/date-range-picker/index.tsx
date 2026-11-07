@@ -19,10 +19,12 @@ interface DateRangePickerProps {
   className?: string;
   /** Custom label for the trigger button; defaults to the picked dates. */
   formatLabel?: (range: DateTimeRangeValue | undefined) => string;
+  /** Rendered in the popover header, right of the selected range. */
+  headerExtra?: React.ReactNode;
 }
 
 export function DateRangePicker(props: DateRangePickerProps) {
-  const { value, onChange, onCancel, onConfirm, className, formatLabel } = props;
+  const { value, onChange, onCancel, onConfirm, className, formatLabel, headerExtra } = props;
   const { t } = useTranslation();
   const isControlled = Object.prototype.hasOwnProperty.call(props, 'value');
   const [open, setOpen] = React.useState(false);
@@ -92,7 +94,13 @@ export function DateRangePicker(props: DateRangePickerProps) {
           </Button>
         </PopoverTrigger>
         <PopoverContent className='w-auto border-none bg-transparent p-0 shadow-none' align='start'>
-          <DateTimeRangePicker value={pendingValue} onChange={handlePendingChange} onCancel={handleCancel} onConfirm={handleConfirm} />
+          <DateTimeRangePicker
+            value={pendingValue}
+            onChange={handlePendingChange}
+            onCancel={handleCancel}
+            onConfirm={handleConfirm}
+            headerExtra={headerExtra}
+          />
         </PopoverContent>
       </Popover>
     </div>

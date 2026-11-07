@@ -1,7 +1,12 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { SortingState } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
-import { buildDateRangeWhereClause, type DateTimeRangeValue } from '@/utils/date-range';
+import {
+  buildDateRangeWhereClause,
+  buildLastRequestAtDateRangeWhereClause,
+  type DateRangeField,
+  type DateTimeRangeValue,
+} from '@/utils/date-range';
 import { useAutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
@@ -13,7 +18,7 @@ import { TracesProvider } from './context';
 import { useTraces } from './data';
 
 const DEFAULT_SORTING: SortingState = [{ id: 'lastRequestAt', desc: true }];
-const SORTABLE_COLUMN_IDS = new Set(['lastRequestAt']);
+const SORTABLE_COLUMN_IDS = new Set(['id', 'createdAt', 'lastRequestAt']);
 const SORTING_STORAGE_KEY = 'traces-table-sorting';
 
 function loadSorting(): SortingState {
@@ -52,6 +57,7 @@ function TracesContent() {
       pageSizeStorageKey: 'traces-table-page-size',
     });
   const [dateRange, setDateRange] = useState<DateTimeRangeValue | undefined>();
+  const [dateRangeField, setDateRangeField] = useState<DateRangeField>('lastRequestAt');
   const [traceIdFilter, setTraceIdFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [sorting, setSorting] = useState<SortingState>(loadSorting);
@@ -78,7 +84,9 @@ function TracesContent() {
   // Build where clause with filters
   const whereClause = (() => {
     const where: { [key: string]: any } = {
-      ...buildDateRangeWhereClause(dateRange),
+      ...(dateRangeField === 'createdAt'
+        ? buildDateRangeWhereClause(dateRange)
+        : buildLastRequestAtDateRangeWhereClause(dateRange)),
     };
 
     if (debouncedTraceIdFilter.trim()) {
@@ -101,7 +109,11 @@ function TracesContent() {
     }
 
     const [primary] = sorting;
-    return { field: 'LAST_REQUEST_AT', direction: primary.desc ? 'DESC' : 'ASC' } as const;
+    // TraceOrder has no ID field; creation order is the closest the server can
+    // express for the id column.
+    const field = primary.id === 'lastRequestAt' ? 'LAST_REQUEST_AT' : 'CREATED_AT';
+
+    return { field, direction: primary.desc ? 'DESC' : 'ASC' } as const;
   }, [sorting]);
 
   const { data, isLoading, refetch } = useTraces({
@@ -138,6 +150,15 @@ function TracesContent() {
     setPageSize(newPageSize);
     resetCursor();
   };
+
+  const handleDateRangeFieldChange = useCallback(
+    (field: DateRangeField) => {
+      setDateRangeField(field);
+      resetCursor();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   const handleDateRangeChange = useCallback(
     (range: DateTimeRangeValue | undefined) => {
@@ -183,6 +204,7 @@ function TracesContent() {
         pageSize={pageSize}
         totalCount={data?.totalCount}
         dateRange={dateRange}
+        dateRangeField={dateRangeField}
         traceIdFilter={traceIdFilter}
         statusFilter={statusFilter}
         sorting={sorting}
@@ -190,6 +212,7 @@ function TracesContent() {
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
         onDateRangeChange={handleDateRangeChange}
+        onDateRangeFieldChange={handleDateRangeFieldChange}
         onTraceIdFilterChange={handleTraceIdFilterChange}
         onStatusFilterChange={handleStatusFilterChange}
         onSortingChange={handleSortingChange}

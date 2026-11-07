@@ -204,7 +204,6 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
     {
       accessorKey: 'createdAt',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
-      enableSorting: false,
       cell: ({ row }) => {
         const date = new Date(row.getValue('createdAt'));
         return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>;

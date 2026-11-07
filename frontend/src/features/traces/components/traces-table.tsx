@@ -13,7 +13,7 @@ import {
 } from '@tanstack/react-table';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import type { DateTimeRangeValue } from '@/utils/date-range';
+import type { DateRangeField, DateTimeRangeValue } from '@/utils/date-range';
 import type { AutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
 import { useAnimatedList } from '@/hooks/useAnimatedList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -52,6 +52,7 @@ interface TracesTableProps {
   pageSize: number;
   totalCount?: number;
   dateRange?: DateTimeRangeValue;
+  dateRangeField?: DateRangeField;
   traceIdFilter: string;
   statusFilter?: string[];
   sorting: SortingState;
@@ -59,6 +60,7 @@ interface TracesTableProps {
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
   onDateRangeChange: (range: DateTimeRangeValue | undefined) => void;
+  onDateRangeFieldChange?: (field: DateRangeField) => void;
   onTraceIdFilterChange: (traceId: string) => void;
   onStatusFilterChange?: (statuses: string[]) => void;
   onSortingChange: (updater: SortingState | ((previous: SortingState) => SortingState)) => void;
@@ -76,6 +78,7 @@ export function TracesTable({
   totalCount,
   pageSize,
   dateRange,
+  dateRangeField,
   traceIdFilter,
   statusFilter = [],
   sorting,
@@ -83,6 +86,7 @@ export function TracesTable({
   onPreviousPage,
   onPageSizeChange,
   onDateRangeChange,
+  onDateRangeFieldChange,
   onTraceIdFilterChange,
   onStatusFilterChange,
   onSortingChange,
@@ -142,6 +146,8 @@ export function TracesTable({
         table={table}
         dateRange={dateRange}
         onDateRangeChange={onDateRangeChange}
+        dateRangeField={dateRangeField}
+        onDateRangeFieldChange={onDateRangeFieldChange}
         traceIdFilter={traceIdFilter}
         onTraceIdFilterChange={onTraceIdFilterChange}
         statusFilter={statusFilter}

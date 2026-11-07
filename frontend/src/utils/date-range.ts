@@ -10,6 +10,8 @@ export type DateTimeRangeValue = {
 export const DEFAULT_START_TIME: TimeValue = { hh: '00', mm: '00', ss: '00' }
 export const DEFAULT_END_TIME: TimeValue = { hh: '23', mm: '59', ss: '59' }
 
+export type DateRangeField = 'createdAt' | 'lastRequestAt'
+
 export function normalizeDateTimeRangeValue(value?: DateTimeRangeValue): DateTimeRangeValue {
   return {
     from: value?.from,
@@ -72,6 +74,16 @@ export function buildDateRangeWhereClause(dateRange: DateTimeRangeValue | undefi
 
   if (gte) where.createdAtGTE = gte
   if (lte) where.createdAtLTE = lte
+
+  return where
+}
+
+export function buildLastRequestAtDateRangeWhereClause(dateRange: DateTimeRangeValue | undefined) {
+  const where: { lastRequestAtGTE?: string; lastRequestAtLTE?: string } = {}
+  const { gte, lte } = resolveRangeBounds(dateRange)
+
+  if (gte) where.lastRequestAtGTE = gte
+  if (lte) where.lastRequestAtLTE = lte
 
   return where
 }
