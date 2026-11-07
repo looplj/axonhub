@@ -914,6 +914,11 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{TracesColumns[5], TracesColumns[4]},
 			},
+			{
+				Name:    "traces_by_project_id_updated_at",
+				Unique:  false,
+				Columns: []*schema.Column{TracesColumns[5], TracesColumns[2]},
+			},
 		},
 	}
 	// UsageLogsColumns holds the columns for the "usage_logs" table.

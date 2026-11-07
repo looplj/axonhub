@@ -33,6 +33,8 @@ func (Trace) Indexes() []ent.Index {
 			StorageKey("traces_by_thread_id"),
 		index.Fields("project_id", "status").
 			StorageKey("traces_by_project_id_status"),
+		index.Fields("project_id", "updated_at").
+			StorageKey("traces_by_project_id_updated_at"),
 	}
 }
 

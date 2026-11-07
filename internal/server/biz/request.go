@@ -346,8 +346,11 @@ func (s *RequestService) CreateRequest(
 		mut = mut.SetAPIKeyID(apiKey.ID)
 	}
 
+	var traceID int
+
 	if trace, ok := contexts.GetTrace(ctx); ok && trace != nil {
-		mut = mut.SetTraceID(trace.ID)
+		traceID = trace.ID
+		mut = mut.SetTraceID(traceID)
 	}
 
 	if contexts.GetSourceOrDefault(ctx, request.SourceAPI) == request.SourcePlayground {
@@ -382,6 +385,17 @@ func (s *RequestService) CreateRequest(
 		if err != nil {
 			log.Error(ctx, "Failed to save request body to external storage", log.Cause(err))
 			// Continue anyway, don't fail the request creation
+		}
+	}
+
+	// Keep the trace's updated_at at the time of its last request so trace
+	// listings can order by recent activity.
+	if traceID != 0 {
+		err := authz.RunWithSystemBypassVoid(ctx, "trace-last-request-at", func(bypassCtx context.Context) error {
+			return client.Trace.UpdateOneID(traceID).SetUpdatedAt(req.CreatedAt).Exec(bypassCtx)
+		})
+		if err != nil {
+			log.Warn(ctx, "Failed to update trace last request time", log.Cause(err), log.Int("trace_id", traceID))
 		}
 	}
 

@@ -9,7 +9,6 @@ import {
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
-  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -43,12 +42,14 @@ interface TracesTableProps {
   dateRange?: DateTimeRangeValue;
   traceIdFilter: string;
   statusFilter?: string[];
+  sorting: SortingState;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
   onDateRangeChange: (range: DateTimeRangeValue | undefined) => void;
   onTraceIdFilterChange: (traceId: string) => void;
   onStatusFilterChange?: (statuses: string[]) => void;
+  onSortingChange: (updater: SortingState | ((previous: SortingState) => SortingState)) => void;
   onRefresh: () => void;
   showRefresh: boolean;
   autoRefreshInterval?: AutoRefreshInterval;
@@ -65,12 +66,14 @@ export function TracesTable({
   dateRange,
   traceIdFilter,
   statusFilter = [],
+  sorting,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
   onDateRangeChange,
   onTraceIdFilterChange,
   onStatusFilterChange,
+  onSortingChange,
   onRefresh,
   showRefresh,
   autoRefreshInterval = null,
@@ -79,7 +82,6 @@ export function TracesTable({
 }: TracesTableProps) {
   const { t } = useTranslation();
   const tracesColumns = useTracesColumns();
-  const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
@@ -102,16 +104,16 @@ export function TracesTable({
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
+    onSortingChange,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     manualPagination: true,
     manualFiltering: true,
+    manualSorting: true,
   });
 
   return (

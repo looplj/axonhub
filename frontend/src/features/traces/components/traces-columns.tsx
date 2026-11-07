@@ -100,7 +100,7 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
           </button>
         );
       },
-      enableSorting: true,
+      enableSorting: false,
       enableHiding: false,
     },
 
@@ -178,6 +178,7 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
     {
       id: 'details',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('traces.columns.details')} />,
+      enableSorting: false,
       cell: ({ row }) => {
         const handleViewDetails = () => {
           navigateWithSearch({ to: '/project/traces/$traceId', params: { traceId: row.original.id } });
@@ -199,17 +200,18 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
         return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>;
       },
     },
-    // {
-    //   accessorKey: 'updatedAt',
-    //   header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.updatedAt')} />,
-    //   cell: ({ row }) => {
-    //     const date = new Date(row.getValue('updatedAt'))
-    //     return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>
-    //   },
-    // },
+    {
+      accessorKey: 'updatedAt',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.updatedAt')} />,
+      cell: ({ row }) => {
+        const date = new Date(row.getValue('updatedAt'));
+        return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>;
+      },
+    },
     {
       id: 'actions',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.actions')} />,
+      enableSorting: false,
       enableHiding: false,
       meta: { className: 'w-[100px]' },
       cell: ({ row }) => <TraceActionButtons trace={row.original} />,

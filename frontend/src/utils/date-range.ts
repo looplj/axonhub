@@ -35,10 +35,10 @@ function clampTime(value: string, max: number, fallback: number) {
   return Math.min(Math.max(parsed, 0), max)
 }
 
-export function buildDateRangeWhereClause(dateRange: DateTimeRangeValue | undefined) {
-  const where: { createdAtGTE?: string; createdAtLTE?: string } = {}
-
+function resolveRangeBounds(dateRange: DateTimeRangeValue | undefined) {
   const normalized = normalizeDateTimeRangeValue(dateRange)
+  let gte: string | undefined
+  let lte: string | undefined
 
   if (normalized.from) {
     const startDate = new Date(normalized.from)
@@ -49,7 +49,7 @@ export function buildDateRangeWhereClause(dateRange: DateTimeRangeValue | undefi
       clampTime(startTime.ss, 59, 0),
       0
     )
-    where.createdAtGTE = startDate.toISOString()
+    gte = startDate.toISOString()
   }
   if (normalized.to) {
     const endDate = new Date(normalized.to)
@@ -60,8 +60,28 @@ export function buildDateRangeWhereClause(dateRange: DateTimeRangeValue | undefi
       clampTime(endTime.ss, 59, 59),
       999
     )
-    where.createdAtLTE = endDate.toISOString()
+    lte = endDate.toISOString()
   }
+
+  return { gte, lte }
+}
+
+export function buildDateRangeWhereClause(dateRange: DateTimeRangeValue | undefined) {
+  const where: { createdAtGTE?: string; createdAtLTE?: string } = {}
+  const { gte, lte } = resolveRangeBounds(dateRange)
+
+  if (gte) where.createdAtGTE = gte
+  if (lte) where.createdAtLTE = lte
+
+  return where
+}
+
+export function buildUpdatedAtDateRangeWhereClause(dateRange: DateTimeRangeValue | undefined) {
+  const where: { updatedAtGTE?: string; updatedAtLTE?: string } = {}
+  const { gte, lte } = resolveRangeBounds(dateRange)
+
+  if (gte) where.updatedAtGTE = gte
+  if (lte) where.updatedAtLTE = lte
 
   return where
 }
