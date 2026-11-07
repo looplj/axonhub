@@ -182,7 +182,7 @@ export function ApiKeysCreateDialog() {
               )}
             </div>
 
-            <DialogFooter className='flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end'>
+            <DialogFooter>
               <div className='flex w-full gap-2 sm:w-auto'>
                 <Button type='button' variant='outline' onClick={handleClose} disabled={isSubmitting}>
                   {t('common.buttons.cancel')}

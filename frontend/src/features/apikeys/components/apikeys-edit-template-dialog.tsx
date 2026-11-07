@@ -664,7 +664,7 @@ export function ApiKeyEditTemplateDialog({ open, onOpenChange, template }: ApiKe
             </Form>
           </div>
 
-          <DialogFooter className='shrink-0'>
+          <DialogFooter pinned>
             <div className='flex w-full gap-2 sm:w-auto'>
               <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 {t('common.buttons.cancel')}

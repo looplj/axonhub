@@ -414,7 +414,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
           </div>
         </div>
 
-        <DialogFooter className='flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end'>
+        <DialogFooter>
           {/* Display form-level validation errors */}
           {/* {(form.formState.errors.profiles ||
             Object.keys(form.formState.errors).some((key) => key.startsWith('profiles.'))) && (

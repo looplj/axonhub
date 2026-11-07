@@ -586,7 +586,7 @@ export function PromptsActionDialog() {
               </div>
             </div>
 
-            <DialogFooter className='flex-shrink-0 border-t pt-4'>
+            <DialogFooter pinned divided>
               <Button type='button' variant='outline' onClick={handleClose}>
                 {t('common.buttons.cancel')}
               </Button>

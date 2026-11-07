@@ -314,7 +314,7 @@ export function ProjectProfilesDialog({ open, onOpenChange, onSubmit, loading = 
           </div>
         </div>
 
-        <DialogFooter className='flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end'>
+        <DialogFooter>
           <div className='flex w-full gap-2 sm:w-auto'>
             <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={loading}>
               {t('common.buttons.cancel')}

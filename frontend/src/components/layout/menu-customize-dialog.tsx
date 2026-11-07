@@ -102,7 +102,7 @@ export function MenuCustomizeDialog({ open, onOpenChange }: MenuCustomizeDialogP
           <p className='text-muted-foreground py-6 text-center text-sm'>{t('sidebar.menuCustomize.empty')}</p>
         )}
 
-        <DialogFooter className='flex-row justify-between gap-2 sm:justify-between'>
+        <DialogFooter layout='inline' align='between'>
           <Button type='button' variant='ghost' size='sm' onClick={reset} disabled={hiddenItems.length === 0}>
             <IconRotate className='mr-1 size-4' />
             {t('sidebar.menuCustomize.reset')}

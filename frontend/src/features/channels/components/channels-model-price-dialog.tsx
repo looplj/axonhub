@@ -1331,7 +1331,7 @@ export function ChannelsModelPriceDialog() {
               </div>
             </div>
 
-            <DialogFooter className='mt-6 shrink-0 gap-2 sm:justify-between'>
+            <DialogFooter pinned align='between' className='mt-6'>
               <div className='flex flex-wrap items-center gap-2'>
                 <Button type='button' variant='outline' data-testid='price-add-button' onClick={addPrice}>
                   <IconPlus className='mr-2 h-4 w-4' />

@@ -53,7 +53,7 @@ export function DiagnosticsSettings() {
                       <AlertDialogTitle>{t('system.diagnostics.cache.clearConfirmTitle')}</AlertDialogTitle>
                       <AlertDialogDescription>{t('system.diagnostics.cache.clearConfirmDescription')}</AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className='flex-col sm:flex-row gap-2'>
+                    <AlertDialogFooter>
                       <AlertDialogCancel className='w-full sm:w-auto mt-0'>{t('system.diagnostics.cache.clearCancel')}</AlertDialogCancel>
                       <AlertDialogAction onClick={() => clearCache()} className='w-full sm:w-auto'>{t('system.diagnostics.cache.clearConfirm')}</AlertDialogAction>
                     </AlertDialogFooter>

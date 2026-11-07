@@ -287,7 +287,7 @@ export function ApiKeyTemplateTransferDialog({ open, onOpenChange, mode, templat
             )}
           </div>
 
-          <DialogFooter className='gap-2'>
+          <DialogFooter>
             <Button variant='outline' onClick={() => onOpenChange(false)} disabled={isPending}>
               {t('common.buttons.cancel')}
             </Button>

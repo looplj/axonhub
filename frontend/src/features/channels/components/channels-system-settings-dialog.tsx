@@ -293,7 +293,7 @@ export function ChannelsSystemSettingsDialog() {
           </SettingsDialogBody>
         )}
 
-        <DialogFooter className='shrink-0'>
+        <DialogFooter pinned>
           <Button variant='outline' onClick={handleClose} disabled={updateSettings.isPending}>
             {t('common.buttons.cancel')}
           </Button>

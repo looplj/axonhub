@@ -4138,7 +4138,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               </div>
             </div>
           </div>
-          <DialogFooter className='flex-shrink-0'>
+          <DialogFooter pinned>
             <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
               {t('common.buttons.cancel')}
             </Button>
