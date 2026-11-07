@@ -461,3 +461,21 @@ test('Gemini channels default to current models, not the retired 2.5 family', ()
     assert.match(match[1], /gemini-3\.8-flash/);
   }
 });
+
+test('OpenAI and ZenMux Gemini channels default to current models, not retired ones', () => {
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+  const defaultsOf = (channel) => {
+    const match = channelsConfig.match(new RegExp(`\\n  ${channel}: {[\\s\\S]*?defaultModels: \\[([^\\]]*)\\]`));
+    assert.ok(match, `${channel} should define defaultModels`);
+    return match[1];
+  };
+
+  for (const channel of ['openai', 'openai_responses']) {
+    const models = defaultsOf(channel);
+    assert.doesNotMatch(models, /'gpt-4o|'gpt-5'|'gpt-5\.1'/, `${channel} should not default to retired OpenAI models`);
+    assert.match(models, /gpt-5\.6-sol/);
+  }
+
+  assert.doesNotMatch(defaultsOf('zenmux_gemini'), /gemini-2\.5/);
+  assert.match(defaultsOf('zenmux_gemini'), /gemini-3\.1-pro-preview/);
+});
