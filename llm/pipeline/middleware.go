@@ -17,6 +17,11 @@ type Middleware interface {
 	// Name returns the name of the middleware
 	Name() string
 
+	// OnProcessEnd releases resources owned by this Process call. It runs once,
+	// in reverse registration order, including on early failure. Returned streams
+	// may still be consumed afterward; their resources belong to Stream.Close.
+	OnProcessEnd()
+
 	// OnInboundLlmRequest executes after inbound transformation (Provider -> Unified) and before any outbound logic.
 	// Timing: Once per Request, before any attempts.
 	// Order: Forward (first registered executes first).
@@ -248,3 +253,7 @@ func (d *DummyMiddleware) OnOutboundRawStream(ctx context.Context, stream stream
 func (d *DummyMiddleware) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
 	return stream, nil
 }
+
+func (d *DummyMiddleware) OnProcessEnd() {}
+
+func (d *simpleMiddleware) OnProcessEnd() {}

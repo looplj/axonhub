@@ -26,7 +26,7 @@ func TestInvokeBorrowDoesNotCompile(t *testing.T) {
 	}
 	installed := installJS(t, manager, "acme.borrow", `
 let calls = 0;
-export function onEvent(op, ctx) {
+export function onEvent(ctx, op) {
   if (op.void) {
     ctx.state.marker = "kept";
     return;
@@ -70,7 +70,7 @@ func TestInvokePromiseDoesNotCommitState(t *testing.T) {
 	client := newPluginDB(t)
 	manager := newTestManager(t, client)
 	installed := installJS(t, manager, "acme.promise", `
-export function onEvent(op, ctx) {
+export function onEvent(ctx, op) {
   if (op.hang) {
     ctx.state.dirty = true;
     return new Promise(function () {});
@@ -115,7 +115,7 @@ func TestInvokeInterruptedVMIsDiscarded(t *testing.T) {
 	manager := newTestManager(t, client)
 	installed := installJS(t, manager, "acme.interrupt", `
 let calls = 0;
-export function onEvent(op, ctx) {
+export function onEvent(ctx, op) {
   if (op.block) { for (;;) {} }
   calls += 1;
   ctx.state.seen = (ctx.state.seen || 0) + 1;
@@ -146,7 +146,7 @@ func TestInvokeStateIsolatedAcrossRequests(t *testing.T) {
 	manager := newTestManager(t, client)
 	installed := installJS(t, manager, "acme.state", `
 let boots = 0;
-export function onEvent(op, ctx) {
+export function onEvent(ctx, op) {
   if (op.block) { for (;;) {} }
   boots += 1;
   const prev = ctx.state.owner || "";
@@ -311,7 +311,7 @@ func TestInvokeCircuitBreaker(t *testing.T) {
 	now := time.Date(2026, 11, 6, 3, 0, 0, 0, time.UTC)
 	manager.callNow = func() time.Time { return now }
 	installed := installJS(t, manager, "acme.breaker", `
-export function onEvent(op, ctx) {
+export function onEvent(ctx, op) {
   const n = Number(ctx.kv.get("hits") || "0") + 1;
   ctx.kv.set("hits", String(n));
   if (op.fail) throw new Error("boom");
@@ -354,7 +354,7 @@ func TestInvokeHostObjects(t *testing.T) {
 	manager := newTestManager(t, client)
 	installed := installJS(t, manager, "acme.host", `
 let saved = null;
-export function onEvent(op, ctx) {
+export function onEvent(ctx, op) {
   if (op.op === "config") {
     let threw = false;
     let nestedThrew = false;
@@ -467,7 +467,7 @@ func TestInvokePoolExhaustionIsNotAFailure(t *testing.T) {
 	client := newPluginDB(t)
 	manager := newTestManager(t, client)
 	installed := installJS(t, manager, "acme.pool", `
-export function onEvent(op, ctx) {
+export function onEvent(ctx, op) {
   if (op.block) { for (;;) {} }
   if (op.fail) throw new Error("boom");
   return 1;
@@ -537,7 +537,7 @@ func TestPluginLogFieldsKeepIdentity(t *testing.T) {
 }
 
 const kvHostScript = `
-export function onEvent(op, ctx) {
+export function onEvent(ctx, op) {
   try {
     if (op.op === "get") return ctx.kv.get(op.key, op.options);
     if (op.op === "set") {

@@ -212,7 +212,7 @@ func applyResponsesTransportRequestBody(outbound *PersistentOutboundTransformer,
 // For formats that encode the selected model in the request body, the mapped llmReq.Model is
 // written back into the copied raw payload so pass-through does not bypass model mapping.
 // Save the actual outbound provider request so pass-through checks use the emitted API format.
-func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
+func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, systemService *biz.SystemService, hooks RequestHookProvider) pipeline.Middleware {
 	return pipeline.OnRawRequest("pass-through-request-body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		outbound.state.RawProviderRequest = request
 
@@ -271,6 +271,9 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 		}
 
 		outbound.state.PassThroughApplied = true
+		if hooks != nil && channel != nil {
+			hooks.PassThroughApplied(ctx, channel.ID)
+		}
 
 		return request, nil
 	})

@@ -283,7 +283,7 @@ func promptProtectionPayload(t *testing.T, codec transformer.Inbound, provider t
 	require.NoError(t, err)
 	fallback := append([]byte(nil), generated.Body...)
 	outbound := &PersistentOutboundTransformer{wrapped: provider, state: state}
-	emitted, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, generated)
+	emitted, err := applyPassThroughRequestBody(outbound, nil, nil).OnOutboundRawRequest(ctx, generated)
 	require.NoError(t, err)
 
 	return state, emitted, fallback

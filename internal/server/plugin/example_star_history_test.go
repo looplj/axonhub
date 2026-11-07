@@ -15,7 +15,7 @@ import (
 )
 
 func TestExampleStarHistoryPackage(t *testing.T) {
-	root := filepath.Join("..", "..", "..", "plugin", "examples", "star-history")
+	root := filepath.Join("..", "..", "..", "plugins", "examples", "star-history")
 	files := map[string][]byte{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -55,6 +55,14 @@ func TestExampleStarHistoryPackage(t *testing.T) {
 	assertNoDirectNetwork(t, app)
 	assertNoDirectNetwork(t, string(files["ui/stars/format.js"]))
 	require.NotContains(t, app, "Authorization")
+	format := string(files["ui/stars/format.js"])
+	require.Contains(t, format, "https://api.star-history.com/chart")
+	require.Contains(t, format, "data:image/svg+xml")
+	require.NotContains(t, app, "/stargazers")
+	require.NotContains(t, app, "starred_at")
+	require.NotContains(t, app, "innerHTML")
+	require.Contains(t, html, `id="chart"`)
+	require.NotContains(t, html, "api.star-history.com")
 	require.NotContains(t, files, "plugin.js")
 
 	raw := zipExampleFiles(t, files)
@@ -88,12 +96,12 @@ func assertExampleStarHistoryPackage(t *testing.T, raw []byte) {
 	require.Nil(t, pkg.Manifest.Hooks)
 	require.Equal(t, []string{
 		"https://api.github.com/repos/looplj/axonhub",
-		`^https://api\.github\.com/repos/looplj/axonhub/stargazers$`,
+		"https://api.star-history.com/chart",
 	}, pkg.Manifest.NetworkGrants())
 	require.Equal(t, "https://api.github.com/repos/looplj/axonhub", pkg.Manifest.Network[0].Exact)
 	require.Empty(t, pkg.Manifest.Network[0].Regex)
-	require.Empty(t, pkg.Manifest.Network[1].Exact)
-	require.Equal(t, `^https://api\.github\.com/repos/looplj/axonhub/stargazers$`, pkg.Manifest.Network[1].Regex)
+	require.Equal(t, "https://api.star-history.com/chart", pkg.Manifest.Network[1].Exact)
+	require.Empty(t, pkg.Manifest.Network[1].Regex)
 	require.Equal(t, "stars", pkg.Manifest.UI.Pages[0].Key)
 	require.Equal(t, "ui/stars/index.html", pkg.Manifest.UI.Pages[0].Entry)
 	title, err := json.Marshal(pkg.Manifest.UI.Pages[0].Title)

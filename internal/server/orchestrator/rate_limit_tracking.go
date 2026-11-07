@@ -73,12 +73,10 @@ func (m *rateLimitTracking) OnOutboundLlmStream(ctx context.Context, stream stre
 // OnOutboundRawError handles raw HTTP errors, specifically capturing 429 Too Many Requests.
 // When a 429 is received, it parses the Retry-After header and sets a cooldown for the channel.
 func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
-	if m.outbound == nil {
+	if isLocalAdmissionError(err) {
 		return
 	}
-
-	// Local admission rejections never reached upstream — they must not trigger cooldown.
-	if isChannelQueueError(err) || isLocalRPMExhaustedError(err) {
+	if m.outbound == nil {
 		return
 	}
 

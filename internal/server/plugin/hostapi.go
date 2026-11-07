@@ -53,9 +53,24 @@ type hostCall struct {
 	writes         int
 	ctxValue       moejs.Value
 	result         InvokeResult
+	rejected       *requestRejectedError
 }
 
-func (h *hostCall) build(config, state json.RawMessage) (moejs.Value, error) {
+// requestRejectedError is the host-side mark set by a legal ctx.reject.
+// The script may catch the control exception. The mark still rejects the request.
+type requestRejectedError struct {
+	status  int
+	message string
+}
+
+func (e *requestRejectedError) Error() string {
+	if e == nil || e.message == "" {
+		return "plugin rejected the request"
+	}
+	return e.message
+}
+
+func (h *hostCall) build(config, state, requestJSON, attemptJSON json.RawMessage, allowReject bool) (moejs.Value, error) {
 	configValue, err := h.rt.ParseJSON(config)
 	if err != nil {
 		return moejs.Undefined(), err
@@ -110,10 +125,62 @@ func (h *hostCall) build(config, state json.RawMessage) (moejs.Value, error) {
 	if err := defineHostFn(h.rt, ctxObj, "fetch", 1, h.fetch); err != nil {
 		return moejs.Undefined(), err
 	}
+	if err := h.defineJSONField(ctxObj, "request", requestJSON); err != nil {
+		return moejs.Undefined(), err
+	}
+	if err := h.defineJSONField(ctxObj, "attempt", attemptJSON); err != nil {
+		return moejs.Undefined(), err
+	}
+	if allowReject {
+		if err := defineHostFn(h.rt, ctxObj, "reject", 2, h.reject); err != nil {
+			return moejs.Undefined(), err
+		}
+	}
 	if err := h.attachEventAPI(ctxObj); err != nil {
 		return moejs.Undefined(), err
 	}
 	return engine.ObjectValue(ctxObj), nil
+}
+
+func (h *hostCall) defineJSONField(obj *moejs.Object, name string, raw json.RawMessage) error {
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return nil
+	}
+	value, err := h.rt.ParseJSON(raw)
+	if err != nil {
+		return err
+	}
+	return defineValue(h.rt, obj, name, value)
+}
+
+func (h *hostCall) reject(_ *moejs.Realm, _ moejs.Value, args []moejs.Value) (moejs.Value, error) {
+	if err := h.enter(false); err != nil {
+		return moejs.Undefined(), err
+	}
+	status, ok := finiteNumber(moejs.Arg(args, 0))
+	messageVal := moejs.Arg(args, 1)
+	message := ""
+	if messageVal.IsString() {
+		message = strings.TrimSpace(messageVal.AsString().GoString())
+	}
+	legalStatus := ok && status == math.Trunc(status) && (status == 400 || status == 403 || status == 429)
+	if !legalStatus || !messageVal.IsString() || message == "" {
+		return moejs.Undefined(), h.fail(hostInvalidArgument, "reject status must be 400, 403, or 429 and message must be a non-empty string")
+	}
+	h.rejected = &requestRejectedError{status: int(status), message: message}
+	return moejs.Undefined(), h.throwControl(message)
+}
+
+func (h *hostCall) throwControl(message string) error {
+	if h == nil || h.rt == nil {
+		return errors.New(message)
+	}
+	realm := h.rt.Realm()
+	obj := realm.NewError(engine.KindError, "%s", message)
+	if err := obj.SetProp(realm, realm.KeyFromGoString("name"), moejs.String("PluginRequestReject")); err != nil {
+		return err
+	}
+	return realm.Throw(engine.ObjectValue(obj))
 }
 
 func defineHostFn(rt *moejs.Runtime, obj *moejs.Object, name string, length int, fn moejs.NativeFunc) error {

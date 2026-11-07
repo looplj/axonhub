@@ -4,7 +4,7 @@
 
 本篇不在 [任务表](README.md#9-任务管理) 里。当前交付只做一件事：manifest 里出现 `providers` 就拒绝安装，见 [字段表](manifest.md#3-字段)。下面的接入、验收和妥协是开放该能力时的实现合同，不是本轮要写的代码。
 
-请求钩子改的是进渠道路由之前的统一请求，见 [request.md](request.md)。它不能代替这里的出站转换。
+onRequest 修改路由前的统一请求，onAttempt 修改已有 provider 转换后的上游 JSON body，见 [request.md](request.md)。两者都不能代替这里完整的出站转换。
 
 ## 1. 背景
 
@@ -70,7 +70,7 @@ manifest 增加字段，开放时并入 [manifest.md](manifest.md)。开放后 `
 
 `key` 在该插件内唯一，`^[a-z0-9][a-z0-9-]{0,31}$`。`apiFormat` 第一版只能是 `openai/chat_completions`。`auth.header` 是一个 HTTP 头名称。`auth.scheme` 只能是 `bearer`（宿主写 `Bearer <key>`）或 `raw`（宿主把密钥原样写入该头）。`title` 用在渠道类型选择器里，接受字符串或多语言对象，校验和显示回退复用 [title](manifest.md#title)；GraphQL 与前端类型沿用页面的约定。
 
-JS 必须导出 `transformRequest` 和 `transformResponse`。与 `plugin.js` 相同，允许 async，宿主等待 Promise。`transformRequest(req, ctx)` 返回 `{ method, url, headers, body }`。`ctx.channel` 只有 `id`、`name`、`baseUrl`、`providerKey`。没有密钥。转换函数可以 `await ctx.fetch`，目标仍须匹配已授权的路径或正则；发往渠道上游的 URL 仍受下面的 base URL 约束。`transformResponse(res, ctx)` 把上游状态码、头和 body 变成统一响应对象。
+JS 必须导出 `transformRequest` 和 `transformResponse`。与 `plugin.js` 相同，允许 async，宿主等待 Promise。`transformRequest(ctx, req)` 返回 `{ method, url, headers, body }`。`ctx.channel` 只有 `id`、`name`、`baseUrl`、`providerKey`。没有密钥。转换函数可以 `await ctx.fetch`，目标仍须匹配已授权的路径或正则；发往渠道上游的 URL 仍受下面的 base URL 约束。`transformResponse(ctx, res)` 把上游状态码、头和 body 变成统一响应对象。
 
 宿主包装成 `transformer.Outbound`：
 

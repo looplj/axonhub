@@ -161,7 +161,7 @@ func TestFetchHeadersAndBodies(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 	defer cancel()
-	time.Sleep(2 * time.Millisecond)
+	<-ctx.Done()
 	_, err = manager.Fetch(ctx, granted, FetchRequest{URL: "https://example.com/v1/check"})
 	require.Equal(t, hostDeadlineExceeded, fetchCode(t, err))
 }

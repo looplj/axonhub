@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm"
 )
 
 func TestUpgrade(t *testing.T) {
@@ -46,10 +47,10 @@ func TestUpgrade(t *testing.T) {
 		require.Equal(t, []string{"request.failover"}, diff.Events)
 
 		withHook := sampleManifest(t)
-		withHook.Hooks = &objects.PluginHooksSpec{Request: true}
+		withHook.Hooks = &objects.PluginHooksSpec{Request: &objects.PluginRequestHook{Enabled: true, RequestTypes: []llm.RequestType{llm.RequestTypeChat}}}
 		diff = DiffManifest(&old, &withHook)
 		require.True(t, diff.NeedsPreview())
-		require.Equal(t, []string{"request"}, diff.Hooks)
+		require.Equal(t, []string{"request: chat"}, diff.Hooks)
 
 		withPage := sampleManifest(t)
 		withPage.UI = &objects.PluginUI{Pages: []objects.PluginUIPage{

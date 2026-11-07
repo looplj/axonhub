@@ -4,18 +4,20 @@
 
 manifest 字段与开放范围以 [manifest.md](manifest.md) 为准，数值限制以 [运行限制](README.md#运行限制) 为准。业务事件、请求链路和未来响应链路分别见 [events.md](events.md)、[request.md](request.md)、[response.md](response.md)。不另建任务表，实现与验收归入总览的 T-10 至 T-13，响应能力仍按原计划另行排期。
 
+> 本文的钩子签名、注册和返回值为未发布接口的修订契约，仍使用 pluginApiVersion 1；运行时及示例脚本已按 T-13 同步。
+
 ## 1. 入口形式
 
 包根目录的 `plugin.js` 是 ESM 模块。插件导出约定名称的函数，manifest 声明使用哪些能力，宿主在对应时机调用。
 
 ```js
-export function onRequest(req, ctx) {
+export function onRequest(ctx, req) {
   return { ...req, temperature: 0.2 };
 }
 ```
 
 - 第一版只识别命名导出，不从 `export default { ... }` 中寻找钩子，也不提供工厂函数或动态 `registerHook`。
-- manifest 声明了某个钩子，必须有同名的可调用导出；缺失或导出不是函数时安装失败。只导出而没有声明的函数不会被调度。
+- manifest 启用了某个钩子，必须有同名的可调用导出；缺失或导出不是函数时安装失败。只导出而没有声明的函数不会被调度。
 - 辅助函数可以自由定义；只有宿主约定且已开放的导出才是入口。
 - 只有 UI 的插件可以省略 `plugin.js`。页面自己的 JS 在浏览器里运行，通过 UI Bridge 交互，不会作为后端钩子执行。
 
@@ -23,11 +25,11 @@ export function onRequest(req, ctx) {
 
 | 导出 | manifest 声明 | 调用时机 | 当前方案范围 |
 |------|---------------|----------|--------------|
-| `onEvent(event, ctx)` | 非空 `events` | 收到订阅的业务事件，例如 `request.failover` | 事件扩展点 |
-| `onRequest(req, ctx)` | `hooks.request: true` | 每个请求一次，模型权限检查、模型映射和选路之前 | 请求扩展点 |
-| `onAttempt(req, ctx)` | `hooks.attempt: true` | 每次上游尝试，包含同渠道重试和切换渠道；模型及渠道参数已应用 | 请求扩展点 |
-| `onResponse(res, ctx)` | `hooks.response: true` | 成功的非流式响应 | 未开放，见响应篇 |
-| `onStreamChunk(chunk, ctx)` | `hooks.streamChunk` 类型列表 | 命中声明类型的流式 chunk | 未开放，见响应篇 |
+| `onEvent(ctx, event)` | 非空 `events` | 收到订阅的业务事件，例如 `request.failover` | 事件扩展点 |
+| `onRequest(ctx, req)` | `hooks.request.enabled: true` + `requestTypes` | 每个请求一次，模型权限检查、模型映射和选路之前 | 请求扩展点 |
+| `onAttempt(ctx, body)` | `hooks.attempt.enabled: true` + `apiFormats` | 每次匹配的上游尝试；协议转换及 pass-through 后，渠道 override 前 | 请求扩展点 |
+| `onResponse(ctx, res)` | `hooks.response: true` | 成功的非流式响应 | 未开放，见响应篇 |
+| `onStreamChunk(ctx, chunk)` | `hooks.streamChunk` 类型列表 | 命中声明类型的流式 chunk | 未开放，见响应篇 |
 
 这里的 `onEvent` 是事件总线的业务事件，不是 SSE/token 事件。流式响应改写使用独立的 `onStreamChunk` 名称。
 
@@ -35,11 +37,12 @@ Provider 的 `transformRequest`、`transformResponse` 另见 [provider.md](provi
 
 ### 输入与返回值
 
-`onRequest`、`onAttempt` 接收统一请求对象的 JS 表示，不直接接收客户端或供应商的原始 HTTP body。不同入口协议经宿主转换后进入同一钩子。
+所有入口的第一个参数都是 `ctx`。`onRequest(ctx, request)` 接收统一请求的公开 JSON 对象，按 RequestType 匹配。`onAttempt(ctx, body)` 接收当前上游协议的 JSON body 对象，按实际出站 APIFormat 匹配；不是 llm.Request，也不是字符串或字节。非 JSON 对象 body（包括 multipart、二进制）不调度 attempt。两者独立匹配，第一次执行 attempt 且尚无已提交状态时 state 为 `{}`，后续重试保留成功提交的 state。
 
 | 返回或动作 | 请求钩子的含义 |
 |------------|----------------|
-| 返回请求对象 | 经宿主校验后替换输入，作为下一个插件的输入 |
+| 返回 JSON 对象 | replace：整体替换公开输入，省略字段删除，不做 merge；通过校验后交给下一个插件 |
+| 返回数组 | patch：RFC 6902 JSON Patch，作用于调用前对象；空数组为成功的无修改操作 |
 | 返回 `undefined`，或没有 return | 保持调用前的请求，不提交对参数对象的原地修改 |
 | 返回 `null`、标量或其他非法值 | 本次调用失败，保留调用前的请求 |
 | `onRequest` 中调用 `ctx.reject(status, message)` | 主动拒绝请求，允许的状态码和错误路径见请求篇 |
@@ -47,12 +50,14 @@ Provider 的 `transformRequest`、`transformResponse` 另见 [provider.md](provi
 | 返回 Promise | 宿主等待结算。结算值按上面各行处理；等待计入该钩子的预算 |
 
 - `onRequest` 可以修改 model，修改后仍走模型权限检查和映射；不能修改 stream。
-- `onAttempt` 的返回值只影响当次尝试，不污染下一次重试；不能修改 model 或 stream。
+- `onAttempt` 的返回值只影响当次尝试，不污染下一次重试；模型与传输控制字段按出站 APIFormat 校验，详见请求篇。保护约束丢弃改写时记录 Warn、累加 protectedDrops、丢弃 state，并保持连续失败计数不变。
 - `onEvent` 通过宿主 API 执行动作，普通返回值不作为事件改写结果。它失败后事件不重试，也不改变已经发生的网关请求结果。
 - 不把请求对象回滚理解为宿主副作用回滚：已经成功执行的 KV 或事件处置操作不会因随后抛错而自动撤销。
 - 未来响应钩子的返回语义以 [response.md](response.md) 为准，其中 `null` 丢弃 chunk 的规则只针对流式 chunk，不能套用到请求。
 
-pass-through 渠道会覆盖除 model 外的请求改写，渠道 override 也在钩子之后执行；具体优先级及提示见 [request.md](request.md#5-pass-through-渠道)。
+patch 使用 [RFC 6902](https://www.rfc-editor.org/rfc/rfc6902) 的 add/remove/replace/move/copy/test，路径为 [RFC 6901 JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901)。宿主在副本上按顺序应用，任一步失败或最终值不是对象则全部回滚。replace/patch 都先完成类型与保护字段校验，再记录成功和提交 state；不能先清空失败计数。
+
+pass-through 只可能覆盖 onRequest 除 model 外的改写，onAttempt 在其后运行，改写正常生效；渠道 override 在 onAttempt 之后执行，具体优先级及提示见 [request.md](request.md#5-pass-through-渠道)。
 
 ## 3. ctx 与状态
 
@@ -64,7 +69,7 @@ pass-through 渠道会覆盖除 model 外的请求改写，渠道 override 也�
 | `ctx.log.info/warn/error` | 记录插件日志，不应记录密钥或完整请求内容 |
 | `ctx.kv.get/set/delete/list` | 插件持久数据；事件与请求插件共用，按本次安装 ID 隔离 |
 | `ctx.fetch` | 宿主代发的外部请求，只到达已授权的路径或正则。见 [出站请求](#出站请求)。`onEvent`、`onRequest`、`onAttempt` 都可 `await` |
-| `ctx.request` | 请求钩子的请求元数据：`projectId`、`apiKeyId`、客户端 `model`、`apiFormat`；playground 的 `apiKeyId` 为 null |
+| `ctx.request` | 请求钩子的请求元数据：`projectId`、`apiKeyId`、客户端 `model`、`requestType`、`apiFormat`；playground 的 `apiKeyId` 为 null |
 | `ctx.attempt` | `onAttempt` 的当前渠道、实际模型和上游格式 |
 | `ctx.state` | 请求钩子之间共享的、按请求和插件隔离的 JSON 状态；未来响应钩子沿用 |
 | `ctx.reject` | `onRequest` 的主动拒绝入口 |
@@ -262,18 +267,21 @@ interface RequestControl {
   "pluginApiVersion": 1,
   "permissions": [],
   "events": ["request.failover"],
-  "hooks": { "request": true, "attempt": true }
+  "hooks": {
+    "request": { "enabled": true, "requestTypes": ["chat"] },
+    "attempt": { "enabled": true, "apiFormats": ["openai/chat_completions"] }
+  }
 }
 ```
 
 `plugin.js`：
 
 ```js
-export function onEvent(event, ctx) {
+export function onEvent(ctx, event) {
   ctx.log.info(`收到业务事件：${event.type}`);
 }
 
-export function onRequest(req, ctx) {
+export function onRequest(ctx, req) {
   if (req.model === "blocked-model") {
     ctx.reject(403, "该模型已禁用");
     return;
@@ -284,10 +292,10 @@ export function onRequest(req, ctx) {
   return { ...req, temperature: 0.2 };
 }
 
-export function onAttempt(req, ctx) {
-  // 此时 req.model 是本次上游实际模型，不能在这里修改。
-  ctx.log.info(`客户端模型：${ctx.state.clientModel}；上游模型：${req.model}`);
-  return undefined;
+export function onAttempt(ctx, body) {
+  // body 已是实际上游协议；元信息不依赖 body 中是否存在 model。
+  ctx.log.info(`上游模型：${ctx.attempt.model}`);
+  return [{ op: "add", path: "/temperature", value: 0.2 }];
 }
 ```
 
@@ -334,7 +342,7 @@ UI 文件保存在实例临时目录，后端模块和执行数据保存在内�
 - **T-10，安装与导出校验**：声明但缺少命名导出、只有 default 对象、导出不是函数、顶层 await、包外 import 均失败；async 钩子和包内相对 import 通过。
 - **T-11，运行时**：按次借还 VM，等待 Promise 到结算或超时，中断后丢弃 VM；不同请求的 `ctx.state` 隔离，同一请求换 VM 后仍能读取自己的状态。调用阶段不重复读库、解压或编译。`ctx.fetch` 不在本任务。
 - **T-12，事件**：只分发声明的事件；业务事件不进入流式钩子；宿主权限与 KV 安装隔离遵循事件篇和总览验收。
-- **T-13，请求**：返回对象才提交修改，原地修改后返回 undefined 不生效；非法返回或 stream 改写回滚；`onRequest` 改 model 后仍过权限检查，`onAttempt` 改 model 被拒；未声明钩子不调用。
+- **T-13，请求**：对象 replace、数组 JSON Patch 原子提交，原地修改后返回 undefined 不生效；非法返回、patch 失败或 stream 改写回滚；`onRequest` 改 model 后仍过权限检查，`onAttempt` 改 model 被拒；未声明钩子不调用。
 
 宿主 API 契约测试还覆盖：KV 缺失/空串/过期、覆盖重设 TTL、list 排序与超限；不同窗口计数器独立；渠道分页和不存在返回值；凭证歧义与 OAuth 拒绝；未授权调用无副作用；WebHook 失败不重试；宿主 I/O 取消；catch reject 后仍不能放行请求；失败调用不提交 ctx.state。出站的路径匹配、正则全匹配、重定向不跟随归入 T-16。
 

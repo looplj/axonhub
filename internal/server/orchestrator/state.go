@@ -127,6 +127,10 @@ type PersistenceState struct {
 	// PassThroughApplied records whether the inbound request body was substituted during pass-through.
 	PassThroughApplied bool
 
+	// PluginOverloaded is set when an onAttempt hook cannot borrow a runtime.
+	// HasMoreChannels returns false while it is set, so the pipeline does not switch channels.
+	PluginOverloaded bool
+
 	// EventBus publishes plugin events for this request. Nil skips publication.
 	// It is copied from the orchestrator; it is not stored on context.Context.
 	EventBus *events.Bus

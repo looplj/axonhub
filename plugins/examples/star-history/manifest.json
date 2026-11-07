@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "example.star-history",
+  "name": "Star history",
+  "version": "1.0.0",
+  "description": "Example page that shows the looplj/axonhub star count and the star-history.com chart through host-proxied requests.",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "permissions": [],
+  "network": [
+    "https://api.github.com/repos/looplj/axonhub",
+    "https://api.star-history.com/chart"
+  ],
+  "ui": {
+    "pages": [
+      {
+        "key": "stars",
+        "entry": "ui/stars/index.html",
+        "title": { "en": "Star history", "zh-CN": "Star 历史" }
+      }
+    ]
+  }
+}

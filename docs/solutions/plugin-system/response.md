@@ -17,7 +17,7 @@ chat 流一个请求可能有几百个 chunk。每个 chunk 都调用一次 JS �
 
 ## 2. 目标
 
-1. 非流式响应调用 `onResponse(res, ctx)`；流式响应按 chunk 调用 `onStreamChunk(chunk, ctx)`。返回对象则替换，返回 `null` 丢弃该 chunk，返回 `undefined` 保持原样。
+1. 非流式响应调用 `onResponse(ctx, res)`；流式响应按 chunk 调用 `onStreamChunk(ctx, chunk)`。返回对象则替换，返回 `null` 丢弃该 chunk，返回 `undefined` 保持原样。
 2. `onStreamChunk` 只收到插件声明过的 chunk 类型，其余 chunk 由宿主透传，不进 JS。
 3. 钩子抛错、超时、返回非法值时按原值继续，与 [请求钩子](request.md#4-钩子) 的失败处理相同。
 4. 同一请求里，同一插件的请求钩子和响应钩子共用 `ctx.state`。
@@ -55,7 +55,7 @@ chat 流一个请求可能有几百个 chunk。每个 chunk 都调用一次 JS �
 `hooks.response` 是布尔值，`true` 时必须导出 `onResponse`。`hooks.streamChunk` 是 chunk 类型的非空列表，有值时必须导出 `onStreamChunk`：
 
 ```json
-"hooks": { "request": true, "attempt": false, "response": true, "streamChunk": ["finish", "usage"] }
+"hooks": { "request": { "enabled": true, "requestTypes": ["chat"] }, "response": true, "streamChunk": ["finish", "usage"] }
 ```
 
 chunk 类型由宿主从 `llm.Response` 判断，一个 chunk 可以同时属于多种类型：
@@ -76,12 +76,12 @@ chunk 类型由宿主从 `llm.Response` 判断，一个 chunk 可以同时属于
 1. 请求钩子中间件同时实现 OnOutboundLlmResponse 和 OnOutboundLlmStream。
    只有声明了 response 或 streamChunk 的插件才进入下面的列表。
 2. 非流式：OnOutboundLlmResponse(res)
-   按 priority 调用 onResponse(res, ctx)，前一个插件的结果作为下一个插件的输入。
+   按 priority 调用 onResponse(ctx, res)，前一个插件的结果作为下一个插件的输入。
 3. 流式：OnOutboundLlmStream 包装 stream，对每个 chunk：
    - 宿主判断 chunk 类型，与每个插件声明的类型取交集
    - 交集为空的插件跳过，不借 VM、不序列化
    - 都跳过时 chunk 原样透传
-   - 否则按 priority 借 VM 调用 onStreamChunk(chunk, ctx)，返回后归还
+   - 否则按 priority 借 VM 调用 onStreamChunk(ctx, chunk)，返回后归还
 4. ctx.state 与该插件在本请求里的请求钩子共用，请求结束释放。
 ```
 

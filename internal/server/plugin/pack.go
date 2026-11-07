@@ -17,6 +17,10 @@ import (
 // static imports with the same moejs parser used during installation. It does
 // not execute plugin code; runtime and manifest compatibility checks happen at
 // installation. README.md at the root and .DS_Store files are excluded.
+//
+// cmd/pack-plugin copies this walk together with readPackage, compilePluginSources,
+// and rejectDisallowed. Keep those copies aligned. ParsePackage remains the
+// install-time check.
 func PackDirectory(root string) ([]byte, error) {
 	dir, err := os.OpenRoot(root)
 	if err != nil {

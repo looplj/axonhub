@@ -101,6 +101,6 @@ func responsesCodexWirePipeline(t *testing.T, server *httptest.Server, store *re
 	candidate := &ChannelModelsCandidate{Channel: channel, APIFormat: "openai/responses", Models: []biz.ChannelModelEntry{{RequestModel: "gpt-5", ActualModel: "gpt-5"}}}
 	state := &PersistenceState{ChannelModelsCandidates: []*ChannelModelsCandidate{candidate}, ResponsesContinuation: newResponsesContinuation(store, body)}
 	inbound, persistent := NewPersistentTransformers(state, responses.NewInboundTransformer())
-	pipe := pipeline.NewFactory(httpclient.NewHttpClientWithClient(server.Client())).Pipeline(inbound, persistent, pipeline.WithRetry(2, 2, 0), pipeline.WithMiddlewares(applyPassThroughRequestBody(persistent, nil), applyResponsesContinuationBody(persistent), verifyResponsesAttempt(persistent), finalizeTransportRequest(persistent), captureResponsesProvider(persistent)))
+	pipe := pipeline.NewFactory(httpclient.NewHttpClientWithClient(server.Client())).Pipeline(inbound, persistent, pipeline.WithRetry(2, 2, 0), pipeline.WithMiddlewares(applyPassThroughRequestBody(persistent, nil, nil), applyResponsesContinuationBody(persistent), verifyResponsesAttempt(persistent), finalizeTransportRequest(persistent), captureResponsesProvider(persistent)))
 	return persistent, pipe
 }

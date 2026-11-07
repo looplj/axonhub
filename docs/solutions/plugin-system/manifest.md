@@ -2,6 +2,8 @@
 
 [插件系统](README.md)的公共契约：插件包里 `manifest.json` 的唯一定义。运行时、事件、请求钩子、页面，以及未排期的响应钩子、插槽、Provider 都依赖本篇，各篇不另写字段和校验。包结构见 [包](README.md#包)，数值限制见 [运行限制](README.md#运行限制)。任务见 [任务表](README.md#9-任务管理)；各字段由哪个任务开放见 [字段表](#3-字段)。
 
+> hooks 对象是未发布接口的修订设计，运行时已同步；schemaVersion 和 pluginApiVersion 均保持 1，不兼容旧的布尔 hooks。
+
 ## 1. 命名
 
 Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到的 JSON 都用 camelCase：manifest、市场索引、JS 侧的 `ctx`、事件数据。这与 `internal/objects` 的惯例一致，该包的 JSON tag 绝大多数是 camelCase。枚举值不跟着改，例如事件类型 `channel.auto_disabled`、权限 `read_channels`、chunk 类型 `tool_call`。`configSchema` 内部是 JSON Schema，关键字保持规范原样。
@@ -19,7 +21,6 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
   "pluginApiVersion": 1,
   "permissions": ["read_channels", "write_channels", "webhook"],
   "events": ["request.failover", "channel.credential_disabled"],
-  "hooks": { "request": false, "attempt": false },
   "configSchema": {
     "type": "object",
     "properties": {
@@ -31,7 +32,8 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
       },
       "target": { "type": "string", "title": "Webhook target" },
       "token": { "type": "string", "format": "secret" }
-    }
+    },
+    "required": ["token"]
   },
   "ui": {
     "pages": [
@@ -47,7 +49,7 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 
 ## 3. 字段
 
-字段是逐步开放的。「开放」列是让该字段生效的任务。该任务完成前，以及标为「未排期」的字段，出现即拒绝安装，返回「规则」列里的错误，不写库，避免字段被静默忽略。开放一个字段时只改这一行：写入规则，把「开放」列改成任务 ID，`schemaVersion` 和 `pluginApiVersion` 不变。
+字段是逐步开放的。「开放」列是让该字段生效的任务。该任务完成前，以及标为「未排期」的字段，出现即拒绝安装，返回「规则」列里的错误，不写库，避免字段被静默忽略。开放新字段时同步更新规则、任务状态、解析及调用链；仅新增能力不改变版本号。不兼容变化遵循版本兼容规则，本次发布前修订例外见 hooks 一节。
 
 | 字段                                  | 必填 | 规则                                                                                                                                                     | 使用方                                           | 开放   |
 | ------------------------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ------ |
@@ -65,8 +67,8 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 | `ui.pages[].entry`                    | 是   | 包内 `ui/` 下存在的 `.html`                                                                                                                              | [页面](pages.md) iframe                          | T-01   |
 | `ui.pages[].title`                    | 是   | 非空字符串，或语言 → 非空标题的对象，见 [title](#title)                                                                                                  | [页面](pages.md) 侧栏                            | T-01   |
 | `events`                              | 否   | 只能取 [events.md](events.md#5-事件) 里当前开放的 8 种；非空时要求导出 `onEvent`。开放前出现：`events are not enabled`。旧 WebHook 的 4 个事件名暂不接受 | [事件](events.md)                                | T-12   |
-| `hooks.request`                       | 否   | 布尔，默认 `false`；`true` 时要求导出 `onRequest`。开放前为 `true`：`request hooks are not enabled`                                                      | [请求钩子](request.md)                           | T-13   |
-| `hooks.attempt`                       | 否   | 布尔，默认 `false`；`true` 时要求导出 `onAttempt`。开放前为 `true`：`request hooks are not enabled`                                                      | [请求钩子](request.md)                           | T-13   |
+| `hooks.request` | 否 | 对象；enabled 必填。true 时 requestTypes 必须非空且导出 onRequest；false 不调度 | [请求钩子](request.md) | T-13 |
+| `hooks.attempt` | 否 | 对象；enabled 必填。true 时 apiFormats 必须非空且导出 onAttempt；false 不调度 | [请求钩子](request.md) | T-13 |
 | `hooks.response`、`hooks.streamChunk` | —    | 出现即拒绝：`response hooks are not enabled`                                                                                                             | [响应钩子](response.md#manifest)                 | 未排期 |
 | `ui.panels`                           | —    | 出现即拒绝：`ui panels are not enabled`                                                                                                                  | [插槽](slots.md#4-manifest)                      | 未排期 |
 | `providers`                           | —    | 出现即拒绝，包括空数组：`custom channel providers are not enabled`                                                                                       | [Provider](provider.md#5-接入)                   | 未排期 |
@@ -105,11 +107,29 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 - 插件接口有不兼容变化时加一代。新增宿主 API、新增可选字段不算不兼容。
 - 单独设这一项，是因为 AxonHub 的版本号跟着网关功能走，插件接口可能在 1.x 的小版本里变化，`axonhubVersion` 挡不住，作者写的不封顶范围更挡不住。
 
+### hooks
+
+```json
+{
+  "request": { "enabled": true, "requestTypes": ["chat", "completion"] },
+  "attempt": { "enabled": true, "apiFormats": ["openai/chat_completions"] }
+}
+```
+
+两个钩子独立注册。省略钩子对象表示未声明；声明时 enabled 必填，不能根据范围列表隐式推断。enabled=false 允许省略列表或保留空/非空列表，不执行且不要求对应导出；enabled=true 要求非空范围和同名函数导出。空列表不代表全部，未启用的列表也必须满足类型、枚举和去重校验。省略整个 hooks 表示不注册请求钩子。
+
+request 对象只允许 enabled、requestTypes；attempt 只允许 enabled、apiFormats。requestTypes 使用 llm.RequestType，apiFormats 使用 llm.APIFormat 的精确枚举值（见 llm/constants.go），不接受通配符、重复项或未知值。范围列表内为 OR；attempt 按实际出站格式每次重新匹配，与 request 是否匹配无关。安装记录 enabled 仍是整个插件的总开关。
+
+这次修订发生在发布前，因此不增加 pluginApiVersion，也不提供旧布尔值或旧参数顺序兼容；发布后仍遵循上面的版本兼容规则。
+
 ### configSchema
 
 - 顶层只能是 `object`。
 - 属性类型限 `string|integer|number|boolean`，可带 `enum`、`minimum`、`maximum`、`default`、`title`、`description`、`format: secret`。
 - `format: "secret"` 的字段在 GraphQL 返回 `"******"`，原样传回表示不改；交给页面的 `init.config` 去掉这些字段。
+- 顶层可带 `required`（字符串数组），每项必须是已声明且不重复的属性名。
+- 值校验由 `github.com/google/jsonschema-go` 完成：服务端把本 schema 转成 JSON Schema 并补上 `additionalProperties: false`，未声明字段被拒绝。错误只含字段名和关键字，不含值。
+- 停用的插件可以保存不完整的配置；启用插件、保存已启用插件的配置、升级已启用插件时都检查 `required`。没保存的字段用 `default` 补齐后再判断，空字符串视为缺失。
 - 保存的 `config` 按本 schema 校验，大小见 [运行限制](README.md#运行限制)。升级时已有配置的处理见 [升级比较](#6-升级比较)，不能直接用新 schema 解释旧值。
 
 ## 4. 安装校验
@@ -124,15 +144,15 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 2. 已知但未开放字段按字段表的规则拒绝，优先返回对应的专用错误，不当作普通未知字段。例如 `hooks.requset` 返回未知字段错误，`hooks.response` 返回 `response hooks are not enabled`。
 3. `axonhubVersion`、`pluginApiVersion` 与当前 AxonHub 兼容。
 
-固定结构包括 manifest 根对象、hooks、ui、pages 条目，以及 configSchema 的受支持关键字和每个属性的 schema。`title` 对象的语言键、`configSchema.properties` 中的属性名属于动态映射，按各自的值类型与规则校验，不能套用固定字段名单。未来开放 panels/providers 时同时增加对应的结构白名单。当前仍不接受其内容，不需要提前定义未开放结构。
+固定结构包括 manifest 根对象、hooks、hooks.request、hooks.attempt、ui、pages 条目，以及 configSchema 的受支持关键字和每个属性的 schema。`title` 对象的语言键、`configSchema.properties` 中的属性名属于动态映射，按各自的值类型与规则校验，不能套用固定字段名单。未来开放 panels/providers 时同时增加对应的结构白名单。当前仍不接受其内容，不需要提前定义未开放结构。
 
 **导出校验**（`jsruntime.go`，T-10）：包里有 `plugin.js` 时，在 `DisableDynamicCode` 的临时 runtime 里编译并执行顶层（1 s），然后检查：
 
 1. `events` 非空 → 导出 `onEvent`。
-2. `hooks.request` 为 `true` → 导出 `onRequest`；`hooks.attempt` 为 `true` → 导出 `onAttempt`。
+2. `hooks.request.enabled` 为 `true` → 导出 `onRequest(ctx, request)`；`hooks.attempt.enabled` 为 `true` → 导出 `onAttempt(ctx, body)`。事件导出统一为 `onEvent(ctx, event)`。
 3. 上述导出都是函数。允许 async。顶层 `await` 拒绝。
 
-声明了 `events` 或 `hooks`、但包里没有 `plugin.js` 时，同样失败。
+非空 events 或任一 enabled=true 的请求钩子要求包内有 plugin.js；全部禁用的 hooks 不单独要求后端脚本。
 
 ## 5. 权限词表
 
@@ -156,7 +176,7 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 | `permissions` | 集合差                               |
 | `network`     | 集合差。精确 URL 按字符串，正则按 `regex` 原文 |
 | `events`      | 集合差                               |
-| `hooks`       | 新为 `true`、旧为 `false` 或缺省的键 |
+| `hooks` | 新启用的钩子，或任一 requestTypes/apiFormats 新增匹配项；禁用配置只保存、不调度，启用时再走确认 |
 | `ui.pages`    | 按 `key` 的集合差                    |
 
 `name`、`version`、`description`、`axonhubVersion`、`entry`、`title` 的变化不需要确认。`configSchema` 的变化不单独触发确认，但必须通过下面的配置迁移校验。
@@ -166,7 +186,8 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 1. **授权收敛**：没有显式提交 `grantedPermissions` 时，新授权为旧授权与新 `manifest.permissions` 的交集；不自动授予新增权限。显式提交时，该参数表示完整的新授权集合（不是增量），必须是新声明的子集，否则拒绝。`grantedNetwork` 使用同样的交集和完整集合规则，对应 `manifest.network`。包、manifest、config 和最终授权在同一事务里写入。
 2. **禁止 secret 降级**：旧 schema 中标为 `format: secret` 的字段，若新 schema 仍声明同名字段，该字段必须继续标为 secret；否则拒绝升级，不写库。错误只包含字段名和原因，不包含值。即使插件已停用或 Owner 确认新增权限，也不绕过此校验。
 3. **删除废弃配置**：新 config 只保留新 schema 声明的字段；被删除的字段（包括 secret）从配置中移除，不交给新版本、配置查询或页面。没有 `configSchema` 等同于没有声明字段。对保留的值按新 schema 校验，不兼容则拒绝升级，旧版本与旧配置保持不变。v1 不做隐式类型转换。
-4. **确认时重新校验**：预览阶段只计算变更，不修改配置或授权；最终写入时，基于事务内读取的当前插件行重新执行上述规则，避免预览之后的配置变更绕过校验。
+4. **已启用插件需满足 required**：迁移后的配置缺少新版本 `required` 字段时拒绝升级，Owner 先停用、升级、补配置再启用。
+5. **确认时重新校验**：预览阶段只计算变更，不修改配置或授权；最终写入时，基于事务内读取的当前插件行重新执行上述规则，避免预览之后的配置变更绕过校验。
 
 ## 7. 改动清单
 
@@ -192,7 +213,7 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 | 类别     | 标准                                                                                                                                                                        | 验证方式                                                  |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | 结构     | 字段表每条规则各有一个违反用例，均返回可读错误且不写库                                                                                                                      | `go test ./internal/server/plugin/ -run TestManifest`     |
-| 结构     | 根对象、hooks、ui、pages 条目和 configSchema 的未知固定字段均拒绝并返回完整路径；合法语言键和自定义配置属性名通过；已知未开放字段仍返回专用错误                             | 同上，包含 `hooks.requset` 与 `hooks.response` 的区分用例 |
+| 结构     | 根对象、hooks（含 request/attempt 的 enabled 与范围）、ui、pages 条目和 configSchema 的未知固定字段均拒绝并返回完整路径；合法语言键和自定义配置属性名通过；已知未开放字段仍返回专用错误                             | 同上，包含 `hooks.requset` 与 `hooks.response` 的区分用例 |
 | 标题     | `title` 的字符串与多语言对象均通过且可往返序列化；非法类型、空白值、缺少 `en` 的对象被拒                                                                                    | 同上                                                      |
 | 开放     | 字段表里每个未开放字段各一个用例，错误文本与表中一致；开放任务完成后对应用例改为通过                                                                                        | 同上                                                      |
 | 版本     | `axonhubVersion: "^1.0.0"` 在 `v1.0.0-beta9` 上通过，在 `0.9.0` 和 `2.0.0` 上失败；`pluginApiVersion: 2` 失败                                                               | 同上                                                      |

@@ -619,6 +619,7 @@ var pluginMutationFieldSnapshot = []string{
 	"enablePlugin",
 	"enableSelectedChannelAPIKeys",
 	"installPlugin",
+	"installPluginFromMarket",
 	"loadApiKeyProfileTemplate",
 	"previewPromptProtectionRule",
 	"refreshProvidersCatalog",

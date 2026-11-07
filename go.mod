@@ -25,6 +25,7 @@ require (
 	github.com/dlclark/regexp2/v2 v2.12.0
 	github.com/eko/gocache/lib/v4 v4.4.0
 	github.com/eko/gocache/store/go_cache/v4 v4.2.10
+	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/expr-lang/expr v1.17.8
 	github.com/gin-contrib/cors v1.7.10
 	github.com/gin-contrib/sse v1.1.1

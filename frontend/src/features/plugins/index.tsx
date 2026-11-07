@@ -1,9 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { IconUpload } from '@tabler/icons-react';
+import { useState } from 'react';
+import { IconBuildingStore, IconPlugConnected, IconRefresh, IconSearch, IconUpload } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Main } from '@/components/layout/main';
 import { PageHeader } from '@/components/layout/page-header';
@@ -16,102 +15,61 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PluginCard } from './components/plugin-card';
 import { PluginDetailSheet } from './components/plugin-detail-sheet';
 import { PluginGrantDialog } from './components/plugin-grant-dialog';
 import { PluginInstallDialog } from './components/plugin-install-dialog';
-import { PluginsTable } from './components/plugins-table';
-import {
-  useDeletePlugin,
-  useDisablePlugin,
-  useEnablePlugin,
-  useInstallPlugin,
-  usePlugins,
-  type Plugin,
-  type PluginUpgradePreview,
-} from './data/plugins';
+import { PluginMarket } from './components/plugin-market';
+import { matchesPluginSearch, PluginEmptyState, PluginGrid, PluginGridSkeleton } from './components/plugin-visuals';
+import { useDeletePlugin, useDisablePlugin, usePluginMarket, usePlugins, type Plugin } from './data/plugins';
+import { usePluginGrantFlow } from './hooks/use-plugin-grant-flow';
 
-interface GrantState {
-  mode: 'install' | 'upgrade';
-  plugin: Plugin;
-  preview: PluginUpgradePreview | null;
+export type PluginsTab = 'installed' | 'market';
+
+interface PluginsManagementProps {
+  tab: PluginsTab;
+  onTabChange: (tab: PluginsTab) => void;
 }
 
-export default function PluginsManagement() {
+export default function PluginsManagement({ tab, onTabChange }: PluginsManagementProps) {
   const { t } = useTranslation();
   const { isOwner, hasSystemScope } = usePermissions();
   const canWrite = hasSystemScope('write_plugins');
   const pluginsQuery = usePlugins();
-  const installPlugin = useInstallPlugin();
-  const enablePlugin = useEnablePlugin();
+  // Only drives the toolbar refresh button; the market tab owns its own render.
+  const marketQuery = usePluginMarket(tab === 'market');
+  const flow = usePluginGrantFlow();
   const disablePlugin = useDisablePlugin();
   const deletePlugin = useDeletePlugin();
   const [installOpen, setInstallOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const pendingFile = useRef<File | null>(null);
-  const [grant, setGrant] = useState<GrantState | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Plugin | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
-  const plugins = pluginsQuery.data?.plugins ?? [];
+  const runtimeStatuses = new Map((pluginsQuery.data?.pluginRuntimeStatuses ?? []).map((status) => [status.id, status]));
+  const plugins = (pluginsQuery.data?.plugins ?? []).map((plugin) => {
+    const status = runtimeStatuses.get(plugin.id);
+    return {
+      ...plugin,
+      overloaded: status?.overloaded ?? 0,
+      protectedDrops: status?.protectedDrops ?? 0,
+      overriddenByPassThrough: status?.overriddenByPassThrough ?? 0,
+    };
+  });
   // Resolved from the query on every render so the sheet shows fresh data after a save.
   const detailPlugin = plugins.find((plugin) => plugin.id === detailId) ?? null;
-
-  const resetInstall = () => {
-    pendingFile.current = null;
-    setSelectedFile(null);
-  };
+  const visiblePlugins = plugins.filter((plugin) => matchesPluginSearch(search, plugin.name, plugin.pluginID, plugin.description));
 
   const upload = async () => {
     if (!selectedFile) {
       return;
     }
-    pendingFile.current = selectedFile;
-    const known = new Set(plugins.map((plugin) => plugin.pluginID));
-    try {
-      const result = await installPlugin.mutateAsync({ file: selectedFile, grantedPermissions: null, grantedNetwork: null });
-      if (result.upgradePreview && result.plugin) {
-        setInstallOpen(false);
-        setGrant({ mode: 'upgrade', plugin: result.plugin, preview: result.upgradePreview });
-        return;
-      }
-      if (result.plugin && !known.has(result.plugin.pluginID) && !result.plugin.enabled) {
-        setInstallOpen(false);
-        setGrant({ mode: 'install', plugin: result.plugin, preview: null });
-        return;
-      }
-      toast.success(t('plugins.upload.success'));
+    if (await flow.install({ kind: 'file', file: selectedFile }, t('plugins.upload.success'))) {
       setInstallOpen(false);
-      resetInstall();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('plugins.upload.failed'));
-    }
-  };
-
-  const confirmGrant = async (grantedPermissions: string[], grantedNetwork: string[]) => {
-    if (!grant) {
-      return;
-    }
-    try {
-      if (grant.mode === 'upgrade') {
-        const file = pendingFile.current;
-        if (!file) {
-          return;
-        }
-        const result = await installPlugin.mutateAsync({ file, grantedPermissions, grantedNetwork });
-        if (result.upgradePreview && result.plugin) {
-          setGrant({ mode: 'upgrade', plugin: result.plugin, preview: result.upgradePreview });
-          return;
-        }
-        toast.success(t('plugins.upload.success'));
-      } else {
-        await enablePlugin.mutateAsync({ id: grant.plugin.id, grantedPermissions, grantedNetwork });
-      }
-      setGrant(null);
-      resetInstall();
-    } catch (error) {
-      if (grant.mode === 'upgrade') {
-        toast.error(error instanceof Error ? error.message : t('plugins.actions.failed'));
-      }
+      setSelectedFile(null);
     }
   };
 
@@ -131,65 +89,144 @@ export default function PluginsManagement() {
       />
 
       <Main>
-        <div className='space-y-4'>
-          {pluginsQuery.data?.pluginCountersArePerInstance && (
-            <p className='text-muted-foreground text-sm'>{t('plugins.countersPerInstance')}</p>
-          )}
-          {pluginsQuery.isLoading && <p className='text-muted-foreground text-sm'>{t('plugins.loading')}</p>}
-          {pluginsQuery.isError && (
-            <p className='text-destructive text-sm'>
-              {pluginsQuery.error instanceof Error ? pluginsQuery.error.message : t('plugins.loadFailed')}
-            </p>
-          )}
-          {pluginsQuery.isSuccess && plugins.length === 0 && (
-            <div className='text-muted-foreground rounded-2xl border border-dashed p-10 text-center text-sm'>{t('plugins.empty')}</div>
-          )}
-          {plugins.length > 0 && (
-            <PluginsTable
-              plugins={plugins}
+        <Tabs value={tab} onValueChange={(value) => onTabChange(value as PluginsTab)} className='w-full gap-4'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+            <TabsList>
+              <TabsTrigger value='installed'>
+                {t('plugins.tabs.installed')}
+                {pluginsQuery.isSuccess && <span className='text-muted-foreground ml-1 tabular-nums'>{plugins.length}</span>}
+              </TabsTrigger>
+              <TabsTrigger value='market'>{t('plugins.tabs.market')}</TabsTrigger>
+            </TabsList>
+            <div className='flex items-center gap-2'>
+              <div className='relative flex-1 sm:w-64 sm:flex-none'>
+                <IconSearch className='text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2' />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={t('plugins.search')}
+                  aria-label={t('plugins.search')}
+                  className='pl-9'
+                />
+              </div>
+              {tab === 'market' && (
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='icon'
+                  disabled={marketQuery.isFetching}
+                  aria-label={t('plugins.market.refresh')}
+                  title={t('plugins.market.refresh')}
+                  onClick={() => marketQuery.refetch()}
+                >
+                  <IconRefresh className={marketQuery.isFetching ? 'size-4 animate-spin' : 'size-4'} />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <TabsContent value='installed'>
+            {pluginsQuery.isLoading && <PluginGridSkeleton />}
+            {pluginsQuery.isError && (
+              <PluginEmptyState
+                icon={<IconPlugConnected />}
+                title={t('plugins.loadFailed')}
+                description={pluginsQuery.error instanceof Error ? pluginsQuery.error.message : undefined}
+                action={
+                  <Button type='button' variant='outline' size='sm' onClick={() => pluginsQuery.refetch()}>
+                    {t('plugins.page.retry')}
+                  </Button>
+                }
+              />
+            )}
+            {pluginsQuery.isSuccess && plugins.length === 0 && (
+              <PluginEmptyState
+                icon={<IconPlugConnected />}
+                title={t('plugins.empty')}
+                description={t('plugins.emptyHint')}
+                action={
+                  <Button type='button' variant='outline' size='sm' onClick={() => onTabChange('market')}>
+                    <IconBuildingStore className='size-4' />
+                    {t('plugins.tabs.market')}
+                  </Button>
+                }
+              />
+            )}
+            {plugins.length > 0 && visiblePlugins.length === 0 && <PluginEmptyState icon={<IconSearch />} title={t('plugins.noMatch')} />}
+            {visiblePlugins.length > 0 && (
+              <PluginGrid>
+                {visiblePlugins.map((plugin) => (
+                  <PluginCard
+                    key={plugin.id}
+                    plugin={plugin}
+                    canManage={isOwner}
+                    togglePending={disablePlugin.isPending || flow.busy}
+                    onOpen={(target) => setDetailId(target.id)}
+                    onEnable={(target) => {
+                      if (!flow.enable(target)) {
+                        setDetailId(target.id);
+                      }
+                    }}
+                    onDisable={(target) => disablePlugin.mutate(target.id)}
+                    onEditPermissions={flow.editPermissions}
+                    onDelete={setPendingDelete}
+                  />
+                ))}
+              </PluginGrid>
+            )}
+          </TabsContent>
+          <TabsContent value='market'>
+            <PluginMarket
+              search={search}
               canManage={isOwner}
-              togglePending={disablePlugin.isPending}
-              onConfigure={(plugin) => setDetailId(plugin.id)}
-              onEnable={(plugin) => setGrant({ mode: 'install', plugin, preview: null })}
-              onDisable={(plugin) => disablePlugin.mutate(plugin.id)}
-              onDelete={(plugin) => setPendingDelete(plugin)}
+              busy={flow.busy}
+              onInstall={(entry, intent) =>
+                flow.install(
+                  { kind: 'market', pluginID: entry.id, version: entry.version },
+                  intent === 'upgrade' ? t('plugins.market.upgraded') : t('plugins.market.success')
+                )
+              }
             />
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </Main>
 
-      <PluginDetailSheet plugin={detailPlugin} canWrite={canWrite} onOpenChange={(open) => !open && setDetailId(null)} />
+      <PluginDetailSheet
+        plugin={detailPlugin}
+        canWrite={canWrite}
+        canManage={isOwner}
+        onEditPermissions={flow.editPermissions}
+        onOpenChange={(open) => !open && setDetailId(null)}
+      />
 
       <PluginInstallDialog
         open={installOpen}
         onOpenChange={(open) => {
           setInstallOpen(open);
-          if (!open && !grant) {
-            resetInstall();
+          if (!open) {
+            setSelectedFile(null);
           }
         }}
         file={selectedFile}
         onFileChange={setSelectedFile}
-        pending={installPlugin.isPending}
+        pending={flow.pending}
         onSubmit={upload}
       />
 
       <PluginGrantDialog
-        open={grant !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setGrant(null);
-            resetInstall();
-          }
-        }}
-        mode={grant?.mode ?? 'install'}
-        permissions={grant?.plugin.manifestPermissions ?? []}
-        network={grant?.plugin.manifestNetwork ?? []}
-        initialGranted={grant?.plugin.grantedPermissions ?? []}
-        initialGrantedNetwork={grant?.plugin.grantedNetwork ?? []}
-        preview={grant?.preview}
-        pending={installPlugin.isPending || enablePlugin.isPending}
-        onConfirm={confirmGrant}
+        open={flow.grant !== null}
+        onOpenChange={(open) => !open && flow.cancel()}
+        mode={flow.grant?.mode ?? 'install'}
+        pluginID={flow.grant?.plugin.pluginID ?? ''}
+        pluginName={flow.grant ? flow.grant.plugin.name || flow.grant.plugin.pluginID : ''}
+        manifestHooks={flow.grant?.plugin.manifestHooks}
+        permissions={flow.grant?.plugin.manifestPermissions ?? []}
+        network={flow.grant?.plugin.manifestNetwork ?? []}
+        initialGranted={flow.grant?.plugin.grantedPermissions ?? []}
+        initialGrantedNetwork={flow.grant?.plugin.grantedNetwork ?? []}
+        preview={flow.grant?.preview}
+        pending={flow.pending}
+        onConfirm={flow.confirm}
       />
 
       <Dialog open={pendingDelete !== null} onOpenChange={(open) => !open && setPendingDelete(null)}>

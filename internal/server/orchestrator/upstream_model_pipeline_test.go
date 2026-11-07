@@ -70,7 +70,7 @@ func modelAuditMiddlewares(inbound *PersistentInboundTransformer, outbound *Pers
 		applyModelMapping(inbound),
 		applyPassThroughResponse(outbound, nil),
 		applyPassThroughStream(outbound, nil),
-		applyPassThroughRequestBody(outbound, nil),
+		applyPassThroughRequestBody(outbound, nil, nil),
 		applyOverrideRequestBody(outbound),
 		finalizeTransportRequest(outbound),
 		persistRequestExecution(outbound),

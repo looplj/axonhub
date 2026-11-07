@@ -63,7 +63,8 @@ export function PluginConfigForm({ plugin }: PluginConfigFormProps) {
         config[field.name] = raw === true || raw === 'true';
         continue;
       }
-      if (raw === undefined || (raw === '' && field.type !== 'string')) {
+      // An empty input means unset; an empty string would fail enum checks and does not satisfy required.
+      if (raw === undefined || raw === '') {
         continue;
       }
       if (field.type === 'integer') {
@@ -87,10 +88,6 @@ export function PluginConfigForm({ plugin }: PluginConfigFormProps) {
 
   return (
     <div className='space-y-4'>
-      <div>
-        <h3 className='text-sm font-medium'>{t('plugins.config.title')}</h3>
-        <p className='text-muted-foreground text-sm'>{t('plugins.config.description')}</p>
-      </div>
       <div className='space-y-2'>
         <Label htmlFor={`plugin-priority-${plugin.id}`}>{t('plugins.config.priority')}</Label>
         <Input
@@ -108,15 +105,18 @@ export function PluginConfigForm({ plugin }: PluginConfigFormProps) {
           field={field}
           value={values[field.name]}
           secretValue={secrets[field.name]?.value ?? ''}
+          secretStored={plugin.config[field.name] === PLUGIN_SECRET_MASK}
           onValueChange={(value) => setValues((current) => ({ ...current, [field.name]: value }))}
           onSecretChange={(value) =>
             setSecrets((current) => ({ ...current, [field.name]: { edited: true, value } }))
           }
         />
       ))}
-      <Button type='button' onClick={save} disabled={updateSettings.isPending}>
-        {updateSettings.isPending ? t('plugins.config.saving') : t('plugins.config.save')}
-      </Button>
+      <div className='flex justify-end'>
+        <Button type='button' onClick={save} disabled={updateSettings.isPending}>
+          {updateSettings.isPending ? t('plugins.config.saving') : t('plugins.config.save')}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -126,6 +126,7 @@ function ConfigInput({
   field,
   value,
   secretValue,
+  secretStored,
   onValueChange,
   onSecretChange,
 }: {
@@ -133,6 +134,7 @@ function ConfigInput({
   field: PluginConfigField;
   value: string | boolean | undefined;
   secretValue: string;
+  secretStored: boolean;
   onValueChange: (value: string | boolean) => void;
   onSecretChange: (value: string) => void;
 }) {
@@ -142,7 +144,14 @@ function ConfigInput({
 
   return (
     <div className='space-y-2'>
-      <Label htmlFor={inputID}>{label}</Label>
+      <Label htmlFor={inputID}>
+        {label}
+        {field.required && (
+          <span className='text-destructive' aria-label={t('plugins.config.required')} title={t('plugins.config.required')}>
+            *
+          </span>
+        )}
+      </Label>
       {field.description && <p className='text-muted-foreground text-sm'>{field.description}</p>}
       {field.format === 'secret' ? (
         <Input
@@ -150,7 +159,8 @@ function ConfigInput({
           type='password'
           autoComplete='new-password'
           value={secretValue}
-          placeholder={t('plugins.config.secretPlaceholder')}
+          placeholder={secretStored ? t('plugins.config.secretPlaceholder') : undefined}
+          required={field.required}
           onChange={(event) => onSecretChange(event.target.value)}
         />
       ) : field.enumValues.length > 0 ? (
@@ -176,6 +186,7 @@ function ConfigInput({
           min={field.minimum ?? undefined}
           max={field.maximum ?? undefined}
           value={typeof value === 'string' ? value : ''}
+          required={field.required}
           onChange={(event) => onValueChange(event.target.value)}
         />
       )}

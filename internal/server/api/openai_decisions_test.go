@@ -156,7 +156,7 @@ func TestOpenAIHandlers_CreateDecisions_authenticatedRoutePersistsMetadata(t *te
 		biz.NewLiveStreamRegistry(),
 		limiter,
 		nil,
-	).WithChannelSelector(selector)
+		orchestrator.PluginIntegration{}).WithChannelSelector(selector)
 	orchestratorInstance.PipelineFactory = pipeline.NewFactory(executor)
 	handlers := &OpenAIHandlers{DecisionsHandlers: NewChatCompletionHandlers(orchestratorInstance)}
 
