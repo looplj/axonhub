@@ -1189,7 +1189,7 @@ export function ModelsAssociationDialog() {
           </div>
         </div>
 
-        <DialogFooter className='shrink-0 border-t pt-4 flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-end'>
+        <DialogFooter pinned divided>
           <Button type='button' variant='outline' onClick={handleClose} className='w-full sm:w-auto'>
             {t('common.buttons.cancel')}
           </Button>

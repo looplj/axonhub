@@ -314,15 +314,13 @@ export function ProjectProfilesDialog({ open, onOpenChange, onSubmit, loading = 
           </div>
         </div>
 
-        <DialogFooter className='flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end'>
-          <div className='flex w-full gap-2 sm:w-auto'>
-            <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={loading}>
-              {t('common.buttons.cancel')}
-            </Button>
-            <Button type='submit' form='project-profiles-form' disabled={loading}>
-              {loading ? t('common.buttons.saving') : t('common.buttons.save')}
-            </Button>
-          </div>
+        <DialogFooter>
+          <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={loading}>
+            {t('common.buttons.cancel')}
+          </Button>
+          <Button type='submit' form='project-profiles-form' disabled={loading}>
+            {loading ? t('common.buttons.saving') : t('common.buttons.save')}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -424,7 +424,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
           </div>
         </div>
 
-        <DialogFooter className='border-t bg-muted/30 flex-shrink-0 gap-3 pt-4'>
+        <DialogFooter pinned divided gap='xl' className='bg-muted/30'>
           <Button variant='outline' onClick={handleClose} className='min-w-[100px]'>
             {t('common.buttons.cancel')}
           </Button>

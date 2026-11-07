@@ -434,7 +434,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
           )}
         </div>
 
-        <DialogFooter className='flex-shrink-0'>
+        <DialogFooter pinned>
           <div className='flex w-full items-center justify-between'>
             <div className='text-muted-foreground text-xs'>
               {hasChanges && (

@@ -414,7 +414,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
           </div>
         </div>
 
-        <DialogFooter className='flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end'>
+        <DialogFooter>
           {/* Display form-level validation errors */}
           {/* {(form.formState.errors.profiles ||
             Object.keys(form.formState.errors).some((key) => key.startsWith('profiles.'))) && (
@@ -422,18 +422,16 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
               {form.formState.errors.profiles?.message || t('apikeys.validation.duplicateProfileName')}
             </div>
           )} */}
-          <div className='flex w-full gap-2 sm:w-auto'>
-            <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={loading}>
-              {t('common.buttons.cancel')}
-            </Button>
-            <Button
-              type='submit'
-              form='apikey-profiles-form'
-              disabled={loading || templateLoadPending || !form.formState.isValid || Object.keys(form.formState.errors).length > 0}
-            >
-              {loading || templateLoadPending ? t('common.buttons.saving') : t('common.buttons.save')}
-            </Button>
-          </div>
+          <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={loading}>
+            {t('common.buttons.cancel')}
+          </Button>
+          <Button
+            type='submit'
+            form='apikey-profiles-form'
+            disabled={loading || templateLoadPending || !form.formState.isValid || Object.keys(form.formState.errors).length > 0}
+          >
+            {loading || templateLoadPending ? t('common.buttons.saving') : t('common.buttons.save')}
+          </Button>
         </DialogFooter>
         {saveTemplateOpen && saveTemplateProfileIndex !== null && (
           <ApiKeySaveTemplateDialog

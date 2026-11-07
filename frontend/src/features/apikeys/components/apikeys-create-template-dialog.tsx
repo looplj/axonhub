@@ -630,15 +630,13 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
           </Form>
         </div>
 
-        <DialogFooter className='shrink-0'>
-          <div className='flex w-full gap-2 sm:w-auto'>
-            <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-              {t('common.buttons.cancel')}
-            </Button>
-            <Button type='submit' form='create-template-form' disabled={isSubmitting || hasDuplicateError}>
-              {isSubmitting ? t('common.buttons.saving') : t('apikeys.profileTemplates.createButton')}
-            </Button>
-          </div>
+        <DialogFooter pinned>
+          <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            {t('common.buttons.cancel')}
+          </Button>
+          <Button type='submit' form='create-template-form' disabled={isSubmitting || hasDuplicateError}>
+            {isSubmitting ? t('common.buttons.saving') : t('apikeys.profileTemplates.createButton')}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -494,7 +494,7 @@ export function ChannelsOverrideDialog({ open, onOpenChange, currentRow }: Props
             </Tabs>
           </div>
 
-          <DialogFooter className='mt-6 shrink-0 border-t px-6 py-4'>
+          <DialogFooter pinned divided className='mt-6 px-6 py-4'>
             <Button type='button' variant='outline' onClick={() => onOpenChange(false)} data-testid='override-cancel-button'>
               {t('common.buttons.cancel')}
             </Button>

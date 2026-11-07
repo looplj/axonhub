@@ -309,14 +309,14 @@ export function ModelSettingsDialog() {
           </SettingsDialogBody>
         )}
 
-        <DialogFooter className='flex shrink-0 flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center sm:gap-2'>
-          <Button variant='outline' onClick={handleClose} disabled={isSaving} className='h-10 w-full sm:h-9 sm:w-auto'>
+        <DialogFooter pinned gap='lg'>
+          <Button variant='outline' onClick={handleClose} disabled={isSaving} className='w-full sm:w-auto'>
             {t('common.buttons.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             disabled={isSaving || isLoading || isLoadingCatalog || !catalogRefreshValid}
-            className='h-10 w-full sm:h-9 sm:w-auto'
+            className='w-full sm:w-auto'
           >
             {isSaving ? (
               <>
