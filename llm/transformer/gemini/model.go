@@ -515,6 +515,10 @@ type UsageMetadata struct {
 	// When cachedContent is set, this is still the total effective prompt size meaning this includes the number of tokens in the cached content.
 	PromptTokenCount int64 `json:"promptTokenCount,omitempty"`
 
+	// ToolUsePromptTokenCount is the number of tokens in the results of tool-use
+	// (e.g. Google Search, URL context) that were fed back into the prompt.
+	ToolUsePromptTokenCount int64 `json:"toolUsePromptTokenCount,omitempty"`
+
 	// CandidatesTokenCount is the total number of tokens across all generated candidates.
 	// The CandidatesTokenCount does not include the ThoughtsTokenCount.
 	CandidatesTokenCount int64 `json:"candidatesTokenCount,omitempty"`
