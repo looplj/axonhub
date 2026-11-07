@@ -117,14 +117,14 @@ A page-only plugin omits `plugin.js`. Page scripts run in the browser. They are 
 
 The packer is the standalone module `github.com/looplj/axonhub/cmd/pack-plugin`. It depends only on moejs. It copies the server's zip read and static-import compile, and it does not execute the plugin. Install still checks the manifest, the AxonHub version range, and named exports, so a zip that packs can still be rejected at install.
 
-Published packer:
+Install the packer from the `unstable` branch:
 
 ```bash
-go install github.com/looplj/axonhub/cmd/pack-plugin@latest
+go install github.com/looplj/axonhub/cmd/pack-plugin@unstable
 pack-plugin <plugin-directory> -o <outside>.axplugin
 ```
 
-`@latest` resolves the subdirectory tag `cmd/pack-plugin/vX.Y.Z`, not the AxonHub root tag `vX.Y.Z`. Install the matching `cmd/pack-plugin/vX.Y.Z` when the checks should match a specific AxonHub release.
+`@unstable` selects the current commit on that branch. Go records it as a pseudo-version `v0.0.0-<timestamp>-<commit>`. After a `cmd/pack-plugin/vX.Y.Z` tag is published, `@latest` selects the newest of those subdirectory tags. An AxonHub root tag `vX.Y.Z` does not version this module. Install the matching `cmd/pack-plugin/vX.Y.Z` when the checks should match a specific AxonHub release.
 
 From this repository:
 
@@ -161,7 +161,7 @@ Open permissions: `read_channels`, `read_requests`, `read_dashboard`, `read_api_
 
 A `network` entry is either an exact `https` URL or `{ "regex": "^https://api\\.example\\.com/v1/items/[0-9]+$" }`. An exact URL includes a path and no userinfo, query, or fragment, and it matches that path only. A regex is a full match, at most 256 characters, against the URL with query and fragment removed. The request may still carry a query. Redirects are not followed: statuses 301, 302, 303, 307, and 308 reject both `ctx.fetch` and `axonhub.fetch` Promises with `INVALID_STATE`.
 
-`configSchema.type` is `object`. Each property is `string`, `integer`, `number`, or `boolean`, and may set `enum`, `minimum`, `maximum`, `default`, `title`, `description`, and `format: "secret"`. `configSchema.required` lists property names the plugin needs. A new install starts disabled; the owner can save partial config while it is disabled, but enabling it, saving config while it is enabled, or upgrading it while it is enabled fails until every required field has a value or a default (an empty string counts as missing). Unknown fields are rejected. `ctx.config` is the saved object, including secret text. A field the owner has not saved is absent, so apply the schema default in the script. The settings form shows those defaults. GraphQL and the page receive `******` for a stored secret; sending that mask back leaves the stored value unchanged.
+`configSchema.type` is `object`. Each property is `string`, `integer`, `number`, `boolean`, or `array`, and may set `enum`, `minimum`, `maximum`, `default`, `title`, `description`, and `format: "secret"`. An `array` property must set `"items": {"type": "string"}` and holds a list of strings (for example `{"type": "array", "items": {"type": "string"}, "default": ["gpt-4o"]}`); it does not accept `enum` or `format`. The settings form shows it as a list with add and remove buttons. `configSchema.required` lists property names the plugin needs. A new install starts disabled; the owner can save partial config while it is disabled, but enabling it, saving config while it is enabled, or upgrading it while it is enabled fails until every required field has a value or a default (an empty string or an empty array counts as missing). Unknown fields are rejected. `ctx.config` is the saved object, including secret text. A field the owner has not saved is absent, so apply the schema default in the script. The settings form shows those defaults. GraphQL and the page receive `******` for a stored secret; sending that mask back leaves the stored value unchanged.
 
 `ui.pages[]` requires `key`, `entry`, and `title`. `key` matches `^[a-z0-9][a-z0-9-]{0,31}$` and is unique in the plugin. `entry` is an existing `.html` file under `ui/`. `title` is a string, or a language map that includes a non-empty `en`. The sidebar prefers the current language, then `en`, then `key`.
 
@@ -507,7 +507,7 @@ The owner enables a plugin with a subset of `permissions` and a subset of `netwo
 
 ## Publishing
 
-The index URL is [https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json](https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json). AxonHub fetches that URL, so changing the index does not require an AxonHub release. Its `plugins` array is empty, so the example plugins are not listed in the market.
+The index URL is [https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json](https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json). AxonHub fetches that URL, so changing the index does not require an AxonHub release. The example plugins are not listed in the market.
 
 Publish the zip on your own HTTPS URL, such as a GitHub Release. `sha256` is 64 lowercase hex characters of the raw zip bytes:
 

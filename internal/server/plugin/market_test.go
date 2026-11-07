@@ -195,6 +195,48 @@ func TestMarket(t *testing.T) {
 	})
 
 	t.Run("redirect and non-https do not write", func(t *testing.T) {
+		t.Run("github release asset redirect", func(t *testing.T) {
+			zip := marketZip(t, "1.2.0", nil)
+			pkgURL := "https://github.com/looplj/axonhub-jev-guard/releases/download/v1.2.0/guard.axplugin"
+			assetURL := "https://release-assets.githubusercontent.com/github-production-release-asset/guard.axplugin"
+			index := marketIndex(t, marketPlugin("acme.failover-guard", "Failover Guard", "Notify",
+				marketVersionSpec("1.2.0", pkgURL, sha256Hex(zip), "^1.0.0"),
+			))
+			manager, db, hits := newMarket(t, map[string]marketRoute{
+				marketIndexPath(t): {body: index},
+				"/looplj/axonhub-jev-guard/releases/download/v1.2.0/guard.axplugin": {
+					redirect: assetURL,
+				},
+				"/github-production-release-asset/guard.axplugin": {body: zip},
+			})
+			_, _, err := manager.InstallFromMarket(ctx, "acme.failover-guard", "1.2.0", nil, nil)
+			require.NoError(t, err)
+			require.Equal(t, 1, hits.get("/looplj/axonhub-jev-guard/releases/download/v1.2.0/guard.axplugin"))
+			require.Equal(t, 1, hits.get("/github-production-release-asset/guard.axplugin"))
+			require.Equal(t, 1, countPlugins(t, db))
+		})
+
+		t.Run("github redirect off github", func(t *testing.T) {
+			zip := marketZip(t, "1.2.0", nil)
+			pkgURL := "https://github.com/looplj/axonhub-jev-guard/releases/download/v1.2.0/guard.axplugin"
+			evilURL := marketPackageURL("evil.axplugin")
+			index := marketIndex(t, marketPlugin("acme.failover-guard", "Failover Guard", "Notify",
+				marketVersionSpec("1.2.0", pkgURL, sha256Hex(zip), "^1.0.0"),
+			))
+			manager, db, hits := newMarket(t, map[string]marketRoute{
+				marketIndexPath(t): {body: index},
+				"/looplj/axonhub-jev-guard/releases/download/v1.2.0/guard.axplugin": {
+					redirect: evilURL,
+				},
+				marketPackagePath("evil.axplugin"): {body: zip},
+			})
+			_, _, err := manager.InstallFromMarket(ctx, "acme.failover-guard", "1.2.0", nil, nil)
+			require.ErrorContains(t, err, "redirect")
+			require.Equal(t, 1, hits.get("/looplj/axonhub-jev-guard/releases/download/v1.2.0/guard.axplugin"))
+			require.Zero(t, hits.get(marketPackagePath("evil.axplugin")))
+			require.Zero(t, countPlugins(t, db))
+		})
+
 		t.Run("redirect", func(t *testing.T) {
 			zip := marketZip(t, "1.2.0", nil)
 			pkgURL := marketPackageURL("guard.axplugin")

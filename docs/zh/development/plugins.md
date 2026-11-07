@@ -117,14 +117,14 @@ ui/**              html、js、css、svg、png、woff2
 
 打包器是独立模块 `github.com/looplj/axonhub/cmd/pack-plugin`，只依赖 moejs。它复制了服务端的 zip 读取和静态 import 编译，不执行插件。安装时的检查仍会再看 manifest、AxonHub 版本范围和命名导出，打包通过的 zip 仍可能被安装拒绝。
 
-已发布的打包器：
+安装 `unstable` 分支上的打包器：
 
 ```bash
-go install github.com/looplj/axonhub/cmd/pack-plugin@latest
+go install github.com/looplj/axonhub/cmd/pack-plugin@unstable
 pack-plugin <plugin-directory> -o <outside>.axplugin
 ```
 
-`@latest` 解析子目录标签 `cmd/pack-plugin/vX.Y.Z`，不看 AxonHub 根模块的 `vX.Y.Z`。要和某次 AxonHub 发布用同一套检查时，安装同号的 `cmd/pack-plugin/vX.Y.Z`。
+`@unstable` 选择该分支的当前提交，Go 把它记成 `v0.0.0-<时间>-<提交>`。打包器发布子目录标签 `cmd/pack-plugin/vX.Y.Z` 之后，`@latest` 选择这些标签里的最新一个。AxonHub 根模块的 `vX.Y.Z` 不会成为这个模块的版本；要和某次 AxonHub 发布用同一套检查时，安装同号的 `cmd/pack-plugin/vX.Y.Z`。
 
 在本仓库里：
 
@@ -161,7 +161,7 @@ go run -C cmd/pack-plugin . ../../plugins/examples/<name>
 
 一条 `network` 规则要么是精确的 `https` URL，要么是 `{ "regex": "^https://api\\.example\\.com/v1/items/[0-9]+$" }`。精确 URL 必须带 path，不能有 userinfo、query 或 fragment，并且只匹配这条 path。正则对去掉 query 和 fragment 后的 URL 做全匹配，最长 256 个字符。实际请求仍可以带 query。宿主不跟随重定向；301、302、303、307、308 会使 `ctx.fetch` 和 `axonhub.fetch` 以 `INVALID_STATE` 拒绝 Promise。
 
-`configSchema.type` 为 `object`。每个属性的类型是 `string`、`integer`、`number` 或 `boolean`，可以带 `enum`、`minimum`、`maximum`、`default`、`title`、`description` 和 `format: "secret"`。`configSchema.required` 列出插件必需的属性名。新安装的插件默认停用；停用时可以只保存部分配置，但启用、保存已启用插件的配置、升级已启用插件时，每个必填字段都要有值或默认值（空字符串视为缺失），否则失败。未声明的字段会被拒绝。`ctx.config` 是已保存的配置，包含 secret 原文。Owner 还没保存的字段不会出现，脚本里要自己使用 schema 的默认值。设置表单会显示这些默认值。GraphQL 和页面拿到已保存 secret 时是 `******`；把这个掩码原样提交回去，已保存的值保持不变。
+`configSchema.type` 为 `object`。每个属性的类型是 `string`、`integer`、`number`、`boolean` 或 `array`，可以带 `enum`、`minimum`、`maximum`、`default`、`title`、`description` 和 `format: "secret"`。`array` 必须写 `"items": {"type": "string"}`，表示字符串列表（例如 `{"type": "array", "items": {"type": "string"}, "default": ["gpt-4o"]}`），不支持 `enum` 和 `format`；设置表单会显示为可增删的列表。`configSchema.required` 列出插件必需的属性名。新安装的插件默认停用；停用时可以只保存部分配置，但启用、保存已启用插件的配置、升级已启用插件时，每个必填字段都要有值或默认值（空字符串和空数组视为缺失），否则失败。未声明的字段会被拒绝。`ctx.config` 是已保存的配置，包含 secret 原文。Owner 还没保存的字段不会出现，脚本里要自己使用 schema 的默认值。设置表单会显示这些默认值。GraphQL 和页面拿到已保存 secret 时是 `******`；把这个掩码原样提交回去，已保存的值保持不变。
 
 `ui.pages[]` 必须有 `key`、`entry` 和 `title`。`key` 匹配 `^[a-z0-9][a-z0-9-]{0,31}$`，并且在该插件内唯一。`entry` 是 `ui/` 下已经存在的 `.html`。`title` 可以是字符串，也可以是至少包含非空 `en` 的语言映射。侧栏按当前语言、`en`、`key` 的顺序取值。
 
@@ -507,7 +507,7 @@ Owner 启用插件时，授予的是 `permissions` 的子集和 `network` 的子
 
 ## 发布
 
-索引地址是 [https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json](https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json)。AxonHub 每次按这个 URL 拉取，所以改索引不用发新版本。现在 `plugins` 是空数组，示例插件不在市场里。
+索引地址是 [https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json](https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json)。AxonHub 每次按这个 URL 拉取，所以改索引不用发新版本。示例插件不在市场里。
 
 把 zip 发布到你自己的 HTTPS 地址，例如 GitHub Release。sha256 是 zip 原始字节的 64 位小写十六进制：
 

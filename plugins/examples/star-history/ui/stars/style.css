@@ -25,13 +25,6 @@ main {
 .mark rect { fill: var(--primary, #1f6b4a); }
 .mark path { fill: var(--primary-foreground, #ffffff); }
 
-.eyebrow {
-  margin: 0;
-  color: var(--muted-foreground, #5e6772);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-}
-
 h1 { margin: 0; font-weight: 650; font-size: 28px; letter-spacing: -0.03em; }
 
 .lead {

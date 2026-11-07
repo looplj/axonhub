@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "id": "example.notes",
   "name": "Notes",
-  "version": "1.0.0",
-  "description": "Example page that stores notes in this plugin's KV and lists channels when read_channels is granted.",
+  "version": "1.1.0",
+  "description": "Example page that stores categorized notes in this plugin's KV and lists channels when read_channels is granted.",
   "axonhubVersion": "^1.0.0",
   "pluginApiVersion": 1,
   "permissions": ["read_channels"],
@@ -23,6 +23,13 @@
         "minimum": 1,
         "maximum": 50,
         "default": 20
+      },
+      "categories": {
+        "type": "array",
+        "items": { "type": "string" },
+        "title": "Categories",
+        "description": "Categories a note can be filed under. Remove every item to turn categories off.",
+        "default": ["General", "Ideas", "Todo"]
       }
     }
   },

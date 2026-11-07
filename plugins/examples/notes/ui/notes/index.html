@@ -10,10 +10,7 @@
     <main>
       <header class="masthead">
         <img src="../assets/mark.svg" alt="" width="36" height="36">
-        <div>
-          <p class="eyebrow">example.notes</p>
-          <h1 id="heading">Notes</h1>
-        </div>
+        <h1 id="heading">Notes</h1>
       </header>
 
       <dl class="meta" id="meta"></dl>
@@ -30,6 +27,10 @@
               <span id="title-label"></span>
               <input id="title" name="title" maxlength="80" required>
             </label>
+            <label id="category-field" hidden>
+              <span id="category-label"></span>
+              <select id="category" name="category"></select>
+            </label>
             <label>
               <span id="body-label"></span>
               <textarea id="body" name="body" rows="4" maxlength="4000" required></textarea>
@@ -39,6 +40,7 @@
               <p id="write-hint" class="muted" hidden></p>
             </div>
           </form>
+          <div id="filters" class="filters" role="group" hidden></div>
           <ul id="notes" class="list"></ul>
           <p id="notes-empty" class="muted" hidden></p>
         </section>

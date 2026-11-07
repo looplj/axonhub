@@ -17,13 +17,6 @@ main {
     padding: 28px 20px 40px;
 }
 
-.eyebrow {
-    margin: 0;
-    color: var(--muted-foreground, #5e6772);
-    font-size: 12px;
-    letter-spacing: 0.04em;
-}
-
 h1,
 h2 {
     margin: 0;

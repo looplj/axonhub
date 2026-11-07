@@ -159,10 +159,10 @@ export function missingRequiredConfig(plugin: Plugin): PluginConfigField[] {
       return false;
     }
     const value = plugin.config[field.name];
-    if (value !== undefined && value !== null && value !== '') {
+    if (value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0)) {
       return false;
     }
-    return field.defaultJSON === '' || field.defaultJSON === 'null' || field.defaultJSON === '""';
+    return field.defaultJSON === '' || field.defaultJSON === 'null' || field.defaultJSON === '""' || field.defaultJSON === '[]';
   });
 }
 
