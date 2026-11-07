@@ -871,7 +871,7 @@ var (
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "trace_id", Type: field.TypeString, Unique: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived", "retained"}, Default: "active"},
-		{Name: "last_request_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "last_request_at", Type: field.TypeTime, Default: schema.Expr("'1970-01-01 00:00:00'")},
 		{Name: "project_id", Type: field.TypeInt},
 		{Name: "thread_id", Type: field.TypeInt, Nullable: true},
 	}
