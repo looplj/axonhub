@@ -942,7 +942,7 @@ func (s *anthropicInboundStream) Next() bool {
 						Index: &s.contentIndex,
 						ContentBlock: &MessageContentBlock{
 							Type:   blockType,
-							ID:     deltaToolCall.ID,
+							ID:     anthropicToolBlockID(blockType, deltaToolCall.ID),
 							Name:   &deltaToolCall.Function.Name,
 							Input:  json.RawMessage("{}"),
 							Caller: getAnthropicCaller(deltaToolCall.TransformerMetadata),
