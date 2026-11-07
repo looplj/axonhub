@@ -204,7 +204,11 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 		return nil, fmt.Errorf("failed to resolve associations: %w", err)
 	}
 
-	candidates := filterResolvedCandidatesForRequest(ctx, req, resolvedCandidates)
+	candidates, err := filterResolvedCandidatesForRequest(ctx, req, resolvedCandidates)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(candidates) == 0 {
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "no candidates matched request conditions",

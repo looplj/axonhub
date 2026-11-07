@@ -2,9 +2,12 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -60,10 +63,11 @@ func TestFilterResolvedCandidatesForRequest_ReasoningEffort(t *testing.T) {
 					models:   []biz.ChannelModelEntry{{ActualModel: "test-model"}},
 				},
 			}
-			got := filterResolvedCandidatesForRequest(context.Background(), &llm.Request{
+			got, err := filterResolvedCandidatesForRequest(context.Background(), &llm.Request{
 				Model:           "test-model",
 				ReasoningEffort: tc.effort,
 			}, candidates)
+			require.NoError(t, err)
 			require.Len(t, got, 1)
 			require.Equal(t, tc.priority, got[0].Priority)
 		})
@@ -263,4 +267,76 @@ func TestMatchesAssociationWhen_RequestHeaderOperators(t *testing.T) {
 			require.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func TestDefaultSelector_Select_NoConditionalAssociationMatches(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Text Only Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	selector := NewDefaultSelector(newTestChannelServiceForChannels(client), newTestModelService(client), newTestSystemService(client))
+
+	model, err := client.Model.Create().
+		SetModelID("text-only-model").
+		SetName("Text Only Model").
+		SetDeveloper("openai").
+		SetIcon("openai").
+		SetGroup("test").
+		SetModelCard(&objects.ModelCard{}).
+		SetStatus("enabled").
+		SetSettings(&objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type:     "channel_model",
+					Priority: 1,
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:     objects.ConditionTypeCondition,
+							Field:    objects.ModelAssociationConditionFieldHasImage,
+							Operator: "eq",
+							Value:    false,
+						},
+					},
+					ChannelModel: &objects.ChannelModelAssociation{
+						ChannelID: ch.ID,
+						ModelID:   "gpt-4",
+					},
+				},
+			},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	textOnly, err := selector.Select(ctx, &llm.Request{
+		Model:    model.ModelID,
+		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}},
+	})
+	require.NoError(t, err)
+	require.Len(t, textOnly, 1)
+
+	_, err = selector.Select(ctx, &llm.Request{
+		Model: model.ModelID,
+		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+			{Type: "text", Text: lo.ToPtr("what color is this?")},
+			{Type: "image_url", ImageURL: &llm.ImageURL{URL: "data:image/png;base64,AAAA"}},
+		}}}},
+	})
+	require.Error(t, err)
+	require.NotErrorIs(t, err, biz.ErrInvalidModel)
+
+	respErr, ok := errors.AsType[*llm.ResponseError](err)
+	require.True(t, ok)
+	require.Equal(t, http.StatusUnprocessableEntity, respErr.StatusCode)
+	require.Equal(t, "no_matching_association", respErr.Detail.Code)
+	require.Contains(t, respErr.Detail.Message, "text-only-model")
 }

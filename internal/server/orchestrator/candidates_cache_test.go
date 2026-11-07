@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -453,8 +454,11 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		}
 
 		noStreamCandidates, err := selector.selectModelCandidates(ctx, noStreamReq)
-		require.NoError(t, err)
 		require.Empty(t, noStreamCandidates)
+
+		respErr, ok := errors.AsType[*llm.ResponseError](err)
+		require.True(t, ok)
+		require.Equal(t, "no_matching_association", respErr.Detail.Code)
 	})
 
 	t.Run("empty channels returns empty candidates", func(t *testing.T) {
