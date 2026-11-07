@@ -76,7 +76,7 @@
 | 题目             | 选择                                                                                          | 不选                                                                             |
 | ---------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | JS 引擎          | moejs v0.1.0-alpha.11。原生 ESM，`Runtime.Interrupt` 可中断，`DisableDynamicCode` 禁用 `eval` | goja：不支持 ESM。Lua：和页面语言割裂                                            |
-| 市场             | 一个索引，地址写在代码里：`plugins/registry.json` 的 raw URL。默认没有条目。索引给出包地址和 sha256，校验后安装 | Owner 配置多个源：目前没有第三方索引。把索引编进二进制：改目录就要发新版本 |
+| 市场             | 一个索引，地址写在代码里：`plugins/registry.json` 的 raw URL。索引给出包地址和 sha256，校验后安装。示例插件不在其中 | Owner 配置多个源：目前没有第三方索引。把索引编进二进制：改目录就要发新版本 |
 | KV               | 表 `plugin_storages`，按安装 ID（`plugins.id`）隔离；同名重装使用新 ID                        | 只用 Redis：`memory` 模式没有 Redis，重启即丢。复用计数器：计数器没有按键删除    |
 | 事件投递         | 进程内总线                                                                                    | 见 [events.md](events.md)                                                        |
 | 页面读写数据     | 宿主代理 GraphQL，Plugin 主体授权，开放 mutation                                                     | 见 [pages.md](pages.md#4-决策)                                                   |
@@ -192,8 +192,8 @@ ui/**              html/js/css/svg/png/woff2
 | KV value                                            | UTF-8，最大 256 KiB                                                                                                                     |
 | KV TTL                                              | 省略或 0 表示不过期；最长 90 天                                                                                                         |
 | KV list                                             | 按 key 升序游标分页；first 默认 100，范围 1–100；nextCursor 为空表示末页                                                                |
-| 市场索引                                            | 只接受 `https`；不跟随重定向；超时 15 s；响应最大 1 MiB；内存缓存 5 分钟。地址是本仓库 `plugins/registry.json`，默认 `plugins` 为空 |
-| 市场包下载                                          | 同样只接受 `https`、不跟随重定向、超时 15 s；大小用包大小上限；sha256 必须与索引一致                                                    |
+| 市场索引                                            | 只接受 `https`。`github.com` 与 `githubusercontent.com` 之间的重定向会跟随，其它重定向拒绝。超时 15 s；响应最大 1 MiB；内存缓存 5 分钟。地址是本仓库 `plugins/registry.json` |
+| 市场包下载                                          | 同样只接受 `https`，并跟随上述 GitHub 重定向。超时 15 s；大小用包大小上限；sha256 必须与索引一致                                                    |
 | 出站 `network`                                      | 最多 32 条。精确 URL 含 scheme、host、path；正则全文最长 256 字符，用 Go `regexp` 全匹配                                                |
 | `ctx.fetch` / `axonhub.fetch`                      | 只匹配已授权规则的 scheme、host、port、path；query 不参与匹配。不跟随重定向。请求体 ≤ 1 MiB，响应体 ≤ 2 MiB，均为 UTF-8。时间用所在钩子或 Bridge 调用的剩余预算 |
 
@@ -224,7 +224,7 @@ plugin_storage
 
 ### 市场
 
-只有一个索引，地址是代码常量 `plugin.MarketIndexURL`：`https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json`。文件在本仓库，改索引不用发 AxonHub 新版本。Owner 不能改地址，也不能加源。当前 `plugins` 数组为空，示例插件不在其中。
+只有一个索引，地址是代码常量 `plugin.MarketIndexURL`：`https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json`。文件在本仓库，改索引不用发 AxonHub 新版本。Owner 不能改地址，也不能加源。示例插件不在其中。
 
 收录插件、发布新版本都改这个文件：
 
@@ -453,7 +453,7 @@ MySQL 的 `max_allowed_packet` 至少要 8 MiB，才能写入 5 MiB 的包。8.0
 
 ## 9. 任务管理
 
-核对日期：2026-11-07。第 1、2、3 段（T-01 至 T-12）、T-13、T-14、T-16 已在当前分支落地。T-15 的中英文开发者文档和示例插件已落地；`make migration-test-all-dbs` 与 `make e2e-test` 这次不做。市场索引按 URL 拉取本仓库的 `plugins/registry.json`，默认没有条目，示例插件不注册。响应钩子见 [response.md](response.md)，自定义 channel provider 见 [provider.md](provider.md)，按 project / API Key / 模型收窄见 [scope.md](scope.md)，内置插件见 [builtin-plugins.md](builtin-plugins.md)，`ctx.models` 都不在本段实现范围。
+核对日期：2026-11-07。第 1、2、3 段（T-01 至 T-12）、T-13、T-14、T-16 已在当前分支落地。T-15 的中英文开发者文档和示例插件已落地；`make migration-test-all-dbs` 与 `make e2e-test` 这次不做。市场索引按 URL 拉取本仓库的 `plugins/registry.json`，示例插件不注册。响应钩子见 [response.md](response.md)，自定义 channel provider 见 [provider.md](provider.md)，按 project / API Key / 模型收窄见 [scope.md](scope.md)，内置插件见 [builtin-plugins.md](builtin-plugins.md)，`ctx.models` 都不在本段实现范围。
 
 实施分五段，按段推进；段内在依赖允许时可以并行。分段只表示顺序，不对应发布版本。
 
@@ -478,7 +478,7 @@ MySQL 的 `max_allowed_packet` 至少要 8 MiB，才能写入 5 MiB 的包。8.0
 | T-11 | [JS 执行运行时](#运行限制)                     | 已完成 | T-04, T-10                   | 按次借还的 VM 池、`Runtime.Interrupt` 超时中断并丢弃被中断的 VM、等待钩子返回的 Promise 直到结算或预算耗尽、熔断；按 [宿主 API 契约](plugin.js.md#公共类型与调用规则) 实现签名、错误码、KV 与上下文状态语义。渠道启停、`ctx.webhook.send`、`ctx.counter` 留到 T-12，`ctx.fetch` 留到 T-16 |
 | T-12 | [事件插件与宿主 API](events.md#7-js-处置)      | 已完成 | T-09, T-11                   | `dispatcher.go`、`hostapi.go`、`counter.go`；manifest 的 `events` 只开放这 8 种；故障转移阈值集成测试                                                                                                                                                                                                                                                                                                                                                                             |
 | T-13 | [请求钩子](request.md#4-钩子) | 已完成 | T-11 | 未发布 API 1：ctx-first、显式 enabled、RequestType/APIFormat 独立匹配、对象 replace/数组 JSON Patch、上游 JSON onAttempt、内部字段保留、raw 阶段过载和 body 改写不跨重试残留（不深拷贝统一请求）。同步事件签名、manifest 展示/升级确认、示例及回归测试 |
-| T-14 | [插件市场](#市场)                              | 已完成 | T-01, T-03                   | `market.go`、`plugins/registry.json`、市场页；默认空索引；有条目时 sha256 不一致不写库。示例插件不注册                                                                                                                                                                                                                                                                                                                                                                     |
+| T-14 | [插件市场](#市场)                              | 已完成 | T-01, T-03                   | `market.go`、`plugins/registry.json`、市场页；有条目时 sha256 不一致不写库。示例插件不注册                                                                                                                                                                                                                                                                                                                                                                     |
 | T-15 | [迁移、E2E 与开发者文档](#6-验收)              | 部分完成 | T-07, T-09, T-12, T-13, T-14, T-16 | `docs/zh/development/plugins.md`、`docs/en/development/plugins.md` 与 `plugins/examples/temperature-cap` 已落地。`make migration-test-all-dbs` 与 `make e2e-test` 这次不做                                                                                                                                                                                                                                                                                                         |
 | T-16 | [出站请求](plugin.js.md#出站请求)              | 已完成 | T-07, T-11                   | `network` 与 `granted_network`；精确路径与正则；`ctx.fetch` 与 `axonhub.fetch` 都由宿主代发；不跟随重定向；CSP `connect-src` 保持 `'none'`。不实现 `ctx.models` |
 

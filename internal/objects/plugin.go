@@ -30,6 +30,7 @@ const (
 	ConfigTypeInteger  = "integer"
 	ConfigTypeNumber   = "number"
 	ConfigTypeBoolean  = "boolean"
+	ConfigTypeArray    = "array"
 	ConfigFormatSecret = "secret"
 
 	// MaxPluginNetworkRules is the manifest.network limit.
@@ -87,12 +88,17 @@ var (
 		"title":       {},
 		"description": {},
 		"format":      {},
+		"items":       {},
+	}
+	configItemsFieldNames = map[string]struct{}{
+		"type": {},
 	}
 	configTypes = map[string]struct{}{
 		ConfigTypeString:  {},
 		ConfigTypeInteger: {},
 		ConfigTypeNumber:  {},
 		ConfigTypeBoolean: {},
+		ConfigTypeArray:   {},
 	}
 	networkRuleFieldNames = map[string]struct{}{
 		"regex": {},
@@ -178,6 +184,13 @@ type PluginConfigProperty struct {
 	Title       string   `json:"title,omitempty"`
 	Description string   `json:"description,omitempty"`
 	Format      string   `json:"format,omitempty"`
+	// Items is set only for type array. Array items are always strings.
+	Items *PluginConfigItems `json:"items,omitempty"`
+}
+
+// PluginConfigItems describes the elements of an array property.
+type PluginConfigItems struct {
+	Type string `json:"type"`
 }
 
 // IsSecret reports whether the property is marked format secret.
@@ -379,7 +392,20 @@ func (s *PluginConfigSchema) Validate() error {
 
 func (p PluginConfigProperty) validate(fieldPath string) error {
 	if _, ok := configTypes[p.Type]; !ok {
-		return fmt.Errorf("%s.type must be string, integer, number, or boolean", fieldPath)
+		return fmt.Errorf("%s.type must be string, integer, number, boolean, or array", fieldPath)
+	}
+	if p.Type == ConfigTypeArray {
+		if p.Items == nil {
+			return fmt.Errorf("%s.items is required for array", fieldPath)
+		}
+		if p.Items.Type != ConfigTypeString {
+			return fmt.Errorf("%s.items.type must be string", fieldPath)
+		}
+		if p.Enum != nil {
+			return fmt.Errorf("%s.enum is not valid for array", fieldPath)
+		}
+	} else if p.Items != nil {
+		return fmt.Errorf("%s.items is only valid for array", fieldPath)
 	}
 	if p.Format != "" && p.Format != ConfigFormatSecret {
 		return fmt.Errorf("%s.format must be secret", fieldPath)
@@ -971,6 +997,23 @@ func (p *PluginConfigProperty) unmarshalJSONAt(data []byte, fieldPath string) er
 		}
 		p.Format = parsed
 	}
+	if value, ok := raw["items"]; ok {
+		items, err := decodeObject(value, fieldPath+".items")
+		if err != nil {
+			return err
+		}
+		if err := rejectUnknownFields(items, configItemsFieldNames, fieldPath+".items"); err != nil {
+			return err
+		}
+		p.Items = &PluginConfigItems{}
+		if itemType, ok := items["type"]; ok {
+			parsed, err := decodeJSONString(itemType, fieldPath+".items.type")
+			if err != nil {
+				return err
+			}
+			p.Items.Type = parsed
+		}
+	}
 	return nil
 }
 
@@ -1193,6 +1236,17 @@ func valueMatchesType(typ string, value any) bool {
 	case ConfigTypeInteger:
 		number, ok := numericValue(value)
 		return ok && isWhole(number)
+	case ConfigTypeArray:
+		items, ok := value.([]any)
+		if !ok {
+			return false
+		}
+		for _, item := range items {
+			if _, ok := item.(string); !ok {
+				return false
+			}
+		}
+		return true
 	default:
 		return false
 	}

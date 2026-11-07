@@ -4,6 +4,10 @@ const copy = {
     channels: "Channels",
     title: "Title",
     body: "Body",
+    category: "Category",
+    allCategories: "All",
+    filterLabel: "Filter by category",
+    emptyCategory: "No notes in this category.",
     save: "Save note",
     delete: "Delete",
     openChannels: "Open channels",
@@ -30,6 +34,10 @@ const copy = {
     channels: "渠道",
     title: "标题",
     body: "内容",
+    category: "分类",
+    allCategories: "全部",
+    filterLabel: "按分类筛选",
+    emptyCategory: "这个分类下还没有笔记。",
     save: "保存笔记",
     delete: "删除",
     openChannels: "打开渠道",
@@ -65,12 +73,14 @@ export function parseNote(value) {
   try {
     const parsed = JSON.parse(value);
     if (parsed && typeof parsed.title === "string" && typeof parsed.body === "string") {
-      return { title: parsed.title, body: parsed.body };
+      // Notes saved before categories existed have no category field.
+      const category = typeof parsed.category === "string" ? parsed.category : "";
+      return { title: parsed.title, body: parsed.body, category };
     }
   } catch {
     // Stored values are strings. Older or hand-written rows may not be JSON.
   }
-  return { title: String(value ?? ""), body: "" };
+  return { title: String(value ?? ""), body: "", category: "" };
 }
 
 export function formatTime(value, locale) {
@@ -97,4 +107,18 @@ export function maxNotesFrom(config) {
     return 20;
   }
   return Math.min(50, Math.max(1, value));
+}
+
+// categoriesFrom returns the configured categories, trimmed, without blanks or
+// duplicates. An empty list turns categories off.
+export function categoriesFrom(config) {
+  const value = config && Array.isArray(config.categories) ? config.categories : [];
+  const seen = new Set();
+  for (const item of value) {
+    const name = typeof item === "string" ? item.trim() : "";
+    if (name) {
+      seen.add(name);
+    }
+  }
+  return [...seen];
 }

@@ -49,6 +49,22 @@ func TestManifest(t *testing.T) {
 		require.Contains(t, manifest.ConfigSchema.Properties, "my.custom-prop")
 	})
 
+	t.Run("accepts string array config", func(t *testing.T) {
+		raw := mutateManifest(t, func(t *testing.T, manifest map[string]any) {
+			propertiesOf(t, manifest)["models"] = map[string]any{
+				"type":    "array",
+				"items":   map[string]any{"type": "string"},
+				"default": []any{"gpt-4o"},
+			}
+		})
+		manifest, err := ParseManifest(raw, "v1.0.0-beta9")
+		require.NoError(t, err)
+		models := manifest.ConfigSchema.Properties["models"]
+		require.Equal(t, objects.ConfigTypeArray, models.Type)
+		require.Equal(t, objects.ConfigTypeString, models.Items.Type)
+		require.Equal(t, []any{"gpt-4o"}, models.Default)
+	})
+
 	t.Run("rejects name, version, and description that exceed the column width", func(t *testing.T) {
 		raw := mutateManifest(t, func(_ *testing.T, manifest map[string]any) {
 			manifest["name"] = strings.Repeat("n", objects.MaxPluginNameLength+1)
@@ -346,7 +362,47 @@ func TestManifest(t *testing.T) {
 			mutate: func(t *testing.T, manifest map[string]any) {
 				propertiesOf(t, manifest)["nested"] = map[string]any{"type": "object"}
 			},
-			want: "must be string, integer, number, or boolean",
+			want: "must be string, integer, number, boolean, or array",
+		},
+		{
+			name: "config array requires items",
+			mutate: func(t *testing.T, manifest map[string]any) {
+				propertiesOf(t, manifest)["models"] = map[string]any{"type": "array"}
+			},
+			want: "configSchema.properties.models.items is required for array",
+		},
+		{
+			name: "config array items must be string",
+			mutate: func(t *testing.T, manifest map[string]any) {
+				propertiesOf(t, manifest)["models"] = map[string]any{"type": "array", "items": map[string]any{"type": "integer"}}
+			},
+			want: "configSchema.properties.models.items.type must be string",
+		},
+		{
+			name: "config array default must hold strings",
+			mutate: func(t *testing.T, manifest map[string]any) {
+				propertiesOf(t, manifest)["models"] = map[string]any{
+					"type":    "array",
+					"items":   map[string]any{"type": "string"},
+					"default": []any{"gpt-4o", 1},
+				}
+			},
+			want: "configSchema.properties.models.default: expected array",
+		},
+		{
+			name: "config items only valid for array",
+			mutate: func(t *testing.T, manifest map[string]any) {
+				token := propertiesOf(t, manifest)["token"].(map[string]any)
+				token["items"] = map[string]any{"type": "string"}
+			},
+			want: "configSchema.properties.token.items is only valid for array",
+		},
+		{
+			name: "unknown config items keyword",
+			mutate: func(t *testing.T, manifest map[string]any) {
+				propertiesOf(t, manifest)["models"] = map[string]any{"type": "array", "items": map[string]any{"type": "string", "minLength": 1}}
+			},
+			want: "unknown field configSchema.properties.models.items.minLength",
 		},
 		{
 			name: "config format must be secret",

@@ -65,7 +65,8 @@ func validateConfigValues(schema *objects.PluginConfigSchema, config map[string]
 // checkConfigForEnable validates config with required fields. A field the owner
 // has not saved counts as set when it has a schema default, matching what the
 // settings form shows. An empty string, stored or as the default, counts as
-// missing, since it is what a cleared text input holds.
+// missing, since it is what a cleared text input holds. An empty array counts
+// as missing for the same reason.
 func checkConfigForEnable(schema *objects.PluginConfigSchema, config map[string]any) error {
 	if schema == nil || len(schema.Properties) == 0 {
 		return nil
@@ -73,6 +74,9 @@ func checkConfigForEnable(schema *objects.PluginConfigSchema, config map[string]
 	effective := make(map[string]any, len(schema.Properties))
 	for name, value := range config {
 		if text, ok := value.(string); ok && text == "" {
+			continue
+		}
+		if items, ok := value.([]any); ok && len(items) == 0 {
 			continue
 		}
 		effective[name] = value
@@ -98,6 +102,8 @@ func describeConfigError(schema *objects.PluginConfigSchema, err error) error {
 			break
 		}
 		if name, isProperty := strings.CutPrefix(location, "/properties/"); isProperty {
+			// Array item errors report /properties/<name>/items; keep only the property name.
+			name, _, _ = strings.Cut(name, "/")
 			field = strings.NewReplacer("~1", "/", "~0", "~").Replace(name)
 		}
 		rest = after
@@ -118,7 +124,11 @@ func describeConfigError(schema *objects.PluginConfigSchema, err error) error {
 	}
 	switch keyword {
 	case "type":
-		return fmt.Errorf("config field %q: expected %s", field, schema.Properties[field].Type)
+		prop := schema.Properties[field]
+		if prop.Type == objects.ConfigTypeArray && prop.Items != nil {
+			return fmt.Errorf("config field %q: expected array of %s", field, prop.Items.Type)
+		}
+		return fmt.Errorf("config field %q: expected %s", field, prop.Type)
 	case "enum":
 		return fmt.Errorf("config field %q: value is not in enum", field)
 	case "minimum":

@@ -23,13 +23,6 @@ main {
 
 .masthead img { display: block; }
 
-.eyebrow {
-  margin: 0;
-  color: var(--muted-foreground, #5e6772);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-}
-
 h1, h2 { margin: 0; font-weight: 650; }
 h1 { font-size: 28px; letter-spacing: -0.03em; }
 h2 { font-size: 16px; }
@@ -95,12 +88,12 @@ h2 { font-size: 16px; }
 form, label { display: grid; gap: 6px; }
 form { gap: 12px; }
 
-input, textarea, button {
+input, textarea, select, button {
   font: inherit;
   color: inherit;
 }
 
-input, textarea {
+input, textarea, select {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--border, #e3e6eb);
@@ -157,6 +150,52 @@ button.secondary {
 .list strong, .list p { margin: 0; }
 .list time, .list span { color: var(--muted-foreground, #5e6772); font-size: 13px; }
 .list p { margin-top: 4px; white-space: pre-wrap; }
+
+select:disabled { opacity: 0.55; }
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid var(--border, #e3e6eb);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--foreground, #1c1f24);
+  font-size: 13px;
+}
+
+.chip span {
+  color: var(--muted-foreground, #5e6772);
+  font-variant-numeric: tabular-nums;
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--primary, #1f6b4a);
+  background: var(--primary, #1f6b4a);
+  color: var(--primary-foreground, #ffffff);
+}
+
+.chip[aria-pressed="true"] span { color: inherit; opacity: 0.75; }
+
+.list .tag {
+  display: inline-block;
+  margin: 0 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--muted, #eef1f4);
+  color: var(--muted-foreground, #5e6772);
+  font-size: 12px;
+  line-height: 20px;
+  vertical-align: 1px;
+}
 
 #open-channels { margin-top: 14px; }
 

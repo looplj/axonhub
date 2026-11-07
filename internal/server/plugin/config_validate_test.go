@@ -68,3 +68,41 @@ func TestCheckConfigForEnable(t *testing.T) {
 
 	require.NoError(t, checkConfigForEnable(nil, map[string]any{}))
 }
+
+func arraySchema(t *testing.T) *objects.PluginConfigSchema {
+	t.Helper()
+	var schema objects.PluginConfigSchema
+	require.NoError(t, json.Unmarshal([]byte(`{
+		"type": "object",
+		"required": ["models"],
+		"properties": {
+			"models": {"type": "array", "items": {"type": "string"}},
+			"tags": {"type": "array", "items": {"type": "string"}, "default": ["a"]}
+		}
+	}`), &schema))
+	require.NoError(t, schema.Validate())
+	return &schema
+}
+
+func TestValidateConfigValuesStringArray(t *testing.T) {
+	schema := arraySchema(t)
+	const secret = "sk-very-secret-value"
+
+	require.NoError(t, validateConfigValues(schema, map[string]any{"models": []any{"gpt-4o", "claude"}}, true))
+	require.NoError(t, validateConfigValues(schema, map[string]any{"models": []string{"gpt-4o"}}, true))
+
+	err := validateConfigValues(schema, map[string]any{"models": secret}, false)
+	require.EqualError(t, err, `config field "models": expected array of string`)
+	require.NotContains(t, err.Error(), secret)
+
+	err = validateConfigValues(schema, map[string]any{"models": []any{"ok", 42, secret}}, false)
+	require.EqualError(t, err, `config field "models": expected array of string`)
+	require.NotContains(t, err.Error(), secret)
+}
+
+func TestCheckConfigForEnableEmptyArrayIsMissing(t *testing.T) {
+	schema := arraySchema(t)
+
+	require.EqualError(t, checkConfigForEnable(schema, map[string]any{"models": []any{}}), "required config fields are missing: models")
+	require.NoError(t, checkConfigForEnable(schema, map[string]any{"models": []any{"gpt-4o"}}))
+}

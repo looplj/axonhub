@@ -92,11 +92,20 @@ export default function PluginsManagement({ tab, onTabChange }: PluginsManagemen
         <Tabs value={tab} onValueChange={(value) => onTabChange(value as PluginsTab)} className='w-full gap-4'>
           <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
             <TabsList>
-              <TabsTrigger value='installed'>
+              <TabsTrigger value='installed' className='px-3'>
+                <IconPlugConnected />
                 {t('plugins.tabs.installed')}
-                {pluginsQuery.isSuccess && <span className='text-muted-foreground ml-1 tabular-nums'>{plugins.length}</span>}
+                {/* bg-current keeps the pill legible on both the muted and the primary (active) tab background. */}
+                {pluginsQuery.isSuccess && (
+                  <span className='min-w-5 rounded-full bg-current/15 px-1.5 text-center text-xs leading-5 tabular-nums'>
+                    {plugins.length}
+                  </span>
+                )}
               </TabsTrigger>
-              <TabsTrigger value='market'>{t('plugins.tabs.market')}</TabsTrigger>
+              <TabsTrigger value='market' className='px-3'>
+                <IconBuildingStore />
+                {t('plugins.tabs.market')}
+              </TabsTrigger>
             </TabsList>
             <div className='flex items-center gap-2'>
               <div className='relative flex-1 sm:w-64 sm:flex-none'>

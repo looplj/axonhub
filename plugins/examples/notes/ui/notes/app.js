@@ -1,4 +1,4 @@
-import { copyFor, formatTime, headingFrom, maxNotesFrom, noteKey, parseNote } from "./format.js";
+import { categoriesFrom, copyFor, formatTime, headingFrom, maxNotesFrom, noteKey, parseNote } from "./format.js";
 
 const axonhub = window.axonhub;
 
@@ -46,6 +46,10 @@ const titleInput = document.querySelector("#title");
 const bodyInput = document.querySelector("#body");
 const titleLabel = document.querySelector("#title-label");
 const bodyLabel = document.querySelector("#body-label");
+const categoryField = document.querySelector("#category-field");
+const categoryLabel = document.querySelector("#category-label");
+const categorySelect = document.querySelector("#category");
+const filters = document.querySelector("#filters");
 const saveButton = document.querySelector("#save");
 const writeHint = document.querySelector("#write-hint");
 const notes = document.querySelector("#notes");
@@ -60,6 +64,10 @@ let locale = "en";
 let limit = 20;
 let canWrite = false;
 let writing = false;
+let categories = [];
+// "" shows every note.
+let activeCategory = "";
+let noteItems = [];
 
 if (!axonhub) {
   status.textContent = "AxonHub bridge did not load";
@@ -84,6 +92,7 @@ async function load() {
   document.documentElement.lang = locale;
   limit = maxNotesFrom(init.config);
   canWrite = init.canWriteKV === true;
+  categories = categoriesFrom(init.config);
   heading.textContent = headingFrom(init.config, text);
   applyCopy();
   renderMeta(init);
@@ -96,6 +105,18 @@ function applyCopy() {
   channelsTitle.textContent = text.channels;
   titleLabel.textContent = text.title;
   bodyLabel.textContent = text.body;
+  categoryLabel.textContent = text.category;
+  categoryField.hidden = categories.length === 0;
+  categorySelect.disabled = !canWrite;
+  categorySelect.replaceChildren(
+    ...categories.map((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      return option;
+    }),
+  );
+  filters.setAttribute("aria-label", text.filterLabel);
   saveButton.textContent = text.save;
   writeHint.textContent = text.writeHint;
   notesEmpty.textContent = text.emptyNotes;
@@ -137,16 +158,55 @@ async function refreshNotes() {
     after = page?.nextCursor ?? null;
   } while (after !== null);
   items.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
-  notesCount.textContent = text.count(items.length, limit);
-  notes.replaceChildren();
-  notesEmpty.hidden = items.length > 0;
-  for (const item of items) {
-    notes.append(renderNote(item));
+  noteItems = items.map((item) => ({ ...item, note: parseNote(item.value) }));
+  // The limit counts every stored note, not only the ones the filter shows.
+  notesCount.textContent = text.count(noteItems.length, limit);
+  renderNotes();
+}
+
+function renderNotes() {
+  renderFilters();
+  const visible = activeCategory === "" ? noteItems : noteItems.filter((item) => item.note.category === activeCategory);
+  notes.replaceChildren(...visible.map(renderNote));
+  notesEmpty.hidden = visible.length > 0;
+  notesEmpty.textContent = noteItems.length > 0 ? text.emptyCategory : text.emptyNotes;
+}
+
+function renderFilters() {
+  filters.hidden = categories.length === 0;
+  if (categories.length === 0) {
+    activeCategory = "";
+    return;
   }
+  if (activeCategory !== "" && !categories.includes(activeCategory)) {
+    activeCategory = "";
+  }
+  const counts = new Map();
+  for (const item of noteItems) {
+    counts.set(item.note.category, (counts.get(item.note.category) ?? 0) + 1);
+  }
+  const chips = [["", text.allCategories, noteItems.length], ...categories.map((name) => [name, name, counts.get(name) ?? 0])];
+  filters.replaceChildren(
+    ...chips.map(([value, label, count]) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.setAttribute("aria-pressed", String(value === activeCategory));
+      chip.textContent = label;
+      const badge = document.createElement("span");
+      badge.textContent = String(count);
+      chip.append(badge);
+      chip.addEventListener("click", () => {
+        activeCategory = value;
+        renderNotes();
+      });
+      return chip;
+    }),
+  );
 }
 
 function renderNote(item) {
-  const parsed = parseNote(item.value);
+  const parsed = item.note;
   const row = document.createElement("li");
   const body = document.createElement("div");
   const title = document.createElement("strong");
@@ -156,7 +216,15 @@ function renderNote(item) {
   time.textContent = formatTime(item.updatedAt, locale);
   const copy = document.createElement("p");
   copy.textContent = parsed.body;
-  body.append(title, time, copy);
+  body.append(title);
+  // A category removed from config still shows on notes filed under it.
+  if (parsed.category) {
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = parsed.category;
+    body.append(tag);
+  }
+  body.append(time, copy);
 
   const button = document.createElement("button");
   button.type = "button";
@@ -173,10 +241,11 @@ function renderNote(item) {
 async function saveNote() {
   const title = titleInput.value.trim();
   const body = bodyInput.value.trim();
+  const category = categories.length > 0 ? categorySelect.value : "";
   if (!title || !body || !canWrite || writing) {
     return;
   }
-  const current = notes.querySelectorAll("li").length;
+  const current = noteItems.length;
   if (current >= limit) {
     await axonhub.toast(text.limit, { kind: "warning" });
     return;
@@ -186,13 +255,18 @@ async function saveNote() {
   try {
     const result = await axonhub.graphql(SAVE_NOTE, {
       key: noteKey(),
-      value: JSON.stringify({ title, body }),
+      value: JSON.stringify(category ? { title, body, category } : { title, body }),
     });
     const message = graphqlMessage(result);
     if (message) {
       throw new Error(message);
     }
     form.reset();
+    // Keep the chosen category for the next note and show the one just saved.
+    categorySelect.value = category;
+    if (activeCategory !== "" && activeCategory !== category) {
+      activeCategory = "";
+    }
     await refreshNotes();
     await axonhub.toast(text.saved, { kind: "success" });
   } finally {

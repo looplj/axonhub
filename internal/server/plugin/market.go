@@ -213,12 +213,36 @@ func (m *Manager) marketClient() *http.Client {
 	return &http.Client{
 		Timeout:       marketFetchTimeout,
 		Transport:     transport,
-		CheckRedirect: refuseMarketRedirect,
+		CheckRedirect: allowGitHubMarketRedirect,
 	}
 }
 
-func refuseMarketRedirect(*http.Request, []*http.Request) error {
-	return errors.New("market fetch does not follow redirects")
+// allowGitHubMarketRedirect follows the Release asset hop from github.com to
+// release-assets.githubusercontent.com. Every other target is refused so a
+// registry URL cannot send the hub to an arbitrary host.
+func allowGitHubMarketRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) == 0 || len(via) >= 10 {
+		return errors.New("market fetch stopped after 10 redirects")
+	}
+	if !githubMarketURL(via[len(via)-1].URL) || !githubMarketURL(req.URL) {
+		return errors.New("market fetch does not follow redirects")
+	}
+	return nil
+}
+
+func githubMarketURL(raw *url.URL) bool {
+	if raw == nil || raw.Scheme != "https" {
+		return false
+	}
+	return githubMarketHost(raw.Hostname())
+}
+
+func githubMarketHost(host string) bool {
+	host = strings.ToLower(strings.TrimSuffix(host, "."))
+	if host == "github.com" || host == "githubusercontent.com" {
+		return true
+	}
+	return strings.HasSuffix(host, ".github.com") || strings.HasSuffix(host, ".githubusercontent.com")
 }
 
 func (m *Manager) fetchMarket(ctx context.Context, rawURL string, limit int) ([]byte, error) {
