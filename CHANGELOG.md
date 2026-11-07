@@ -7,7 +7,7 @@
 
 ### Changed
 
-- All dialog footers now share `DialogFooter`/`AlertDialogFooter` variants instead of per-dialog flex classes: `pinned` for sticky footers, `divided` for the top border, `gap` for spacing, `layout`/`align` for row/edge placement. Footers stack full width below `sm` (primary action on top) and sit right-aligned above it. This fixes the Model Association dialog's Cancel/Save buttons rendering with no gap.
+- All dialog footers now share `DialogFooter`/`AlertDialogFooter` variants instead of per-dialog flex classes: `pinned` for sticky footers, `divided` for the top border, `gap` for spacing, `layout`/`align` for row/edge placement. Footers stack full width below `sm` (primary action on top) and sit right-aligned above it; the `content` layout keeps source order for footers that lead with explanatory text. This fixes the Model Association dialog's Cancel/Save buttons rendering with no gap.
 - Footer buttons now meet a 44px touch target on phones and keep their normal control height from `sm` up.
 - The `/analytics` time range is now precise to the second. `AnalyticsFilter.startTime`/`endTime` take RFC3339 timestamps instead of `YYYY-MM-DD` strings, `analyticsMetadata.earliestTime` replaces `earliestDate` with the earliest usage instant, every range is filtered as an inclusive absolute instant down to the millisecond, and the page uses the shared date-and-time range picker. The trend chart still aggregates per local calendar day.
 

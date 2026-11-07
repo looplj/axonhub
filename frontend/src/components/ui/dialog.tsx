@@ -85,9 +85,13 @@ const dialogFooterVariants = cva('flex flex-col-reverse gap-2 sm:flex-row sm:jus
   variants: {
     // `inline` keeps a footer on one line at every width. Only for footers with
     // content on both ends (e.g. Reset on the left, Done on the right).
+    // `content` keeps source order below `sm` instead of reversing it, for
+    // footers whose first child is explanatory text rather than a secondary
+    // action — reversing those would push the message below the buttons.
     layout: {
       stacked: '',
       inline: 'flex-row',
+      content: 'flex-col',
     },
     align: {
       end: '',
