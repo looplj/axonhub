@@ -403,7 +403,7 @@ func resolvePathSegments(node gjson.Result, prefix, rest []string) []pathTarget 
 
 	segment := rest[0]
 	if segment != "#" && !isQuerySegment(segment) {
-		return resolvePathSegments(node.Get(segment), append(prefix[:len(prefix):len(prefix)], segment), rest[1:])
+		return resolvePathSegments(node.Get(segment), append(slices.Clip(prefix), segment), rest[1:])
 	}
 
 	if !node.IsArray() {
@@ -417,7 +417,7 @@ func resolvePathSegments(node gjson.Result, prefix, rest []string) []pathTarget 
 			continue
 		}
 
-		next := append(prefix[:len(prefix):len(prefix)], strconv.Itoa(index))
+		next := append(slices.Clip(prefix), strconv.Itoa(index))
 		targets = append(targets, resolvePathSegments(element, next, rest[1:])...)
 	}
 
