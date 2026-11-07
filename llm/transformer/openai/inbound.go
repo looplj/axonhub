@@ -159,6 +159,15 @@ func isReasoningSignatureEvent(resp *llm.Response) bool {
 		return false
 	}
 
+	// Gemini puts the signature on its last chunk, next to finishReason and the final usage.
+	if finish := resp.Choices[0].FinishReason; finish != nil && *finish != "" {
+		return false
+	}
+
+	if resp.Usage != nil && resp.Usage.TotalTokens > 0 {
+		return false
+	}
+
 	delta := resp.Choices[0].Delta
 	if delta == nil {
 		return false

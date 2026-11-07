@@ -106,6 +106,35 @@ func TestInboundTransformer_UpstreamErrorDoesNotSynthesizeFinish(t *testing.T) {
 	}
 }
 
+func TestInboundTransformer_SignatureOnFinalChunkKeepsFinishAndUsage(t *testing.T) {
+	signature := "c2ln"
+	stream, err := NewInboundTransformer().TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		openAIInboundTextChunk("hello"),
+		{
+			ID: "chatcmpl-text",
+			Choices: []llm.Choice{{
+				Index:        0,
+				Delta:        &llm.Message{ReasoningSignature: &signature},
+				FinishReason: lo.ToPtr("stop"),
+			}},
+			Usage: &llm.Usage{PromptTokens: 44, CompletionTokens: 121, TotalTokens: 165},
+		},
+		llm.DoneResponse,
+	}))
+	require.NoError(t, err)
+
+	events := collectOpenAIInboundEvents(t, stream)
+	require.NoError(t, stream.Err())
+	require.Len(t, events, 3)
+
+	var final Response
+	require.NoError(t, json.Unmarshal(events[1].Data, &final))
+	require.Equal(t, "stop", lo.FromPtr(final.Choices[0].FinishReason))
+	require.NotNil(t, final.Usage)
+	require.EqualValues(t, 165, final.Usage.TotalTokens)
+	require.Equal(t, "[DONE]", string(events[2].Data))
+}
+
 func openAIInboundTextChunk(content string) *llm.Response {
 	return &llm.Response{
 		ID: "chatcmpl-text",
