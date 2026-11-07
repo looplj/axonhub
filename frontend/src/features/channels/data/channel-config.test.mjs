@@ -479,3 +479,28 @@ test('OpenAI and ZenMux Gemini channels default to current models, not retired o
   assert.doesNotMatch(defaultsOf('zenmux_gemini'), /gemini-2\.5/);
   assert.match(defaultsOf('zenmux_gemini'), /gemini-3\.1-pro-preview/);
 });
+
+test('Claude, ZenMux, AiHubMix and GitHub channels default to current models, not retired ones', () => {
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+  const defaultsOf = (channel) => {
+    const match = channelsConfig.match(new RegExp(`\\n  ${channel}: {[\\s\\S]*?defaultModels: (\\[[^\\]]*\\]|[A-Z_]+)`));
+    assert.ok(match, `${channel} should define defaultModels`);
+    return match[1];
+  };
+
+  assert.match(defaultsOf('anthropic_aws'), /anthropic\.claude-opus-5-5/);
+  assert.doesNotMatch(defaultsOf('anthropic_aws'), /claude-(opus-4|sonnet-4|3-)/);
+  assert.match(defaultsOf('anthropic_gcp'), /'claude-opus-5-5'/);
+  assert.doesNotMatch(defaultsOf('anthropic_gcp'), /claude-(opus-4|sonnet-4|3-)/);
+
+  for (const channel of ['zenmux', 'zenmux_responses']) {
+    assert.doesNotMatch(defaultsOf(channel), /gpt-5'/, `${channel} should not default to retiring gpt-5`);
+    assert.match(defaultsOf(channel), /openai\/gpt-5\.6-sol/);
+  }
+  for (const channel of ['zenmux', 'zenmux_anthropic']) {
+    assert.doesNotMatch(defaultsOf(channel), /claude-sonnet-4/);
+  }
+
+  assert.doesNotMatch(defaultsOf('aihubmix_anthropic'), /claude-sonnet-4|gpt-4o/);
+  assert.doesNotMatch(defaultsOf('github'), /gpt-4o|o3'|o4-mini|claude-sonnet-4|claude-3\.5/);
+});
