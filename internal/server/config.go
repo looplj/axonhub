@@ -93,8 +93,17 @@ type Config struct {
 	// RequestTimeout is the maximum duration for processing a request.
 	RequestTimeout time.Duration `conf:"request_timeout" yaml:"request_timeout" json:"request_timeout"`
 
-	// LLMRequestTimeout is the maximum duration for processing a request to LLM.
+	// LLMRequestTimeout is the total duration limit for non-streaming LLM requests.
+	// Zero disables the total request deadline.
 	LLMRequestTimeout time.Duration `conf:"llm_request_timeout" yaml:"llm_request_timeout" json:"llm_request_timeout"`
+
+	// LLMStreamRequestTimeout is the total duration limit for streaming LLM requests.
+	// Zero disables the streaming total deadline.
+	LLMStreamRequestTimeout time.Duration `conf:"llm_stream_request_timeout" yaml:"llm_stream_request_timeout" json:"llm_stream_request_timeout"`
+
+	// LLMStreamIdleTimeout limits time without upstream stream data.
+	// Zero disables the stream idle deadline.
+	LLMStreamIdleTimeout time.Duration `conf:"llm_stream_idle_timeout" yaml:"llm_stream_idle_timeout" json:"llm_stream_idle_timeout"`
 
 	Safeguards safeguards.Config `conf:"safeguards" yaml:"safeguards" json:"safeguards"`
 
@@ -156,4 +165,9 @@ type IPAccessControl struct {
 	Enabled     bool     `conf:"enabled" yaml:"enabled" json:"enabled"`
 	AllowedIPs  []string `conf:"allowed_ips" yaml:"allowed_ips" json:"allowed_ips"`
 	RedirectURL string   `conf:"redirect_url" yaml:"redirect_url" json:"redirect_url"`
+}
+
+// Unlimited LLM routes clear this deadline and bound individual downstream writes.
+func (c Config) writeTimeout() time.Duration {
+	return max(c.RequestTimeout, c.LLMRequestTimeout, c.LLMStreamRequestTimeout)
 }

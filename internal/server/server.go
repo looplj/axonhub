@@ -84,7 +84,7 @@ func (srv *Server) Run() error {
 		Addr:         addr,
 		Handler:      srv.Engine,
 		ReadTimeout:  srv.Config.ReadTimeout,
-		WriteTimeout: max(srv.Config.RequestTimeout, srv.Config.LLMRequestTimeout),
+		WriteTimeout: srv.Config.writeTimeout(),
 	}
 	srv.addr = addr
 

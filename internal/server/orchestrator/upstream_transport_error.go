@@ -31,16 +31,20 @@ func IsUpstreamTransportError(err error) bool {
 		return false
 	}
 
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return false
-	}
-
 	// Already carries a status code or structured detail: nothing to classify.
 	if _, ok := errors.AsType[*httpclient.Error](err); ok {
 		return false
 	}
 
 	if _, ok := errors.AsType[*llm.ResponseError](err); ok {
+		return false
+	}
+
+	if errors.Is(err, httpclient.ErrStreamIdleTimeout) {
+		return true
+	}
+
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return false
 	}
 
@@ -89,7 +93,8 @@ func persistRequestExecutionFailure(
 	upstreamModelID string,
 ) error {
 	status := requestexecution.StatusFailed
-	if errors.Is(rawErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+	if !errors.Is(rawErr, httpclient.ErrStreamIdleTimeout) &&
+		(errors.Is(rawErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled)) {
 		status = requestexecution.StatusCanceled
 	}
 
