@@ -2,7 +2,8 @@
 
 import { useCallback } from 'react';
 import { format } from 'date-fns';
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, VisibilityState } from '@tanstack/react-table';
+import { z } from 'zod';
 import { zhCN, enUS } from 'date-fns/locale';
 import { FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -77,6 +78,15 @@ function TraceActionButtons({ trace }: { trace: Trace }) {
   );
 }
 
+export const DEFAULT_TRACES_COLUMN_VISIBILITY: VisibilityState = {};
+
+const tracesColumnVisibilitySchema = z.record(z.string(), z.boolean());
+
+export function parseTracesColumnVisibility(value: unknown): VisibilityState {
+  const parsed = tracesColumnVisibilitySchema.safeParse(value);
+  return parsed.success ? { ...DEFAULT_TRACES_COLUMN_VISIBILITY, ...parsed.data } : DEFAULT_TRACES_COLUMN_VISIBILITY;
+}
+
 export function useTracesColumns(): ColumnDef<Trace>[] {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
@@ -100,7 +110,7 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
           </button>
         );
       },
-      enableSorting: false,
+      enableSorting: true,
       enableHiding: false,
     },
 
@@ -178,7 +188,6 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
     {
       id: 'details',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('traces.columns.details')} />,
-      enableSorting: false,
       cell: ({ row }) => {
         const handleViewDetails = () => {
           navigateWithSearch({ to: '/project/traces/$traceId', params: { traceId: row.original.id } });
@@ -212,7 +221,6 @@ export function useTracesColumns(): ColumnDef<Trace>[] {
     {
       id: 'actions',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.actions')} />,
-      enableSorting: false,
       enableHiding: false,
       meta: { className: 'w-[100px]' },
       cell: ({ row }) => <TraceActionButtons trace={row.original} />,

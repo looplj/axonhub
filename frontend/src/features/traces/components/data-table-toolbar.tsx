@@ -167,7 +167,7 @@ export function DataTableToolbar<TData>({
         {showRefresh && onRefresh && onAutoRefreshIntervalChange && (
           <AutoRefreshControl interval={autoRefreshInterval} onIntervalChange={onAutoRefreshIntervalChange} onRefresh={onRefresh} />
         )}
-        {/* <DataTableViewOptions table={table} /> */}
+        <DataTableViewOptions table={table} />
       </div>
     </div>
   );

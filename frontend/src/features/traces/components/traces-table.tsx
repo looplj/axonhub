@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ColumnFiltersState,
   RowData,
@@ -21,10 +21,22 @@ import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { Trace, TraceConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
-import { useTracesColumns } from './traces-columns';
+import { DEFAULT_TRACES_COLUMN_VISIBILITY, parseTracesColumnVisibility, useTracesColumns } from './traces-columns';
 
 const MotionTableRow = motion.create(TableRow);
 const MotionExpandedRow = motion.create(TableRow);
+
+const COLUMN_VISIBILITY_STORAGE_KEY = 'traces-table-column-visibility';
+
+function readColumnVisibility(): VisibilityState {
+  try {
+    const stored = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+    if (!stored) return DEFAULT_TRACES_COLUMN_VISIBILITY;
+    return parseTracesColumnVisibility(JSON.parse(stored));
+  } catch {
+    return DEFAULT_TRACES_COLUMN_VISIBILITY;
+  }
+}
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -83,8 +95,16 @@ export function TracesTable({
   const { t } = useTranslation();
   const tracesColumns = useTracesColumns();
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(readColumnVisibility);
   const [rowSelection, setRowSelection] = useState({});
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
+    } catch {
+      // Storage may be unavailable; the selection still applies for this session.
+    }
+  }, [columnVisibility]);
 
   const animationResetKey = useMemo(
     () => JSON.stringify({ dateRange, traceIdFilter, statusFilter, autoRefreshResumeKey }),
