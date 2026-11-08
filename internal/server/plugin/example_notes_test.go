@@ -89,7 +89,7 @@ func assertExampleNotesPackage(t *testing.T, raw []byte) {
 
 func packExampleDirectory(t *testing.T, root string) []byte {
 	t.Helper()
-	packed, err := PackDirectory(root)
+	packed, _, err := PackDirectory(root)
 	require.NoError(t, err)
 	return packed
 }

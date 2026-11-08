@@ -1,10 +1,10 @@
 // Copied from internal/server/plugin so this module does not depend on the
-// AxonHub server. Keep the zip walk, readPackage, and moejs link checks aligned
-// with PackDirectory, readPackage, compilePluginSources, and rejectDisallowed.
+// AxonHub server. Keep the directory walk, import closure, readPackage, and
+// moejs link checks aligned with PackDirectory, readPackage,
+// compilePluginSources, and rejectDisallowed.
 // This copy does not execute plugin.js. Installation ParsePackage still checks
 // the manifest, AxonHub version range, and named exports, and can reject a zip
-// this command accepts. The directory walk also skips .git; the server packer
-// does not, because example directories have no checkout metadata.
+// this command accepts.
 package main
 
 import (
@@ -36,84 +36,245 @@ const (
 
 var windowsDrivePattern = regexp.MustCompile(`^[A-Za-z]:`)
 
-func packDirectory(root string) ([]byte, error) {
+func packDirectory(root string) ([]byte, []string, error) {
 	dir, err := os.OpenRoot(root)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer dir.Close()
+	closure, err := packImportClosure(dir)
+	if err != nil {
+		return nil, nil, err
+	}
+	tree, err := scanPackTree(dir, closure)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, name := range tree.irregular {
+		if packedByLayout(name) {
+			return nil, nil, fmt.Errorf("file %q %s", name, tree.reasons[name])
+		}
+	}
+	var packed, skipped []string
+	for _, name := range tree.files {
+		if _, ok := closure[name]; ok || packedByLayout(name) {
+			packed = append(packed, name)
+		} else {
+			skipped = append(skipped, name)
+		}
+	}
+	skipped = append(skipped, tree.irregular...)
+	skipped = append(skipped, tree.skippedDirs...)
+	if len(packed) > maxPackageFiles {
+		return nil, nil, fmt.Errorf("plugin package exceeds %d files", maxPackageFiles)
+	}
 	var buf bytes.Buffer
 	writer := zip.NewWriter(&buf)
 	defer writer.Close()
-	count, total := 0, 0
-	err = fs.WalkDir(dir.FS(), ".", func(name string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if name == ".git" {
-			return fs.SkipDir
-		}
-		if entry.Type()&os.ModeSymlink != 0 {
-			return fmt.Errorf("file %q is a symlink", name)
-		}
-		if entry.IsDir() {
-			return nil
-		}
-		if !entry.Type().IsRegular() {
-			return fmt.Errorf("file %q is not a regular file", name)
-		}
-		if name == "README.md" || entry.Name() == ".DS_Store" {
-			return nil
-		}
-		count++
-		if count > maxPackageFiles {
-			return fmt.Errorf("plugin package exceeds %d files", maxPackageFiles)
-		}
-		file, err := dir.Open(name)
+	total := 0
+	for _, name := range packed {
+		content, err := readPackFile(dir, name)
 		if err != nil {
-			return err
-		}
-		defer file.Close()
-		content, err := io.ReadAll(io.LimitReader(file, maxPackageFileBytes+1))
-		if err != nil {
-			return err
-		}
-		if len(content) > maxPackageFileBytes {
-			return fmt.Errorf("file %q exceeds 5 MiB", name)
-		}
-		if name == pluginEntry && len(content) > maxPluginJSBytes {
-			return errors.New("plugin.js exceeds 1 MiB")
+			return nil, nil, err
 		}
 		total += len(content)
 		if total > maxUncompressedBytes {
-			return errors.New("plugin package uncompressed size exceeds 20 MiB")
+			return nil, nil, errors.New("plugin package uncompressed size exceeds 20 MiB")
 		}
 		out, err := writer.Create(name)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
-		_, err = out.Write(content)
-		return err
-	})
-	if err != nil {
-		return nil, err
+		if _, err := out.Write(content); err != nil {
+			return nil, nil, err
+		}
 	}
 	if err := writer.Close(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	contents, err := readPackage(buf.Bytes())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := checkPackManifest(contents); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if _, err := compileContents(contents); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return buf.Bytes(), nil
+	return buf.Bytes(), collapseSkipped(packed, skipped), nil
 }
 
+type packTree struct {
+	files       []string
+	skippedDirs []string
+	irregular   []string
+	reasons     map[string]string
+}
+
+func scanPackTree(dir *os.Root, closure map[string]struct{}) (*packTree, error) {
+	tree := &packTree{reasons: map[string]string{}}
+	// Only descend into layout directories and ancestors of static imports.
+	// Unused development trees are reported once without reading their contents.
+	importDirs := map[string]struct{}{}
+	for name := range closure {
+		for parent := path.Dir(name); parent != "."; parent = path.Dir(parent) {
+			importDirs[parent] = struct{}{}
+		}
+	}
+	err := fs.WalkDir(dir.FS(), ".", func(name string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		switch {
+		case name == ".":
+		case entry.Type()&os.ModeSymlink != 0:
+			tree.irregular = append(tree.irregular, name)
+			tree.reasons[name] = "is a symlink"
+		case entry.IsDir():
+			if _, needed := importDirs[name]; !needed && !packedByLayout(name) {
+				tree.skippedDirs = append(tree.skippedDirs, name+"/")
+				return fs.SkipDir
+			}
+		case !entry.Type().IsRegular():
+			tree.irregular = append(tree.irregular, name)
+			tree.reasons[name] = "is not a regular file"
+		case entry.Name() == ".DS_Store":
+		default:
+			tree.files = append(tree.files, name)
+		}
+		return nil
+	})
+	return tree, err
+}
+
+func packedByLayout(name string) bool {
+	return name == "manifest.json" || name == pluginEntry || name == "ui" || strings.HasPrefix(name, "ui/")
+}
+
+// packImportClosure follows static imports from plugin.js on disk so that
+// unrelated files are never read or packed.
+func packImportClosure(dir *os.Root) (map[string]struct{}, error) {
+	closure := map[string]struct{}{}
+	if ok, err := regularPackImport(dir, pluginEntry); err != nil {
+		return nil, err
+	} else if !ok {
+		return closure, nil
+	}
+	var visit func(name string) error
+	visit = func(name string) error {
+		closure[name] = struct{}{}
+		source, err := readPackFile(dir, name)
+		if err != nil {
+			return err
+		}
+		mod, err := moejs.Compile(name, string(source))
+		if err != nil {
+			return err
+		}
+		for _, specifier := range mod.Requests() {
+			resolved, err := resolveImport(name, specifier)
+			if err != nil {
+				return err
+			}
+			if _, seen := closure[resolved]; seen {
+				continue
+			}
+			if ok, err := regularPackImport(dir, resolved); err != nil {
+				return err
+			} else if !ok {
+				return fmt.Errorf("import %q does not exist in the package", specifier)
+			}
+			if err := visit(resolved); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := visit(pluginEntry); err != nil {
+		return nil, err
+	}
+	return closure, nil
+}
+
+// regularPackImport inspects just the imported path, checking each ancestor
+// before accessing descendants so symlinks cannot hide inside an unscanned tree.
+func regularPackImport(dir *os.Root, name string) (bool, error) {
+	parts := strings.Split(name, "/")
+	for i := range parts {
+		current := strings.Join(parts[:i+1], "/")
+		info, err := dir.Lstat(current)
+		if errors.Is(err, fs.ErrNotExist) {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return false, fmt.Errorf("file %q is a symlink", current)
+		}
+		if !info.IsDir() && !info.Mode().IsRegular() {
+			return false, fmt.Errorf("file %q is not a regular file", current)
+		}
+		if i == len(parts)-1 {
+			return info.Mode().IsRegular() && parts[i] != ".DS_Store", nil
+		}
+		if !info.IsDir() {
+			return false, nil
+		}
+	}
+	return false, nil
+}
+
+func readPackFile(dir *os.Root, name string) ([]byte, error) {
+	file, err := dir.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	content, err := io.ReadAll(io.LimitReader(file, maxPackageFileBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(content) > maxPackageFileBytes {
+		return nil, fmt.Errorf("file %q exceeds 5 MiB", name)
+	}
+	if name == pluginEntry && len(content) > maxPluginJSBytes {
+		return nil, errors.New("plugin.js exceeds 1 MiB")
+	}
+	return content, nil
+}
+
+// collapseSkipped reports a skipped path by its highest ancestor directory that
+// contains no packed file, so .git or node_modules appear as one line.
+func collapseSkipped(packed, skipped []string) []string {
+	packedDirs := map[string]struct{}{}
+	for _, name := range packed {
+		for current := path.Dir(name); current != "."; current = path.Dir(current) {
+			packedDirs[current] = struct{}{}
+		}
+	}
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(skipped))
+	for _, name := range skipped {
+		report := name
+		parts := strings.Split(name, "/")
+		for i := 1; i < len(parts); i++ {
+			ancestor := strings.Join(parts[:i], "/")
+			if _, ok := packedDirs[ancestor]; !ok {
+				report = ancestor + "/"
+				break
+			}
+		}
+		if _, dup := seen[report]; dup {
+			continue
+		}
+		seen[report] = struct{}{}
+		out = append(out, report)
+	}
+	slices.Sort(out)
+	return out
+}
 func checkPackManifest(contents *packageContents) error {
 	raw, ok := contents.sources["manifest.json"]
 	if !ok {

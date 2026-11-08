@@ -132,7 +132,7 @@ From this repository:
 go run -C cmd/pack-plugin . ../../plugins/examples/<name>
 ```
 
-The default output is `<directory-name>.axplugin` next to the plugin directory. The output must be outside that directory; a path inside it fails. `*.axplugin` is gitignored. Root `README.md`, `.DS_Store`, and `.git` are left out. Any other file that is not `manifest.json`, not under `ui/`, and not reachable by a static relative import from `plugin.js` fails the pack. Tests, `package.json`, `.github`, and `.gitignore` inside the plugin directory fail it. When the Git repository root is the plugin, copy `manifest.json`, `plugin.js`, its static imports, and `ui/` into a directory that contains only those files, then pack that directory.
+The default output is `<directory-name>.axplugin` next to the plugin directory. The output must be outside that directory; a path inside it fails. `*.axplugin` is gitignored. The package contains only `manifest.json`, files under `ui/`, root `plugin.js`, and files that `plugin.js` reaches through static relative imports. Every other file, such as `README.md`, `.git`, `.github`, `.claude`, `node_modules`, tests, and `package.json`, is left out, and the command prints the skipped paths. A directory that holds no packed file is listed once, for example `.git/`. Files loaded only through dynamic `import()` are not collected, so check the skipped list before you upload. A symlink fails the pack only when it would be packed: `manifest.json`, `plugin.js`, anything under `ui/`, or an imported file.
 
 Upload that zip on `/plugins` to try it. Publishing it on the official index is a separate step, below.
 
