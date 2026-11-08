@@ -236,7 +236,7 @@ func rawBudgetPipeline(t *testing.T, executor pipeline.Executor, endpoint string
 	inbound, outbound := NewPersistentTransformers(state, anthropic.NewInboundTransformer())
 	pipe := pipeline.NewFactory(executor).Pipeline(inbound, outbound,
 		pipeline.WithRetry(0, 1, 0),
-		pipeline.WithMiddlewares(applyPassThroughStream(outbound, nil), applyPassThroughRequestBody(outbound, nil, nil), captureRawProviderStream(outbound, nil)),
+		pipeline.WithMiddlewares(applyPassThroughStream(outbound), applyPassThroughRequestBody(outbound, nil), captureRawProviderStream(outbound)),
 	)
 	return pipe.Process, &httpclient.Request{
 		Method: http.MethodPost, URL: "/v1/messages", ContentType: "application/json",

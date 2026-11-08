@@ -91,7 +91,7 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 		selector := WithTraceStickyLoadBalancedSelector(
 			&staticChannelSelector{candidates: candidates},
 			NewLoadBalancer(policy, tracker),
-			policy,
+			policy.policy,
 			&fakePreviousChannelProvider{
 				traceChannelIDs:  map[int]int{trace.ID: 2},
 				threadChannelIDs: map[int]int{thread.ID: 3},
@@ -123,7 +123,7 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 		selector := WithTraceStickyLoadBalancedSelector(
 			&staticChannelSelector{candidates: candidates},
 			NewLoadBalancer(policy, nil),
-			policy,
+			policy.policy,
 			&fakePreviousChannelProvider{
 				threadChannelIDs: map[int]int{thread.ID: 3},
 			},
@@ -149,7 +149,7 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 		selector := WithTraceStickyLoadBalancedSelector(
 			&staticChannelSelector{candidates: candidates},
 			NewLoadBalancer(policy, nil),
-			policy,
+			policy.policy,
 			&fakePreviousChannelProvider{
 				traceChannelIDs: map[int]int{trace.ID: 2},
 			},
@@ -173,7 +173,7 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 		selector := WithTraceStickyLoadBalancedSelector(
 			&staticChannelSelector{candidates: candidates},
 			NewLoadBalancer(policy, nil),
-			policy,
+			policy.policy,
 			&fakePreviousChannelProvider{
 				traceChannelIDs: map[int]int{trace.ID: 2},
 			},
@@ -229,7 +229,7 @@ func TestLoadBalancedSelector_FallbackUpdatesEffectiveStrategy(t *testing.T) {
 			biz.LoadBalancerStrategyAdaptive: NewLoadBalancer(systemPolicy, nil),
 			// circuit-breaker intentionally missing to force fallback
 		},
-		systemPolicy,
+		systemPolicy.policy,
 		nil,
 		nil,
 		&effectivePolicy,
@@ -276,7 +276,7 @@ func TestLoadBalancedSelector_ModelDisablesStickyWhenProfileDefaults(t *testing.
 		map[string]*LoadBalancer{
 			biz.LoadBalancerStrategyAdaptive: NewLoadBalancer(systemPolicy, nil),
 		},
-		systemPolicy,
+		systemPolicy.policy,
 		&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
 		apiKey,
 		&effectivePolicy,
@@ -332,7 +332,7 @@ func TestLoadBalancedSelector_EffectiveRoutingPolicyPriority(t *testing.T) {
 			biz.LoadBalancerStrategyFailover:   NewLoadBalancer(systemPolicy, failoverTracker),
 			biz.LoadBalancerStrategyRoundRobin: NewLoadBalancer(systemPolicy, roundRobinTracker),
 		},
-		systemPolicy,
+		systemPolicy.policy,
 		&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
 		apiKey,
 		&effectivePolicy,

@@ -101,7 +101,7 @@ func TestPassThroughKeepsClientBodyAndNotifiesHooks(t *testing.T) {
 		outbound,
 		pipeline.WithMiddlewares(
 			hookMiddleware,
-			applyPassThroughRequestBody(outbound, nil, hooks),
+			applyPassThroughRequestBody(outbound, hooks),
 		),
 	)
 	clientBody := []byte(`{"model":"gpt-4","messages":[{"role":"user","content":"hi"}],"temperature":0.7}`)
@@ -150,7 +150,7 @@ func TestChannelOverrideWinsOverRequestHook(t *testing.T) {
 	pipe := pipeline.NewFactory(httpclient.NewHttpClient()).Pipeline(
 		inbound,
 		outbound,
-		pipeline.WithMiddlewares(hookMiddleware, applyPassThroughRequestBody(outbound, nil, hooks), ApplyRequestHookAttempt(outbound, &wireHookForTest{t: t}), applyOverrideRequestBody(outbound)),
+		pipeline.WithMiddlewares(hookMiddleware, applyPassThroughRequestBody(outbound, hooks), ApplyRequestHookAttempt(outbound, &wireHookForTest{t: t}), applyOverrideRequestBody(outbound)),
 	)
 	_, err = pipe.Process(context.Background(), &httpclient.Request{
 		Method:  http.MethodPost,
