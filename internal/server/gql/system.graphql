@@ -398,12 +398,10 @@ type ProvidersCatalog {
 
 type CatalogSettings {
   upstreamURL: String!
-  refreshSeconds: Int!
 }
 
 input UpdateCatalogSettingsInput {
   upstreamURL: String
-  refreshSeconds: Int
 }
 
 type CodexCompatibilitySettings {
@@ -462,7 +460,6 @@ extend type Mutation {
   updatePassThroughSettings(input: UpdatePassThroughSettingsInput!): Boolean!
   updateUsageCostInjectionSettings(input: UpdateUsageCostInjectionSettingsInput!): Boolean!
   updateCatalogSettings(input: UpdateCatalogSettingsInput!): Boolean!
-  refreshProvidersCatalog: ProvidersCatalog!
 }
 
 extend type Query {

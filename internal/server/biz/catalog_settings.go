@@ -15,29 +15,16 @@ import (
 const (
 	SystemKeyCatalogSettings = "catalog_settings"
 
-	DefaultCatalogUpstreamURL    = "https://raw.githubusercontent.com/ThinkInAIXYZ/PublicProviderConf/refs/heads/dev/dist/all.json"
-	DefaultCatalogRefreshSeconds = 3600
-	minCatalogRefreshSeconds     = 60
-	maxCatalogRefreshSeconds     = 7 * 24 * 3600
+	DefaultCatalogUpstreamURL = "https://raw.githubusercontent.com/ThinkInAIXYZ/PublicProviderConf/refs/heads/dev/dist/all.json"
 )
 
-// CatalogSettings controls how the built-in model catalog is refreshed.
+// CatalogSettings controls where the built-in model catalog is fetched from.
 type CatalogSettings struct {
-	UpstreamURL    string `json:"upstream_url"`
-	RefreshSeconds int    `json:"refresh_seconds"`
+	UpstreamURL string `json:"upstream_url"`
 }
 
 func normalizeCatalogSettings(settings *CatalogSettings) {
 	settings.UpstreamURL = strings.TrimSpace(settings.UpstreamURL)
-	if settings.RefreshSeconds <= 0 {
-		settings.RefreshSeconds = DefaultCatalogRefreshSeconds
-	}
-	if settings.RefreshSeconds < minCatalogRefreshSeconds {
-		settings.RefreshSeconds = minCatalogRefreshSeconds
-	}
-	if settings.RefreshSeconds > maxCatalogRefreshSeconds {
-		settings.RefreshSeconds = maxCatalogRefreshSeconds
-	}
 }
 
 func validateCatalogSettings(settings CatalogSettings) error {
@@ -70,10 +57,7 @@ func (settings CatalogSettings) EffectiveUpstreamURL() string {
 }
 
 func defaultCatalogSettings() CatalogSettings {
-	return CatalogSettings{
-		UpstreamURL:    "",
-		RefreshSeconds: DefaultCatalogRefreshSeconds,
-	}
+	return CatalogSettings{}
 }
 
 func (s *SystemService) CatalogSettings(ctx context.Context) (*CatalogSettings, error) {

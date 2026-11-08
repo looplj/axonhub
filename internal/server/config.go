@@ -108,6 +108,7 @@ type Config struct {
 	CORS             CORS            `conf:"cors" yaml:"cors" json:"cors"`
 	API              API             `conf:"api" yaml:"api" json:"api"`
 	IPAccessControl  IPAccessControl `conf:"ip_access_control" yaml:"ip_access_control" json:"ip_access_control"`
+	Pprof            Pprof           `conf:"pprof" yaml:"pprof" json:"pprof"`
 
 	// MaxMultipartMemory sets the maximum memory for parsing multipart forms (in bytes).
 	// This is important for backup restore which uploads large backup files.
