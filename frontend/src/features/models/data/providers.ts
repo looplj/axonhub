@@ -1,7 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
-import i18n from '@/lib/i18n';
 import providersDataRaw from './providers.json';
 import { providersDataSchema, type ProvidersData } from './providers.schema';
 
@@ -10,17 +8,6 @@ const fallbackProvidersData = providersDataSchema.parse(providersDataRaw);
 const PROVIDERS_CATALOG_QUERY = `
   query ProvidersCatalog($filtered: Boolean) {
     providersCatalog(filtered: $filtered) {
-      data
-      fetchedAt
-      source
-      filtered
-    }
-  }
-`;
-
-const REFRESH_PROVIDERS_CATALOG_MUTATION = `
-  mutation RefreshProvidersCatalog {
-    refreshProvidersCatalog {
       data
       fetchedAt
       source
@@ -96,36 +83,4 @@ export function useDevelopersData() {
     source: query.data?.source ?? 'fallback',
     fetchedAt: query.data?.fetchedAt ?? null,
   };
-}
-
-export function useRefreshProvidersCatalog() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async () => {
-      const result = await graphqlRequest<{
-        refreshProvidersCatalog: {
-          data: unknown;
-          fetchedAt?: string | null;
-          source: string;
-          filtered: boolean;
-        };
-      }>(REFRESH_PROVIDERS_CATALOG_MUTATION);
-
-      return {
-        data: providersDataSchema.parse(result.refreshProvidersCatalog.data),
-        source: result.refreshProvidersCatalog.source,
-        fetchedAt: result.refreshProvidersCatalog.fetchedAt,
-        filtered: result.refreshProvidersCatalog.filtered,
-      } satisfies ProvidersCatalogInfo;
-    },
-    onSuccess: (catalog) => {
-      queryClient.setQueryData(['providers-catalog', true], catalog);
-      queryClient.invalidateQueries({ queryKey: ['providers-catalog'] });
-      toast.success(i18n.t('models.catalog.refreshSuccess'));
-    },
-    onError: () => {
-      toast.error(i18n.t('models.catalog.refreshFailed'));
-    },
-  });
 }

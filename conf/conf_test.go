@@ -105,6 +105,37 @@ func TestMetricsExporterConfigFromEnvironment(t *testing.T) {
 	}
 }
 
+func TestPprofDefaultsToDisabledOnLoopback(t *testing.T) {
+	configFile := writeTestConfig(t, "")
+	cfg, _, err := loadConfig(configFile)
+	if err != nil {
+		t.Fatalf("loadConfig() error = %v", err)
+	}
+	if cfg.APIServer.Pprof.Enabled {
+		t.Fatal("pprof should default to disabled")
+	}
+	if cfg.APIServer.Pprof.Addr != "127.0.0.1:6060" {
+		t.Fatalf("pprof addr = %q, want %q", cfg.APIServer.Pprof.Addr, "127.0.0.1:6060")
+	}
+}
+
+func TestPprofConfigFromEnvironment(t *testing.T) {
+	t.Setenv("AXONHUB_SERVER_PPROF_ENABLED", "true")
+	t.Setenv("AXONHUB_SERVER_PPROF_ADDR", "127.0.0.1:7070")
+
+	configFile := writeTestConfig(t, "")
+	cfg, _, err := loadConfig(configFile)
+	if err != nil {
+		t.Fatalf("loadConfig() error = %v", err)
+	}
+	if !cfg.APIServer.Pprof.Enabled {
+		t.Fatal("pprof should be enabled from environment")
+	}
+	if cfg.APIServer.Pprof.Addr != "127.0.0.1:7070" {
+		t.Fatalf("pprof addr = %q, want %q", cfg.APIServer.Pprof.Addr, "127.0.0.1:7070")
+	}
+}
+
 func TestTraceExtractionDefaultsToEnabled(t *testing.T) {
 	configFile := writeTestConfig(t, "")
 

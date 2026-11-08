@@ -611,8 +611,7 @@ type UpdateBrandSettingsInput struct {
 }
 
 type UpdateCatalogSettingsInput struct {
-	UpstreamURL    *string `json:"upstreamURL,omitempty"`
-	RefreshSeconds *int    `json:"refreshSeconds,omitempty"`
+	UpstreamURL *string `json:"upstreamURL,omitempty"`
 }
 
 type UpdateDefaultDataStorageInput struct {

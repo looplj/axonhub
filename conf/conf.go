@@ -274,6 +274,10 @@ func setDefaults(v *viper.Viper) {
 	// Default: 32M (matching Gin's default). Supports K/M/G suffixes, e.g. "512M", "1G".
 	v.SetDefault("server.max_multipart_memory", "32M")
 
+	// Go runtime profiling, served on its own loopback-only listener.
+	v.SetDefault("server.pprof.enabled", false)
+	v.SetDefault("server.pprof.addr", "127.0.0.1:6060")
+
 	// CORS defaults
 	v.SetDefault("server.cors.enabled", false)
 	v.SetDefault("server.cors.debug", false)

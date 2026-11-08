@@ -622,7 +622,6 @@ var pluginMutationFieldSnapshot = []string{
 	"installPluginFromMarket",
 	"loadApiKeyProfileTemplate",
 	"previewPromptProtectionRule",
-	"refreshProvidersCatalog",
 	"removeUserFromProject",
 	"resetChannelQuotaNow",
 	"resetClaudeCodeSafeguardsSettings",
