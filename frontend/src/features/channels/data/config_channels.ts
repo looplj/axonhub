@@ -498,7 +498,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     defaultModels: [
       'deepseek-v3.2',
       // Google
-      'gemini-3.6-flash',
+      'gemini-3.8-flash',
       'gemini-3.1-pro-preview',
       // Anthropic
       'claude-sonnet-5-5',
