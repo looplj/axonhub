@@ -105,15 +105,31 @@ func clineErrorMessage(raw any) string {
 // isClineBalanceExhausted reports whether an error message indicates the
 // Cline credits balance is exhausted (e.g. "Insufficient balance. Your Cline
 // Credits balance is $-0.00"). Such failures are permanent until topped up.
+// Only explicit exhaustion wording counts: a transient outage such as
+// "Cline credit balance service unavailable" must keep its original status
+// so the normal retry/failover handling applies.
 func isClineBalanceExhausted(message string) bool {
 	lower := strings.ToLower(message)
-	if strings.Contains(lower, "insufficient balance") {
-		return true
+
+	for _, phrase := range []string{
+		"insufficient balance",
+		"insufficient credit",
+		"balance exhausted",
+		"credit exhausted",
+		"credits exhausted",
+		"balance depleted",
+		"credit depleted",
+		"credits depleted",
+		"out of balance",
+		"out of credit",
+		"no remaining balance",
+		"no remaining credit",
+	} {
+		if strings.Contains(lower, phrase) {
+			return true
+		}
 	}
-	if strings.Contains(lower, "balance") &&
-		(strings.Contains(lower, "cline") || strings.Contains(lower, "credit")) {
-		return true
-	}
+
 	return false
 }
 

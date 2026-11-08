@@ -1119,6 +1119,18 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return false
 	}
 
+	// 402 Payment Required (e.g. Cline credit balance exhausted): the account
+	// behind this channel cannot serve any model, so iterating model aliases
+	// on the same channel just burns attempts. Force a channel switch so a
+	// backup channel with a funded account is tried immediately.
+	if ExtractStatusCodeFromError(err) == http.StatusPaymentRequired {
+		log.Debug(context.Background(), "402 payment required, skipping same-channel retry to switch to next channel",
+			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
+		)
+
+		return false
+	}
+
 	// if there are more models available in the current candidate, try the next model.
 	if p.state.CurrentModelIndex+1 < len(p.state.CurrentCandidate.Models) {
 		return true

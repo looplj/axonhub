@@ -237,6 +237,18 @@ func TestOutboundTransformer_TransformError_MapsBalanceExhaustionTo402(t *testin
 	assert.Contains(t, respErr.Detail.Message, "Insufficient balance")
 }
 
+func TestOutboundTransformer_TransformError_KeepsStatusOnBalanceServiceUnavailable(t *testing.T) {
+	transformer := newTestTransformer(t)
+
+	respErr := transformer.TransformError(context.Background(), &httpclient.Error{
+		StatusCode: http.StatusBadGateway,
+		Body:       []byte(`{"success":false,"error":"Cline credit balance service unavailable"}`),
+	})
+
+	require.NotNil(t, respErr)
+	assert.Equal(t, http.StatusBadGateway, respErr.StatusCode)
+}
+
 func TestOutboundTransformer_TransformStreamChunk_ReturnsClineInBandError(t *testing.T) {
 	transformer := newTestTransformer(t)
 
