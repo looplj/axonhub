@@ -7,7 +7,7 @@
 > - **轻量档（默认）**：单模块或单链路改动、行为基本可预测。只写标有 `[核心]` 的节即可：背景与约束、目标、User Stories、解决方案、关键流程、改动清单、验收、风险、任务管理。仓库里多数方案属于这一档（80 至 150 行）。
 > - **完整档**：跨模块、涉及 Ent schema / GraphQL / 数据库 migration / 异步任务 / 并发状态机时，按需追加标 `[按需]` 的节（模型设计、ERD、Migration、上线后验证）。纯网关透传或单点修复不需要为了“完整”强行补齐。
 >
-> 两档只区分方案规模。**每份交付方案都必须可执行**，不以「草案」或「后续确认」代替尚未完成的关键决策；实际改代码、生成代码、迁移或发布仍按用户授权和 `.agent/rules/` 执行。
+> 两档只区分方案规模。**每份交付方案都必须可执行**，不以「草案」或「后续确认」代替尚未完成的关键决策；实际改代码、生成代码、迁移或发布仍按用户授权和 `.agents/rules/` 执行。
 >
 > 标题中英不限，与同目录既有方案文档保持一致即可。
 
@@ -63,7 +63,7 @@
 - 对外 OpenAI / Anthropic 兼容接口的请求、响应和错误格式不能被破坏。
 - 必须兼容 PostgreSQL、MySQL/TiDB、SQLite（除非明确限定为方言专属能力）。
 - `llm/` 是独立 Go module，跨模块改动必须在两个模块分别可编译、可测试。
-- 不能破坏已有缓存结构；修改序列化形状需版本化 key 或读取兜底，见 `.agent/rules/cache-compat.md`。
+- 不能破坏已有缓存结构；修改序列化形状需版本化 key 或读取兜底，见 `.agents/rules/cache-compat.md`。
 - 修改 Ent schema 或 GraphQL schema 后必须走 `make generate`，不手写常规 schema migration SQL。
 - 不能引入新的、未确认的运行时依赖或外部服务。
 
@@ -197,7 +197,7 @@ entity_name
 - 状态机与生命周期。
 - 关系及删除/归档行为（`OnDelete` 策略）。
 - 是否冗余派生字段；如果冗余，为什么值得。
-- 索引设计理由；只列查询形状和取舍，不在文档维护索引清单（见 `.agent/rules/database-indexes.md`）。
+- 索引设计理由；只列查询形状和取舍，不在文档维护索引清单（见 `.agents/rules/database-indexes.md`）。
 
 ### 5.2 ERD `[按需]`
 
@@ -268,7 +268,7 @@ Client -> Handler -> Biz -> Transformer -> Provider
 - 明确需要执行 `make generate`，并说明生成后需要手写实现的 resolver 方法。
 - GraphQL 字段改动要覆盖完整链路：schema → 生成代码 → 前端 query/mutation → 表单提交与回显。
 
-涉及前端用户可见文案时，改动清单要包含 i18n 两个文件：`frontend/src/locales/en/<module>.json` 与 `frontend/src/locales/zh-CN/<module>.json`，key 必须一致（见 `.agent/rules/frontend-i18n.md`）。
+涉及前端用户可见文案时，改动清单要包含 i18n 两个文件：`frontend/src/locales/en/<module>.json` 与 `frontend/src/locales/zh-CN/<module>.json`，key 必须一致（见 `.agents/rules/frontend-i18n.md`）。
 
 文件很多时，纯一句话能说清的改动也可用表格补充：
 
@@ -280,7 +280,7 @@ Client -> Handler -> Biz -> Transformer -> Provider
 
 涉及 Ent schema、索引、配置格式、缓存结构或历史数据时必须写。
 
-常规 schema 变更遵循 `.agent/rules/ent-graphql.md`：修改 `internal/ent/schema/`，执行 `make generate`，由 Ent-managed migration 处理，不手写 SQL。索引变更还要遵循 `.agent/rules/database-indexes.md`。需要一次性补数据或修复历史数据时，放到 `internal/ent/migrate/datamigrate/`。
+常规 schema 变更遵循 `.agents/rules/ent-graphql.md`：修改 `internal/ent/schema/`，执行 `make generate`，由 Ent-managed migration 处理，不手写 SQL。索引变更还要遵循 `.agents/rules/database-indexes.md`。需要一次性补数据或修复历史数据时，放到 `internal/ent/migrate/datamigrate/`。
 
 本节至少说明：
 
@@ -409,7 +409,7 @@ from 旧版本 to 新版本:
 - [ ] 验收标准可判断 pass / fail，并写了对应测试命令。
 - [ ] （完整档）数据模型字段语义清楚；多实体有 ERD。
 - [ ] （完整档）关键流程包含失败路径。
-- [ ] （完整档）migration 遵循 `.agent/rules/ent-graphql.md` 和 `.agent/rules/database-indexes.md`，写好旧数据、回滚和多方言考虑。
+- [ ] （完整档）migration 遵循 `.agents/rules/ent-graphql.md` 和 `.agents/rules/database-indexes.md`，写好旧数据、回滚和多方言考虑。
 - [ ] 只有一张任务表，每个任务对应可验收结果，并链接需求与验收标准；未在任务详情、页首或分篇重复记录进度。
 - [ ] 任务状态与当前代码一致；未完成写剩余工作或阻塞，完成写实现和实际验收证据。
 - [ ] 风险包含触发条件和对策。

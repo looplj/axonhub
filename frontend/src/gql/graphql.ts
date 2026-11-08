@@ -52,6 +52,13 @@ function redirectToSignIn() {
   window.location.href = `/sign-in?redirect=${encodeURIComponent(pathname + search + hash)}`;
 }
 
+function abandonSessionForSignIn(token: string) {
+  if (getTokenFromStorage() !== token) return;
+  removeTokenFromStorage();
+  toast.error(i18n.t('common.errors.sessionExpiredSignIn'));
+  redirectToSignIn();
+}
+
 // GraphQL client function with token support
 export async function graphqlRequest<T>(
   query: string,
@@ -101,12 +108,7 @@ export async function graphqlRequest<T>(
 
   // Handle explicit auth failures (401 only — 403 is a permission denial, not a session issue)
   if (response.status === 401) {
-    // Clear token and redirect to login
-    if (getTokenFromStorage() === token) {
-      removeTokenFromStorage();
-      toast.error(i18n.t('common.errors.sessionExpiredSignIn'));
-      redirectToSignIn();
-    }
+    abandonSessionForSignIn(token);
     throw new GraphQLRequestError('Unauthorized', { status: response.status, isAuthError: true });
   }
 
@@ -145,12 +147,7 @@ export async function graphqlRequest<T>(
     const authError = result.errors.find(isUnauthorizedGraphQLError);
 
     if (authError) {
-      // Clear token and redirect to login
-      if (getTokenFromStorage() === token) {
-        removeTokenFromStorage();
-        toast.error(i18n.t('common.errors.sessionExpiredSignIn'));
-        redirectToSignIn();
-      }
+      abandonSessionForSignIn(token);
       throw new GraphQLRequestError('Unauthorized', { status: 401, isAuthError: true });
     }
 

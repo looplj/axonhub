@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -79,7 +81,7 @@ func (srv *Server) Run() error {
 		log.String("host", srv.Config.Host),
 		log.Int("port", srv.Config.Port),
 	)
-	addr := fmt.Sprintf("%s:%d", srv.Config.Host, srv.Config.Port)
+	addr := listenAddr(srv.Config.Host, srv.Config.Port)
 	srv.server = &http.Server{
 		Addr:         addr,
 		Handler:      srv.Engine,
@@ -98,6 +100,12 @@ func (srv *Server) Run() error {
 	}
 
 	return nil
+}
+
+// listenAddr is the address passed to net.Listen. JoinHostPort brackets an
+// IPv6 host, so "::1" listens on "[::1]:port".
+func listenAddr(host string, port int) string {
+	return net.JoinHostPort(host, strconv.Itoa(port))
 }
 
 func (srv *Server) Shutdown(ctx context.Context) error {
