@@ -51,6 +51,11 @@ export function DateRangePicker(props: DateRangePickerProps) {
     setPendingValue(nextValue);
   }, []);
 
+  const close = React.useCallback(() => {
+    setOpen(false);
+    onOpenChange?.(false);
+  }, [onOpenChange]);
+
   const handleConfirm = React.useCallback(
     (next: DateTimeRangeValue) => {
       const nextValue = normalizeDateTimeRangeValue(next);
@@ -58,23 +63,23 @@ export function DateRangePicker(props: DateRangePickerProps) {
       if (!hasRange) {
         if (!isControlled) setInternalValue(undefined);
         onChange?.(undefined);
-        setOpen(false);
+        close();
         return;
       }
       if (!isControlled) setInternalValue(nextValue);
       onChange?.(nextValue);
       onConfirm?.(nextValue);
-      setOpen(false);
+      close();
     },
-    [isControlled, onChange, onConfirm]
+    [isControlled, onChange, onConfirm, close]
   );
 
   const handleCancel = React.useCallback(() => {
     const currentValue = isControlled ? normalizedValue : internalValue;
     setPendingValue(currentValue);
-    setOpen(false);
+    close();
     onCancel?.();
-  }, [isControlled, normalizedValue, internalValue, onCancel]);
+  }, [isControlled, normalizedValue, internalValue, onCancel, close]);
 
   const currentValue = isControlled ? normalizedValue : internalValue;
   const label = formatLabel
