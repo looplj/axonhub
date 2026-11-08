@@ -15,6 +15,19 @@
       ]
     },
     {
+      "id": "local.request-live",
+      "name": "实时请求",
+      "description": "实时查看客户端、API 密钥，以及这些请求实际打到的渠道。",
+      "versions": [
+        {
+          "version": "0.1.0",
+          "url": "https://github.com/looplj/axonhub-request-live/releases/download/v0.1.0/request-live-0.1.0.axplugin",
+          "sha256": "60a92477af8c1c7631aed3b11fe101246ba4f6763feaa46cf04c9a25b45d71fa",
+          "axonhubVersion": "^1.0.0"
+        }
+      ]
+    },
+    {
       "id": "local.reset-watch",
       "name": "重置监控",
       "description": "从顶栏打开 Codex、Antigravity 和 Claude 的额度重置与重置卡。数据来自 AIHOT 的公开日历，完整快照缓存在本插件的 KV 里。",
