@@ -337,7 +337,8 @@ func TestRateLimitTracking_OnOutboundRawError_429WithoutRetryAfter(t *testing.T)
 
 	middleware.OnOutboundRawError(ctx, httpErr)
 
-	assert.False(t, tracker.IsCoolingDown(channel.ID))
+	assert.True(t, tracker.IsCoolingDown(channel.ID),
+		"headerless 429 must still cool down with the short default")
 }
 
 func TestRateLimitTracking_OnOutboundRawError_Not429(t *testing.T) {

@@ -246,7 +246,7 @@ func (c *Cache[T]) loadInternal(ctx context.Context, force bool) error {
 		log.Debug(ctx, "live cache onSwap completed", log.String("name", c.name))
 	}
 
-	log.Info(ctx, "cache refreshed", log.String("name", c.name), log.Time("update_time", newUpdateTime))
+	log.Debug(ctx, "cache refreshed", log.String("name", c.name), log.Time("update_time", newUpdateTime))
 
 	return nil
 }
