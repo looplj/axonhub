@@ -132,7 +132,7 @@ pack-plugin <plugin-directory> -o <outside>.axplugin
 go run -C cmd/pack-plugin . ../../plugins/examples/<name>
 ```
 
-默认产物是插件目录旁边的 `<目录名>.axplugin`。输出必须写在插件目录外面，写进目录里会失败。`*.axplugin` 已被 Git 忽略。根目录的 `README.md`、`.DS_Store` 和 `.git` 不会进包。除此之外，既不是 `manifest.json`、也不在 `ui/` 下、又不能从 `plugin.js` 的静态相对 import 到达的文件，打包会失败。测试、`package.json`、`.github`、`.gitignore` 放在插件目录里会失败。Git 仓库根就是插件时，先把 `manifest.json`、`plugin.js`、它静态 import 到的文件和 `ui/` 复制到一个只含这些文件的目录，再对该目录打包。
+默认产物是插件目录旁边的 `<目录名>.axplugin`。输出必须写在插件目录外面，写进目录里会失败。`*.axplugin` 已被 Git 忽略。包里只有 `manifest.json`、`ui/` 下的文件、根目录 `plugin.js`，以及 `plugin.js` 通过静态相对 import 到达的文件。其他文件，例如 `README.md`、`.git`、`.github`、`.claude`、`node_modules`、测试文件和 `package.json`，都不会进包，命令会列出这些被跳过的路径。整个目录都没有文件进包时只列一行，例如 `.git/`。只通过动态 `import()` 加载的文件不会被收集，上传前请检查跳过列表。符号链接只有在会进包的位置才会让打包失败：`manifest.json`、`plugin.js`、`ui/` 下的任意路径，或被 import 的文件。
 
 本地试用时，把这个 zip 上传到 `/plugins`。发布到官方索引是后面的另一步。
 

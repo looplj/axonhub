@@ -73,12 +73,12 @@ func TestUIActionsPackageAndUpgrade(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "ui"), 0o755))
 	raw := actionManifest(t, nil)
 	require.NoError(t, os.WriteFile(filepath.Join(root, "manifest.json"), raw, 0o644))
-	_, err := PackDirectory(root)
+	_, _, err := PackDirectory(root)
 	require.ErrorContains(t, err, "ui action entry")
 	_, err = ParsePackage(mustZip(t, map[string]string{"manifest.json": string(raw)}))
 	require.ErrorContains(t, err, "entry")
 	require.NoError(t, os.WriteFile(filepath.Join(root, "ui/page.html"), []byte("<html>action</html>"), 0o644))
-	packed, err := PackDirectory(root)
+	packed, _, err := PackDirectory(root)
 	require.NoError(t, err)
 	pkg, err := ParsePackage(packed)
 	require.NoError(t, err)
@@ -122,7 +122,7 @@ func TestUIActionsResourcesAndCatalog(t *testing.T) {
 }
 
 func TestUIActionsExample(t *testing.T) {
-	packed, err := PackDirectory("../../../plugins/examples/toolbar-notes")
+	packed, _, err := PackDirectory("../../../plugins/examples/toolbar-notes")
 	require.NoError(t, err)
 	pkg, err := ParsePackage(packed)
 	require.NoError(t, err)

@@ -70,9 +70,15 @@ func run(args []string, stdout io.Writer) error {
 	if rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return errors.New("output must be outside the plugin directory")
 	}
-	data, err := packDirectory(root)
+	data, skipped, err := packDirectory(root)
 	if err != nil {
 		return err
+	}
+	if len(skipped) > 0 {
+		fmt.Fprintln(stdout, "Skipped (not used by the plugin):")
+		for _, name := range skipped {
+			fmt.Fprintf(stdout, "  %s\n", name)
+		}
 	}
 	tmp, err := os.CreateTemp(parent, ".pack-plugin-*.tmp")
 	if err != nil {
