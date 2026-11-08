@@ -782,6 +782,7 @@ func TestOutboundTransformer_TransformStreamChunk_FinishReasons(t *testing.T) {
 		{"MAX_TOKENS to length", "MAX_TOKENS", "length"},
 		{"SAFETY to content_filter", "SAFETY", "content_filter"},
 		{"RECITATION to content_filter", "RECITATION", "content_filter"},
+		{"LANGUAGE to content_filter", "LANGUAGE", "content_filter"},
 		{"BLOCKLIST to content_filter", "BLOCKLIST", "content_filter"},
 		{"PROHIBITED_CONTENT to content_filter", "PROHIBITED_CONTENT", "content_filter"},
 		{"SPII to content_filter", "SPII", "content_filter"},

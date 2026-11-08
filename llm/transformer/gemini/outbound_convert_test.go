@@ -2118,6 +2118,7 @@ func TestConvertGeminiToLLMResponse_FinishReasons(t *testing.T) {
 		"MAX_TOKENS":               "length",
 		"SAFETY":                   "content_filter",
 		"RECITATION":               "content_filter",
+		"LANGUAGE":                 "content_filter",
 		"BLOCKLIST":                "content_filter",
 		"PROHIBITED_CONTENT":       "content_filter",
 		"SPII":                     "content_filter",
