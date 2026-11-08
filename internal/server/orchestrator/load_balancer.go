@@ -451,9 +451,19 @@ func (lb *LoadBalancer) prioritizeHealthyRoundRobinDecisions(ctx context.Context
 	return append(result, hardUnavailable...)
 }
 
+// retryPolicy prefers the snapshot of the request being balanced, since the
+// load balancer is shared across requests.
+func (lb *LoadBalancer) retryPolicy(ctx context.Context) *biz.RetryPolicy {
+	if settings := requestSettingsFromContext(ctx); settings != nil {
+		return &settings.RetryPolicy
+	}
+
+	return lb.systemService.RetryPolicyOrDefault(ctx)
+}
+
 // calculateTopK determines how many candidates to select based on retry policy.
 func (lb *LoadBalancer) calculateTopK(ctx context.Context, candidates []*ChannelModelsCandidate) int {
-	retryPolicy := lb.systemService.RetryPolicyOrDefault(ctx)
+	retryPolicy := lb.retryPolicy(ctx)
 
 	// Calculate topK based on retry policy
 	// If retry is enabled, we need 1 + MaxChannelRetries candidates
@@ -478,7 +488,7 @@ func (lb *LoadBalancer) logDecision(ctx context.Context, candidates []*ChannelMo
 	// Log summary
 	if len(decisions) > 0 {
 		topChannel := decisions[0]
-		retryPolicy := lb.systemService.RetryPolicyOrDefault(ctx)
+		retryPolicy := lb.retryPolicy(ctx)
 		log.Info(ctx, "Load balancing decision completed",
 			log.Int("total_channels", len(candidates)),
 			log.Int("selected_channels", topK),

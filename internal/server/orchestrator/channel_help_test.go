@@ -58,7 +58,9 @@ func newTestLoadBalancedSelector(
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 
-	return WithTraceStickyLoadBalancedSelector(baseSelector, loadBalancer, systemService, requestService)
+	ctx := ent.NewContext(authz.WithTestBypass(context.Background()), client)
+
+	return WithTraceStickyLoadBalancedSelector(baseSelector, loadBalancer, systemService.RetryPolicyOrDefault(ctx), requestService)
 }
 
 // newTestSystemService creates a minimal system service for testing.

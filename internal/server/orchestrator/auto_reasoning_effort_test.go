@@ -7,9 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/looplj/axonhub/internal/authz"
-	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 )
@@ -159,19 +156,8 @@ func TestAutoReasoningEffortMiddleware_OnInboundLlmRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := authz.WithTestBypass(context.Background())
-
-			client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
-			defer client.Close()
-
-			ctx = ent.NewContext(ctx, client)
-			_, _, systemService, _ := setupTestServices(t, client)
-
-			err := systemService.SetModelSettings(ctx, tt.settings)
-			require.NoError(t, err)
-
-			middleware := applyAutoReasoningEffort(systemService)
-			result, err := middleware.OnInboundLlmRequest(ctx, tt.request)
+			middleware := applyAutoReasoningEffort(&RequestSettings{ModelSettings: tt.settings})
+			result, err := middleware.OnInboundLlmRequest(context.Background(), tt.request)
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			assert.Equal(t, tt.wantModel, result.Model)

@@ -68,14 +68,14 @@ func prepareModelAuditCandidate(t *testing.T, ctx context.Context, db *ent.Clien
 func modelAuditMiddlewares(inbound *PersistentInboundTransformer, outbound *PersistentOutboundTransformer) []pipeline.Middleware {
 	return []pipeline.Middleware{
 		applyModelMapping(inbound),
-		applyPassThroughResponse(outbound, nil),
-		applyPassThroughStream(outbound, nil),
-		applyPassThroughRequestBody(outbound, nil, nil),
+		applyPassThroughResponse(outbound),
+		applyPassThroughStream(outbound),
+		applyPassThroughRequestBody(outbound, nil),
 		applyOverrideRequestBody(outbound),
 		finalizeTransportRequest(outbound),
 		persistRequestExecution(outbound),
-		captureRawProviderResponse(outbound, nil),
-		captureRawProviderStream(outbound, nil),
+		captureRawProviderResponse(outbound),
+		captureRawProviderStream(outbound),
 	}
 }
 

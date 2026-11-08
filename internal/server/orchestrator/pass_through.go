@@ -14,7 +14,6 @@ import (
 	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -41,9 +40,8 @@ var codexResponsesPassThroughHeaders = []string{
 // channel is enabled and both the inbound and outbound API formats are identical.
 //
 // The effective flag is the channel-level PassThroughBody when set, otherwise it falls back
-// to the global system setting. systemService may be nil; in that case only the channel-level
-// setting is consulted (used by tests that exercise per-channel behavior in isolation).
-func (p *PersistentOutboundTransformer) isPassThroughEnabled(ctx context.Context, systemService *biz.SystemService) bool {
+// to the global setting in the request's settings snapshot.
+func (p *PersistentOutboundTransformer) isPassThroughEnabled() bool {
 	channel := p.GetCurrentChannel()
 	if channel == nil {
 		return false
@@ -63,23 +61,11 @@ func (p *PersistentOutboundTransformer) isPassThroughEnabled(ctx context.Context
 		return false
 	}
 
-	var enabled bool
-
-	switch {
-	case channel.Settings != nil && channel.Settings.PassThroughBody != nil:
-		enabled = *channel.Settings.PassThroughBody
-	case systemService != nil:
-		global, err := systemService.PassThrough(ctx)
-		if err != nil {
-			log.Warn(ctx, "failed to get global pass-through setting", log.Cause(err))
-
-			return false
-		}
-
-		enabled = global
+	if channel.Settings != nil && channel.Settings.PassThroughBody != nil {
+		return *channel.Settings.PassThroughBody
 	}
 
-	return enabled
+	return p.state.settings().PassThrough
 }
 
 func passThroughStreamAligned(originalStream, effectiveStream *bool) bool {
@@ -89,7 +75,7 @@ func passThroughStreamAligned(originalStream, effectiveStream *bool) bool {
 	return originalEnabled == effectiveEnabled
 }
 
-func responsesTransportAdaptationEnabled(_ context.Context, outbound *PersistentOutboundTransformer, _ *biz.SystemService) bool {
+func responsesTransportAdaptationEnabled(outbound *PersistentOutboundTransformer) bool {
 	if outbound == nil || outbound.state == nil || outbound.state.LlmRequest == nil || outbound.state.RawProviderRequest == nil {
 		return false
 	}
@@ -156,9 +142,9 @@ func preserveResponsesModel(body []byte, clientModel string) []byte {
 	return patched
 }
 
-func applyResponsesTransportRequestBody(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
+func applyResponsesTransportRequestBody(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnRawRequest("responses-transport-request-body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
-		if !responsesTransportAdaptationEnabled(ctx, outbound, systemService) {
+		if !responsesTransportAdaptationEnabled(outbound) {
 			return request, nil
 		}
 
@@ -212,11 +198,11 @@ func applyResponsesTransportRequestBody(outbound *PersistentOutboundTransformer,
 // For formats that encode the selected model in the request body, the mapped llmReq.Model is
 // written back into the copied raw payload so pass-through does not bypass model mapping.
 // Save the actual outbound provider request so pass-through checks use the emitted API format.
-func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, systemService *biz.SystemService, hooks RequestHookProvider) pipeline.Middleware {
+func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, hooks RequestHookProvider) pipeline.Middleware {
 	return pipeline.OnRawRequest("pass-through-request-body", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		outbound.state.RawProviderRequest = request
 
-		if !outbound.isPassThroughEnabled(ctx, systemService) && !responsesTransportAdaptationEnabled(ctx, outbound, systemService) {
+		if !outbound.isPassThroughEnabled() && !responsesTransportAdaptationEnabled(outbound) {
 			return request, nil
 		}
 
@@ -412,25 +398,16 @@ func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
 }
 
 // applyUserAgentPassThrough creates a middleware that applies the User-Agent pass-through setting.
-func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
+func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnRawRequest("user-agent-pass-through", func(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		channel := outbound.GetCurrentChannel()
 		if channel == nil {
 			return request, nil
 		}
 
-		var passThroughEnabled bool
+		passThroughEnabled := outbound.state.settings().UserAgentPassThrough
 		if channel.Settings != nil && channel.Settings.PassThroughUserAgent != nil {
 			passThroughEnabled = *channel.Settings.PassThroughUserAgent
-		} else {
-			globalPassThrough, err := systemService.UserAgentPassThrough(ctx)
-			if err != nil {
-				log.Warn(ctx, "failed to get global user agent pass through setting", log.Cause(err))
-
-				passThroughEnabled = false
-			} else {
-				passThroughEnabled = globalPassThrough
-			}
 		}
 
 		// Handle User-Agent header based on pass-through setting
@@ -459,9 +436,9 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 }
 
 // captureRawProviderResponse stores the raw provider response on state for response pass-through.
-func captureRawProviderResponse(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
+func captureRawProviderResponse(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnRawResponse("capture-raw-provider-response", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
-		if outbound.isPassThroughEnabled(ctx, systemService) || responsesTransportAdaptationEnabled(ctx, outbound, systemService) || responsesIdentityPreservationEnabled(outbound) {
+		if outbound.isPassThroughEnabled() || responsesTransportAdaptationEnabled(outbound) || responsesIdentityPreservationEnabled(outbound) {
 			outbound.state.RawProviderResponse = response
 		}
 
@@ -472,9 +449,9 @@ func captureRawProviderResponse(outbound *PersistentOutboundTransformer, systemS
 // applyPassThroughResponse replaces the transformed response with the raw provider response
 // when PassThroughBody is enabled and the inbound/outbound API formats match, unless the
 // outbound transformer vetoes it via transformer.PassThroughResponsePolicy.
-func applyPassThroughResponse(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
+func applyPassThroughResponse(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnInboundRawResponse("pass-through-response", func(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
-		if !outbound.isPassThroughEnabled(ctx, systemService) && !responsesTransportAdaptationEnabled(ctx, outbound, systemService) && !responsesIdentityPreservationEnabled(outbound) {
+		if !outbound.isPassThroughEnabled() && !responsesTransportAdaptationEnabled(outbound) && !responsesIdentityPreservationEnabled(outbound) {
 			return response, nil
 		}
 
@@ -492,7 +469,7 @@ func applyPassThroughResponse(outbound *PersistentOutboundTransformer, systemSer
 			log.String("api_format", outbound.state.RawProviderRequest.APIFormat),
 		)
 
-		if outbound.isPassThroughEnabled(ctx, systemService) || responsesIdentityPreservationEnabled(outbound) {
+		if outbound.isPassThroughEnabled() || responsesIdentityPreservationEnabled(outbound) {
 			cloned := *rawResp
 			if responsesIdentityPreservationEnabled(outbound) {
 				cloned.Body = preserveResponsesModel(rawResp.Body, responsesClientModel(outbound))
@@ -521,11 +498,11 @@ func applyPassThroughResponse(outbound *PersistentOutboundTransformer, systemSer
 // and the pass-through consumer. The pipeline receives events via pipelineCh. Raw events
 // are held on state.RawStreamBacklog until applyPassThroughStream attaches the consumer,
 // and are delivered via state.RawStreamCh afterwards.
-func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
+func captureRawProviderStream(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnRawStream("capture-raw-provider-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-		adaptResponses := responsesTransportAdaptationEnabled(ctx, outbound, systemService)
+		adaptResponses := responsesTransportAdaptationEnabled(outbound)
 		preserveResponses := responsesIdentityPreservationEnabled(outbound)
-		if !outbound.isPassThroughEnabled(ctx, systemService) && !adaptResponses && !preserveResponses {
+		if !outbound.isPassThroughEnabled() && !adaptResponses && !preserveResponses {
 			return stream, nil
 		}
 
@@ -641,11 +618,11 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemSer
 // applyPassThroughStream returns a stream of raw provider events when PassThroughBody is enabled.
 // A goroutine drains the transformed pipeline stream so that LLM middlewares (connection tracking,
 // performance recording, rate limit tracking) still process events.
-func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemService *biz.SystemService) pipeline.Middleware {
+func applyPassThroughStream(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnInboundRawStream("pass-through-response-stream", func(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*httpclient.StreamEvent], error) {
-		adaptResponses := responsesTransportAdaptationEnabled(ctx, outbound, systemService)
+		adaptResponses := responsesTransportAdaptationEnabled(outbound)
 		preserveResponses := responsesIdentityPreservationEnabled(outbound)
-		if !outbound.isPassThroughEnabled(ctx, systemService) && !adaptResponses && !preserveResponses {
+		if !outbound.isPassThroughEnabled() && !adaptResponses && !preserveResponses {
 			return stream, nil
 		}
 

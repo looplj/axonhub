@@ -18,14 +18,14 @@ type PersistenceState struct {
 
 	RequestService      *biz.RequestService
 	UsageLogService     *biz.UsageLogService
-	SystemService       *biz.SystemService
 	ChannelService      *biz.ChannelService
 	PromptProvider      PromptProvider
 	PromptProtecter     PromptProtecter
-	RetryPolicyProvider RetryPolicyProvider
 	CandidateSelector   CandidateSelector
 	LoadBalancers       map[string]*LoadBalancer
 	RoutingPolicy       EffectiveRoutingPolicy
+	// Settings is the system settings snapshot taken when the request started.
+	Settings *RequestSettings
 
 	// Request state
 	ModelMapper *ModelMapper

@@ -45,7 +45,7 @@ func TestResponsesToolChoiceReachesUpstream(t *testing.T) {
 					require.Equal(t, passThrough, hasFutureField)
 					return &httpclient.Response{StatusCode: 200, Request: req, Body: []byte(`{"id":"resp_1","object":"response","status":"completed","model":"test","output":[{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"output_text","text":"ok"}]}]}`)}, nil
 				}).Once()
-				pipe := pipeline.NewFactory(executor).Pipeline(responses.NewInboundTransformer(), native, pipeline.WithMiddlewares(capture, applyPassThroughRequestBody(persistent, nil, nil)))
+				pipe := pipeline.NewFactory(executor).Pipeline(responses.NewInboundTransformer(), native, pipeline.WithMiddlewares(capture, applyPassThroughRequestBody(persistent, nil)))
 				raw := []byte(fmt.Sprintf(`{"model":"test","input":"hi","tools":[{"type":"function","name":"a"},{"type":"function","name":"b"},{"type":"namespace","name":"docs","tools":[{"type":"function","name":"c"},{"type":"function","name":"d"},{"type":"custom","name":"shell","format":{"type":"text"}}]}],"tool_choice":%s,"future_field":true}`, choice))
 				result, err := pipe.Process(t.Context(), &httpclient.Request{Body: raw})
 				require.NoError(t, err)

@@ -29,14 +29,6 @@ func (m *mockQuotaStatusProvider) GetQuotaStatus(_ context.Context, channelID in
 	return m.statuses[channelID]
 }
 
-type mockQuotaRoutingSettingsProvider struct {
-	settings biz.QuotaRoutingSettings
-}
-
-func (m *mockQuotaRoutingSettingsProvider) QuotaRoutingSettingsOrDefault(context.Context) biz.QuotaRoutingSettings {
-	return m.settings
-}
-
 type quotaRequestCandidateSelector struct {
 	candidatesByModel map[string][]*ChannelModelsCandidate
 }
@@ -87,11 +79,11 @@ func newQuotaRoutingSelector(
 ) (*LoadBalancedSelector, *QuotaRoutingGate) {
 	provider := &mockQuotaStatusProvider{statuses: statuses}
 	gate := NewQuotaRoutingGate(provider, settings)
-	policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+	policy := &biz.RetryPolicy{
 		Enabled:           true,
 		MaxChannelRetries: 2,
 		TraceStickyMode:   biz.TraceStickyPreferPreviousChannel,
-	}}
+	}
 	selector := WithRoutingPolicyLoadBalancedSelector(
 		&staticChannelSelector{candidates: candidates},
 		nil,
@@ -277,11 +269,12 @@ func TestQuotaRoutingGate_uses_request_modality_and_keeps_unknown_neutral(t *tes
 func TestSelectCandidates_returns_quota_error_only_when_gate_dropped_candidates(t *testing.T) {
 	// Given
 	provider := &mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{1: quotaExhaustedStatus()}}
-	settings := &mockQuotaRoutingSettingsProvider{settings: biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted}}
+	settings := &RequestSettings{QuotaRouting: biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted}}
 	inbound := &PersistentInboundTransformer{state: &PersistenceState{
 		CandidateSelector: &staticChannelSelector{candidates: []*ChannelModelsCandidate{quotaRoutingCandidate(1, "")}},
+		Settings:          settings,
 	}}
-	middleware := selectCandidates(inbound, provider, settings)
+	middleware := selectCandidates(inbound, provider)
 
 	// When
 	_, err := middleware.OnInboundLlmRequest(context.Background(), &llm.Request{Model: "model"})
@@ -291,8 +284,8 @@ func TestSelectCandidates_returns_quota_error_only_when_gate_dropped_candidates(
 	require.True(t, errors.As(err, &quotaErr))
 
 	// Given
-	inbound = &PersistentInboundTransformer{state: &PersistenceState{CandidateSelector: &staticChannelSelector{}}}
-	middleware = selectCandidates(inbound, provider, settings)
+	inbound = &PersistentInboundTransformer{state: &PersistenceState{CandidateSelector: &staticChannelSelector{}, Settings: settings}}
+	middleware = selectCandidates(inbound, provider)
 
 	// When
 	_, err = middleware.OnInboundLlmRequest(context.Background(), &llm.Request{Model: "model"})
@@ -307,8 +300,9 @@ func TestSelectCandidates_empty_loadBalancers_still_gates_exhausted_candidate(t 
 	inbound := &PersistentInboundTransformer{state: &PersistenceState{
 		CandidateSelector: &staticChannelSelector{candidates: []*ChannelModelsCandidate{quotaRoutingCandidate(7, "")}},
 		LoadBalancers:     map[string]*LoadBalancer{},
+		Settings:          &RequestSettings{QuotaRouting: biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted}},
 	}}
-	middleware := selectCandidates(inbound, &mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{7: quotaExhaustedStatus()}}, &mockQuotaRoutingSettingsProvider{settings: biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted}})
+	middleware := selectCandidates(inbound, &mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{7: quotaExhaustedStatus()}})
 
 	// When
 	_, err := middleware.OnInboundLlmRequest(context.Background(), &llm.Request{Model: "model"})
@@ -326,11 +320,11 @@ func TestSelectCandidates_concurrent_requests_have_independent_drop_counts(t *te
 			"exhausted": {quotaRoutingCandidate(1, "")},
 		}},
 		LoadBalancers: map[string]*LoadBalancer{},
+		Settings:      &RequestSettings{QuotaRouting: biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted}},
 	}}
 	middleware := selectCandidates(
 		inbound,
 		&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{1: quotaExhaustedStatus()}},
-		&mockQuotaRoutingSettingsProvider{settings: biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted}},
 	)
 	results := make(chan struct {
 		model string
