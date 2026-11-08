@@ -298,15 +298,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     baseURL: 'https://openrouter.ai/api/v1',
     defaultModels: [
       // Moonshot
-      'moonshotai/kimi-k2:free',
       'moonshotai/kimi-k2-0905',
 
       // Zai
       'z-ai/glm-4.7',
 
       // Anthropic
-      'anthropic/claude-opus-4',
-      'anthropic/claude-sonnet-4',
+      'anthropic/claude-opus-5.5',
+      'anthropic/claude-sonnet-5.5',
     ],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
@@ -497,17 +496,16 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     channelType: 'aihubmix',
     baseURL: 'https://aihubmix.com/v1',
     defaultModels: [
-      'DeepSeek-V3.2-Exp',
-      'DeepSeek-V3.2-Exp-Think',
+      'deepseek-v3.2',
       // Google
-      'gemini-3-flash',
-      'gemini-3-pro',
+      'gemini-3.6-flash',
+      'gemini-3.1-pro-preview',
       // Anthropic
-      'claude-sonnet-4-5',
+      'claude-sonnet-5-5',
       // OpenAI
-      'gpt-4o',
+      'gpt-5.6-sol',
       // Moonshot
-      'Kimi-K2-0905',
+      'kimi-k2.6',
       // Zai/GLM
       'glm-4.7',
     ],
@@ -518,7 +516,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   aihubmix_anthropic: {
     channelType: 'aihubmix_anthropic',
     baseURL: 'https://aihubmix.com',
-    defaultModels: ['DeepSeek-V3.2-Exp', 'claude-sonnet-5-5', 'gpt-5.6-sol', 'gemini-3-pro'],
+    defaultModels: ['deepseek-v3.2', 'claude-sonnet-5-5', 'gpt-5.6-sol', 'gemini-3.1-pro-preview'],
     apiFormat: ANTHROPIC_MESSAGES,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: AiHubMix,
@@ -714,10 +712,13 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     channelType: 'github',
     baseURL: 'https://models.github.ai/inference',
     defaultModels: [
-      'openai/gpt-5.6-sol',
-      'openai/gpt-5.6-terra',
-      'openai/gpt-5.6-luna',
-      'anthropic/claude-sonnet-5.5',
+      'openai/gpt-4.1',
+      'openai/gpt-4o',
+      'openai/gpt-4o-mini',
+      'openai/o3',
+      'openai/o4-mini',
+      'anthropic/claude-sonnet-4',
+      'anthropic/claude-3.5-sonnet',
       'meta/llama-4-scout-17b-16e-instruct',
       'meta/llama-4-maverick-17b-128e-instruct',
       'deepseek/DeepSeek-V3-0324',
