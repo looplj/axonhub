@@ -47,13 +47,13 @@ func (s *RateLimitAwareStrategy) Name() string {
 }
 
 // Score is the production-path scorer with minimal overhead.
-func (s *RateLimitAwareStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+func (s *RateLimitAwareStrategy) Score(_ context.Context, channel *biz.Channel, _ *biz.AggregatedMetrics) float64 {
 	score, _ := s.score(channel, nil)
 	return score
 }
 
 // ScoreWithDebug returns the same score as Score along with detailed diagnostic info.
-func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel, _ *biz.AggregatedMetrics) (float64, StrategyScore) {
 	startTime := time.Now()
 
 	details := map[string]any{

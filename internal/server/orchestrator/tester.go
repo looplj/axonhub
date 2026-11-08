@@ -68,7 +68,7 @@ func NewTestChannelOrchestrator(
 		httpClient:                  httpClient,
 		modelCircuitBreaker:         biz.NewModelCircuitBreaker(),
 		modelMapper:                 NewModelMapper(),
-		loadBalancer:                NewLoadBalancer(systemService, channelService, NewWeightStrategy()),
+		loadBalancer:                NewLoadBalancer(nil, channelService, NewWeightStrategy()),
 		channelLimiterManager:       NewChannelLimiterManager(),
 	}
 }

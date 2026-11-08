@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -89,7 +90,7 @@ func TestWeightRoundRobinStrategy_WithFakeProvider_Distribution(t *testing.T) {
 	}
 
 	fakeProvider := newFakeChannelMetricsProvider()
-	strategy := NewWeightRoundRobinStrategy(fakeProvider)
+	strategy := NewWeightRoundRobinStrategy()
 
 	// Simulate 1000 requests (all successful)
 	const totalRequests = 1000
@@ -106,7 +107,10 @@ func TestWeightRoundRobinStrategy_WithFakeProvider_Distribution(t *testing.T) {
 		bestNormalizedCount := float64(1e18)
 
 		for _, ch := range channels {
-			score := strategy.Score(ctx, ch)
+			metrics, err := fakeProvider.GetChannelMetrics(ctx, ch.ID)
+			require.NoError(t, err)
+
+			score := strategy.Score(ctx, ch, metrics)
 			normalizedCount := getNormalizedCount(fakeProvider.GetRequestCount(ch.ID), ch.OrderingWeight)
 
 			// Use score as primary criterion, normalized count as tie-breaker

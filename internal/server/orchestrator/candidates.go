@@ -788,7 +788,7 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 			stickyCandidate.TraceSticky = true
 
 			fallbackCount := max(requiredCount-1, 0)
-			fallbackCandidates := s.sortCandidates(ctx, loadBalancer, remainingCandidates, req, fallbackCount, false)
+			fallbackCandidates := s.sortCandidates(ctx, loadBalancer, remainingCandidates, req, fallbackCount, requiredCount, false)
 			result := append([]*ChannelModelsCandidate{stickyCandidate}, fallbackCandidates...)
 
 			if loadBalancer != nil {
@@ -799,7 +799,7 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		}
 	}
 
-	return s.sortCandidates(ctx, loadBalancer, candidates, req, requiredCount, true), nil
+	return s.sortCandidates(ctx, loadBalancer, candidates, req, requiredCount, requiredCount, true), nil
 }
 
 func resolveLoadBalancer(loadBalancers map[string]*LoadBalancer, strategy string) (*LoadBalancer, string) {
@@ -921,6 +921,9 @@ func (s *LoadBalancedSelector) sortCandidates(
 	candidates []*ChannelModelsCandidate,
 	req *llm.Request,
 	requiredCount int,
+	// sortTopK stays the retry-policy size even when fewer candidates are
+	// required: the partial sort orders tied scores differently for each k.
+	sortTopK int,
 	trackSelection bool,
 ) []*ChannelModelsCandidate {
 	if requiredCount <= 0 {
@@ -959,7 +962,7 @@ func (s *LoadBalancedSelector) sortCandidates(
 		if loadBalancer == nil {
 			sortedCandidates = group
 		} else {
-			sortedCandidates = loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream)
+			sortedCandidates = loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream, sortTopK)
 		}
 
 		// Add candidates, but stop if we have enough

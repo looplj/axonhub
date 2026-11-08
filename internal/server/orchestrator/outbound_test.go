@@ -2152,10 +2152,9 @@ func TestPersistentOutboundTransformer_RetrySelectionCounts(t *testing.T) {
 		Channel: &biz.Channel{Channel: &ent.Channel{ID: 2}, Outbound: &mockTransformer{}},
 		Models:  []biz.ChannelModelEntry{{ActualModel: "model-c"}},
 	}
-	policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 1}}
-	lb := NewLoadBalancer(policy, service)
+	lb := NewLoadBalancer(nil, service)
 	candidates := (&LoadBalancedSelector{}).sortCandidates(ctx, lb,
-		[]*ChannelModelsCandidate{first, second}, &llm.Request{Model: "model"}, 2, true)
+		[]*ChannelModelsCandidate{first, second}, &llm.Request{Model: "model"}, 2, 2, true)
 	require.Same(t, first, candidates[0])
 	processor := &PersistentOutboundTransformer{
 		wrapped: first.Channel.Outbound,

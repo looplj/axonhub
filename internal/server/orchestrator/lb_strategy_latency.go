@@ -24,14 +24,12 @@ const (
 // Streaming requests are scored by first-token latency plus output throughput.
 // Non-streaming requests are scored by end-to-end latency.
 type LatencyAwareStrategy struct {
-	metricsProvider ChannelMetricsProvider
-	maxScore        float64
+	maxScore float64
 }
 
-func NewLatencyAwareStrategy(metricsProvider ChannelMetricsProvider) *LatencyAwareStrategy {
+func NewLatencyAwareStrategy() *LatencyAwareStrategy {
 	return &LatencyAwareStrategy{
-		metricsProvider: metricsProvider,
-		maxScore:        defaultLatencyMaxScore,
+		maxScore: defaultLatencyMaxScore,
 	}
 }
 
@@ -39,9 +37,8 @@ func (s *LatencyAwareStrategy) Name() string {
 	return "LatencyAware"
 }
 
-func (s *LatencyAwareStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
-	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
-	if err != nil {
+func (s *LatencyAwareStrategy) Score(ctx context.Context, _ *biz.Channel, metrics *biz.AggregatedMetrics) float64 {
+	if metrics == nil {
 		return s.maxScore / 2
 	}
 
@@ -53,22 +50,15 @@ func (s *LatencyAwareStrategy) Score(ctx context.Context, channel *biz.Channel) 
 	return score
 }
 
-func (s *LatencyAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
-	metrics, err := s.metricsProvider.GetChannelMetrics(ctx, channel.ID)
-	if err != nil {
+func (s *LatencyAwareStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel, metrics *biz.AggregatedMetrics) (float64, StrategyScore) {
+	if metrics == nil {
 		neutralScore := s.maxScore / 2
-
-		log.Warn(ctx, "LatencyAwareStrategy: failed to get metrics, using neutral score",
-			log.Int("channel_id", channel.ID),
-			log.String("channel_name", channel.Name),
-			log.Cause(err),
-		)
 
 		return neutralScore, StrategyScore{
 			StrategyName: s.Name(),
 			Score:        neutralScore,
 			Details: map[string]any{
-				"error": err.Error(),
+				"reason": metricsUnavailableReason,
 			},
 		}
 	}

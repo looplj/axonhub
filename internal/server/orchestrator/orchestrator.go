@@ -56,22 +56,24 @@ func NewChatCompletionOrchestrator(
 
 	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, channelLimiterManager)
 
-	adaptiveLoadBalancer := NewLoadBalancer(systemService, channelService,
-		NewErrorAwareStrategy(channelService),
-		NewWeightRoundRobinStrategy(channelService),
-		NewLatencyAwareStrategy(channelService),
+	adaptiveLoadBalancer := NewLoadBalancer(channelService, channelService,
+		NewErrorAwareStrategy(),
+		NewWeightRoundRobinStrategy(),
+		NewLatencyAwareStrategy(),
 		rateLimitStrategy,
 	)
 
-	failoverLoadBalancer := NewLoadBalancer(systemService, channelService,
+	// Failover and circuit-breaker strategies never read channel metrics, so
+	// these load balancers skip the per-candidate metrics fetch.
+	failoverLoadBalancer := NewLoadBalancer(nil, channelService,
 		NewWeightStrategy(), NewRandomStrategy(), rateLimitStrategy)
 
-	circuitBreakerLoadBalancer := NewLoadBalancer(systemService, channelService,
+	circuitBreakerLoadBalancer := NewLoadBalancer(nil, channelService,
 		NewWeightStrategy(), NewModelAwareCircuitBreakerStrategy(modelCircuitBreaker), rateLimitStrategy)
 
-	roundRobinHealthFilter := NewRoundRobinHealthStrategy(channelService)
-	roundRobinLoadBalancer := NewLoadBalancer(systemService, channelService,
-		NewRoundRobinStrategy(channelService),
+	roundRobinHealthFilter := NewRoundRobinHealthStrategy()
+	roundRobinLoadBalancer := NewLoadBalancer(channelService, channelService,
+		NewRoundRobinStrategy(),
 		rateLimitStrategy,
 	).WithoutWeightTieBreaker().WithRoundRobinHealthFilter(roundRobinHealthFilter)
 

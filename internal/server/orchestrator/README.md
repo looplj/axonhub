@@ -92,13 +92,12 @@ After the candidate selection stage, the orchestrator supports multiple score-ba
 5. **Model Aware Circuit Breaker** - Dynamically penalizes channels where the requested model is currently failing
 6. **Random** - Adds a small random factor to break ties between channels with identical scores
 
-The load balancer uses partial sorting for efficient top-k candidate selection based on retry policy configuration.
+The load balancer fetches each candidate's metrics once and shares the snapshot across strategies. It uses partial sorting for efficient top-k selection; `LoadBalancedSelector` passes top k from the request's retry policy snapshot.
 
 ## Key Interfaces
 
 - **`LoadBalanceStrategy`** - Interface for load balancing strategies with `Score()` and `ScoreWithDebug()` methods
-- **`ChannelMetricsProvider`** - Provides channel performance metrics (AggregatedMetrics)
-- **`RetryPolicyProvider`** - Supplies retry policy configuration
+- **`ChannelMetricsProvider`** - Provides channel performance metrics (AggregatedMetrics) to the load balancer
 - **`PreviousChannelProvider`** - Provides the cached previous channel for trace and thread sticky selection
 - **`CandidateSelector`** - Interface for selecting channel model candidates
 - **`ConnectionTracker`** - Interface for tracking active connections per channel

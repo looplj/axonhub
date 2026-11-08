@@ -24,7 +24,7 @@ func NewWeightStrategy() *WeightStrategy {
 // Score returns a score based on the channel's ordering weight.
 // Score is normalized to 0-maxScore range.
 // Production path without debug logging.
-func (s *WeightStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+func (s *WeightStrategy) Score(_ context.Context, channel *biz.Channel, _ *biz.AggregatedMetrics) float64 {
 	// Weight is typically 0-100, normalize to 0-maxScore
 	weight := float64(channel.OrderingWeight)
 	if weight < 0 {
@@ -39,7 +39,7 @@ func (s *WeightStrategy) Score(ctx context.Context, channel *biz.Channel) float6
 
 // ScoreWithDebug returns a score with detailed debug information.
 // Debug path with comprehensive logging.
-func (s *WeightStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+func (s *WeightStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel, _ *biz.AggregatedMetrics) (float64, StrategyScore) {
 	// Weight is typically 0-100, normalize to 0-maxScore
 	weight := float64(channel.OrderingWeight)
 	details := map[string]any{
