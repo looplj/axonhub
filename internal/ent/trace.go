@@ -31,6 +31,8 @@ type Trace struct {
 	ThreadID int `json:"thread_id,omitempty"`
 	// Record status: active (default), archived (hidden), retained (protected from GC)
 	Status trace.Status `json:"status,omitempty"`
+	// Time of the last request recorded for this trace
+	LastRequestAt time.Time `json:"last_request_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the TraceQuery when eager-loading is set.
 	Edges        TraceEdges `json:"edges"`
@@ -94,7 +96,7 @@ func (*Trace) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case trace.FieldTraceID, trace.FieldStatus:
 			values[i] = new(sql.NullString)
-		case trace.FieldCreatedAt, trace.FieldUpdatedAt:
+		case trace.FieldCreatedAt, trace.FieldUpdatedAt, trace.FieldLastRequestAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -152,6 +154,12 @@ func (_m *Trace) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				_m.Status = trace.Status(value.String)
+			}
+		case trace.FieldLastRequestAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field last_request_at", values[i])
+			} else if value.Valid {
+				_m.LastRequestAt = value.Time
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -221,6 +229,9 @@ func (_m *Trace) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	builder.WriteString("last_request_at=")
+	builder.WriteString(_m.LastRequestAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

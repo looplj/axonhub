@@ -585,12 +585,13 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "Trace",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			trace.FieldCreatedAt: {Type: field.TypeTime, Column: trace.FieldCreatedAt},
-			trace.FieldUpdatedAt: {Type: field.TypeTime, Column: trace.FieldUpdatedAt},
-			trace.FieldProjectID: {Type: field.TypeInt, Column: trace.FieldProjectID},
-			trace.FieldTraceID:   {Type: field.TypeString, Column: trace.FieldTraceID},
-			trace.FieldThreadID:  {Type: field.TypeInt, Column: trace.FieldThreadID},
-			trace.FieldStatus:    {Type: field.TypeEnum, Column: trace.FieldStatus},
+			trace.FieldCreatedAt:     {Type: field.TypeTime, Column: trace.FieldCreatedAt},
+			trace.FieldUpdatedAt:     {Type: field.TypeTime, Column: trace.FieldUpdatedAt},
+			trace.FieldProjectID:     {Type: field.TypeInt, Column: trace.FieldProjectID},
+			trace.FieldTraceID:       {Type: field.TypeString, Column: trace.FieldTraceID},
+			trace.FieldThreadID:      {Type: field.TypeInt, Column: trace.FieldThreadID},
+			trace.FieldStatus:        {Type: field.TypeEnum, Column: trace.FieldStatus},
+			trace.FieldLastRequestAt: {Type: field.TypeTime, Column: trace.FieldLastRequestAt},
 		},
 	}
 	graph.Nodes[23] = &sqlgraph.Node{
@@ -4309,6 +4310,11 @@ func (f *TraceFilter) WhereThreadID(p entql.IntP) {
 // WhereStatus applies the entql string predicate on the status field.
 func (f *TraceFilter) WhereStatus(p entql.StringP) {
 	f.Where(p.Field(trace.FieldStatus))
+}
+
+// WhereLastRequestAt applies the entql time.Time predicate on the last_request_at field.
+func (f *TraceFilter) WhereLastRequestAt(p entql.TimeP) {
+	f.Where(p.Field(trace.FieldLastRequestAt))
 }
 
 // WhereHasProject applies a predicate to check if query has an edge project.

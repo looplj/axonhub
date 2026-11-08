@@ -80,6 +80,11 @@ func ThreadID(v int) predicate.Trace {
 	return predicate.Trace(sql.FieldEQ(FieldThreadID, v))
 }
 
+// LastRequestAt applies equality check predicate on the "last_request_at" field. It's identical to LastRequestAtEQ.
+func LastRequestAt(v time.Time) predicate.Trace {
+	return predicate.Trace(sql.FieldEQ(FieldLastRequestAt, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Trace {
 	return predicate.Trace(sql.FieldEQ(FieldCreatedAt, v))
@@ -293,6 +298,46 @@ func StatusIn(vs ...Status) predicate.Trace {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.Trace {
 	return predicate.Trace(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// LastRequestAtEQ applies the EQ predicate on the "last_request_at" field.
+func LastRequestAtEQ(v time.Time) predicate.Trace {
+	return predicate.Trace(sql.FieldEQ(FieldLastRequestAt, v))
+}
+
+// LastRequestAtNEQ applies the NEQ predicate on the "last_request_at" field.
+func LastRequestAtNEQ(v time.Time) predicate.Trace {
+	return predicate.Trace(sql.FieldNEQ(FieldLastRequestAt, v))
+}
+
+// LastRequestAtIn applies the In predicate on the "last_request_at" field.
+func LastRequestAtIn(vs ...time.Time) predicate.Trace {
+	return predicate.Trace(sql.FieldIn(FieldLastRequestAt, vs...))
+}
+
+// LastRequestAtNotIn applies the NotIn predicate on the "last_request_at" field.
+func LastRequestAtNotIn(vs ...time.Time) predicate.Trace {
+	return predicate.Trace(sql.FieldNotIn(FieldLastRequestAt, vs...))
+}
+
+// LastRequestAtGT applies the GT predicate on the "last_request_at" field.
+func LastRequestAtGT(v time.Time) predicate.Trace {
+	return predicate.Trace(sql.FieldGT(FieldLastRequestAt, v))
+}
+
+// LastRequestAtGTE applies the GTE predicate on the "last_request_at" field.
+func LastRequestAtGTE(v time.Time) predicate.Trace {
+	return predicate.Trace(sql.FieldGTE(FieldLastRequestAt, v))
+}
+
+// LastRequestAtLT applies the LT predicate on the "last_request_at" field.
+func LastRequestAtLT(v time.Time) predicate.Trace {
+	return predicate.Trace(sql.FieldLT(FieldLastRequestAt, v))
+}
+
+// LastRequestAtLTE applies the LTE predicate on the "last_request_at" field.
+func LastRequestAtLTE(v time.Time) predicate.Trace {
+	return predicate.Trace(sql.FieldLTE(FieldLastRequestAt, v))
 }
 
 // HasProject applies the HasEdge predicate on the "project" edge.

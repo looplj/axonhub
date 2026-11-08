@@ -9712,6 +9712,16 @@ type TraceWhereInput struct {
 	StatusIn    []trace.Status `json:"statusIn,omitempty"`
 	StatusNotIn []trace.Status `json:"statusNotIn,omitempty"`
 
+	// "last_request_at" field predicates.
+	LastRequestAt      *time.Time  `json:"lastRequestAt,omitempty"`
+	LastRequestAtNEQ   *time.Time  `json:"lastRequestAtNEQ,omitempty"`
+	LastRequestAtIn    []time.Time `json:"lastRequestAtIn,omitempty"`
+	LastRequestAtNotIn []time.Time `json:"lastRequestAtNotIn,omitempty"`
+	LastRequestAtGT    *time.Time  `json:"lastRequestAtGT,omitempty"`
+	LastRequestAtGTE   *time.Time  `json:"lastRequestAtGTE,omitempty"`
+	LastRequestAtLT    *time.Time  `json:"lastRequestAtLT,omitempty"`
+	LastRequestAtLTE   *time.Time  `json:"lastRequestAtLTE,omitempty"`
+
 	// "project" edge predicates.
 	HasProject     *bool                `json:"hasProject,omitempty"`
 	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
@@ -9948,6 +9958,30 @@ func (i *TraceWhereInput) P() (predicate.Trace, error) {
 	}
 	if len(i.StatusNotIn) > 0 {
 		predicates = append(predicates, trace.StatusNotIn(i.StatusNotIn...))
+	}
+	if i.LastRequestAt != nil {
+		predicates = append(predicates, trace.LastRequestAtEQ(*i.LastRequestAt))
+	}
+	if i.LastRequestAtNEQ != nil {
+		predicates = append(predicates, trace.LastRequestAtNEQ(*i.LastRequestAtNEQ))
+	}
+	if len(i.LastRequestAtIn) > 0 {
+		predicates = append(predicates, trace.LastRequestAtIn(i.LastRequestAtIn...))
+	}
+	if len(i.LastRequestAtNotIn) > 0 {
+		predicates = append(predicates, trace.LastRequestAtNotIn(i.LastRequestAtNotIn...))
+	}
+	if i.LastRequestAtGT != nil {
+		predicates = append(predicates, trace.LastRequestAtGT(*i.LastRequestAtGT))
+	}
+	if i.LastRequestAtGTE != nil {
+		predicates = append(predicates, trace.LastRequestAtGTE(*i.LastRequestAtGTE))
+	}
+	if i.LastRequestAtLT != nil {
+		predicates = append(predicates, trace.LastRequestAtLT(*i.LastRequestAtLT))
+	}
+	if i.LastRequestAtLTE != nil {
+		predicates = append(predicates, trace.LastRequestAtLTE(*i.LastRequestAtLTE))
 	}
 
 	if i.HasProject != nil {

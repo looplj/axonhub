@@ -558,10 +558,6 @@ func (r *queryResolver) Traces(ctx context.Context, after *entgql.Cursor[int], f
 		return nil, err
 	}
 
-	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
-		orderBy.Field = ent.DefaultTraceOrder.Field
-	}
-
 	return r.client.Trace.Query().Paginate(ctx, after, first, before, last,
 		ent.WithTraceOrder(orderBy),
 		ent.WithTraceFilter(where.Filter),

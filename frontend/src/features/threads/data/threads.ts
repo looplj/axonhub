@@ -102,6 +102,7 @@ function buildThreadDetailQuery() {
                 status
                 createdAt
                 updatedAt
+                lastRequestAt
                 project {
                   id
                   name

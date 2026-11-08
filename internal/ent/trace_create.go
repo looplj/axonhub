@@ -93,6 +93,20 @@ func (_c *TraceCreate) SetNillableStatus(v *trace.Status) *TraceCreate {
 	return _c
 }
 
+// SetLastRequestAt sets the "last_request_at" field.
+func (_c *TraceCreate) SetLastRequestAt(v time.Time) *TraceCreate {
+	_c.mutation.SetLastRequestAt(v)
+	return _c
+}
+
+// SetNillableLastRequestAt sets the "last_request_at" field if the given value is not nil.
+func (_c *TraceCreate) SetNillableLastRequestAt(v *time.Time) *TraceCreate {
+	if v != nil {
+		_c.SetLastRequestAt(*v)
+	}
+	return _c
+}
+
 // SetProject sets the "project" edge to the Project entity.
 func (_c *TraceCreate) SetProject(v *Project) *TraceCreate {
 	return _c.SetProjectID(v.ID)
@@ -173,6 +187,13 @@ func (_c *TraceCreate) defaults() error {
 		v := trace.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.LastRequestAt(); !ok {
+		if trace.DefaultLastRequestAt == nil {
+			return fmt.Errorf("ent: uninitialized trace.DefaultLastRequestAt (forgotten import ent/runtime?)")
+		}
+		v := trace.DefaultLastRequestAt()
+		_c.mutation.SetLastRequestAt(v)
+	}
 	return nil
 }
 
@@ -237,6 +258,10 @@ func (_c *TraceCreate) createSpec() (*Trace, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(trace.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.LastRequestAt(); ok {
+		_spec.SetField(trace.FieldLastRequestAt, field.TypeTime, value)
+		_node.LastRequestAt = value
 	}
 	if nodes := _c.mutation.ProjectIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -376,6 +401,18 @@ func (u *TraceUpsert) UpdateStatus() *TraceUpsert {
 	return u
 }
 
+// SetLastRequestAt sets the "last_request_at" field.
+func (u *TraceUpsert) SetLastRequestAt(v time.Time) *TraceUpsert {
+	u.Set(trace.FieldLastRequestAt, v)
+	return u
+}
+
+// UpdateLastRequestAt sets the "last_request_at" field to the value that was provided on create.
+func (u *TraceUpsert) UpdateLastRequestAt() *TraceUpsert {
+	u.SetExcluded(trace.FieldLastRequestAt)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -466,6 +503,20 @@ func (u *TraceUpsertOne) SetStatus(v trace.Status) *TraceUpsertOne {
 func (u *TraceUpsertOne) UpdateStatus() *TraceUpsertOne {
 	return u.Update(func(s *TraceUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetLastRequestAt sets the "last_request_at" field.
+func (u *TraceUpsertOne) SetLastRequestAt(v time.Time) *TraceUpsertOne {
+	return u.Update(func(s *TraceUpsert) {
+		s.SetLastRequestAt(v)
+	})
+}
+
+// UpdateLastRequestAt sets the "last_request_at" field to the value that was provided on create.
+func (u *TraceUpsertOne) UpdateLastRequestAt() *TraceUpsertOne {
+	return u.Update(func(s *TraceUpsert) {
+		s.UpdateLastRequestAt()
 	})
 }
 
@@ -725,6 +776,20 @@ func (u *TraceUpsertBulk) SetStatus(v trace.Status) *TraceUpsertBulk {
 func (u *TraceUpsertBulk) UpdateStatus() *TraceUpsertBulk {
 	return u.Update(func(s *TraceUpsert) {
 		s.UpdateStatus()
+	})
+}
+
+// SetLastRequestAt sets the "last_request_at" field.
+func (u *TraceUpsertBulk) SetLastRequestAt(v time.Time) *TraceUpsertBulk {
+	return u.Update(func(s *TraceUpsert) {
+		s.SetLastRequestAt(v)
+	})
+}
+
+// UpdateLastRequestAt sets the "last_request_at" field to the value that was provided on create.
+func (u *TraceUpsertBulk) UpdateLastRequestAt() *TraceUpsertBulk {
+	return u.Update(func(s *TraceUpsert) {
+		s.UpdateLastRequestAt()
 	})
 }
 

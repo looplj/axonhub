@@ -2146,6 +2146,7 @@ type ComplexityRoot struct {
 		FirstText      func(childComplexity int) int
 		FirstUserQuery func(childComplexity int) int
 		ID             func(childComplexity int) int
+		LastRequestAt  func(childComplexity int) int
 		Project        func(childComplexity int) int
 		ProjectID      func(childComplexity int) int
 		RawRootSegment func(childComplexity int) int
@@ -11996,6 +11997,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Trace.ID(childComplexity), true
+	case "Trace.lastRequestAt":
+		if e.complexity.Trace.LastRequestAt == nil {
+			break
+		}
+
+		return e.complexity.Trace.LastRequestAt(childComplexity), true
 	case "Trace.project":
 		if e.complexity.Trace.Project == nil {
 			break
@@ -55834,6 +55841,8 @@ func (ec *executionContext) fieldContext_Request_trace(_ context.Context, field 
 				return ec.fieldContext_Trace_threadID(ctx, field)
 			case "status":
 				return ec.fieldContext_Trace_status(ctx, field)
+			case "lastRequestAt":
+				return ec.fieldContext_Trace_lastRequestAt(ctx, field)
 			case "project":
 				return ec.fieldContext_Trace_project(ctx, field)
 			case "thread":
@@ -64201,6 +64210,35 @@ func (ec *executionContext) fieldContext_Trace_status(_ context.Context, field g
 	return fc, nil
 }
 
+func (ec *executionContext) _Trace_lastRequestAt(ctx context.Context, field graphql.CollectedField, obj *ent.Trace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Trace_lastRequestAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LastRequestAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Trace_lastRequestAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Trace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Trace_project(ctx context.Context, field graphql.CollectedField, obj *ent.Trace) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -64690,6 +64728,8 @@ func (ec *executionContext) fieldContext_TraceEdge_node(_ context.Context, field
 				return ec.fieldContext_Trace_threadID(ctx, field)
 			case "status":
 				return ec.fieldContext_Trace_status(ctx, field)
+			case "lastRequestAt":
+				return ec.fieldContext_Trace_lastRequestAt(ctx, field)
 			case "project":
 				return ec.fieldContext_Trace_project(ctx, field)
 			case "thread":
@@ -91366,7 +91406,7 @@ func (ec *executionContext) unmarshalInputTraceWhereInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDGT", "traceIDGTE", "traceIDLT", "traceIDLTE", "traceIDContains", "traceIDHasPrefix", "traceIDHasSuffix", "traceIDEqualFold", "traceIDContainsFold", "threadID", "threadIDNEQ", "threadIDIn", "threadIDNotIn", "threadIDIsNil", "threadIDNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "hasProject", "hasProjectWith", "hasThread", "hasThreadWith", "hasRequests", "hasRequestsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDGT", "traceIDGTE", "traceIDLT", "traceIDLTE", "traceIDContains", "traceIDHasPrefix", "traceIDHasSuffix", "traceIDEqualFold", "traceIDContainsFold", "threadID", "threadIDNEQ", "threadIDIn", "threadIDNotIn", "threadIDIsNil", "threadIDNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "lastRequestAt", "lastRequestAtNEQ", "lastRequestAtIn", "lastRequestAtNotIn", "lastRequestAtGT", "lastRequestAtGTE", "lastRequestAtLT", "lastRequestAtLTE", "hasProject", "hasProjectWith", "hasThread", "hasThreadWith", "hasRequests", "hasRequestsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -91815,6 +91855,62 @@ func (ec *executionContext) unmarshalInputTraceWhereInput(ctx context.Context, o
 				return it, err
 			}
 			it.StatusNotIn = data
+		case "lastRequestAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastRequestAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LastRequestAt = data
+		case "lastRequestAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastRequestAtNEQ"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LastRequestAtNEQ = data
+		case "lastRequestAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastRequestAtIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LastRequestAtIn = data
+		case "lastRequestAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastRequestAtNotIn"))
+			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LastRequestAtNotIn = data
+		case "lastRequestAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastRequestAtGT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LastRequestAtGT = data
+		case "lastRequestAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastRequestAtGTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LastRequestAtGTE = data
+		case "lastRequestAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastRequestAtLT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LastRequestAtLT = data
+		case "lastRequestAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lastRequestAtLTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LastRequestAtLTE = data
 		case "hasProject":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasProject"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -117811,6 +117907,11 @@ func (ec *executionContext) _Trace(ctx context.Context, sel ast.SelectionSet, ob
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "status":
 			out.Values[i] = ec._Trace_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "lastRequestAt":
+			out.Values[i] = ec._Trace_lastRequestAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

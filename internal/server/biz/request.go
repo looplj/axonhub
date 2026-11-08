@@ -23,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/objects"
@@ -346,8 +347,11 @@ func (s *RequestService) CreateRequest(
 		mut = mut.SetAPIKeyID(apiKey.ID)
 	}
 
+	var traceID int
+
 	if trace, ok := contexts.GetTrace(ctx); ok && trace != nil {
-		mut = mut.SetTraceID(trace.ID)
+		traceID = trace.ID
+		mut = mut.SetTraceID(traceID)
 	}
 
 	if contexts.GetSourceOrDefault(ctx, request.SourceAPI) == request.SourcePlayground {
@@ -382,6 +386,21 @@ func (s *RequestService) CreateRequest(
 		if err != nil {
 			log.Error(ctx, "Failed to save request body to external storage", log.Cause(err))
 			// Continue anyway, don't fail the request creation
+		}
+	}
+
+	// Keep the trace's last request time monotonic: concurrent requests may
+	// reach this point out of order, and the older one must not overwrite the
+	// newer timestamp.
+	if traceID != 0 {
+		err := authz.RunWithSystemBypassVoid(ctx, "trace-last-request-at", func(bypassCtx context.Context) error {
+			return client.Trace.Update().
+				Where(trace.ID(traceID), trace.LastRequestAtLT(req.CreatedAt)).
+				SetLastRequestAt(req.CreatedAt).
+				Exec(bypassCtx)
+		})
+		if err != nil {
+			log.Warn(ctx, "Failed to update trace last request time", log.Cause(err), log.Int("trace_id", traceID))
 		}
 	}
 

@@ -23,6 +23,8 @@ export interface DateTimeRangePickerProps {
   onCancel?: () => void
   onConfirm?: (next: DateTimeRangeValue) => void
   className?: string
+  /** Rendered in the header, right of the selected range. */
+  headerExtra?: React.ReactNode
 }
 
 export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
@@ -91,7 +93,7 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
         className
       )}
     >
-      <div className='flex items-center justify-between border-b border-gray-100 bg-white p-4 dark:border-white/5 dark:bg-[#0a0a0b]/50'>
+      <div className='flex items-center gap-3 border-b border-gray-100 bg-white p-4 dark:border-white/5 dark:bg-[#0a0a0b]/50'>
         <div
           className={cn(
             buttonVariants({ variant: 'outline', size: 'sm' }),
@@ -101,6 +103,8 @@ export function DateTimeRangePicker(props: DateTimeRangePickerProps) {
           <Calendar className='h-4 w-4' />
           <span>{headerText}</span>
         </div>
+
+        <div className='flex flex-1 items-center'>{props.headerExtra}</div>
 
         <div className='flex gap-1 text-gray-500'>
           <button
