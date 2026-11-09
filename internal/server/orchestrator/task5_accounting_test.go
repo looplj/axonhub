@@ -574,43 +574,38 @@ func TestStreamDeliveryAccounting_PreservesBudgetSourceEnd(t *testing.T) {
 	}
 }
 
-func TestStreamDeliveryAccounting_CloseDefersUntilSourceOwnerReleases(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
-	t.Cleanup(func() { require.NoError(t, client.Close()) })
-	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
-	_, requestService, _, usageService := setupTestServices(t, client)
-	requestRow, execution, state := newTask5Execution(t, ctx, client, llm.APIFormatOpenAIChatCompletion.String())
-	transformer := &mockTransformer{
-		apiFormat:          llm.APIFormatOpenAIChatCompletion,
-		aggregatedResponse: []byte(`{"id":"held","choices":[{"index":0,"message":{"role":"assistant"},"finish_reason":"stop"}]}`),
-		aggregatedMeta: llm.ResponseMeta{
-			ID:                 "held",
-			Usage:              &llm.Usage{PromptTokens: 12, CompletionTokens: 34, TotalTokens: 46},
-			Completed:          true,
-			AccountingEvidence: llm.AccountingEvidenceExplicitFinal,
-		},
-	}
-	stream := NewOutboundPersistentStream(ctx, streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte(`{"chunk":true}`)}}), requestRow, execution, requestService, usageService, transformer, nil, state)
-	stream.HoldFinalization()
-	require.True(t, stream.Next())
-	stream.Current()
-
-	// The consumer can close without waiting for the source owner.
-	require.NoError(t, stream.Close())
-	rows, err := client.UsageLog.Query().All(ctx)
-	require.NoError(t, err)
-	require.Empty(t, rows)
-
-	// The source owner releases the barrier after reader/consumer quiescence.
-	require.NoError(t, stream.FinalizeAccounting(llm.SourceEndSemantic))
-	rows, err = client.UsageLog.Query().All(ctx)
-	require.NoError(t, err)
-	require.Len(t, rows, 1)
-}
-
 func mustExecution(t *testing.T, ctx context.Context, client *ent.Client, id int) *ent.RequestExecution {
 	t.Helper()
 	execution, err := client.RequestExecution.Get(ctx, id)
 	require.NoError(t, err)
 	return execution
+}
+
+func TestStreamDeliveryAccounting_CloseCollectsUnreadUsage(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
+	base := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	owner, ctx := newStreamLifecycle(base)
+	defer owner.Close()
+	_, requestService, _, usageService := setupTestServices(t, client)
+	requestRow, execution, state := newTask5Execution(t, ctx, client, llm.APIFormatOpenAIChatCompletion.String())
+	outbound, err := openai.NewOutboundTransformer("https://example.test", "key")
+	require.NoError(t, err)
+	source := streams.SliceStream([]*httpclient.StreamEvent{
+		{Data: []byte(`{"id":"chat-tail","model":"gpt-5","choices":[{"index":0,"delta":{"content":"hi"},"finish_reason":"stop"}]}`)},
+		{Data: []byte(`{"id":"chat-tail","model":"gpt-5","choices":[],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+		{Data: []byte(`[DONE]`)},
+	})
+	stream := NewOutboundPersistentStream(ctx, source, requestRow, execution, requestService, usageService, outbound, nil, state)
+	require.True(t, stream.Next())
+	stream.Current()
+	owner.AcknowledgeDelivery()
+	// The consumer stops at the finish event; only Close can collect usage.
+	owner.Close()
+	require.NoError(t, stream.Close())
+	rows, err := client.UsageLog.Query().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, rows, 1)
+	require.Equal(t, int64(12), rows[0].PromptTokens)
+	require.Equal(t, int64(34), rows[0].CompletionTokens)
 }

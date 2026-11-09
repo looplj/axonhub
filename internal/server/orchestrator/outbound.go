@@ -29,6 +29,8 @@ import (
 
 // OutboundPersistentStream wraps a stream and tracks all responses for final saving to database.
 // It implements the streams.Stream interface and handles persistence in the Close method.
+// Next, Current, and tail collection share one consumer goroutine. Cancellation
+// callbacks only close the source; they never access the buffered accounting state.
 //
 //nolint:containedctx // Checked.
 type OutboundPersistentStream struct {
@@ -46,23 +48,19 @@ type OutboundPersistentStream struct {
 	perf           *biz.PerformanceRecord
 	responseChunks []*httpclient.StreamEvent
 	// First reported model only. Intra-stream changes are not tracked.
-	upstreamModelID  string
-	terminalState    streamTerminalState
-	terminalError    string
-	outcome          streamOutcome
-	closeOnce        sync.Once
-	closeErr         error
-	stateMu          sync.Mutex
-	readerMu         sync.Mutex
-	activeReader     chan struct{}
-	finalizationMu   sync.Mutex
-	finalizationHeld bool
-	consumerDone     chan struct{}
-	consumerDoneOnce sync.Once
-	sourceEnd        llm.SourceEndReason
-	persistenceErr   error
-	state            *PersistenceState
-	terminalTracker  *StreamTerminalTracker
+	upstreamModelID string
+	terminalState   streamTerminalState
+	terminalError   string
+	outcome         streamOutcome
+	closeOnce       sync.Once
+	closeErr        error
+	sourceCloseOnce sync.Once
+	sourceCloseErr  error
+	sourceEnd       llm.SourceEndReason
+	persistenceErr  error
+	state           *PersistenceState
+	terminalTracker *StreamTerminalTracker
+	lifecycle       *streamLifecycle
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*OutboundPersistentStream)(nil)
@@ -95,28 +93,10 @@ func NewOutboundPersistentStream(
 		responseChunks:  make([]*httpclient.StreamEvent, 0),
 		state:           state,
 		terminalTracker: NewStreamTerminalTrackerForRequest(request),
-		consumerDone:    make(chan struct{}),
+		lifecycle:       streamLifecycleFromContext(ctx),
 	}
-	if lifecycleOwner := streamLifecycleFromContext(ctx); lifecycleOwner != nil {
-		s.HoldFinalization()
-		lifecycleOwner.registerTailOwner(&streamTailOwner{
-			source:         stream,
-			readerDone:     s.consumerDone,
-			readerDoneFunc: s.readerDone,
-			abort: func() {
-				s.consumerDoneOnce.Do(func() { close(s.consumerDone) })
-				_ = stream.Close()
-			},
-			onEvent: s.consumeTailEvent,
-			sourceEnd: func() llm.SourceEndReason {
-				s.stateMu.Lock()
-				defer s.stateMu.Unlock()
-				return s.sourceEnd
-			},
-			finalize:       s.FinalizeAccounting,
-			done:           make(chan struct{}),
-			accountingDone: make(chan struct{}),
-		})
+	if s.lifecycle != nil {
+		s.lifecycle.trackAttempt(s)
 	}
 
 	return s
@@ -126,8 +106,6 @@ func (ts *OutboundPersistentStream) consumeTailEvent(event *httpclient.StreamEve
 	if event == nil {
 		return nil
 	}
-	ts.stateMu.Lock()
-	defer ts.stateMu.Unlock()
 	ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
 	if ts.terminalState == streamTerminalNone && ts.terminalTracker.Observe(event) {
 		ts.terminalState = classifyAcceptedTerminalEvent(event)
@@ -138,23 +116,9 @@ func (ts *OutboundPersistentStream) consumeTailEvent(event *httpclient.StreamEve
 }
 
 func (ts *OutboundPersistentStream) Next() bool {
-	ts.readerMu.Lock()
-	readerDone := make(chan struct{})
-	ts.activeReader = readerDone
-	ts.readerMu.Unlock()
-	defer func() {
-		ts.readerMu.Lock()
-		if ts.activeReader == readerDone {
-			close(readerDone)
-			ts.activeReader = nil
-		}
-		ts.readerMu.Unlock()
-	}()
 	if ts.stream.Next() {
 		return true
 	}
-	ts.stateMu.Lock()
-	defer ts.stateMu.Unlock()
 	if err := ts.stream.Err(); err != nil && !errors.Is(err, io.EOF) {
 		ts.sourceEnd = llm.SourceEndError
 	} else if ts.sourceEnd == llm.SourceEndSemantic {
@@ -167,22 +131,9 @@ func (ts *OutboundPersistentStream) Next() bool {
 	return false
 }
 
-func (ts *OutboundPersistentStream) readerDone() <-chan struct{} {
-	ts.readerMu.Lock()
-	defer ts.readerMu.Unlock()
-	if ts.activeReader != nil {
-		return ts.activeReader
-	}
-	done := make(chan struct{})
-	close(done)
-	return done
-}
-
 func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
-		ts.stateMu.Lock()
-		defer ts.stateMu.Unlock()
 		if string(event.Data) == "[DONE]" && isNonChoiceTerminalEvent(event) {
 			ts.sourceEnd = llm.SourceEndSemantic
 		}
@@ -215,44 +166,54 @@ func (ts *OutboundPersistentStream) Err() error {
 	return ts.stream.Err()
 }
 
+// Close finalizes the attempt. Callers must have stopped reading: under a
+// stream lifecycle, Close collects the remaining source on the calling goroutine.
 func (ts *OutboundPersistentStream) Close() error {
-	ts.finalizationMu.Lock()
-	held := ts.finalizationHeld
-	ts.finalizationMu.Unlock()
-	if held {
-		ts.consumerDoneOnce.Do(func() { close(ts.consumerDone) })
-		return nil
+	ts.closeOnce.Do(func() {
+		if ts.lifecycle != nil {
+			ts.collectTail()
+		}
+		ts.closeErr = errors.Join(ts.finalizeClose(), ts.persistenceErr)
+	})
+
+	return ts.closeErr
+}
+
+// collectTail keeps reading the source within the tail budget after delivery
+// was acknowledged, so trailing usage is still accounted. Before
+// acknowledgement the source is released first.
+func (ts *OutboundPersistentStream) collectTail() {
+	ctx, acknowledged, release := ts.lifecycle.tailContext()
+	defer release()
+	// Acknowledged tails are aborted by the lifecycle budget. Otherwise close
+	// the source synchronously before reading; no second abort callback is needed.
+	if !acknowledged {
+		ts.abortSource()
 	}
-	ts.stateMu.Lock()
-	defer ts.stateMu.Unlock()
-	ts.closeOnce.Do(func() {
-		ts.closeErr = errors.Join(ts.finalizeClose(), ts.persistenceErr)
-	})
 
-	return ts.closeErr
+	result := streamTailResult{end: llm.SourceEndCanceled, err: ctx.Err()}
+	if ctx.Err() == nil {
+		result = collectStreamTail(ctx, ts.stream, ts.consumeTailEvent)
+		if err := ctx.Err(); err != nil {
+			result = streamTailResult{end: llm.SourceEndCanceled, err: err}
+		}
+	}
+
+	ts.sourceEnd = tailSourceEnd(result, ts.sourceEnd)
 }
 
-// HoldFinalization must run before consumption. Consumer Close then only
-// requests cleanup; the source owner calls FinalizeAccounting after quiescence.
-func (ts *OutboundPersistentStream) HoldFinalization() {
-	ts.finalizationMu.Lock()
-	defer ts.finalizationMu.Unlock()
-	ts.finalizationHeld = true
+func (ts *OutboundPersistentStream) abortSource() {
+	_ = ts.closeSource()
 }
 
-// FinalizeAccounting is called by the source owner after all readers/consumers
-// have stopped. It never waits for a reader from inside the consumer's Close.
-func (ts *OutboundPersistentStream) FinalizeAccounting(sourceEnd llm.SourceEndReason) error {
-	ts.stateMu.Lock()
-	defer ts.stateMu.Unlock()
-	ts.closeOnce.Do(func() {
-		ts.sourceEnd = sourceEnd
-		ts.closeErr = errors.Join(ts.finalizeClose(), ts.persistenceErr)
+// closeSource serializes transport cleanup across timeout callbacks and finalization.
+// Keep this separate from closeOnce: an abort must unblock the reader while Close
+// is still collecting the tail. All callers wait for cleanup and share its error.
+func (ts *OutboundPersistentStream) closeSource() error {
+	ts.sourceCloseOnce.Do(func() {
+		ts.sourceCloseErr = ts.stream.Close()
 	})
-	ts.finalizationMu.Lock()
-	ts.finalizationHeld = false
-	ts.finalizationMu.Unlock()
-	return ts.closeErr
+	return ts.sourceCloseErr
 }
 
 func (ts *OutboundPersistentStream) finalizeClose() error {
@@ -277,7 +238,7 @@ func (ts *OutboundPersistentStream) finalizeClose() error {
 			log.String("terminal_state", string(ts.terminalState)))
 		ts.persistResponseChunks(ctx, ts.accountingSourceEnd(streamErr, ctxErr))
 
-		return ts.stream.Close()
+		return ts.closeSource()
 	}
 
 	var responseBody []byte
@@ -331,7 +292,7 @@ func (ts *OutboundPersistentStream) finalizeClose() error {
 		ts.persistFailureChunks(persistCtx)
 		ts.persistExecutionFailure(persistCtx, decision.cause)
 
-		return ts.stream.Close()
+		return ts.closeSource()
 	}
 
 	if decision.state != streamTerminalCompleted {
@@ -345,7 +306,7 @@ func (ts *OutboundPersistentStream) finalizeClose() error {
 
 		ts.persistExecutionFailure(persistCtx, decision.cause)
 
-		return ts.stream.Close()
+		return ts.closeSource()
 	}
 
 	// Stream completed successfully - perform final persistence
@@ -362,7 +323,7 @@ func (ts *OutboundPersistentStream) finalizeClose() error {
 		ts.persistResponseChunks(ctx, sourceEnd)
 	}
 
-	return ts.stream.Close()
+	return ts.closeSource()
 }
 
 func (ts *OutboundPersistentStream) markPerformanceTerminal(state streamTerminalState, message string) {
@@ -1003,7 +964,7 @@ func (p *PersistentOutboundTransformer) resetPassThroughStreamState() {
 // It implements the pipeline.Retryable interface.
 func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	if lifecycleOwner := streamLifecycleFromContext(ctx); lifecycleOwner != nil {
-		lifecycleOwner.waitForAccounting()
+		lifecycleOwner.closeAttempt()
 	}
 
 	// Remember the channel being left before the index moves. The event is
@@ -1137,7 +1098,7 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 // It will try the next model in the same channel if available.
 func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) error {
 	if lifecycleOwner := streamLifecycleFromContext(ctx); lifecycleOwner != nil {
-		lifecycleOwner.waitForAccounting()
+		lifecycleOwner.closeAttempt()
 	}
 
 	// fork: re-read the channel state so a credential disabled mid-request is

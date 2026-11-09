@@ -209,7 +209,6 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	lifecycleOwner, executionCtx := newStreamLifecycle(ctx)
 	ctx = executionCtx
 
-	var preparedResponsesBody []byte
 	var continuation *responsesContinuation
 	if shared.IsResponsesAPI(ctx) && request != nil && processor.responsesSessions != nil {
 		continuation = newResponsesContinuation(processor.responsesSessions, request.Body)
@@ -467,11 +466,6 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		continuation.accept(ctx)
 	}
 	lifecycleOwner.Close()
-	if continuation == nil || result.Response == nil {
-		if preparedResponsesBody != nil && result.Response != nil {
-			processor.responsesSessions.record(ctx, preparedResponsesBody, result.Response.Body)
-		}
-	}
 
 	return ChatCompletionResult{
 		Route:                         route,

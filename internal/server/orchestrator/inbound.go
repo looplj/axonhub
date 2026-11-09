@@ -295,10 +295,11 @@ func (ts *InboundPersistentStream) Close() error {
 	ts.closeMu.Unlock()
 	defer close(ts.closeDone)
 
-	// Close the lifecycle first to quiesce the drain goroutine before reading shared state
+	// The lifecycle finalizes the upstream attempt before the chain is closed:
+	// closing the chain may cancel the attempt's transport before its tail is read.
 	if ts.lifecycle != nil {
-		_ = ts.stream.Close()
 		ts.lifecycle.Close()
+		_ = ts.stream.Close()
 	}
 
 	ts.stateMu.Lock()

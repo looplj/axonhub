@@ -591,8 +591,8 @@ func (s *passThroughStream) Err() error {
 	return s.transformed.Err()
 }
 
-// Close closes only the transformed chain: its owner decides when the raw source is
-// released, so tail accounting can still drain it after delivery.
+// Close closes only the transformed chain: the outbound persistent stream releases the
+// raw source after collecting its tail.
 func (s *passThroughStream) Close() error { return s.transformed.Close() }
 
 // passThroughDeliveryStream keeps delivery acknowledgement and finalization connected
