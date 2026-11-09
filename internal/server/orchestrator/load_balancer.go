@@ -13,6 +13,10 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
+// metricsUnavailableReason marks debug details of a metrics-based score that
+// fell back to a neutral value because the candidate had no metrics snapshot.
+const metricsUnavailableReason = "metrics_unavailable"
+
 // ChannelMetricsProvider provides channel performance metrics.
 type ChannelMetricsProvider interface {
 	GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error)
@@ -27,16 +31,21 @@ type ChannelSelectionTracker interface {
 
 // LoadBalanceStrategy defines the interface for load balancing strategies.
 // Each strategy can score and sort channels based on different criteria.
+//
+// metrics is the channel snapshot the load balancer fetched once for this
+// candidate and shares across all strategies. It is nil when the load balancer
+// has no metrics provider or the fetch failed; strategies that depend on
+// metrics must fall back to a neutral score in that case.
 type LoadBalanceStrategy interface {
 	// Score calculates a score for a channel. Higher scores indicate higher priority.
 	// Returns a score between 0 and 1000.
 	// This is the production path with minimal overhead.
-	Score(ctx context.Context, channel *biz.Channel) float64
+	Score(ctx context.Context, channel *biz.Channel, metrics *biz.AggregatedMetrics) float64
 
 	// ScoreWithDebug calculates a score with detailed debug information.
 	// Returns the score and a StrategyScore with debug details.
 	// This should have identical logic to Score() except for debug logging.
-	ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore)
+	ScoreWithDebug(ctx context.Context, channel *biz.Channel, metrics *biz.AggregatedMetrics) (float64, StrategyScore)
 
 	// Name returns the strategy name for debugging and logging.
 	Name() string
@@ -66,6 +75,8 @@ type ChannelDecision struct {
 	StrategyScores []StrategyScore
 	// FinalRank is the final ranking (1 = highest priority)
 	FinalRank int
+
+	metrics *biz.AggregatedMetrics
 }
 
 // DecisionLog represents a complete load balancing decision.
@@ -78,11 +89,6 @@ type DecisionLog struct {
 	TotalDuration time.Duration
 	// Channels contains detailed information for each channel
 	Channels []ChannelDecision
-}
-
-// RetryPolicyProvider interface defines the methods needed from RetryPolicyProvider.
-type RetryPolicyProvider interface {
-	RetryPolicyOrDefault(ctx context.Context) *biz.RetryPolicy
 }
 
 // Save the requested model ID in the context, to let model aware strategy use it, e.g. circuit breaker.
@@ -116,7 +122,7 @@ func requestStreamFromContext(ctx context.Context) bool {
 // LoadBalancer applies multiple strategies to sort channels by priority.
 type LoadBalancer struct {
 	strategies             []LoadBalanceStrategy
-	systemService          RetryPolicyProvider
+	metricsProvider        ChannelMetricsProvider
 	selectionTracker       ChannelSelectionTracker
 	weightTieBreaker       bool
 	roundRobinHealthFilter *RoundRobinHealthStrategy
@@ -125,12 +131,14 @@ type LoadBalancer struct {
 
 // NewLoadBalancer creates a new load balancer with the given strategies.
 // All strategy scores are summed with equal weight; registration order does not affect scoring.
-func NewLoadBalancer(systemService RetryPolicyProvider, selectionTracker ChannelSelectionTracker, strategies ...LoadBalanceStrategy) *LoadBalancer {
+// metricsProvider may be nil when no strategy reads channel metrics; the load
+// balancer then skips the per-candidate metrics fetch entirely.
+func NewLoadBalancer(metricsProvider ChannelMetricsProvider, selectionTracker ChannelSelectionTracker, strategies ...LoadBalanceStrategy) *LoadBalancer {
 	debug := strings.EqualFold(os.Getenv("AXONHUB_DEBUG_LOAD_BALANCER_ENABLED"), "true")
 
 	return &LoadBalancer{
 		strategies:       strategies,
-		systemService:    systemService,
+		metricsProvider:  metricsProvider,
 		selectionTracker: selectionTracker,
 		weightTieBreaker: true,
 		debug:            debug,
@@ -158,20 +166,21 @@ type candidateScore struct {
 	candidate *ChannelModelsCandidate
 	score     float64
 	index     int
+	metrics   *biz.AggregatedMetrics
 }
 
 // Sort sorts candidates according to the configured strategies.
-// Returns a new slice with top k candidates sorted by descending priority.
-// The top k value is calculated internally based on the retry policy.
-func (lb *LoadBalancer) Sort(ctx context.Context, candidates []*ChannelModelsCandidate, model string, stream bool) []*ChannelModelsCandidate {
-	return lb.sort(ctx, candidates, model, stream, true)
+// Returns a new slice with the top topK candidates sorted by descending priority.
+// A topK of zero or less, or one at least len(candidates), sorts every candidate.
+func (lb *LoadBalancer) Sort(ctx context.Context, candidates []*ChannelModelsCandidate, model string, stream bool, topK int) []*ChannelModelsCandidate {
+	return lb.sort(ctx, candidates, model, stream, topK, true)
 }
 
 // SortWithoutTracking sorts candidates without recording a channel selection.
 // It is used when a sticky candidate is already selected and the remaining
 // candidates are only fallbacks.
-func (lb *LoadBalancer) SortWithoutTracking(ctx context.Context, candidates []*ChannelModelsCandidate, model string, stream bool) []*ChannelModelsCandidate {
-	return lb.sort(ctx, candidates, model, stream, false)
+func (lb *LoadBalancer) SortWithoutTracking(ctx context.Context, candidates []*ChannelModelsCandidate, model string, stream bool, topK int) []*ChannelModelsCandidate {
+	return lb.sort(ctx, candidates, model, stream, topK, false)
 }
 
 // TrackSelection records a selected channel.
@@ -186,6 +195,7 @@ func (lb *LoadBalancer) sort(
 	candidates []*ChannelModelsCandidate,
 	model string,
 	stream bool,
+	topK int,
 	trackSelection bool,
 ) []*ChannelModelsCandidate {
 	if len(candidates) <= 1 {
@@ -196,8 +206,9 @@ func (lb *LoadBalancer) sort(
 	ctx = contextWithRequestedModel(ctx, model)
 	ctx = contextWithRequestStream(ctx, stream)
 
-	// Calculate topK based on retry policy
-	topK := lb.calculateTopK(ctx, candidates)
+	if topK <= 0 || topK >= len(candidates) {
+		topK = len(candidates)
+	}
 
 	// Use debug path if debug mode is enabled
 	debugEnabled := IsDebugEnabled(ctx)
@@ -219,16 +230,19 @@ func (lb *LoadBalancer) sortProduction(
 ) []*ChannelModelsCandidate {
 	scored := make([]candidateScore, len(candidates))
 	for i, c := range candidates {
+		metrics, _ := lb.channelMetrics(ctx, c.Channel)
+
 		totalScore := 0.0
 		// Apply all strategies
 		for _, strategy := range lb.strategies {
-			totalScore += strategy.Score(ctx, c.Channel)
+			totalScore += strategy.Score(ctx, c.Channel, metrics)
 		}
 
 		scored[i] = candidateScore{
 			candidate: c,
 			score:     totalScore,
 			index:     i,
+			metrics:   metrics,
 		}
 	}
 
@@ -302,7 +316,7 @@ func (lb *LoadBalancer) prioritizeHealthyRoundRobinScores(ctx context.Context, s
 			continue
 		}
 
-		if score.candidate != nil && score.candidate.Channel != nil && lb.roundRobinHealthFilter.IsUnhealthy(ctx, score.candidate.Channel) {
+		if lb.roundRobinHealthFilter.IsUnhealthy(score.metrics) {
 			unhealthy = append(unhealthy, score)
 			continue
 		}
@@ -332,13 +346,22 @@ func (lb *LoadBalancer) sortWithDebug(
 	// Calculate detailed scores for each candidate
 	decisions := make([]ChannelDecision, len(candidates))
 	for i, c := range candidates {
+		metrics, err := lb.channelMetrics(ctx, c.Channel)
+		if err != nil {
+			log.Warn(ctx, "failed to get channel metrics, strategies use neutral scores",
+				log.Int("channel_id", c.Channel.ID),
+				log.String("channel_name", c.Channel.Name),
+				log.Cause(err),
+			)
+		}
+
 		totalScore := 0.0
 		strategyScores := make([]StrategyScore, 0, len(lb.strategies))
 
 		// Apply all strategies and collect detailed scores
 		for _, strategy := range lb.strategies {
 			scoreStart := time.Now()
-			score, strategyScore := strategy.ScoreWithDebug(ctx, c.Channel)
+			score, strategyScore := strategy.ScoreWithDebug(ctx, c.Channel, metrics)
 			strategyScore.Duration = time.Since(scoreStart)
 			strategyScores = append(strategyScores, strategyScore)
 			totalScore += score
@@ -350,6 +373,7 @@ func (lb *LoadBalancer) sortWithDebug(
 			TotalScore:     totalScore,
 			StrategyScores: strategyScores,
 			FinalRank:      0, // Will be set after sorting
+			metrics:        metrics,
 		}
 	}
 
@@ -439,7 +463,7 @@ func (lb *LoadBalancer) prioritizeHealthyRoundRobinDecisions(ctx context.Context
 			continue
 		}
 
-		if decision.Channel != nil && lb.roundRobinHealthFilter.IsUnhealthy(ctx, decision.Channel) {
+		if lb.roundRobinHealthFilter.IsUnhealthy(decision.metrics) {
 			unhealthy = append(unhealthy, decision)
 			continue
 		}
@@ -451,36 +475,20 @@ func (lb *LoadBalancer) prioritizeHealthyRoundRobinDecisions(ctx context.Context
 	return append(result, hardUnavailable...)
 }
 
-// retryPolicy prefers the snapshot of the request being balanced, since the
-// load balancer is shared across requests.
-func (lb *LoadBalancer) retryPolicy(ctx context.Context) *biz.RetryPolicy {
-	if settings := requestSettingsFromContext(ctx); settings != nil {
-		return &settings.RetryPolicy
+// channelMetrics fetches the channel's metrics snapshot once so every strategy
+// scores the candidate from the same data. It returns nil metrics when the load
+// balancer has no metrics provider.
+func (lb *LoadBalancer) channelMetrics(ctx context.Context, channel *biz.Channel) (*biz.AggregatedMetrics, error) {
+	if lb.metricsProvider == nil || channel == nil {
+		return nil, nil
 	}
 
-	return lb.systemService.RetryPolicyOrDefault(ctx)
-}
-
-// calculateTopK determines how many candidates to select based on retry policy.
-func (lb *LoadBalancer) calculateTopK(ctx context.Context, candidates []*ChannelModelsCandidate) int {
-	retryPolicy := lb.retryPolicy(ctx)
-
-	// Calculate topK based on retry policy
-	// If retry is enabled, we need 1 + MaxChannelRetries candidates
-	// (1 for initial attempt + MaxChannelRetries for retries)
-	// If retry is disabled, we only need 1 candidate
-	topK := 1
-	if retryPolicy.Enabled {
-		topK = 1 + retryPolicy.MaxChannelRetries
+	metrics, err := lb.metricsProvider.GetChannelMetrics(ctx, channel.ID)
+	if err != nil {
+		return nil, err
 	}
 
-	// Normalize topK: if topK <= 0 or topK >= len(candidates), sort all
-	// This is to ensure we don't sort more candidates than available
-	if topK <= 0 || topK >= len(candidates) {
-		topK = len(candidates)
-	}
-
-	return topK
+	return metrics, nil
 }
 
 // logDecision logs the complete load balancing decision.
@@ -488,12 +496,9 @@ func (lb *LoadBalancer) logDecision(ctx context.Context, candidates []*ChannelMo
 	// Log summary
 	if len(decisions) > 0 {
 		topChannel := decisions[0]
-		retryPolicy := lb.retryPolicy(ctx)
 		log.Info(ctx, "Load balancing decision completed",
 			log.Int("total_channels", len(candidates)),
 			log.Int("selected_channels", topK),
-			log.Bool("retry_enabled", retryPolicy.Enabled),
-			log.Int("max_channel_retries", retryPolicy.MaxChannelRetries),
 			log.Duration("duration", totalDuration),
 			log.Int("top_channel_id", topChannel.Channel.ID),
 			log.String("top_channel_name", topChannel.Channel.Name),

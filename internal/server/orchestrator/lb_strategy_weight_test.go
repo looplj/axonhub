@@ -56,7 +56,7 @@ func TestWeightStrategy_Score(t *testing.T) {
 				},
 			}
 
-			score := strategy.Score(ctx, channel)
+			score := strategy.Score(ctx, channel, nil)
 			assert.GreaterOrEqual(t, score, tt.expectedMin)
 			assert.LessOrEqual(t, score, tt.expectedMax)
 		})
@@ -93,8 +93,8 @@ func TestWeightStrategy_ScoreConsistency(t *testing.T) {
 				},
 			}
 
-			score := strategy.Score(ctx, channel)
-			debugScore, _ := strategy.ScoreWithDebug(ctx, channel)
+			score := strategy.Score(ctx, channel, nil)
+			debugScore, _ := strategy.ScoreWithDebug(ctx, channel, nil)
 
 			assert.Equal(t, score, debugScore,
 				"Score and ScoreWithDebug must return identical scores for weight=%d", tc.weight)

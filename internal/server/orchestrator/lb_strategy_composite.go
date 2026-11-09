@@ -45,11 +45,11 @@ func (c *CompositeStrategy) WithWeights(weights ...float64) *CompositeStrategy {
 
 // Score combines all strategy scores with their weights.
 // Production path without debug logging.
-func (c *CompositeStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+func (c *CompositeStrategy) Score(ctx context.Context, channel *biz.Channel, metrics *biz.AggregatedMetrics) float64 {
 	totalScore := 0.0
 
 	for _, ws := range c.strategies {
-		score := ws.strategy.Score(ctx, channel)
+		score := ws.strategy.Score(ctx, channel, metrics)
 		totalScore += score * ws.weight
 	}
 
@@ -58,14 +58,14 @@ func (c *CompositeStrategy) Score(ctx context.Context, channel *biz.Channel) flo
 
 // ScoreWithDebug combines all strategy scores with detailed debug information.
 // Debug path with comprehensive logging.
-func (c *CompositeStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+func (c *CompositeStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel, metrics *biz.AggregatedMetrics) (float64, StrategyScore) {
 	totalScore := 0.0
 	details := map[string]any{}
 
 	strategies := make([]map[string]any, 0, len(c.strategies))
 
 	for _, ws := range c.strategies {
-		score, strategyScore := ws.strategy.ScoreWithDebug(ctx, channel)
+		score, strategyScore := ws.strategy.ScoreWithDebug(ctx, channel, metrics)
 		weightedScore := score * ws.weight
 		totalScore += weightedScore
 

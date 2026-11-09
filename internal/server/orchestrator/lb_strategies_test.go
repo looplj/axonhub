@@ -15,11 +15,11 @@ type mockStrategy struct {
 	score float64
 }
 
-func (m *mockStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+func (m *mockStrategy) Score(ctx context.Context, channel *biz.Channel, metrics *biz.AggregatedMetrics) float64 {
 	return m.score
 }
 
-func (m *mockStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+func (m *mockStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel, metrics *biz.AggregatedMetrics) (float64, StrategyScore) {
 	return m.score, StrategyScore{
 		StrategyName: m.name,
 		Score:        m.score,
@@ -34,14 +34,9 @@ func (m *mockStrategy) Name() string {
 // mockMetricsProvider is a mock implementation of ChannelMetricsProvider for testing.
 type mockMetricsProvider struct {
 	metrics map[int]*biz.AggregatedMetrics
-	err     error
 }
 
 func (m *mockMetricsProvider) GetChannelMetrics(ctx context.Context, channelID int) (*biz.AggregatedMetrics, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-
 	if metrics, ok := m.metrics[channelID]; ok {
 		return metrics, nil
 	}
@@ -59,14 +54,6 @@ func (m *mockMetricsProvider) IncrementChannelSelection(channelID int) {
 	metrics.RequestCount++
 	now := time.Now()
 	metrics.LastSelectedAt = &now
-}
-
-type mockRetryPolicyProvider struct {
-	policy *biz.RetryPolicy
-}
-
-func (m *mockRetryPolicyProvider) RetryPolicyOrDefault(ctx context.Context) *biz.RetryPolicy {
-	return m.policy
 }
 
 type mockSelectionTracker struct {

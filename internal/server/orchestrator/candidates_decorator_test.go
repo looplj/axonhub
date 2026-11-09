@@ -18,11 +18,11 @@ func TestDecoratorChain_FullStack(t *testing.T) {
 	systemService := newTestSystemService(client)
 
 	strategies := []LoadBalanceStrategy{
-		NewErrorAwareStrategy(channelService),
-		NewWeightRoundRobinStrategy(channelService),
-		NewLatencyAwareStrategy(channelService),
+		NewErrorAwareStrategy(),
+		NewWeightRoundRobinStrategy(),
+		NewLatencyAwareStrategy(),
 	}
-	loadBalancer := NewLoadBalancer(systemService, nil, strategies...)
+	loadBalancer := NewLoadBalancer(channelService, nil, strategies...)
 
 	// Build decorator chain: Default -> SelectedChannels -> LoadBalanced
 	modelService := newTestModelService(client)
