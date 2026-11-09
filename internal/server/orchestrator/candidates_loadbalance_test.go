@@ -98,7 +98,7 @@ func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 	channelService := newTestChannelServiceForChannels(client)
 	systemService := newTestSystemService(client)
 	requestService := newTestRequestServiceForChannels(client, systemService)
-	require.NoError(t, requestService.UpdateRequestChannelID(ctx, stickyRequest.ID, channels[1].ID))
+	requestService.AssignRequestChannel(ctx, stickyRequest, channels[1].ID)
 
 	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
 

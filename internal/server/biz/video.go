@@ -53,7 +53,7 @@ func (s *VideoService) GetTask(ctx context.Context, requestID int) (*llm.Respons
 	status := mapVideoStatusToRequestStatus(video.Video.Status)
 
 	// Always store the latest response snapshot.
-	if err := s.RequestService.UpdateRequestStatusExternalIDAndResponseBody(ctx, requestID, status, task.ExternalID, video.Video, nil); err != nil {
+	if err := s.RequestService.UpdateRequestStatusExternalIDAndResponseBody(ctx, task, status, task.ExternalID, video.Video, nil); err != nil {
 		// non-fatal: return data anyway
 	}
 

@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,8 +16,8 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-// The status and finalize writers read only metadata columns and do not read the updated row
-// back; this checks they still persist every field and leave the stored payloads intact.
+// Finalize writers persist response metadata and chunks together while leaving
+// the original request payload intact.
 func TestRequestWritersPreservePayloadColumns(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:request-metadata-writes?mode=memory&_fk=0")
 	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
@@ -43,14 +44,17 @@ func TestRequestWritersPreservePayloadColumns(t *testing.T) {
 		SaveX(ctx)
 
 	chunks := []*httpclient.StreamEvent{{Type: "message", Data: []byte(`{"delta":"hi"}`)}}
-	require.NoError(t, svc.SaveRequestExecutionChunks(ctx, execution.ID, chunks))
-	require.NoError(t, svc.SaveRequestChunks(ctx, req.ID, chunks))
+
+	// The channel is assigned in memory at selection and persisted by the terminal update.
+	svc.AssignRequestChannel(ctx, req, 7)
+	require.Zero(t, client.Request.GetX(ctx, req.ID).ChannelID)
 
 	response := map[string]any{"id": "resp-1"}
+	headers := http.Header{"Content-Type": {"application/json"}, "Authorization": {"Bearer secret"}}
 	require.NoError(t, svc.UpdateRequestExecutionFinalized(
-		ctx, execution.ID, requestexecution.StatusCompleted, "", "ext-1", response, nil, "upstream-model",
+		ctx, execution, requestexecution.StatusCompleted, "", "ext-1", response, nil, "upstream-model", headers, chunks...,
 	))
-	require.NoError(t, svc.UpdateRequestFinalized(ctx, req.ID, request.StatusCompleted, "ext-1", response, nil))
+	require.NoError(t, svc.UpdateRequestFinalized(ctx, req, request.StatusCompleted, "ext-1", response, nil, chunks...))
 
 	gotExecution := client.RequestExecution.GetX(ctx, execution.ID)
 	require.Equal(t, requestexecution.StatusCompleted, gotExecution.Status)
@@ -59,6 +63,7 @@ func TestRequestWritersPreservePayloadColumns(t *testing.T) {
 	require.JSONEq(t, requestBody, string(gotExecution.RequestBody))
 	require.JSONEq(t, `{"id":"resp-1"}`, string(gotExecution.ResponseBody))
 	require.NotEmpty(t, gotExecution.ResponseChunks)
+	require.JSONEq(t, `{"Content-Type":["application/json"],"Authorization":["******"]}`, string(gotExecution.ResponseHeaders))
 
 	gotRequest := client.Request.GetX(ctx, req.ID)
 	require.Equal(t, request.StatusCompleted, gotRequest.Status)
@@ -66,6 +71,7 @@ func TestRequestWritersPreservePayloadColumns(t *testing.T) {
 	require.JSONEq(t, requestBody, string(gotRequest.RequestBody))
 	require.JSONEq(t, `{"id":"resp-1"}`, string(gotRequest.ResponseBody))
 	require.NotEmpty(t, gotRequest.ResponseChunks)
+	require.Equal(t, 7, gotRequest.ChannelID)
 
 	require.NoError(t, svc.UpdateRequestStatus(ctx, req.ID, request.StatusFailed))
 	require.Equal(t, request.StatusFailed, client.Request.GetX(ctx, req.ID).Status)

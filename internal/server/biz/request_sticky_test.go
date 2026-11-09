@@ -114,7 +114,7 @@ func TestRequestService_PreviousChannelIsCachedAtSelection(t *testing.T) {
 	threadEntity, traceEntity, channelEntity := createRequestStickyScope(t, ctx, client)
 	req := createStickyRequest(t, ctx, client, traceEntity.ID, channelEntity.ID, request.StatusProcessing, time.Now())
 
-	require.NoError(t, service.UpdateRequestChannelID(ctx, req.ID, channelEntity.ID))
+	service.AssignRequestChannel(ctx, req, channelEntity.ID)
 
 	channelID, err := service.GetPreviousChannelID(ctx, traceEntity.ID)
 	require.NoError(t, err)
@@ -153,7 +153,7 @@ func TestRequestService_PreviousChannelUsesRedisCache(t *testing.T) {
 	threadEntity, traceEntity, channelEntity := createRequestStickyScope(t, ctx, client)
 	req := createStickyRequest(t, ctx, client, traceEntity.ID, channelEntity.ID, request.StatusProcessing, time.Now())
 
-	require.NoError(t, service.UpdateRequestChannelID(ctx, req.ID, channelEntity.ID))
+	service.AssignRequestChannel(ctx, req, channelEntity.ID)
 	require.True(t, mr.Exists(buildPreviousTraceChannelCacheKey(traceEntity.ID)))
 	require.True(t, mr.Exists(buildPreviousThreadChannelCacheKey(threadEntity.ID)))
 	require.Equal(t, 30*time.Minute, mr.TTL(buildPreviousTraceChannelCacheKey(traceEntity.ID)))

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"syscall"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -83,10 +84,12 @@ func ClassifyUpstreamTransportError(err error) error {
 func persistRequestExecutionFailure(
 	ctx context.Context,
 	requestService *biz.RequestService,
-	executionID int,
+	execution *ent.RequestExecution,
 	rawErr error,
 	metrics *biz.LatencyMetrics,
 	upstreamModelID string,
+	responseHeaders http.Header,
+	chunks ...*httpclient.StreamEvent,
 ) error {
 	status := requestexecution.StatusFailed
 	if errors.Is(rawErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
@@ -97,11 +100,12 @@ func persistRequestExecutionFailure(
 
 	return requestService.UpdateRequestExecutionStatusWithMetrics(
 		ctx,
-		executionID,
+		execution,
 		status,
 		ExtractErrorMessage(failure),
 		ExtractErrorInfo(failure),
 		metrics,
 		upstreamModelID,
+		responseHeaders, chunks...,
 	)
 }

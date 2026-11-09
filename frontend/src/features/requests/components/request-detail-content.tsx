@@ -385,7 +385,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                 <span className='text-xs font-medium'>{t('requests.columns.channel')}</span>
               </div>
               <p className='bg-background rounded border px-2 py-0.5 font-mono text-xs'>
-                {request.channel?.name || t('requests.columns.unknown')}
+                {request.channel?.name || executions?.edges?.[0]?.node?.channel?.name || t('requests.columns.unknown')}
               </p>
             </div>
 
