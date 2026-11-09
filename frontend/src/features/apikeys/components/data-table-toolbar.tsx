@@ -8,7 +8,7 @@ import { DateRangePicker } from '@/components/date-range-picker';
 import type { DateTimeRangeValue } from '@/utils/date-range';
 import { formatUserName } from '@/lib/utils';
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
-import { useUsers } from '@/features/users/data/users';
+import { useApiKeyCreators } from '../data/creator-options';
 import { ApiKeyStatus } from '../data/schema';
 
 interface DataTableToolbarProps<TData> {
@@ -30,15 +30,7 @@ export function DataTableToolbar<TData>({
   const hasDateRange = !!dateRange?.from || !!dateRange?.to;
   const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange;
 
-  const { data: usersData } = useUsers(
-    {
-      first: 100,
-      orderBy: { field: 'CREATED_AT', direction: 'DESC' },
-    },
-    {
-      disableAutoFetch: !canViewCreators,
-    }
-  );
+  const { data: usersData } = useApiKeyCreators(canViewCreators);
 
   const userOptions = useMemo(() => {
     if (!canViewCreators || !usersData?.edges) return [];

@@ -66,10 +66,6 @@ function buildTraceDetailQuery() {
             totalCachedTokens
             totalCachedWriteTokens
           }
-          project {
-            id
-            name
-          }
           thread {
             id
             threadID
@@ -100,10 +96,6 @@ function buildTraceWithRequestTracesQuery() {
             totalCost
             totalCachedTokens
             totalCachedWriteTokens
-          }
-          project {
-            id
-            name
           }
           thread {
             id
