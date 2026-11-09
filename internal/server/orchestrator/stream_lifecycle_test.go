@@ -20,126 +20,6 @@ type lifecycleTailStream struct {
 	index  int
 }
 
-type blockingLifecycleTailStream struct {
-	closed      chan struct{}
-	readerDone  chan struct{}
-	enteredNext chan struct{}
-	enteredOnce sync.Once
-	activeNext  atomic.Int32
-	concurrent  atomic.Bool
-	closeOnce   atomic.Bool
-	current     *httpclient.StreamEvent
-}
-
-type orderedLifecycleTailStream struct {
-	readerDone <-chan struct{}
-	sawEarly   atomic.Bool
-}
-
-type budgetAbortTailStream struct {
-	closeCalled chan struct{}
-	nextCalls   atomic.Int32
-	closeOnce   sync.Once
-}
-
-type blockedTailAfterReaderStream struct {
-	closed    chan struct{}
-	entered   chan struct{}
-	nextDone  chan struct{}
-	nextCalls atomic.Int32
-	closeOnce sync.Once
-}
-
-func (s *blockedTailAfterReaderStream) Next() bool {
-	s.nextCalls.Add(1)
-	close(s.entered)
-	<-s.closed
-	close(s.nextDone)
-	return false
-}
-
-func (s *blockedTailAfterReaderStream) Current() *httpclient.StreamEvent { return nil }
-func (s *blockedTailAfterReaderStream) Err() error                       { return context.Canceled }
-func (s *blockedTailAfterReaderStream) Close() error {
-	s.closeOnce.Do(func() { close(s.closed) })
-	return nil
-}
-
-func (s *budgetAbortTailStream) Next() bool {
-	s.nextCalls.Add(1)
-	return true
-}
-
-func (s *budgetAbortTailStream) Current() *httpclient.StreamEvent {
-	return &httpclient.StreamEvent{Data: []byte{1}}
-}
-
-func (s *budgetAbortTailStream) Err() error { return nil }
-func (s *budgetAbortTailStream) Close() error {
-	s.closeOnce.Do(func() { close(s.closeCalled) })
-	return nil
-}
-
-type delayedLifecycleTailStream struct {
-	release     chan struct{}
-	closeCalled chan struct{}
-	readerDone  chan struct{}
-	closeOnce   sync.Once
-	readOnce    sync.Once
-}
-
-func (s *delayedLifecycleTailStream) Next() bool {
-	<-s.release
-	s.readOnce.Do(func() { close(s.readerDone) })
-	return false
-}
-
-func (s *delayedLifecycleTailStream) Current() *httpclient.StreamEvent { return nil }
-func (s *delayedLifecycleTailStream) Err() error                       { return context.Canceled }
-func (s *delayedLifecycleTailStream) Close() error {
-	s.closeOnce.Do(func() { close(s.closeCalled) })
-	return nil
-}
-
-func (s *orderedLifecycleTailStream) Next() bool {
-	select {
-	case <-s.readerDone:
-	default:
-		s.sawEarly.Store(true)
-	}
-	return false
-}
-
-func (s *orderedLifecycleTailStream) Current() *httpclient.StreamEvent { return nil }
-func (s *orderedLifecycleTailStream) Err() error                       { return nil }
-func (s *orderedLifecycleTailStream) Close() error                     { return nil }
-
-func newBlockingLifecycleTailStream() *blockingLifecycleTailStream {
-	return &blockingLifecycleTailStream{closed: make(chan struct{}), readerDone: make(chan struct{}), enteredNext: make(chan struct{})}
-}
-
-func (s *blockingLifecycleTailStream) Next() bool {
-	s.enteredOnce.Do(func() { close(s.enteredNext) })
-	if s.activeNext.Add(1) != 1 {
-		s.concurrent.Store(true)
-	}
-	defer s.activeNext.Add(-1)
-	<-s.closed
-	close(s.readerDone)
-	return false
-}
-
-func (s *blockingLifecycleTailStream) Current() *httpclient.StreamEvent { return s.current }
-func (s *blockingLifecycleTailStream) Err() error                       { return context.Canceled }
-func (s *blockingLifecycleTailStream) Close() error {
-	if s.closeOnce.CompareAndSwap(false, true) {
-		close(s.closed)
-	}
-	return nil
-}
-
-func (s *blockingLifecycleTailStream) concurrentNext() bool { return s.concurrent.Load() }
-
 func (s *lifecycleTailStream) Next() bool {
 	if s.index == len(s.events) {
 		return false
@@ -151,6 +31,68 @@ func (s *lifecycleTailStream) Next() bool {
 func (s *lifecycleTailStream) Current() *httpclient.StreamEvent { return s.events[s.index-1] }
 func (s *lifecycleTailStream) Err() error                       { return nil }
 func (s *lifecycleTailStream) Close() error                     { return nil }
+
+type sourceCloseProbeStream struct {
+	streams.Stream[*httpclient.StreamEvent]
+
+	calls   atomic.Int32
+	entered chan struct{}
+	release chan struct{}
+	err     error
+	once    sync.Once
+}
+
+func (s *sourceCloseProbeStream) Close() error {
+	s.calls.Add(1)
+	s.once.Do(func() { close(s.entered) })
+	<-s.release
+	return s.err
+}
+
+func TestStreamDeliverySourceCloseSerializesAbortAndFinalization(t *testing.T) {
+	closeErr := errors.New("source close failed")
+	source := &sourceCloseProbeStream{
+		entered: make(chan struct{}), release: make(chan struct{}), err: closeErr,
+	}
+	attempt := &OutboundPersistentStream{stream: source}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(source.release) }) }
+	defer release()
+
+	aborted := make(chan struct{})
+	context.AfterFunc(ctx, func() {
+		attempt.abortSource()
+		close(aborted)
+	})
+	cancel()
+	<-source.entered
+
+	const callers = 8
+	results := make(chan error, callers)
+	for range callers {
+		context.AfterFunc(ctx, func() { results <- attempt.closeSource() })
+	}
+	select {
+	case <-aborted:
+		t.Fatal("abort returned before source cleanup completed")
+	case <-results:
+		t.Fatal("close returned before source cleanup completed")
+	case <-time.After(20 * time.Millisecond):
+	}
+
+	release()
+	<-aborted
+	for range callers {
+		if err := <-results; !errors.Is(err, closeErr) {
+			t.Fatalf("close error = %v, want %v", err, closeErr)
+		}
+	}
+	if got := source.calls.Load(); got != 1 {
+		t.Fatalf("source Close calls = %d, want 1", got)
+	}
+}
 
 func TestStreamDeliveryCancelRace(t *testing.T) {
 	t.Run("cancel before acknowledgement cannot promote", func(t *testing.T) {
@@ -185,11 +127,8 @@ func TestStreamDeliveryCancelRace(t *testing.T) {
 	t.Run("successful terminal write remains acknowledged after cancellation", func(t *testing.T) {
 		downstream, cancel := context.WithCancel(context.Background())
 		owner, _ := newStreamLifecycle(downstream)
-		owner.stopOnce.Do(func() { close(owner.stopWatch) })
-		select {
-		case <-owner.done:
-		case <-time.After(time.Second):
-			t.Fatal("lifecycle watcher did not stop")
+		if !owner.stopDownstream() {
+			t.Fatal("downstream watcher already fired")
 		}
 		cancel()
 		owner.AcknowledgeDelivery()
@@ -278,235 +217,6 @@ func TestStreamDeliveryTail(t *testing.T) {
 	})
 }
 
-func TestStreamDeliveryTailOwnerBudgetAbortsSourceBeforeFinalizing(t *testing.T) {
-	source := &budgetAbortTailStream{closeCalled: make(chan struct{})}
-	finalized := make(chan llm.SourceEndReason, 1)
-	owner := &streamTailOwner{
-		source: source,
-		readerDone: func() <-chan struct{} {
-			return closedChannel()
-		}(),
-		abort: func() { _ = source.Close() },
-		finalize: func(end llm.SourceEndReason) error {
-			finalized <- end
-			return nil
-		},
-		done: make(chan struct{}),
-	}
-	owner.run(context.Background(), context.Canceled)
-
-	if source.nextCalls.Load() != streamTailEventLimit {
-		t.Fatalf("Next calls = %d, want %d", source.nextCalls.Load(), streamTailEventLimit)
-	}
-	select {
-	case <-source.closeCalled:
-	default:
-		t.Fatal("budget did not abort source")
-	}
-	if got := <-finalized; got != llm.SourceEndBudget {
-		t.Fatalf("finalized source end = %q, want budget", got)
-	}
-}
-
-func TestStreamDeliveryTailOwnerSourceEndReasons(t *testing.T) {
-	for _, scenario := range []struct {
-		name      string
-		sourceEnd func() llm.SourceEndReason
-		want      llm.SourceEndReason
-	}{
-		{name: "clean eof", want: llm.SourceEndCleanEOF},
-		{name: "semantic end", sourceEnd: func() llm.SourceEndReason { return llm.SourceEndSemantic }, want: llm.SourceEndSemantic},
-	} {
-		t.Run(scenario.name, func(t *testing.T) {
-			finalized := make(chan llm.SourceEndReason, 1)
-			owner := &streamTailOwner{
-				source:     &lifecycleTailStream{},
-				readerDone: closedChannel(),
-				sourceEnd:  scenario.sourceEnd,
-				finalize: func(end llm.SourceEndReason) error {
-					finalized <- end
-					return nil
-				},
-				done: make(chan struct{}),
-			}
-			owner.run(context.Background(), nil)
-			if got := <-finalized; got != scenario.want {
-				t.Fatalf("finalized source end = %q, want %q", got, scenario.want)
-			}
-		})
-	}
-}
-
-func TestStreamDeliveryTailOwnerAbortsBlockedNextBeforeFinalizing(t *testing.T) {
-	for _, name := range []string{"deadline", "shutdown"} {
-		t.Run(name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			source := &blockedTailAfterReaderStream{
-				closed: make(chan struct{}), entered: make(chan struct{}), nextDone: make(chan struct{}),
-			}
-			finalized := make(chan llm.SourceEndReason, 1)
-			owner := &streamTailOwner{
-				source:     source,
-				readerDone: closedChannel(),
-				abort:      func() { _ = source.Close() },
-				finalize: func(end llm.SourceEndReason) error {
-					finalized <- end
-					return nil
-				},
-				done: make(chan struct{}),
-			}
-			go owner.run(ctx, nil)
-			<-source.entered
-			cancel()
-			select {
-			case <-source.closed:
-			case <-time.After(time.Second):
-				t.Fatal("blocked Next was not aborted")
-			}
-			select {
-			case <-finalized:
-			case <-time.After(time.Second):
-				t.Fatal("tail owner did not finalize")
-			}
-			select {
-			case <-source.nextDone:
-			default:
-				t.Fatal("finalized before blocked Next returned")
-			}
-			if got := source.nextCalls.Load(); got != 1 {
-				t.Fatalf("Next calls = %d, want 1", got)
-			}
-		})
-	}
-}
-
-func closedChannel() <-chan struct{} {
-	channel := make(chan struct{})
-	close(channel)
-	return channel
-}
-
-func TestStreamDeliveryLifecycleTailOwner(t *testing.T) {
-	downstream, cancel := context.WithCancel(context.Background())
-	owner, execution := newStreamLifecycle(downstream)
-	source := newBlockingLifecycleTailStream()
-	finalized := make(chan llm.SourceEndReason, 1)
-	owner.registerTailOwner(&streamTailOwner{
-		source:     source,
-		readerDone: closedChannel(),
-		abort:      func() { _ = source.Close() },
-		finalize: func(end llm.SourceEndReason) error {
-			finalized <- end
-			return nil
-		},
-		done: make(chan struct{}),
-	})
-	owner.AcknowledgeDelivery()
-	cancel()
-	owner.Close()
-
-	select {
-	case <-finalized:
-	case <-time.After(time.Second):
-		t.Fatal("tail owner did not finalize")
-	}
-	select {
-	case <-execution.Done():
-		t.Fatal("client cancellation canceled acknowledged execution")
-	default:
-	}
-	if source.concurrentNext() {
-		t.Fatal("tail owner called Next concurrently")
-	}
-}
-
-func TestStreamDeliveryRetryWaitsForPendingAccounting(t *testing.T) {
-	downstream := t.Context()
-	lifecycleOwner, _ := newStreamLifecycle(downstream)
-	releaseAccounting := make(chan struct{})
-	accountingStarted := make(chan struct{})
-	tail := &streamTailOwner{
-		source:     &lifecycleTailStream{},
-		readerDone: closedChannel(),
-		finalize: func(llm.SourceEndReason) error {
-			close(accountingStarted)
-			<-releaseAccounting
-			return nil
-		},
-		done: make(chan struct{}),
-	}
-	lifecycleOwner.registerTailOwner(tail)
-	lifecycleOwner.startTail(tail, nil)
-	<-accountingStarted
-
-	retryReady := make(chan struct{})
-	go func() {
-		lifecycleOwner.waitForAccounting()
-		close(retryReady)
-	}()
-
-	select {
-	case <-retryReady:
-		t.Fatal("retry proceeded before pending accounting completed")
-	case <-time.After(50 * time.Millisecond):
-	}
-
-	close(releaseAccounting)
-	select {
-	case <-retryReady:
-	case <-time.After(time.Second):
-		t.Fatal("retry did not wait for accounting completion")
-	}
-
-	lifecycleOwner.Close()
-}
-
-func TestStreamDeliveryUnacknowledgedCloseWaitsForReaderBeforeFinalizing(t *testing.T) {
-	// Given: an unacknowledged lifecycle owns a source whose reader is still active.
-	downstream := t.Context()
-	owner, _ := newStreamLifecycle(downstream)
-	source := &delayedLifecycleTailStream{
-		release:     make(chan struct{}),
-		closeCalled: make(chan struct{}),
-		readerDone:  make(chan struct{}),
-	}
-	finalized := make(chan struct{})
-	closeDone := make(chan struct{})
-	go source.Next()
-	owner.registerTailOwner(&streamTailOwner{
-		source:     source,
-		readerDone: source.readerDone,
-		abort:      func() { _ = source.Close() },
-		finalize:   func(llm.SourceEndReason) error { close(finalized); return nil },
-		done:       make(chan struct{}),
-	})
-
-	// When
-	go func() {
-		owner.Close()
-		close(closeDone)
-	}()
-
-	// Then: finalization is ordered after the source reader has quiesced.
-	select {
-	case <-source.closeCalled:
-	case <-finalized:
-		t.Fatal("lifecycle finalized before the reader quiesced")
-	}
-	select {
-	case <-finalized:
-		t.Fatal("lifecycle finalized before the reader quiesced")
-	default:
-	}
-	close(source.release)
-	<-closeDone
-	select {
-	case <-finalized:
-	default:
-		t.Fatal("lifecycle did not finalize after the reader quiesced")
-	}
-}
-
 func TestStreamDeliveryLifecycleShutdownCancelsAcknowledgedExecution(t *testing.T) {
 	manager := lifecycle.New()
 	downstream := t.Context()
@@ -549,102 +259,46 @@ func TestPassThroughCloseKeepsRawSourceForTail(t *testing.T) {
 	}
 }
 
-func TestStreamDeliveryTailOwnerWaitsForReader(t *testing.T) {
-	readerDone := make(chan struct{})
-	source := &orderedLifecycleTailStream{readerDone: readerDone}
-	owner := &streamTailOwner{
-		source:     source,
-		readerDone: readerDone,
-		abort:      func() { close(readerDone) },
-		finalize:   func(llm.SourceEndReason) error { return nil },
-		done:       make(chan struct{}),
-	}
-	owner.run(context.Background(), context.Canceled)
-	if source.sawEarly.Load() {
-		t.Fatal("tail reader started before consumer quiescence")
-	}
-}
+// Both entry points must release a reader even when the source ignores context
+// cancellation. A watchdog makes removing the abort callback fail, not hang.
+func TestStreamDeliverySilentTail(t *testing.T) {
+	for _, disconnect := range []bool{false, true} {
+		name := "close"
+		if disconnect {
+			name = "disconnect_before_close"
+		}
+		t.Run(name, func(t *testing.T) {
+			downstream, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			owner, ctx := newStreamLifecycle(downstream)
+			source := newBlockingStream()
+			attempt := &OutboundPersistentStream{ctx: ctx, stream: source, lifecycle: owner}
+			owner.trackAttempt(attempt)
+			owner.AcknowledgeDelivery()
+			defer func() { owner.trackAttempt(nil); owner.Close() }()
 
-// handoffProbeTailStream records whether the tail entered the raw source, so a
-// handoff test can prove the consumer barrier — not just the in-flight reader —
-// gates the tail's first read.
-type handoffProbeTailStream struct {
-	entered     chan struct{}
-	enteredOnce sync.Once
-	release     chan struct{}
-	activeNext  atomic.Int32
-	concurrent  atomic.Bool
-}
-
-func (s *handoffProbeTailStream) Next() bool {
-	if s.activeNext.Add(1) != 1 {
-		s.concurrent.Store(true)
-	}
-	defer s.activeNext.Add(-1)
-	s.enteredOnce.Do(func() { close(s.entered) })
-	<-s.release
-	return false
-}
-
-func (s *handoffProbeTailStream) Current() *httpclient.StreamEvent { return nil }
-func (s *handoffProbeTailStream) Err() error                       { return context.Canceled }
-func (s *handoffProbeTailStream) Close() error                     { return nil }
-func (s *handoffProbeTailStream) concurrentNext() bool             { return s.concurrent.Load() }
-
-// TestStreamDeliveryTailOwnerWaitsForConsumerQuiescence locks the handoff
-// contract: the tail owner must await both the consumer barrier and the
-// in-flight reader. Awaiting only the in-flight reader lets the tail call Next
-// on the raw source while the consumer sits between Next and Current, which can
-// skip or duplicate the trailing usage event that accounting depends on.
-func TestStreamDeliveryTailOwnerWaitsForConsumerQuiescence(t *testing.T) {
-	consumerDone := make(chan struct{})
-	activeReader := make(chan struct{})
-	close(activeReader) // the in-flight read has already returned
-	source := &handoffProbeTailStream{
-		entered: make(chan struct{}),
-		release: make(chan struct{}),
-	}
-	finalized := make(chan llm.SourceEndReason, 1)
-	owner := &streamTailOwner{
-		source:         source,
-		readerDone:     consumerDone,
-		readerDoneFunc: func() <-chan struct{} { return activeReader },
-		abort:          func() { _ = source.Close() },
-		finalize: func(end llm.SourceEndReason) error {
-			finalized <- end
-			return nil
-		},
-		done: make(chan struct{}),
-	}
-
-	tailCtx, cancelTail := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancelTail()
-	go owner.run(tailCtx, nil)
-
-	// Then: the consumer still owns the source, so the tail must not read it.
-	select {
-	case <-source.entered:
-		t.Fatalf("tail read the raw source before the consumer quiesced")
-	case <-time.After(100 * time.Millisecond):
-	}
-	if source.concurrentNext() {
-		t.Fatal("tail read the raw source concurrently with the consumer")
-	}
-
-	// When: the consumer finishes iterating.
-	close(consumerDone)
-	select {
-	case <-source.entered:
-	case <-time.After(2 * time.Second):
-		t.Fatal("tail did not read the source after the consumer quiesced")
-	}
-	close(source.release)
-	select {
-	case <-finalized:
-	case <-time.After(2 * time.Second):
-		t.Fatal("tail did not finalize")
-	}
-	if source.concurrentNext() {
-		t.Fatal("tail read the raw source concurrently with the consumer")
+			var watchdogFired atomic.Bool
+			watchdog := time.AfterFunc(3*streamTailTimeout, func() {
+				watchdogFired.Store(true)
+				attempt.abortSource()
+			})
+			defer watchdog.Stop()
+			if disconnect {
+				cancel()
+				if attempt.Next() {
+					t.Fatal("silent source yielded an event")
+				}
+				if ctx.Err() != nil {
+					t.Fatal("disconnect canceled acknowledged execution")
+				}
+			}
+			attempt.collectTail()
+			if watchdogFired.Load() {
+				t.Fatal("tail budget failed to release blocked Next")
+			}
+			if attempt.sourceEnd != llm.SourceEndCanceled {
+				t.Fatalf("source end = %q, want canceled", attempt.sourceEnd)
+			}
+		})
 	}
 }

@@ -84,6 +84,7 @@ When pass-through applies to a streaming attempt (same API format on both sides,
 - `applyPassThroughStream` consumes the transformed inbound stream event by event, so LLM middlewares, persistence, and terminal tracking run exactly as without pass-through, and after each transformed event emits the raw events recorded so far, in order.
 - Everything runs on the consumer's goroutine. Raw events the transformer drops (for example Anthropic `ping`) reach the client with the next transformed event.
 - Raw events retained before the first client read (pipeline pre-read) are bounded by count and bytes; exceeding the budget fails the attempt with a retryable pre-commit error.
+- `OutboundPersistentStream.Close` releases the raw source on the consumer's goroutine after it stops reading. Once delivery is acknowledged, it first reads the remaining events within the tail budget (1s, 256 events, 1 MiB) so trailing usage is still accounted. If the client disconnects after acknowledgement, the same budget aborts the source so a reader blocked on a silent upstream is released.
 
 ## Candidate Selection Stage
 
