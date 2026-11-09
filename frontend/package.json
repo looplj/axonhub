@@ -113,7 +113,7 @@
     "@vitejs/plugin-react-swc": "^4.3.3",
     "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^9.29.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^16.2.0",
     "husky": "^9.1.7",
