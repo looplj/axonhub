@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/lifecycle"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
 )
 
 type lifecycleTailStream struct {
@@ -522,22 +523,29 @@ func TestStreamDeliveryLifecycleShutdownCancelsAcknowledgedExecution(t *testing.
 	owner.Close()
 }
 
-func TestPassThroughDetachKeepsRawOwner(t *testing.T) {
-	var detached atomic.Bool
-	var canceled atomic.Bool
-	stream := &passThroughChannelStream{
-		ch:     make(chan *httpclient.StreamEvent),
-		detach: func() { detached.Store(true) },
-		cancel: func() { canceled.Store(true) },
-	}
+type closeProbeStream struct {
+	streams.Stream[*httpclient.StreamEvent]
+
+	closed atomic.Bool
+}
+
+func (s *closeProbeStream) Close() error {
+	s.closed.Store(true)
+	return nil
+}
+
+func TestPassThroughCloseKeepsRawSourceForTail(t *testing.T) {
+	transformed := &closeProbeStream{Stream: streams.SliceStream[*httpclient.StreamEvent](nil)}
+	raw := &closeProbeStream{Stream: streams.SliceStream[*httpclient.StreamEvent](nil)}
+	stream := &passThroughStream{transformed: transformed, recorder: &rawEventRecorder{source: raw}}
 	if err := stream.Close(); err != nil {
 		t.Fatalf("close pass-through stream: %v", err)
 	}
-	if !detached.Load() {
-		t.Fatal("client branch did not detach")
+	if !transformed.closed.Load() {
+		t.Fatal("client branch did not close the transformed stream")
 	}
-	if canceled.Load() {
-		t.Fatal("client branch canceled the raw owner")
+	if raw.closed.Load() {
+		t.Fatal("client branch closed the raw source before tail accounting")
 	}
 }
 

@@ -98,11 +98,8 @@ func TestStreamDeliveryIntegration_PassThroughPreservesDeliveryGate(t *testing.T
 	downstream, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	owner, execution := newStreamLifecycle(downstream)
-	raw := &passThroughChannelStream{
-		ctx: execution,
-		ch:  closedEventChannel(&httpclient.StreamEvent{Data: []byte("raw terminal")}),
-	}
-	wrapped := withPassThroughDeliveryGate(raw, owner)
+	raw := streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte("raw terminal")}})
+	wrapped := withPassThroughDelivery(execution, streams.SliceStream[*httpclient.StreamEvent](nil), raw)
 	delivery, ok := wrapped.(streams.DeliveryAcknowledger)
 	require.True(t, ok)
 
@@ -112,13 +109,6 @@ func TestStreamDeliveryIntegration_PassThroughPreservesDeliveryGate(t *testing.T
 	// Then: raw pass-through acknowledges the shared lifecycle, not a second gate.
 	require.True(t, delivery.DeliveryAcknowledged())
 	require.True(t, owner.DeliveryAcknowledged())
-}
-
-func closedEventChannel(event *httpclient.StreamEvent) <-chan *httpclient.StreamEvent {
-	ch := make(chan *httpclient.StreamEvent, 1)
-	ch <- event
-	close(ch)
-	return ch
 }
 
 func TestStreamDeliveryIntegration_ConvertedResponsesAndAnthropicOrdering(t *testing.T) {

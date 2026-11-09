@@ -37,6 +37,7 @@ This architecture provides:
 - **`prompt.go`** - Prompt injection logic for projects and models
 - **`quota.go`** - API key quota enforcement middleware
 - **`override.go`** - Request body and header override middleware with template support
+- **`pass_through.go`** - Request body, header, and response pass-through when inbound and outbound API formats match (see [Stream Pass-Through](#stream-pass-through))
 - **`model_circuit_breaker.go`** - Circuit breaker tracker for specific models on channels
 - **`tester.go`** - Testing utilities
 
@@ -74,6 +75,15 @@ This architecture provides:
 
 - **`load-balancing.md`** - Detailed load balancing documentation
 - **`README.md`** - This file
+
+## Stream Pass-Through
+
+When pass-through applies to a streaming attempt (same API format on both sides, or the Responses identity and transport adaptations), the client receives the provider's raw events instead of re-encoded ones:
+
+- `captureRawProviderStream` wraps the provider stream in a `rawEventRecorder` that retains every raw event the outbound transformer reads.
+- `applyPassThroughStream` consumes the transformed inbound stream event by event, so LLM middlewares, persistence, and terminal tracking run exactly as without pass-through, and after each transformed event emits the raw events recorded so far, in order.
+- Everything runs on the consumer's goroutine. Raw events the transformer drops (for example Anthropic `ping`) reach the client with the next transformed event.
+- Raw events retained before the first client read (pipeline pre-read) are bounded by count and bytes; exceeding the budget fails the attempt with a retryable pre-commit error.
 
 ## Candidate Selection Stage
 
