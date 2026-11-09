@@ -84,7 +84,7 @@ export function useRoles(
     ...variables,
     where: {
       ...variables.where,
-      projectID: 'gid://axonhub/Project/0', // Only system roles (projectID = 0)
+      level: 'system',
     },
     orderBy: variables.orderBy || { field: 'CREATED_AT', direction: 'DESC' },
   };

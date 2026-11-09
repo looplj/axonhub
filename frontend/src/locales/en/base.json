@@ -314,6 +314,8 @@
   "price.schedule.weekdays.7": "Sun",
   "scopes.read_channels": "View channels/models",
   "scopes.write_channels": "Manage channels/models",
+  "scopes.read_data_storages": "View data storages",
+  "scopes.write_data_storages": "Manage data storages",
   "scopes.read_prompts": "View prompts",
   "scopes.write_prompts": "Manage prompts",
   "scopes.read_users": "View user information",

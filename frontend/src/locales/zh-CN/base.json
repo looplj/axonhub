@@ -314,6 +314,8 @@
   "initialization.form.submitting": "初始化中...",
   "scopes.read_channels": "查看渠道/模型",
   "scopes.write_channels": "管理渠道/模型",
+  "scopes.read_data_storages": "查看数据存储",
+  "scopes.write_data_storages": "管理数据存储",
   "scopes.read_prompts": "查看提示词",
   "scopes.write_prompts": "管理提示词",
   "scopes.read_users": "查看用户信息",
