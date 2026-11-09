@@ -53,6 +53,9 @@ type PersistenceState struct {
 	// Persistence state
 	Request     *ent.Request
 	RequestExec *ent.RequestExecution
+	// ExecutionHeaders holds the upstream response headers of the latest execution
+	// until that execution's terminal update writes them.
+	ExecutionHeaders *executionHeaderObserver
 
 	// ChannelModelsCandidates is the primary state for channel selection
 	ChannelModelsCandidates []*ChannelModelsCandidate

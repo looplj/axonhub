@@ -175,7 +175,7 @@ func (m *persistRequestMiddleware) OnInboundRawResponse(ctx context.Context, htt
 	if llmResp.RequestType == llm.RequestTypeVideo {
 		err := state.RequestService.UpdateRequestStatusExternalIDAndResponseBody(
 			persistCtx,
-			state.Request.ID,
+			state.Request,
 			request.StatusProcessing,
 			llmResp.ID,
 			httpResp.Body,
@@ -199,7 +199,7 @@ func (m *persistRequestMiddleware) OnInboundRawResponse(ctx context.Context, htt
 
 		err := state.RequestService.UpdateRequestCompletedWithAudio(
 			persistCtx,
-			state.Request.ID,
+			state.Request,
 			llmResp.ID,
 			placeholder,
 			httpResp.Body,
@@ -217,7 +217,7 @@ func (m *persistRequestMiddleware) OnInboundRawResponse(ctx context.Context, htt
 	// STT text/srt/vtt responses are non-JSON; wrap them so the JSON response_body column accepts them.
 	respBody := audioSafeResponseBody(llmResp.RequestType, httpResp.Headers.Get("Content-Type"), httpResp.Body)
 
-	err := state.RequestService.UpdateRequestFinalized(persistCtx, state.Request.ID, request.StatusCompleted, llmResp.ID, respBody, metrics)
+	err := state.RequestService.UpdateRequestFinalized(persistCtx, state.Request, request.StatusCompleted, llmResp.ID, respBody, metrics)
 	if err != nil {
 		log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
 	}

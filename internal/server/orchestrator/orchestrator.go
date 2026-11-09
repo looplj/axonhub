@@ -405,10 +405,11 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			if updateErr := persistRequestExecutionFailure(
 				persistCtx,
 				processor.RequestService,
-				requestExec.ID,
+				requestExec,
 				err,
 				nil,
 				"",
+				state.executionResponseHeaders(requestExec.ID),
 			); updateErr != nil {
 				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(updateErr))
 			}
@@ -421,7 +422,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		if request := outbound.GetRequest(); request != nil {
 			if updateErr := processor.RequestService.UpdateRequestStatusFromError(
 				persistCtx,
-				request.ID,
+				request,
 				err,
 			); updateErr != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(updateErr))

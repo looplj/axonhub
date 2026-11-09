@@ -289,7 +289,6 @@ func (ts *OutboundPersistentStream) finalizeClose() error {
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		ts.persistFailureChunks(persistCtx)
 		ts.persistExecutionFailure(persistCtx, decision.cause)
 
 		return ts.closeSource()
@@ -302,8 +301,6 @@ func (ts *OutboundPersistentStream) finalizeClose() error {
 
 		// Upstream dropped mid-stream (clean EOF, no terminal). Persist what we
 		// buffered so operators can inspect the truncated generation.
-		ts.persistFailureChunks(persistCtx)
-
 		ts.persistExecutionFailure(persistCtx, decision.cause)
 
 		return ts.closeSource()
@@ -387,13 +384,13 @@ func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context, s
 			// without trusting any partial response or usage returned with the error.
 			status := ts.terminalState.executionStatus()
 			if updateErr := ts.RequestService.UpdateRequestExecutionStatusWithMetrics(
-				persistCtx, ts.requestExec.ID, status, ts.terminalError, nil, ts.failureLatencyMetrics(), ts.upstreamModelID,
+				persistCtx, ts.requestExec, status, ts.terminalError, nil, ts.failureLatencyMetrics(), ts.upstreamModelID,
+				ts.responseHeaders(), ts.responseChunks...,
 			); updateErr != nil {
 				log.Warn(persistCtx, "Failed to update terminal execution after aggregation failure",
 					log.Cause(updateErr), log.Any("status", status))
 				ts.persistenceErr = errors.Join(ts.persistenceErr, updateErr)
 			}
-			ts.persistFailureChunks(persistCtx)
 			return
 		}
 		if ts.state != nil {
@@ -405,17 +402,8 @@ func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context, s
 	}
 }
 
-// persistFailureChunks stores buffered SSE chunks for a failed/incomplete stream
-// without marking the execution completed or writing usage. Callers must already
-// hold a detached persist context so client cancel cannot abort the write.
-func (ts *OutboundPersistentStream) persistFailureChunks(ctx context.Context) {
-	if ts.requestExec == nil || len(ts.responseChunks) == 0 {
-		return
-	}
-
-	if err := ts.RequestService.SaveRequestExecutionChunks(ctx, ts.requestExec.ID, ts.responseChunks); err != nil {
-		log.Warn(ctx, "Failed to save request execution chunks after stream failure", log.Cause(err))
-	}
+func (ts *OutboundPersistentStream) responseHeaders() http.Header {
+	return ts.state.executionResponseHeaders(ts.requestExec.ID)
 }
 
 // failureLatencyMetrics captures the latency metrics collected before the stream failed,
@@ -448,7 +436,7 @@ func (ts *OutboundPersistentStream) persistExecutionFailure(ctx context.Context,
 		return
 	}
 
-	err := persistRequestExecutionFailure(ctx, ts.RequestService, ts.requestExec.ID, rawErr, ts.failureLatencyMetrics(), ts.upstreamModelID)
+	err := persistRequestExecutionFailure(ctx, ts.RequestService, ts.requestExec, rawErr, ts.failureLatencyMetrics(), ts.upstreamModelID, ts.responseHeaders(), ts.responseChunks...)
 	if err != nil {
 		log.Warn(ctx, "Failed to update request execution status from error", log.Cause(err))
 	}
@@ -489,13 +477,14 @@ func (ts *OutboundPersistentStream) persistAggregatedResponse(ctx context.Contex
 	status := ts.terminalState.executionStatus()
 	err := ts.RequestService.UpdateRequestExecutionFinalized(
 		ctx,
-		ts.requestExec.ID,
+		ts.requestExec,
 		status,
 		ts.terminalError,
 		meta.ID,
 		responseBody,
 		metrics,
 		ts.upstreamModelID,
+		ts.responseHeaders(), ts.responseChunks...,
 	)
 	if err != nil {
 		ts.persistenceErr = errors.Join(ts.persistenceErr, err)
@@ -505,12 +494,6 @@ func (ts *OutboundPersistentStream) persistAggregatedResponse(ctx context.Contex
 			log.Cause(err),
 			log.Any("status", status),
 		)
-	}
-
-	// Save all response chunks at once
-	if err := ts.RequestService.SaveRequestExecutionChunks(ctx, ts.requestExec.ID, ts.responseChunks); err != nil {
-		ts.persistenceErr = errors.Join(ts.persistenceErr, err)
-		log.Warn(ctx, "Failed to save request execution chunks", log.Cause(err))
 	}
 }
 
