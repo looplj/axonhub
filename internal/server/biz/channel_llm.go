@@ -458,6 +458,16 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	if endpointTransport(ep) == objects.ChannelEndpointTransportWebSocket && !supportsWebSocketTransport(ep.APIFormat) {
 		return nil, fmt.Errorf("websocket transport only supports api_format %q", llm.APIFormatOpenAIResponse.String())
 	}
+	// OAuth credentials cannot authenticate generic API-key endpoints. Keep the
+	// Codex-native routes, which buildCodexOutbound authenticates separately.
+	usesCodexOAuth := c.Credentials.IsOAuth() &&
+		(((c.Type == channel.TypeCodex || c.Type == channel.TypeFenno) &&
+			(ep.APIFormat == llm.APIFormatOpenAIResponse.String() || ep.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String())) ||
+			(c.Type == channel.TypeCodex && ep.APIFormat == llm.APIFormatOpenAIAlphaSearch.String()))
+	if ch.apiKeyOverride == "" && len(ch.cachedEnabledAPIKeys) == 0 && len(ch.Credentials.APIKeys) <= 1 && !usesCodexOAuth {
+		return nil, fmt.Errorf("no enabled api key configured for channel %s and api_format %q", c.Name, ep.APIFormat)
+	}
+
 	switch ep.APIFormat {
 	case llm.APIFormatOpenAIChatCompletion.String():
 		if c.Type == channel.TypeCline {
