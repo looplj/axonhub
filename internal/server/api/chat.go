@@ -263,9 +263,8 @@ type StreamErrorFormatter func(ctx context.Context, err error) any
 
 // maxStreamEventsAfterCancel bounds how many events the stream writers drain after
 // the request context is canceled. Draining lets persistence wrappers observe a
-// buffered terminal event, but streams are expected to end promptly on cancellation
-// (see passThroughChannelStream.Next); the cap only guards against implementations
-// that ignore it. Pass-through channel buffers hold 64 events, so 256 is generous.
+// buffered terminal event, but streams are expected to end promptly on cancellation;
+// the cap only guards against implementations that ignore it.
 const maxStreamEventsAfterCancel = 256
 
 const sseWriteTimeout = 30 * time.Second

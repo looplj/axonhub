@@ -382,7 +382,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		captureRawProviderResponse(outbound),
 		captureRawProviderStream(outbound),
 		captureResponsesProvider(outbound),
-		// Run first on raw responses (reverse order), before capture fan-out.
+		// Run first on raw responses (reverse order), before pass-through capture.
 		closeCompletedAnthropicStream(outbound),
 	)
 

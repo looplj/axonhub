@@ -990,19 +990,13 @@ func (p *PersistentOutboundTransformer) HasMoreChannels() bool {
 	return p.state.CurrentCandidateIndex+1 < len(p.state.ChannelModelsCandidates)
 }
 
-// resetPassThroughStreamState cancels the current attempt's fan-out goroutine (if any)
-// and clears pass-through stream state so the next attempt starts with a clean slate.
-// Must be called before every retry to prevent goroutine leaks and data races on
-// state.RawStreamErrRef.
+// resetPassThroughStreamState releases the abandoned attempt's raw provider stream
+// and clears its recorder so the next attempt starts with a clean slate.
 func (p *PersistentOutboundTransformer) resetPassThroughStreamState() {
-	if p.state.RawStreamCancel != nil {
-		p.state.RawStreamCancel()
-		p.state.RawStreamCancel = nil
+	if p.state.PassThroughRecorder != nil {
+		_ = p.state.PassThroughRecorder.Close()
+		p.state.PassThroughRecorder = nil
 	}
-
-	p.state.RawStreamCh = nil
-	p.state.RawStreamBacklog = nil
-	p.state.RawStreamErrRef = nil
 }
 
 // NextChannel moves to the next available candidate for retry.
@@ -1016,8 +1010,6 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	// published only after the switch succeeds.
 	leftChannel, leftModel, attempt := p.channelBeingLeft()
 
-	// Cancel any in-flight pass-through stream goroutine from the previous attempt
-	// so it exits promptly and releases its upstream HTTP connection.
 	p.resetPassThroughStreamState()
 
 	p.state.CurrentCandidateIndex++
@@ -1165,8 +1157,6 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	p.state.StreamCompleted = false
 	p.state.OutboundStreamTerminal = streamTerminalNone
 
-	// Cancel any in-flight pass-through stream goroutine from the previous attempt
-	// so it exits promptly and releases its upstream HTTP connection.
 	p.resetPassThroughStreamState()
 
 	// If there's another model in the list, advance to it.

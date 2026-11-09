@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
-	"context"
 	"sync"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -98,31 +97,9 @@ type PersistenceState struct {
 	// RawProviderRequest stores the actual outbound provider request for pass-through checks.
 	RawProviderRequest *httpclient.Request
 
-	// RawStreamCh receives raw provider stream events for stream response pass-through
-	// once the pass-through consumer is attached; earlier events are held on
-	// RawStreamBacklog.
-	RawStreamCh chan *httpclient.StreamEvent
-
-	// RawStreamQueue owns aggregate count and byte accounting for raw events
-	// retained after the pass-through consumer attaches.
-	RawStreamQueue *rawStreamQueue
-
-	// RawStreamBacklog holds the current attempt's raw provider stream events until
-	// applyPassThroughStream attaches the pass-through consumer, so the pipeline can
-	// pre-read the attempt without the fan-out goroutine blocking on RawStreamCh.
-	RawStreamBacklog *rawStreamBacklog
-
-	// RawStreamErrRef points to the current attempt's local error variable used by the
-	// captureRawProviderStream fan-out goroutine. Using a per-attempt pointer (instead of
-	// a single shared field) prevents data races when retries spawn a new goroutine before
-	// the previous one has exited.
-	RawStreamErrRef *error
-
-	// RawStreamCancel cancels the current attempt's fan-out goroutine started by
-	// captureRawProviderStream. Must be called in PrepareForRetry and NextChannel so the
-	// abandoned goroutine exits promptly and releases its upstream HTTP connection.
-	RawStreamCancel context.CancelFunc
-	RawStreamDetach context.CancelFunc
+	// PassThroughRecorder retains the current attempt's raw provider stream events for
+	// stream response pass-through. It is replaced by every attempt that records.
+	PassThroughRecorder *rawEventRecorder
 
 	// PassThroughApplied records whether the inbound request body was substituted during pass-through.
 	PassThroughApplied bool
