@@ -1393,7 +1393,7 @@ func convertToLlmFinishReason(stopReason *string) *string {
 	switch *stopReason {
 	case "end_turn":
 		return lo.ToPtr("stop")
-	case "max_tokens":
+	case "max_tokens", "model_context_window_exceeded":
 		return lo.ToPtr("length")
 	case "stop_sequence", "pause_turn":
 		return lo.ToPtr("stop")
