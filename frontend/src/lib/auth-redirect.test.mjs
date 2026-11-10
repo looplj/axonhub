@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { consumeOIDCRedirect, getSafeRedirect, storeOIDCRedirect } from './auth-redirect.ts';
+import {
+  consumeOIDCRedirect,
+  getSafeRedirect,
+  isAuthExchangePath,
+  shouldRedirectUnauthorizedToSignIn,
+  storeOIDCRedirect,
+} from './auth-redirect.ts';
 
 function setup(t) {
   const values = new Map();
@@ -70,6 +76,16 @@ test('OIDC validates stored destinations again before consuming them', (t) => {
   values.set(key, '/\\evil.example');
   assert.equal(consumeOIDCRedirect(), undefined);
   assert.equal(values.size, 0);
+});
+
+test('a 401 during OIDC exchange does not send the browser to sign-in', () => {
+  assert.equal(isAuthExchangePath('/oauth/oidc/idp-callback'), true);
+  assert.equal(isAuthExchangePath('/oauth/oidc/idp-callback/'), true);
+  assert.equal(isAuthExchangePath('/sign-in'), false);
+  assert.equal(shouldRedirectUnauthorizedToSignIn('', '/oauth/oidc/idp-callback'), false);
+  assert.equal(shouldRedirectUnauthorizedToSignIn('stale-token', '/oauth/oidc/idp-callback'), false);
+  assert.equal(shouldRedirectUnauthorizedToSignIn('', '/'), false);
+  assert.equal(shouldRedirectUnauthorizedToSignIn('session-token', '/'), true);
 });
 
 test('blocked session storage falls back without failing authentication', (t) => {
