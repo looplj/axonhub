@@ -7,7 +7,9 @@ dist: .builds
 before:
   hooks:
     - /bin/sh -c 'cd deploy && chmod +x *.sh'
-    - make build-frontend
+    # Release CI builds the frontend once and sets SKIP_FRONTEND_BUILD=1.
+    # A local goreleaser run still builds it here.
+    - /bin/sh -c 'if [ "{{ .Env.SKIP_FRONTEND_BUILD }}" = 1 ]; then echo "Using the prebuilt frontend"; test -f internal/server/static/dist/index.html; else make build-frontend; fi'
     - make generate-schema
     - go mod tidy
     - ./scripts/verify-go-sse-dependency-test.sh
