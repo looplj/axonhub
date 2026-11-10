@@ -39,9 +39,7 @@ const THREAD_CURSOR_OPTIONS = {
 } as const;
 
 export default function ThreadDetailPage() {
-  const { threadId } = useParams({ from: '/_authenticated/project/threads/$threadId' as any }) as {
-    threadId: string;
-  };
+  const { threadId } = useParams({ from: '/_authenticated/project/threads/$threadId' });
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
@@ -108,7 +106,10 @@ export default function ThreadDetailPage() {
   };
 
   const handleBack = () => {
-    navigate({ to: '/project/threads' as any, search: getSearchParams() as any });
+    navigate({
+      to: '/project/threads',
+      search: getSearchParams() as any,
+    });
   };
 
   const handleViewTrace = (traceId: string) => {

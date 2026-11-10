@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AxonHub panel — refresh failed</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#d4b98a}a:hover{color:#e6d5b3}
+.ax-btn{transition:background-color 120ms,transform 120ms cubic-bezier(.2,.8,.2,1)}
+.ax-btn:hover{filter:brightness(1.12)}
+.ax-btn:active{transform:scale(.94)}
+.ax-banner{animation:ax-banner-in 240ms cubic-bezier(.2,.8,.2,1) both}
+@keyframes ax-banner-in{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.ax-banner{animation:none}}
+</style>
+</helmet>
+<div style="width: 400px; height: 640px; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; gap: 8px; background-color: #070d1a; color: #f8fafc; border-radius: 16px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; font-size: 13px; line-height: 1.4; font-variant-numeric: tabular-nums; overflow: hidden">
+
+  <header style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 2px 0 6px; flex-shrink: 0">
+    <svg width="24" height="24" viewBox="0 0 64 64" fill="none" aria-hidden="true" style="flex-shrink: 0; position: relative"><path d="M32 7V15C32 24 24 32 15 32H7M32 15C32 24 40 32 49 32H57M32 57V49C32 40 24 32 15 32M32 49C32 40 40 32 49 32" stroke="#f8fafc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="7" cy="32" r="5.5" fill="#f8fafc"></circle><circle cx="57" cy="32" r="5.5" fill="#f8fafc"></circle><circle cx="32" cy="7" r="5.5" fill="{{accent}}"></circle><circle cx="32" cy="57" r="5.5" fill="{{accent}}"></circle></svg>
+    <h1 style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em">AxonHub</h1>
+    <span style="display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 999px; background-color: rgba(254,154,0,.14); color: #fe9a00; font-size: 11px; font-weight: 500">
+      <span style="width: 6px; height: 6px; border-radius: 999px; background-color: #fe9a00"></span>
+      Running · data stale
+    </span>
+    <div style="flex-grow: 1"></div>
+    <button class="ax-btn" type="button" aria-label="Open admin" title="Open admin" style="width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 7px; background-color: transparent; color: #cad5e2; cursor: pointer; padding: 0">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h4v4"></path><path d="M13 3L7.5 8.5"></path><path d="M11.5 9.5V12a1 1 0 01-1 1H4a1 1 0 01-1-1V5.5a1 1 0 011-1h2.5"></path></svg>
+    </button>
+  </header>
+
+  <div class="ax-banner" role="status" style="display: flex; align-items: center; gap: 10px; padding: 8px 6px 8px 12px; border-radius: 10px; background-color: rgba(251,87,92,.13); flex-shrink: 0">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#fb575c" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="8" cy="8" r="6.25"></circle><path d="M8 4.8v3.6M8 11h0"></path></svg>
+    <span style="display: flex; flex-direction: column; flex-grow: 1; min-width: 0">
+      <span style="font-size: 12.5px; font-weight: 600; color: #fda4a6">Couldn’t refresh</span>
+      <span style="font-size: 11.5px; color: #cad5e2; white-space: nowrap">Showing the last snapshot · retrying</span>
+    </span>
+    <button class="ax-btn" type="button" style="height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background-color: rgba(251,87,92,.22); color: #fecdd3; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0">Retry now</button>
+  </div>
+
+  <section aria-label="Today" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 10px 4px; border-radius: 12px; background-color: #121b29; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); flex-shrink: 0">
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Today</span>
+      <span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em">1,284</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px; border-left: 1px solid rgba(255,255,255,.07)">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Tokens</span>
+      <span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em">3.2m</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px; border-left: 1px solid rgba(255,255,255,.07)">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Cached</span>
+      <span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em">1.1m</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px; border-left: 1px solid rgba(255,255,255,.07)">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Failed</span>
+      <span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: #fb575c">3</span>
+    </div>
+  </section>
+
+  <section aria-label="Routing" style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background-color: #121b29; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); flex-shrink: 0">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Routing</span>
+      <div style="flex-grow: 1"></div>
+      <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background-color: rgba(0,188,125,.14); color: #00bc7d">Completed</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px; height: 40px">
+      <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; flex-shrink: 0; max-width: 132px; white-space: nowrap; border-radius: 999px; background-color: #070d1a; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); font-size: 12px; font-weight: 500">Cursor</span>
+      <svg height="10" style="flex: 1 1 0; min-width: 10px" aria-hidden="true"><line x1="0" y1="5" x2="100%" y2="5" stroke="#90a1b9" stroke-width="1.25" stroke-dasharray="5 4"></line></svg>
+      <svg width="30" height="30" viewBox="0 0 64 64" fill="none" role="img" aria-label="AxonHub" style="flex-shrink: 0; position: relative"><path d="M32 7V15C32 24 24 32 15 32H7M32 15C32 24 40 32 49 32H57M32 57V49C32 40 24 32 15 32M32 49C32 40 40 32 49 32" stroke="#f8fafc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="7" cy="32" r="5.5" fill="#f8fafc"></circle><circle cx="57" cy="32" r="5.5" fill="#f8fafc"></circle><circle cx="32" cy="7" r="5.5" fill="{{accent}}"></circle><circle cx="32" cy="57" r="5.5" fill="{{accent}}"></circle></svg>
+      <svg height="10" style="flex: 1 1 0; min-width: 10px" aria-hidden="true"><line x1="0" y1="5" x2="100%" y2="5" stroke="#90a1b9" stroke-width="1.25" stroke-dasharray="5 4"></line></svg>
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; flex-shrink: 0; max-width: 132px; white-space: nowrap; border-radius: 999px; background-color: #070d1a; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); font-size: 12px; font-weight: 500">
+        <span style="width: 7px; height: 7px; border-radius: 999px; background-color: #00bc7d"></span>
+        openai-main
+      </span>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 8px; font-size: 11.5px; color: #90a1b9">
+      <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; color: #cad5e2">gpt-5</span>
+      <div style="flex-grow: 1"></div>
+      <span>12.4k tokens · 2.8 s · 86 tok/s</span>
+    </div>
+  </section>
+
+  <div style="display: flex; align-items: center; gap: 6px; padding: 4px 6px 0; flex-shrink: 0">
+    <h2 style="margin: 0; font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Recent requests</h2>
+    <span style="display: inline-flex; align-items: center; height: 16px; padding: 0 6px; border-radius: 999px; background-color: #1b2433; color: #cad5e2; font-size: 10.5px">3</span>
+  </div>
+
+  <div role="list" style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-height: 0; overflow-y: auto">
+    <sc-for list="{{rows}}" as="row" hint-placeholder-count="3">
+      <button role="listitem" type="button" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 6px 10px 6px 8px; border: 0; border-radius: 10px; background-color: {{row.bg}}; color: inherit; font: inherit; text-align: left; cursor: pointer">
+        <span style="width: 22px; height: 22px; flex-shrink: 0; display: grid; place-items: center">
+          <sc-if value="{{row.isOk}}" hint-placeholder-val="{{true}}">
+            <svg width="14" height="14" viewBox="0 0 14 14" role="img" aria-label="Completed"><circle cx="7" cy="7" r="6" fill="rgba(0,188,125,.14)"></circle><path d="M4.4 7.2l1.8 1.8 3.4-3.6" fill="none" stroke="#00bc7d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </sc-if>
+          <sc-if value="{{row.isFail}}" hint-placeholder-val="{{false}}">
+            <svg width="14" height="14" viewBox="0 0 14 14" role="img" aria-label="Failed"><circle cx="7" cy="7" r="6" fill="rgba(251,87,92,.13)"></circle><path d="M5 5l4 4M9 5l-4 4" fill="none" stroke="#fb575c" stroke-width="1.5" stroke-linecap="round"></path></svg>
+          </sc-if>
+        </span>
+        <span style="display: flex; flex-direction: column; gap: 1px; flex-grow: 1; min-width: 0">
+          <span style="display: flex; align-items: baseline; gap: 6px; min-width: 0">
+            <span style="font-size: 13px; font-weight: 500; white-space: nowrap">{{row.caller}}</span>
+            <span style="font-size: 11.5px; color: #90a1b9; white-space: nowrap">→ {{row.channel}}</span>
+          </span>
+          <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; color: #90a1b9">{{row.model}}</span>
+        </span>
+        <span style="display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0">
+          <span style="font-size: 12px; font-weight: 500; color: {{row.primaryColor}}">{{row.primary}}</span>
+          <span style="font-size: 11px; color: #90a1b9">{{row.secondary}}</span>
+        </span>
+      </button>
+    </sc-for>
+  </div>
+
+  <div role="status" style="display: flex; align-items: center; gap: 8px; padding: 0 6px; flex-shrink: 0">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#fe9a00" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M8 2.5l6 11H2z" stroke-linejoin="round"></path><path d="M8 7v3"></path></svg>
+    <span style="font-size: 11.5px; color: #fe9a00">Couldn’t open the browser. Try Open admin again.</span>
+  </div>
+
+  <section aria-label="Connect a client" style="display: flex; flex-direction: column; border-radius: 12px; background-color: #121b29; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); flex-shrink: 0">
+    <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 6px 0 12px">
+      <span style="font-size: 12px; color: #90a1b9; width: 64px; flex-shrink: 0">Base URL</span>
+      <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; flex-grow: 1; min-width: 0">http://127.0.0.1:8090/v1</span>
+      <button class="ax-btn" type="button" style="height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background-color: #1b2433; color: #f8fafc; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; flex-shrink: 0">Copy</button>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 6px 0 12px; border-top: 1px solid rgba(255,255,255,.06)">
+      <span style="font-size: 12px; color: #90a1b9; width: 64px; flex-shrink: 0">API key</span>
+      <span style="display: inline-flex; align-items: center; gap: 6px; flex-grow: 1; min-width: 0">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#cad5e2" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><circle cx="5.5" cy="10.5" r="3"></circle><path d="M7.7 8.3L13 3M11 5l1.5 1.5"></path></svg>
+        <span style="font-size: 12.5px; font-weight: 500">Desktop</span>
+      </span>
+      <button class="ax-btn" type="button" style="height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background-color: #1b2433; color: #f8fafc; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; flex-shrink: 0">Copy</button>
+    </div>
+  </section>
+
+  <footer style="display: flex; align-items: center; gap: 8px; height: 36px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.06); flex-shrink: 0">
+    <button class="ax-btn" type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background-color: {{accent}}; color: #0f172b; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer">Open admin</button>
+    <div style="flex-grow: 1"></div>
+    <button class="ax-btn" type="button" style="height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background-color: transparent; color: #cad5e2; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer">Quit</button>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#d4b98a","options":["#d4b98a","#90a1b9","#00bc7d","#fe9a00"]},"$preview":{"width":400,"height":640}}'>
+var REQUESTS = [
+  { caller: 'Cursor', channel: 'openai-main', model: 'gpt-5', status: 'completed', tokens: '12.4k tokens', latency: '2.8 s', rate: '86 tok/s', selected: true },
+  { caller: 'Codex CLI', channel: 'openrouter', model: 'gpt-5-codex', status: 'completed', tokens: '4.2k tokens', latency: '1.4 s', rate: '112 tok/s' },
+  { caller: 'Desktop', channel: 'deepseek', model: 'deepseek-chat', status: 'failed', latency: '312 ms' }
+];
+
+function tint(hex, a) {
+  var h = String(hex || '#d4b98a').replace('#', '');
+  if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+  var n = parseInt(h, 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+
+class Component extends DCLogic {
+  renderVals() {
+    var accent = this.props.accent ?? '#d4b98a';
+    var rows = REQUESTS.map(function (r) {
+      var failed = r.status === 'failed';
+      return {
+        caller: r.caller, channel: r.channel, model: r.model,
+        isOk: !failed, isFail: failed,
+        primary: failed ? 'failed' : r.tokens,
+        primaryColor: failed ? '#fb575c' : '#f8fafc',
+        secondary: failed ? r.latency : r.latency + ' · ' + r.rate,
+        bg: r.selected ? tint(accent, 0.14) : 'transparent'
+      };
+    });
+    return { accent: accent, rows: rows };
+  }
+}
+</script>
+</body>
+</html>

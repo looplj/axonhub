@@ -79,3 +79,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+
+  # Same tag as the server release above. Desktop waits so its installers
+  # upload onto the draft GoReleaser opened, at internal/build/VERSION.
+  desktop:
+    needs: goreleaser
+    uses: ./.github/workflows/desktop-release.yml
+    secrets: inherit
+    with:
+      tag: ${{ github.ref_name }}

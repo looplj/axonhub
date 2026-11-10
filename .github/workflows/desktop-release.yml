@@ -1,0 +1,92 @@
+# Packages AxonHub Desktop and uploads it to the same v* GitHub Release as
+# the server. The version is that tag, written into internal/build/VERSION
+# before the build: the desktop app reads it (mygo.config.ts) and the server
+# embedded in the app reads the same file.
+#
+# Release runs this after GoReleaser has opened the draft. workflow_dispatch
+# rebuilds one tag on its own; mygo opens the draft when the release is missing.
+
+name: Desktop release
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag. Empty uses the caller's ref name.
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, such as v1.2.3
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macOS, os: macos-latest, platform: "darwin/arm64,darwin/amd64" }
+          - { name: Windows, os: ubuntu-latest, platform: "windows/amd64,windows/arm64" }
+          - { name: Linux, os: ubuntu-latest, platform: "linux/amd64,linux/arm64" }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag != '' && inputs.tag || github.ref }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: cmd/axonhub-desktop/go.mod
+          cache: true
+          cache-dependency-path: cmd/axonhub-desktop/go.sum
+
+      - name: Install NSIS, for the Windows installers
+        if: matrix.name == 'Windows' && runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y nsis
+
+      - name: Write the shared release version
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          case "$RELEASE_TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *)
+              echo "Desktop version must be the server's v* tag, got: $RELEASE_TAG" >&2
+              exit 1
+              ;;
+          esac
+          printf '%s\n' "$RELEASE_TAG" > internal/build/VERSION
+          echo "Desktop and embedded server version: $RELEASE_TAG"
+
+      - name: Build and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+        run: make build-desktop MYGO_FLAGS="-platform ${{ matrix.platform }} -upload"

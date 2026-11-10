@@ -104,6 +104,9 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		// User Login - DO NOT AUTH
 		unSecureAdminGroup.POST("/auth/signin", handlers.Auth.SignIn)
 		unSecureAdminGroup.POST("/auth/refresh", handlers.Auth.Refresh)
+		// Desktop browser handoff. The one-time code is the credential.
+		// The owner JWT is written into the page and never put in this URL.
+		registerDesktopLoginRoute(unSecureAdminGroup)
 		// The UI token is the credential and only GET/HEAD resources are routed.
 		// Other methods fall through to the default 404 handler; OPTIONS
 		// preflight is handled by the global CORS middleware.

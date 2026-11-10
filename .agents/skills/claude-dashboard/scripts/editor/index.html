@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en" class="cds-root" data-density="comfortable" data-thumb-defer>
+<head>
+<meta charset="utf-8">
+<script>
+(function(){var values={"dashboard_design_system":true,"dashboard_edit":true,"appifact_icon_set":true};function kind(v){return v===null?"null":Array.isArray(v)?"array":typeof v}function copy(v){return JSON.parse(JSON.stringify(v))}function get(key,fallback){if(!Object.prototype.hasOwnProperty.call(values,key)||kind(values[key])!==kind(fallback))return fallback;return copy(values[key])}globalThis.__appifact_flags={version:"appifact-flags:v2",ready:function(){return Promise.resolve(true)},get:get,latest:get,onLatest:function(){return function(){}},askAgain:function(){},all:function(){return copy(values)}};})();
+</script>
+<title>Dashboard</title>
+<!--
+  claude-dashboard: the claude.ai Dashboard type runtime, served locally by scripts/artifact.mjs serve.
+  A dashboard's content is its store, <root>/db/<collection>/<doc_id>.json; local-host.js gives the runtime
+  globalThis.claude (db, assets, user, downloads) over HTTP to that server; comments.js draws the comments
+  layer (threads in <root>/comments.json). Prebuilt; see SKILL.md.
+-->
+<meta name="appifact-capabilities" content="{&quot;downloads&quot;:{},&quot;db&quot;:{&quot;rules&quot;:[{&quot;path&quot;:&quot;&quot;,&quot;write&quot;:&quot;admin&quot;},{&quot;path&quot;:&quot;data/users/{self}&quot;,&quot;read&quot;:&quot;view&quot;,&quot;write&quot;:&quot;interact&quot;},{&quot;path&quot;:&quot;drafts&quot;,&quot;read&quot;:&quot;admin&quot;}]},&quot;assets&quot;:{},&quot;user&quot;:{&quot;scopes&quot;:[&quot;profile&quot;]}}">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script id="appifact-mode">(function(){var h=document.documentElement;function s(){var t=h.getAttribute('data-theme');if(t==='light'||t==='dark'){h.setAttribute('data-mode',t)}else{h.removeAttribute('data-mode')}}s();if(typeof MutationObserver==='function'){new MutationObserver(s).observe(h,{attributes:true,attributeFilter:['data-theme']})}})();</script>
+
+  <script src="./comments.js"></script>
+  <script src="./local-host.js"></script>
+  <script type="module" crossorigin src="./assets/index-qXbVz6oJ.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CAlN5GoK.css">
+</head>
+<body>
+<div id="root"></div>
+</body>
+</html>

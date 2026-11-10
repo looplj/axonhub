@@ -60,7 +60,7 @@
 来自代码盘点的硬约束：
 
 - **抽象边界**：`DataStorageService` 的公开方法（`SaveData`、`SaveDataFromReader`、`LoadData`、`DeleteData`、`GetFileSystem` 等）被 5 个下游服务依赖，**签名不可变**。
-- **键格式不可变**：`/{proj}/requests/{id}/request_body.json` 等（`request.go:73-126`）必须保持字节一致，旧对象升级后仍可读/可删（缓存兼容规则 `.agent/rules/cache-compat.md`）。
+- **键格式不可变**：`/{proj}/requests/{id}/request_body.json` 等（`request.go:73-126`）必须保持字节一致，旧对象升级后仍可读/可删（缓存兼容规则 `.agents/rules/cache-compat.md`）。
 - **Database 后端 no-op**：`ds.Primary` / `Database` 类型下 Save/Load/Delete 维持现状（数据在 DB 列里）。
 - **三个 afero 逃逸口必须继续工作**（绕过了 `LoadData`/`DeleteData`）：
   - `request_content.go:113,125` 直接 `GetFileSystem` + `fs.Open(key)` 做 HTTP 下载；
@@ -273,7 +273,7 @@ type gcsObjectStore struct{ bucket *storage.BucketHandle }
 | 维度 | 处理 |
 |------|------|
 | 键格式 | 全部 `Generate*Key` 不变，**字节一致**；S3 去前导斜杠规范化在分发前完成；旧对象 0 迁移即可读/删 |
-| 缓存兼容 | DB `{}` 哨兵、`shouldUseExternalStorage`/`StoragePolicy` 门控不变，满足 `.agent/rules/cache-compat.md` |
+| 缓存兼容 | DB `{}` 哨兵、`shouldUseExternalStorage`/`StoragePolicy` 门控不变，满足 `.agents/rules/cache-compat.md` |
 | 公开 API | `DataStorageService` 全部签名不变 → 5 个下游服务**零改动编译通过** |
 | Database | 维持 no-op（分发命中 `default` 分支） |
 | 逃逸口 | `GetFileSystem` 仍 afero，`request_content.go`/`autobackup.go` 不动 |

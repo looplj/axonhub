@@ -1,4 +1,4 @@
-.PHONY: generate build backend frontend cleanup-db \
+.PHONY: generate build backend frontend build-desktop cleanup-db \
 	test-backend-all \
 	e2e-test e2e-backend-start e2e-backend-stop e2e-backend-status e2e-backend-restart e2e-backend-clean \
 	migration-test migration-test-all migration-test-all-dbs \
@@ -37,6 +37,20 @@ build-frontend:
 build: build-frontend build-backend
 	@echo "Full build completed!"
 
+# Package the menu-bar app. The panel is native, so mygo writes no
+# TypeScript client. The browser admin is the frontend embedded in the
+# server, built here before packaging. cmd/axonhub-desktop is its own
+# module. mygo packages the current platform unless MYGO_FLAGS says
+# otherwise. -skip-build-command matches a config with no buildCommand.
+# Examples:
+#   make build-desktop
+#   make build-desktop MYGO_FLAGS="-platform darwin/arm64,windows/amd64"
+#   make build-desktop MYGO_FLAGS="-platform linux/amd64 -upload"
+build-desktop: build-frontend
+	@echo "Building axonhub desktop..."
+	cd cmd/axonhub-desktop && go tool mygo build -skip-build-command $(MYGO_FLAGS)
+	@echo "Desktop build completed!"
+
 # Cleanup test database - remove all playwright test data
 cleanup-db:
 	@echo "Cleaning up playwright test data from database..."
@@ -64,6 +78,8 @@ test-backend-all:
 	go test ./...
 	@echo "=== Testing llm module ==="
 	cd llm && go test ./...
+	@echo "=== Testing desktop module ==="
+	cd cmd/axonhub-desktop && go test ./...
 	@echo ""
 	@echo "All backend tests completed!"
 
@@ -142,7 +158,7 @@ filter-logs:
 
 GO_LINT_CMD = golangci-lint run --timeout 10m --max-same-issues 50 --new --fix ./...
 
-GO_MODULES := . llm
+GO_MODULES := . llm cmd/axonhub-desktop
 
 lint-all:
 	@echo "Running golangci-lint (checking and fixing new code) across all Go modules..."

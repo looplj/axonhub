@@ -16,7 +16,7 @@ resolved_dependency() {
 }
 
 expected="$expected_path@$expected_version"
-for module_dir in "$repo_root" "$repo_root/llm" "$repo_root/cmd/schema"; do
+for module_dir in "$repo_root" "$repo_root/llm" "$repo_root/cmd/schema" "$repo_root/cmd/axonhub-desktop"; do
   actual=$(resolved_dependency "$module_dir")
   if [ "$actual" != "$expected" ]; then
     printf 'go-sse dependency mismatch in %s: got %s, want %s\n' "$module_dir" "$actual" "$expected" >&2

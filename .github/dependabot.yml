@@ -8,6 +8,7 @@ updates:
       - "/"
       - "/llm"
       - "/cmd/schema"
+      - "/cmd/axonhub-desktop"
     schedule:
       interval: "weekly"
       day: "monday"

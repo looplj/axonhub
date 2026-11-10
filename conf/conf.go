@@ -52,10 +52,22 @@ type Loader struct {
 	configFile string
 }
 
+// explicitConfigFile, when set, is the only file Load and NewLoader read.
+// The desktop process sets it before starting the server. An empty value
+// keeps the historical search paths, which cmd/axonhub relies on.
+var explicitConfigFile string
+
+// SetConfigFile selects the configuration file for Load and NewLoader.
+// A non-empty path disables the search paths. An empty path restores them.
+// Call it from one goroutine before the first load.
+func SetConfigFile(path string) {
+	explicitConfigFile = path
+}
+
 // NewLoader reads the initial configuration and records the selected config
 // file for subsequent runtime reloads.
 func NewLoader() (Config, *Loader, error) {
-	cfg, configFile, err := loadConfig("")
+	cfg, configFile, err := loadConfig(explicitConfigFile)
 	if err != nil {
 		return Config{}, nil, err
 	}
