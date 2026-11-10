@@ -127,21 +127,23 @@ def download_section(repo: str, tag: str, names: list[str]) -> str:
         "homebrew",
         "https://github.com/looplj/homebrew-axonhub",
     )
-    shot = (
-        f'<img alt="AxonHub Desktop" src="{html.escape(download_url(repo, tag, "axonhub-desktop.png"), quote=True)}" width="320">'
-    )
     parts = [
         "## 按系统下载 | Download",
         "",
         "安装包按系统列在下面。`.tar.gz`、`.delta` 和校验文件在下方 Assets 里，给应用内更新用。",
         "",
-        "新增桌面版本，支持自动更新",
-        "",
-        f"<p>{shot}</p>",
-        "",
-        f'<p align="right"><img alt="downloads@{html.escape(tag, quote=True)}" src="{html.escape(count, quote=True)}"></p>',
-        "",
     ]
+    if "axonhub-desktop.png" in names:
+        shot = (
+            f'<img alt="AxonHub Desktop" src="{html.escape(download_url(repo, tag, "axonhub-desktop.png"), quote=True)}" width="320">'
+        )
+        parts.extend(["新增桌面版本，支持自动更新", "", f"<p>{shot}</p>", ""])
+    parts.extend(
+        [
+            f'<p align="right"><img alt="downloads@{html.escape(tag, quote=True)}" src="{html.escape(count, quote=True)}"></p>',
+            "",
+        ]
+    )
     if desktop:
         parts.extend(["### Desktop", "", table(repo, tag, desktop), ""])
     parts.extend(
@@ -200,8 +202,12 @@ def main() -> int:
 
     if args.assets_file:
         data = json.loads(args.assets_file.read_text())
-        names = [item["name"] for item in data.get("assets", data if isinstance(data, list) else [])]
-        body = data.get("body") or ""
+        if isinstance(data, list):
+            names = [item["name"] for item in data]
+            body = ""
+        else:
+            names = [item["name"] for item in data.get("assets", [])]
+            body = data.get("body") or ""
     else:
         data = release_view(args.repo, args.tag)
         names = [item["name"] for item in data["assets"]]

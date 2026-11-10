@@ -8,12 +8,16 @@ on:
 permissions:
   contents: write
   packages: write
-  actions: write
+  actions: read
 
 jobs:
   # One frontend build for the server archives and every desktop installer.
+  # Uploading the artifact is the only step that needs actions: write.
   frontend:
     name: Frontend
+    permissions:
+      contents: read
+      actions: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
