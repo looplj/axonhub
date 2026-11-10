@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/oauth2"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -433,7 +435,18 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	ch *Channel,
 	ep objects.ChannelEndpoint,
 ) (transformer.Outbound, error) {
+	var oauthTokenSource oauth2.TokenSource
+	if c.Type == channel.TypeGeminiVertex && hasGCPCredential(c.Credentials.GCP) {
+		var err error
+		oauthTokenSource, err = gcpTokenSource(context.Background(), c.Credentials.GCP)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load Vertex GCP credentials: %w", err)
+		}
+	}
 	apiKeyProvider := func() auth.APIKeyProvider {
+		if oauthTokenSource != nil {
+			return nil
+		}
 		return getAPIKeyProvider(ch)
 	}
 
@@ -442,6 +455,9 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		baseURL = ep.BaseURL
 	} else {
 		ep.BaseURL = baseURL
+	}
+	if oauthTokenSource != nil {
+		baseURL = vertexProjectBaseURL(baseURL, c.Credentials.GCP)
 	}
 	if isCommandCodeChannelType(c.Type) {
 		if err := validateCommandCodeBaseURL(baseURL); err != nil {
@@ -583,6 +599,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		return gemini.NewOutboundTransformerWithConfig(gemini.Config{
 			BaseURL:         baseURL,
 			APIKeyProvider:  apiKeyProvider(),
+			TokenSource:     oauthTokenSource,
 			EndpointPath:    ep.Path,
 			PlatformType:    ch.platformTypeForGeminiEndpoint(),
 			BaseURLProvider: vertexEndpointBaseURLProvider(c, ch, baseURL),
@@ -591,6 +608,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		return gemini.NewOutboundTransformerWithConfig(gemini.Config{
 			BaseURL:         baseURL,
 			APIKeyProvider:  apiKeyProvider(),
+			TokenSource:     oauthTokenSource,
 			EndpointPath:    ep.Path,
 			PlatformType:    ch.platformTypeForGeminiEndpoint(),
 			BaseURLProvider: vertexEndpointBaseURLProvider(c, ch, baseURL),
@@ -709,6 +727,13 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 	//nolint:exhaustive // Checked.
 	switch c.Type {
+	case channel.TypeGeminiVertex:
+		if err := validateGeminiVertexCredentials(c.Credentials); err != nil {
+			return nil, fmt.Errorf("channel %s: %w", c.Name, err)
+		}
+		if !hasGCPCredential(c.Credentials.GCP) && len(enabledKeys) == 0 && overrideAPIKey == "" {
+			return nil, fmt.Errorf("missing api key for channel %s", c.Name)
+		}
 	case channel.TypeCodex, channel.TypeClaudecode:
 		if !c.Credentials.IsOAuth() && len(enabledKeys) == 0 {
 			return nil, fmt.Errorf("missing credentials: oauth or api key required for channel %s", c.Name)
@@ -1391,21 +1416,26 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 		return ch, nil
 	case channel.TypeGeminiVertex:
-		var baseURLProvider func(context.Context) string
-		if len(c.Credentials.VertexAPIKeys) > 0 {
+		config := gemini.Config{
+			BaseURL:      c.BaseURL,
+			PlatformType: gemini.PlatformVertex,
+		}
+		if hasGCPCredential(c.Credentials.GCP) {
+			tokenSource, err := gcpTokenSource(context.Background(), c.Credentials.GCP)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load Vertex GCP credentials: %w", err)
+			}
+			config.BaseURL = vertexProjectBaseURL(c.BaseURL, c.Credentials.GCP)
+			config.TokenSource = tokenSource
+		} else {
 			if err := ValidateVertexAPIKeys(c.Type, c.Credentials); err != nil {
 				return nil, fmt.Errorf("channel %s: %w", c.Name, err)
 			}
-
-			baseURLProvider = vertexBaseURLProvider(c)
+			config.APIKeyProvider = getAPIKeyProvider(ch)
+			config.BaseURLProvider = vertexBaseURLProvider(c)
 		}
 
-		transformer, err := gemini.NewOutboundTransformerWithConfig(gemini.Config{
-			BaseURL:         c.BaseURL,
-			APIKeyProvider:  getAPIKeyProvider(ch),
-			BaseURLProvider: baseURLProvider,
-			PlatformType:    gemini.PlatformVertex,
-		})
+		transformer, err := gemini.NewOutboundTransformerWithConfig(config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 		}
@@ -1558,6 +1588,33 @@ func ValidateVertexAPIKeys(channelType channel.Type, credentials objects.Channel
 		}
 
 		bindings[apiKey] = objects.VertexAPIKey{ProjectID: projectID, Region: region}
+	}
+
+	return nil
+}
+
+func validateGeminiVertexCredentials(credentials objects.ChannelCredentials) error {
+	hasGCP := hasGCPCredential(credentials.GCP)
+	hasAnyAPIKey := strings.TrimSpace(credentials.APIKey) != "" || len(credentials.APIKeys) > 0 || len(credentials.VertexAPIKeys) > 0
+	if hasGCP && hasAnyAPIKey {
+		return errors.New("GCP credentials cannot be combined with API keys")
+	}
+	if !hasGCP {
+		return ValidateVertexAPIKeys(channel.TypeGeminiVertex, credentials)
+	}
+
+	gcp := credentials.GCP
+	if err := validateGCPJSON(gcp); err != nil {
+		return err
+	}
+	if strings.TrimSpace(gcp.ProjectID) == "" || strings.TrimSpace(gcp.Region) == "" {
+		return errors.New("GCP project ID and region are required")
+	}
+	if !validVertexResourceSegment(gcp.ProjectID) {
+		return fmt.Errorf("GCP project ID %q is not a valid Google project ID", gcp.ProjectID)
+	}
+	if !validVertexResourceSegment(gcp.Region) {
+		return fmt.Errorf("GCP region %q is not a valid Google region", gcp.Region)
 	}
 
 	return nil

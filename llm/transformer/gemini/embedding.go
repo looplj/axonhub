@@ -55,7 +55,7 @@ type BatchEmbedContentsResponse struct {
 func (t *OutboundTransformer) transformEmbeddingRequest(
 	ctx context.Context,
 	llmReq *llm.Request,
-	apiKey string,
+	authConfig *httpclient.AuthConfig,
 ) (*httpclient.Request, error) {
 	if llmReq.Embedding == nil {
 		return nil, fmt.Errorf("embedding request is nil in llm.Request")
@@ -126,14 +126,6 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
-
-	// Prepare authentication. The key is selected once per outbound attempt by
-	// TransformRequest; looking it up again would consume a second round-robin slot.
-	authConfig := &httpclient.AuthConfig{
-		Type:      "api_key",
-		APIKey:    apiKey,
-		HeaderKey: "x-goog-api-key",
-	}
 
 	url := t.buildEmbeddingURL(ctx, llmReq.Model, isBatch)
 
