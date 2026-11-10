@@ -1,9 +1,22 @@
+// 职责: 启动前端应用，并在查询缓存收到 401 时决定是否离开当前页。
+// 关联文件:
+//   frontend/src/lib/auth-redirect.ts
+//   frontend/src/gql/graphql.ts
+//   frontend/src/routes/__root.tsx
+//   frontend/src/locales/en.json
+//   frontend/src/locales/zh.json
+// 遵循的 Rules:
+//   .agents/rules/frontend-general.md
+// 注意事项:
+//   QueryCache 的 401 与 graphqlRequest 使用同一判断。
+//   /oauth/ 或没有 access token 时不能 navigate 到 /sign-in，否则 OIDC exchange 会被取消。
 import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
+import { shouldRedirectUnauthorizedToSignIn } from '@/lib/auth-redirect';
 import { handleServerError } from '@/utils/handle-server-error';
 import { FontProvider } from './context/font-context';
 import { SearchProvider } from './context/search-context';
@@ -80,6 +93,12 @@ const queryClient = new QueryClient({
         error instanceof Response ? error.status : error && typeof error === 'object' && 'status' in error ? (error as any).status : 0;
 
       if (status === 401) {
+        const token = useAuthStore.getState().auth.accessToken;
+        // No credential, or the OIDC callback is still exchanging its code.
+        // Redirecting here cancels /oauth/oidc/exchange.
+        if (!shouldRedirectUnauthorizedToSignIn(token, window.location.pathname)) {
+          return;
+        }
         toast.error(i18n.t('common.errors.sessionExpired'));
         useAuthStore.getState().auth.reset();
         const redirect = `${router.history.location.href}`;

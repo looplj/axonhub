@@ -1,4 +1,24 @@
+// 职责: 校验登录回跳地址，并判断 401 是否应该把浏览器送去登录页。
+// 关联文件:
+//   frontend/src/gql/graphql.ts
+//   frontend/src/main.tsx
+//   frontend/src/components/command-menu.tsx
+//   frontend/src/routes/oauth/oidc/idp-callback.tsx
+//   frontend/src/features/auth/data/auth.ts
+// 注意事项:
+//   未携带凭证的 401 不是过期会话，不能跳转 /sign-in。
+//   路径以 /oauth/ 开头时，401 必须留在当前页。离开页面会取消 /oauth/oidc/exchange。
 const OIDC_REDIRECT_KEY = 'axonhub:oidc-redirect';
+
+export function isAuthExchangePath(pathname: string): boolean {
+  return pathname.startsWith('/oauth/');
+}
+
+// Only a request that presented a credential, on a page that is not itself
+// finishing login, should abandon the session and open the sign-in page.
+export function shouldRedirectUnauthorizedToSignIn(token: string, pathname: string): boolean {
+  return token.length > 0 && !isAuthExchangePath(pathname);
+}
 
 // Resolve browser URL normalization before allowing a local return destination.
 export function getSafeRedirect(redirect?: string): string | undefined {
