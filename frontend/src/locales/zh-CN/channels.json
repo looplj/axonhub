@@ -1023,5 +1023,18 @@
   "channels.templates.manager.deleting": "删除中...",
   "channels.templates.dialogs.edit.title": "编辑模板",
   "channels.templates.dialogs.edit.description": "更新模板配置。在你重新应用模板之前，改动不会影响任何渠道。",
-  "channels.templates.validation.duplicateName": "已存在名为 \"{{name}}\" 的模板，请更换名称。"
+  "channels.templates.validation.duplicateName": "已存在名为 \"{{name}}\" 的模板，请更换名称。",
+  "channels.modelPreview.title": "模型预览",
+  "channels.modelPreview.description": "在实际发送给服务商的模型下，展示客户端可使用的模型名称和别名。",
+  "channels.modelPreview.search": "搜索模型或别名...",
+  "channels.modelPreview.originalHidden": "原始名称未对外暴露",
+  "channels.modelPreview.alias": "别名",
+  "channels.modelPreview.loading": "正在更新模型名称...",
+  "channels.modelPreview.empty": "没有匹配的模型或别名。",
+  "channels.modelPreview.openSettings": "设置模型别名",
+  "channels.modelPreview.unsavedChanges": "打开别名设置会丢弃当前未保存的渠道修改，是否继续？",
+  "channels.modelPreview.sources.direct": "小写名称",
+  "channels.modelPreview.sources.mapping": "别名",
+  "channels.modelPreview.sources.prefix": "添加前缀",
+  "channels.modelPreview.sources.auto_trim": "去除前缀"
 }

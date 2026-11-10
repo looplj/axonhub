@@ -3,6 +3,7 @@ import type { KeyboardEvent } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { Plus, X, Lightbulb } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -19,6 +20,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useUpdateChannel } from '../data/channels';
 import { Channel, ModelMapping } from '../data/schema';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
+import { useChannelModelPreview } from '../data/use-channel-model-preview';
+import { ChannelModelPreview } from './channel-model-preview';
 
 interface Props {
   open: boolean;
@@ -92,6 +95,7 @@ const extractAllPrefixes = (models: string[]): string[] => {
 export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
   const updateChannel = useUpdateChannel();
+  const queryClient = useQueryClient();
 
   const [modelMappings, setModelMappings] = useState<ModelMapping[]>(currentRow.settings?.modelMappings || []);
   const [newMapping, setNewMapping] = useState({ from: '', to: '' });
@@ -114,6 +118,9 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
       lowercaseModelId: currentRow.settings?.lowercaseModelId || false,
     },
   });
+
+  const previewSettings = form.watch();
+  const preview = useChannelModelPreview(currentRow.supportedModels, previewSettings, open);
 
   const handleAutoExtractAllPrefixes = useCallback(() => {
     if (prefixSuggestions.length === 0) {
@@ -287,14 +294,15 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     }
 
     try {
-      const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
+      const modelNameSettings = {
         extraModelPrefix: values.extraModelPrefix,
         modelMappings: values.modelMappings,
         autoTrimedModelPrefixes: values.autoTrimedModelPrefixes || [],
         hideOriginalModels: values.hideOriginalModels,
         hideMappedModels: values.hideMappedModels,
         lowercaseModelId: values.lowercaseModelId,
-      });
+      };
+      const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, modelNameSettings);
 
       await updateChannel.mutateAsync({
         id: currentRow.id,
@@ -302,6 +310,12 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
           settings: nextSettings,
         },
       });
+      // The detail refetch started by the mutation may still be running when the
+      // model list reopens. Publish the saved fields now; the mutation response
+      // omits credentials and some settings, so only these fields are replaced.
+      queryClient.setQueryData<Channel>(['channel', currentRow.id], (cached) =>
+        cached ? { ...cached, settings: { ...cached.settings, ...modelNameSettings } } : cached
+      );
       toast.success(t('channels.messages.updateSuccess'));
       onOpenChange(false);
     } catch (_error) {
@@ -340,15 +354,16 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
   return (
     <TooltipProvider>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-[800px]'>
-          <DialogHeader>
+        <DialogContent className='flex h-[min(90dvh,900px)] max-h-[90dvh] flex-col overflow-hidden sm:max-w-6xl'>
+          <DialogHeader className='shrink-0'>
             <DialogTitle>{t('channels.dialogs.settings.modelMapping.title')}</DialogTitle>
             <DialogDescription>{t('channels.dialogs.settings.modelMapping.description', { name: currentRow.name })}</DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <div className='space-y-6'>
+            <form onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col overflow-hidden'>
+              <div className='grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] sm:grid-rows-1'>
+              <div className='min-h-0 space-y-6 overflow-y-auto pr-2' data-testid='model-alias-settings-scroll'>
               <Card>
                 <CardHeader>
                   <CardTitle className='text-lg'>{t('channels.dialogs.settings.modelMapping.hideOriginalModels.label')}</CardTitle>
@@ -653,11 +668,21 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
               </Card>
             </div>
 
-              <DialogFooter className='mt-6'>
+              <aside className='flex min-h-0 flex-col border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4'>
+                <ChannelModelPreview
+                  models={currentRow.supportedModels}
+                  entries={preview.data ?? []}
+                  isUpdating={preview.isUpdating}
+                  isError={preview.isError}
+                />
+              </aside>
+              </div>
+
+              <DialogFooter className='mt-4 shrink-0 border-t pt-4'>
                 <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
                   {t('common.buttons.cancel')}
                 </Button>
-                <Button type='submit' disabled={updateChannel.isPending}>
+                <Button type='submit' disabled={updateChannel.isPending || editingIndex !== null}>
                   {updateChannel.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
                 </Button>
               </DialogFooter>

@@ -1023,5 +1023,18 @@
   "channels.templates.manager.deleting": "Deleting...",
   "channels.templates.dialogs.edit.title": "Edit Template",
   "channels.templates.dialogs.edit.description": "Update the template configuration. Changes do not affect channels until you apply the template again.",
-  "channels.templates.validation.duplicateName": "A template named \"{{name}}\" already exists. Choose a different name."
+  "channels.templates.validation.duplicateName": "A template named \"{{name}}\" already exists. Choose a different name.",
+  "channels.modelPreview.title": "Model preview",
+  "channels.modelPreview.description": "Request names are grouped under the actual model sent to the provider.",
+  "channels.modelPreview.search": "Search models or aliases...",
+  "channels.modelPreview.originalHidden": "Original name is not exposed",
+  "channels.modelPreview.alias": "Alias",
+  "channels.modelPreview.loading": "Updating model names...",
+  "channels.modelPreview.empty": "No matching models or aliases.",
+  "channels.modelPreview.openSettings": "Configure aliases",
+  "channels.modelPreview.unsavedChanges": "Opening alias settings will discard your unsaved channel changes. Continue?",
+  "channels.modelPreview.sources.direct": "Lowercase name",
+  "channels.modelPreview.sources.mapping": "Alias",
+  "channels.modelPreview.sources.prefix": "Prefixed name",
+  "channels.modelPreview.sources.auto_trim": "Trimmed prefix"
 }

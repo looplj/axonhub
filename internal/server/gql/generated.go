@@ -1632,6 +1632,7 @@ type ComplexityRoot struct {
 		PluginRuntimeStatuses           func(childComplexity int) int
 		PluginUIEntries                 func(childComplexity int) int
 		Plugins                         func(childComplexity int) int
+		PreviewChannelModelEntries      func(childComplexity int, input ChannelModelPreviewInput) int
 		PreviewGcCleanup                func(childComplexity int, input gc.TriggerGcCleanupInput) int
 		Projects                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ProjectOrder, where *ent.ProjectWhereInput) int
 		PromptProtectionRules           func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptProtectionRuleOrder, where *ent.PromptProtectionRuleWhereInput) int
@@ -2701,6 +2702,7 @@ type QueryResolver interface {
 	UsageCostInjectionSettings(ctx context.Context) (*UsageCostInjectionSettings, error)
 	GetCacheDiagnostics(ctx context.Context, input *GetCacheDiagnosticsInput) (*GetCacheDiagnosticsPayload, error)
 	ClaudeCodeSafeguardsSettings(ctx context.Context) (*biz.ClaudeCodeSafeguardsSettings, error)
+	PreviewChannelModelEntries(ctx context.Context, input ChannelModelPreviewInput) ([]*biz.ChannelModelEntry, error)
 	FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error)
 	QueryModels(ctx context.Context, input QueryModelsInput) ([]*biz.ModelIdentityWithStatus, error)
 	QueryModelChannelConnections(ctx context.Context, associations []*objects.ModelAssociation) ([]*biz.ModelChannelConnection, error)
@@ -9820,6 +9822,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Plugins(childComplexity), true
+	case "Query.previewChannelModelEntries":
+		if e.complexity.Query.PreviewChannelModelEntries == nil {
+			break
+		}
+
+		args, err := ec.field_Query_previewChannelModelEntries_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.PreviewChannelModelEntries(childComplexity, args["input"].(ChannelModelPreviewInput)), true
 	case "Query.previewGcCleanup":
 		if e.complexity.Query.PreviewGcCleanup == nil {
 			break
@@ -13023,6 +13036,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputChannelCredentialsInput,
 		ec.unmarshalInputChannelEndpointInput,
 		ec.unmarshalInputChannelModelAssociationInput,
+		ec.unmarshalInputChannelModelPreviewInput,
 		ec.unmarshalInputChannelModelPriceOrder,
 		ec.unmarshalInputChannelModelPriceVersionOrder,
 		ec.unmarshalInputChannelModelPriceVersionWhereInput,
@@ -16208,6 +16222,17 @@ func (ec *executionContext) field_Query_pluginKV_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["key"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_previewChannelModelEntries_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNChannelModelPreviewInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelModelPreviewInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -53762,6 +53787,55 @@ func (ec *executionContext) fieldContext_Query_claudeCodeSafeguardsSettings(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_previewChannelModelEntries(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_previewChannelModelEntries,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().PreviewChannelModelEntries(ctx, fc.Args["input"].(ChannelModelPreviewInput))
+		},
+		nil,
+		ec.marshalNChannelModelEntry2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐChannelModelEntryᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_previewChannelModelEntries(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "requestModel":
+				return ec.fieldContext_ChannelModelEntry_requestModel(ctx, field)
+			case "actualModel":
+				return ec.fieldContext_ChannelModelEntry_actualModel(ctx, field)
+			case "source":
+				return ec.fieldContext_ChannelModelEntry_source(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelModelEntry", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_previewChannelModelEntries_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_fetchModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -73208,6 +73282,40 @@ func (ec *executionContext) unmarshalInputChannelModelAssociationInput(ctx conte
 				return it, err
 			}
 			it.ModelID = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputChannelModelPreviewInput(ctx context.Context, obj any) (ChannelModelPreviewInput, error) {
+	var it ChannelModelPreviewInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"supportedModels", "settings"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "supportedModels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("supportedModels"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SupportedModels = data
+		case "settings":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("settings"))
+			data, err := ec.unmarshalOChannelSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Settings = data
 		}
 	}
 
@@ -112848,6 +112956,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "previewChannelModelEntries":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_previewChannelModelEntries(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "fetchModels":
 			field := field
 
@@ -121971,6 +122101,11 @@ func (ec *executionContext) marshalNChannelModelEntry2ᚖgithubᚗcomᚋlooplj�
 		return graphql.Null
 	}
 	return ec._ChannelModelEntry(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNChannelModelPreviewInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelModelPreviewInput(ctx context.Context, v any) (ChannelModelPreviewInput, error) {
+	res, err := ec.unmarshalInputChannelModelPreviewInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNChannelModelPrice2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelModelPriceᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.ChannelModelPrice) graphql.Marshaler {
