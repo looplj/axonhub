@@ -1012,9 +1012,6 @@ func (m *Manager) publishResource(resource *pluginResource, data []byte) error {
 		cleanupStaging()
 		return fmt.Errorf("publish plugin directory: %w", err)
 	}
-	if err := syncDir(filepath.Dir(finalDir)); err != nil {
-		return err
-	}
 
 	resource.mu.Lock()
 	resource.dir = finalDir
