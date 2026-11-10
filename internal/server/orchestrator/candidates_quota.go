@@ -25,7 +25,10 @@ func NewQuotaRoutingGate(provider ProviderQuotaStatusProvider, settings biz.Quot
 	}
 }
 
-// DroppedCount reports how many candidates were removed by the last Filter call.
+// DroppedCount reports how many candidates were removed from the preferred
+// routing list by the last Filter call. Reserved last-resort candidates count
+// as dropped for this metric: they are not routed to while the preferred list
+// is usable, they are only retried after it is exhausted.
 func (g *QuotaRoutingGate) DroppedCount() int {
 	if g == nil {
 		return 0
@@ -35,17 +38,24 @@ func (g *QuotaRoutingGate) DroppedCount() int {
 }
 
 // Filter evaluates every candidate before applying the two-phase routing rule.
+// It returns the candidates eligible for the preferred routing list plus the
+// pressured (sticky-only) candidates that backpressure removed only because an
+// open candidate exists. The caller appends those after the preferred
+// candidates, so a request whose preferred candidates all fail can still fall
+// back to a channel that is close to its quota but not exhausted. Exhausted
+// candidates are never returned as fallbacks: retrying them cannot succeed
+// before the quota window resets.
 func (g *QuotaRoutingGate) Filter(
 	ctx context.Context,
 	candidates []*ChannelModelsCandidate,
 	req *llm.Request,
 	stickyID int,
-) []*ChannelModelsCandidate {
+) (preferred, lastResort []*ChannelModelsCandidate) {
 	if g != nil {
 		g.droppedCount = 0
 	}
 	if g == nil || g.provider == nil || len(candidates) == 0 {
-		return candidates
+		return candidates, nil
 	}
 
 	limitType := provider_quota.RequestModality(req.Image != nil)
@@ -73,10 +83,18 @@ func (g *QuotaRoutingGate) Filter(
 				g.logDecision(ctx, decision.candidate, decision, true)
 			}
 		}
+	} else {
+		// Phase one had open candidates, so pressured candidates were left out.
+		// Keep them as reserved fallbacks instead of discarding them outright.
+		for _, decision := range decisions {
+			if decision.keepPhaseTwo && !decision.keepPhaseOne {
+				lastResort = append(lastResort, decision.candidate)
+			}
+		}
 	}
 
 	g.droppedCount = len(candidates) - len(filtered)
-	return filtered
+	return filtered, lastResort
 }
 
 type quotaRoutingDecision struct {
@@ -221,6 +239,8 @@ type QuotaRoutingSelector struct {
 	gate    *QuotaRoutingGate
 }
 
+// WithQuotaRoutingSelector keeps quota routing enabled when no load balancer is
+// configured.
 func WithQuotaRoutingSelector(wrapped CandidateSelector, gate *QuotaRoutingGate) *QuotaRoutingSelector {
 	return &QuotaRoutingSelector{wrapped: wrapped, gate: gate}
 }
@@ -231,5 +251,16 @@ func (s *QuotaRoutingSelector) Select(ctx context.Context, req *llm.Request) ([]
 		return nil, err
 	}
 
-	return s.gate.Filter(ctx, candidates, req, 0), nil
+	preferred, lastResort := s.gate.Filter(ctx, candidates, req, 0)
+	if len(lastResort) == 0 {
+		return preferred, nil
+	}
+
+	// This selector has no retry policy to bound the appended candidates; the
+	// pipeline stops switching at the configured channel retry budget anyway.
+	result := make([]*ChannelModelsCandidate, 0, len(preferred)+len(lastResort))
+	result = append(result, preferred...)
+	result = append(result, lastResort...)
+
+	return result, nil
 }
