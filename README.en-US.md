@@ -150,9 +150,9 @@ For detailed technical documentation, API references, architecture design, and m
 
 ## 🎯 Demo
 
-Try AxonHub live at our [demo instance](https://axonhub.onrender.com)!
+Try AxonHub live at our [demo instance](https://axonhub.reveric.app)!
 
-**Note**：The demo instance currently configures Zhipu and OpenRouter free models.
+**Note**: The demo instance is configured with free models from OpenRouter.
 
 ### Demo Account
 
@@ -332,8 +332,6 @@ For detailed development instructions, architecture design, and contribution gui
 - 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTP framework
 - 🗄️ [ent/ent](https://github.com/ent/ent) - ORM framework
 - 🔧 [air-verse/air](https://github.com/air-verse/air) - Auto reload Go service
-- ☁️ [Render](https://render.com) - Free cloud deployment platform for hosting our demo
-- 🗃️ [TiDB Cloud](https://www.pingcap.com/tidb-cloud/) - Serverless database platform for demo deployment
 
 ---
 
