@@ -42,11 +42,23 @@ build: build-frontend build-backend
 # server, built here before packaging. cmd/axonhub-desktop is its own
 # module. mygo packages the current platform unless MYGO_FLAGS says
 # otherwise. -skip-build-command matches a config with no buildCommand.
+# SKIP_FRONTEND_BUILD=1 reuses internal/server/static/dist. Release CI
+# builds that tree once and passes it to the server archives and every
+# desktop installer.
 # Examples:
 #   make build-desktop
 #   make build-desktop MYGO_FLAGS="-platform darwin/arm64,windows/amd64"
 #   make build-desktop MYGO_FLAGS="-platform linux/amd64 -upload"
-build-desktop: build-frontend
+#   SKIP_FRONTEND_BUILD=1 make build-desktop
+build-desktop:
+ifeq ($(SKIP_FRONTEND_BUILD),1)
+	@test -f internal/server/static/dist/index.html || { \
+		echo "Frontend dist is missing. Run make build-frontend or unset SKIP_FRONTEND_BUILD."; \
+		exit 1; \
+	}
+else
+	$(MAKE) build-frontend
+endif
 	@echo "Building axonhub desktop..."
 	cd cmd/axonhub-desktop && go tool mygo build -skip-build-command $(MYGO_FLAGS)
 	@echo "Desktop build completed!"

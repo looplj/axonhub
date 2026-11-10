@@ -8,31 +8,56 @@ on:
 permissions:
   contents: write
   packages: write
+  actions: write
 
 jobs:
+  # One frontend build for the server archives and every desktop installer.
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend
+
+      - name: Build frontend
+        run: make build-frontend
+
+      - name: Check the frontend build
+        run: test -f internal/server/static/dist/index.html
+
+      - name: Upload the frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: internal/server/static/dist/
+          if-no-files-found: error
+          retention-days: 1
+
   goreleaser:
+    needs: frontend
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          package_json_file: frontend/package.json
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-          cache-dependency-path: frontend/pnpm-lock.yaml
-
-      - name: Install frontend dependencies
-        run: pnpm install
-        working-directory: frontend
 
       - name: Set up Go
         uses: actions/setup-go@v7
@@ -70,6 +95,15 @@ jobs:
             git push origin HEAD:${{ github.event.repository.default_branch }}
           fi
 
+      - name: Download the frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: internal/server/static/dist
+
+      - name: Check the frontend build
+        run: test -f internal/server/static/dist/index.html
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:
@@ -79,12 +113,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          SKIP_FRONTEND_BUILD: "1"
 
   # Same tag as the server release above. Desktop waits so its installers
   # upload onto the draft GoReleaser opened, at internal/build/VERSION.
+  # It reuses the frontend artifact instead of building it again.
   desktop:
-    needs: goreleaser
+    needs: [frontend, goreleaser]
     uses: ./.github/workflows/desktop-release.yml
     secrets: inherit
     with:
       tag: ${{ github.ref_name }}
+      frontend-artifact: frontend-dist
