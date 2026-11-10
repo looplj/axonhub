@@ -154,9 +154,9 @@
 
 ## 🎯 演示 | Demo
 
-在我们的 [演示实例](https://axonhub.onrender.com) 上体验 AxonHub！
+在我们的 [演示实例](https://axonhub.reveric.app) 上体验 AxonHub！
 
-**注意**：演示网站目前配置了 Zhipu 和 OpenRouter 的免费模型。
+**注意**：演示实例已配置 OpenRouter 免费模型。
 
 ### 演示账号 | Demo Account
 - **邮箱 Email**: demo@example.com
@@ -336,8 +336,6 @@ print(response.choices[0].message.content)
 - 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTP 框架
 - 🗄️ [ent/ent](https://github.com/ent/ent) - ORM 框架
 - 🔧 [air-verse/air](https://github.com/air-verse/air) - 自动重载 Go 服务
-- ☁️ [render](https://render.com) - 免费云部署平台，用于部署 demo
-- 🗄️ [tidbcloud](https://www.pingcap.com/tidb-cloud/) - Serverless 数据库平台，用于部署 demo
 
 ---
 

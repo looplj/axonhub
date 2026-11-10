@@ -146,9 +146,9 @@ OpenAI SDK、Anthropic SDK、またはその他のAI SDKを使用している場
 
 ## 🎯 デモ
 
-[デモインスタンス](https://axonhub.onrender.com)でAxonHubをお試しください！
+[デモインスタンス](https://axonhub.reveric.app)でAxonHubをお試しください！
 
-**注意**：デモインスタンスでは現在、ZhipuとOpenRouterの無料モデルが設定されています。
+**注意**：デモインスタンスには OpenRouter の無料モデルが設定されています。
 
 ### デモアカウント
 
@@ -328,8 +328,6 @@ print(response.choices[0].message.content)
 - 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTPフレームワーク
 - 🗄️ [ent/ent](https://github.com/ent/ent) - ORMフレームワーク
 - 🔧 [air-verse/air](https://github.com/air-verse/air) - Goサービスの自動リロード
-- ☁️ [Render](https://render.com) - デモをホスティングする無料クラウドデプロイプラットフォーム
-- 🗃️ [TiDB Cloud](https://www.pingcap.com/tidb-cloud/) - デモデプロイ用のサーバーレスデータベースプラットフォーム
 
 ---
 
