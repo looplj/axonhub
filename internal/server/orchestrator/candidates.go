@@ -779,8 +779,12 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	if traceStickyMode == biz.TraceStickyPreferPreviousChannel {
 		stickyID, stickyOK = s.resolveStickyChannelID(ctx, req, candidates)
 	}
+
+	var quotaFallback []*ChannelModelsCandidate
 	if s.quotaGate != nil {
-		candidates = s.quotaGate.Filter(ctx, candidates, req, stickyID)
+		var lastResort []*ChannelModelsCandidate
+		candidates, lastResort = s.quotaGate.Filter(ctx, candidates, req, stickyID)
+		quotaFallback = quotaFallbackCandidates(lastResort, quotaFallbackLimit(retryPolicy))
 	}
 
 	if stickyOK {
@@ -789,7 +793,10 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 
 			fallbackCount := max(requiredCount-1, 0)
 			fallbackCandidates := s.sortCandidates(ctx, loadBalancer, remainingCandidates, req, fallbackCount, requiredCount, false)
-			result := append([]*ChannelModelsCandidate{stickyCandidate}, fallbackCandidates...)
+			result := make([]*ChannelModelsCandidate, 0, 1+len(fallbackCandidates)+len(quotaFallback))
+			result = append(result, stickyCandidate)
+			result = append(result, fallbackCandidates...)
+			result = append(result, quotaFallback...)
 
 			if loadBalancer != nil {
 				loadBalancer.TrackSelection(stickyCandidate)
@@ -799,7 +806,16 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		}
 	}
 
-	return s.sortCandidates(ctx, loadBalancer, candidates, req, requiredCount, requiredCount, true), nil
+	preferred := s.sortCandidates(ctx, loadBalancer, candidates, req, requiredCount, requiredCount, true)
+	if len(quotaFallback) == 0 {
+		return preferred, nil
+	}
+
+	result := make([]*ChannelModelsCandidate, 0, len(preferred)+len(quotaFallback))
+	result = append(result, preferred...)
+	result = append(result, quotaFallback...)
+
+	return result, nil
 }
 
 func resolveLoadBalancer(loadBalancers map[string]*LoadBalancer, strategy string) (*LoadBalancer, string) {
@@ -995,6 +1011,70 @@ func (s *LoadBalancedSelector) sortCandidates(
 	}
 
 	return result
+}
+
+// quotaFallbackLimit bounds how many last-resort candidates a request may
+// append. Channel switching stops at MaxChannelRetries, so candidates beyond
+// that budget could never be reached; disabled retries append nothing.
+func quotaFallbackLimit(policy *biz.RetryPolicy) int {
+	if policy == nil || !policy.Enabled || policy.MaxChannelRetries <= 0 {
+		return 0
+	}
+
+	return policy.MaxChannelRetries
+}
+
+// quotaFallbackCandidates returns the pressured candidates that the quota gate
+// kept out of the preferred list, appended after every preferred candidate so
+// only a request that exhausted them can reach these channels. The routing
+// priority order is preserved and each channel appears once, so the limited
+// retry budget is not spent on duplicate candidates of the same channel.
+func quotaFallbackCandidates(candidates []*ChannelModelsCandidate, limit int) []*ChannelModelsCandidate {
+	if len(candidates) == 0 || limit <= 0 {
+		return nil
+	}
+
+	ordered := orderCandidatesByPriority(candidates)
+	fallback := make([]*ChannelModelsCandidate, 0, min(len(ordered), limit))
+	seenChannels := make(map[int]struct{}, len(ordered))
+
+	for _, candidate := range ordered {
+		if len(fallback) >= limit {
+			break
+		}
+
+		if _, ok := seenChannels[candidate.Channel.ID]; ok {
+			continue
+		}
+
+		seenChannels[candidate.Channel.ID] = struct{}{}
+		fallback = append(fallback, candidate)
+	}
+
+	return fallback
+}
+
+// orderCandidatesByPriority sorts candidates by routing priority (lower value
+// first) and preserves the original order inside a priority group.
+func orderCandidatesByPriority(candidates []*ChannelModelsCandidate) []*ChannelModelsCandidate {
+	groups := make(map[int][]*ChannelModelsCandidate, len(candidates))
+	for _, candidate := range candidates {
+		if candidate == nil {
+			continue
+		}
+
+		groups[candidate.Priority] = append(groups[candidate.Priority], candidate)
+	}
+
+	priorities := lo.Keys(groups)
+	slices.Sort(priorities)
+
+	ordered := make([]*ChannelModelsCandidate, 0, len(candidates))
+	for _, priority := range priorities {
+		ordered = append(ordered, groups[priority]...)
+	}
+
+	return ordered
 }
 
 // TagsFilterSelector is a decorator that filters candidates by allowed channel tags.

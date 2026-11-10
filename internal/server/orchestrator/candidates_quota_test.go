@@ -108,7 +108,7 @@ func TestQuotaRoutingGate_excludes_non_pinned_stickyOnly_while_open_exists(t *te
 	}
 
 	// When
-	got := gate.Filter(context.Background(), candidates, &llm.Request{}, 0)
+	got, _ := gate.Filter(context.Background(), candidates, &llm.Request{}, 0)
 
 	// Then
 	require.Equal(t, []int{1}, quotaRoutingIDs(got))
@@ -157,7 +157,7 @@ func TestQuotaRoutingGate_phaseTwo_returns_single_stickyOnly_candidate(t *testin
 	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{1: quotaStickyOnlyStatus()}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure})
 
 	// When
-	got := gate.Filter(context.Background(), []*ChannelModelsCandidate{quotaRoutingCandidate(1, "")}, &llm.Request{}, 0)
+	got, _ := gate.Filter(context.Background(), []*ChannelModelsCandidate{quotaRoutingCandidate(1, "")}, &llm.Request{}, 0)
 
 	// Then
 	require.Equal(t, []int{1}, quotaRoutingIDs(got))
@@ -172,7 +172,7 @@ func TestQuotaRoutingGate_does_not_apply_phaseTwo_when_open_exists(t *testing.T)
 	}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure})
 
 	// When
-	got := gate.Filter(context.Background(), []*ChannelModelsCandidate{quotaRoutingCandidate(1, ""), quotaRoutingCandidate(2, "")}, &llm.Request{}, 0)
+	got, _ := gate.Filter(context.Background(), []*ChannelModelsCandidate{quotaRoutingCandidate(1, ""), quotaRoutingCandidate(2, "")}, &llm.Request{}, 0)
 
 	// Then
 	require.Equal(t, []int{1}, quotaRoutingIDs(got))
@@ -190,10 +190,10 @@ func TestQuotaRoutingGate_mixed_stickyOnly_keeps_only_resolved_sticky_and_open(t
 	// When
 	got, err := selector.Select(ctx, &llm.Request{Model: "model"})
 
-	// Then
+	// Then only the resolved sticky channel and the open channel are preferred;
+	// the other pressured channel is appended after them.
 	require.NoError(t, err)
-	require.Equal(t, []int{2, 1}, quotaRoutingIDs(got))
-	require.NotContains(t, quotaRoutingIDs(got), 3)
+	require.Equal(t, []int{2, 1, 3}, quotaRoutingIDs(got))
 }
 
 func TestQuotaRoutingGate_ignoreQuota_keeps_exhausted_channel(t *testing.T) {
@@ -201,7 +201,7 @@ func TestQuotaRoutingGate_ignoreQuota_keeps_exhausted_channel(t *testing.T) {
 	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{1: quotaExhaustedStatus()}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted})
 
 	// When
-	got := gate.Filter(context.Background(), []*ChannelModelsCandidate{quotaRoutingCandidate(1, objects.QuotaRoutingModeIgnoreQuota)}, &llm.Request{}, 0)
+	got, _ := gate.Filter(context.Background(), []*ChannelModelsCandidate{quotaRoutingCandidate(1, objects.QuotaRoutingModeIgnoreQuota)}, &llm.Request{}, 0)
 
 	// Then
 	require.Equal(t, []int{1}, quotaRoutingIDs(got))
@@ -236,7 +236,7 @@ func TestQuotaRoutingGate_channel_override_beats_global_and_inherit_uses_global(
 	}
 
 	// When
-	got := gate.Filter(context.Background(), candidates, &llm.Request{}, 0)
+	got, _ := gate.Filter(context.Background(), candidates, &llm.Request{}, 0)
 
 	// Then
 	require.Equal(t, []int{1}, quotaRoutingIDs(got))
@@ -258,11 +258,11 @@ func TestQuotaRoutingGate_uses_request_modality_and_keeps_unknown_neutral(t *tes
 	candidates := []*ChannelModelsCandidate{quotaRoutingCandidate(1, ""), quotaRoutingCandidate(2, "")}
 
 	// When
-	got := gate.Filter(context.Background(), candidates, &llm.Request{}, 0)
+	got, _ := gate.Filter(context.Background(), candidates, &llm.Request{}, 0)
 
 	// Then
 	require.Equal(t, []int{1, 2}, quotaRoutingIDs(got))
-	got = gate.Filter(context.Background(), candidates, &llm.Request{Image: &llm.ImageRequest{}}, 0)
+	got, _ = gate.Filter(context.Background(), candidates, &llm.Request{Image: &llm.ImageRequest{}}, 0)
 	require.Equal(t, []int{2}, quotaRoutingIDs(got))
 }
 
@@ -393,7 +393,7 @@ func TestQuotaRoutingGate_filters_exhausted_fallback_models_and_retains_healthy_
 	}
 
 	// When
-	got := gate.Filter(context.Background(), []*ChannelModelsCandidate{candidate}, &llm.Request{}, 0)
+	got, _ := gate.Filter(context.Background(), []*ChannelModelsCandidate{candidate}, &llm.Request{}, 0)
 
 	// Then: the candidate is kept, the exhausted model is pruned, and the healthy fallback is retained.
 	require.Len(t, got, 1)
@@ -447,8 +447,195 @@ func TestQuotaRoutingGate_backpressure_does_not_admit_pressured_first_model_in_p
 
 	// When Phase 1 has Candidate 2 available, Candidate 1 must not bypass backpressure in Phase 1
 	// because its attempted first model is pressured (RoutingStickyOnly).
-	got := gate.Filter(context.Background(), []*ChannelModelsCandidate{candidate1, candidate2}, &llm.Request{}, 0)
+	got, _ := gate.Filter(context.Background(), []*ChannelModelsCandidate{candidate1, candidate2}, &llm.Request{}, 0)
 	require.Equal(t, []int{2}, quotaRoutingIDs(got))
+}
+
+func TestQuotaRoutingGate_reserves_pressured_candidate_as_last_resort(t *testing.T) {
+	// Given one open and one pressured channel under backpressure mode.
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{
+		1: quotaRoutingStatus(providerquotastatus.StatusAvailable),
+		2: quotaStickyOnlyStatus(),
+	}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure})
+
+	// When
+	preferred, lastResort := gate.Filter(context.Background(), []*ChannelModelsCandidate{
+		quotaRoutingCandidate(1, ""),
+		quotaRoutingCandidate(2, ""),
+	}, &llm.Request{}, 0)
+
+	// Then the pressured channel leaves the preferred list but stays reserved.
+	require.Equal(t, []int{1}, quotaRoutingIDs(preferred))
+	require.Equal(t, []int{2}, quotaRoutingIDs(lastResort))
+	require.Equal(t, 1, gate.DroppedCount())
+}
+
+func TestQuotaRoutingGate_does_not_reserve_exhausted_candidate(t *testing.T) {
+	// Given one open and one exhausted channel under backpressure mode.
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{
+		1: quotaRoutingStatus(providerquotastatus.StatusAvailable),
+		2: quotaExhaustedStatus(),
+	}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure})
+
+	// When
+	preferred, lastResort := gate.Filter(context.Background(), []*ChannelModelsCandidate{
+		quotaRoutingCandidate(1, ""),
+		quotaRoutingCandidate(2, ""),
+	}, &llm.Request{}, 0)
+
+	// Then an exhausted channel is never reserved: retrying it cannot succeed.
+	require.Equal(t, []int{1}, quotaRoutingIDs(preferred))
+	require.Empty(t, lastResort)
+	require.Equal(t, 1, gate.DroppedCount())
+}
+
+func TestQuotaRoutingGate_keeps_pressured_candidate_in_removeOnExhausted_mode(t *testing.T) {
+	// Given a pressured channel under remove_on_exhausted mode.
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{
+		1: quotaRoutingStatus(providerquotastatus.StatusAvailable),
+		2: quotaStickyOnlyStatus(),
+	}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted})
+
+	// When
+	preferred, lastResort := gate.Filter(context.Background(), []*ChannelModelsCandidate{
+		quotaRoutingCandidate(1, ""),
+		quotaRoutingCandidate(2, ""),
+	}, &llm.Request{}, 0)
+
+	// Then the mode keeps pressured channels in the preferred list.
+	require.Equal(t, []int{1, 2}, quotaRoutingIDs(preferred))
+	require.Empty(t, lastResort)
+	require.Zero(t, gate.DroppedCount())
+}
+
+func TestQuotaRoutingGate_reserves_nothing_when_phase_two_admits_pressured_candidates(t *testing.T) {
+	// Given only pressured candidates: phase two admits all of them.
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{
+		1: quotaStickyOnlyStatus(),
+	}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure})
+
+	// When
+	preferred, lastResort := gate.Filter(context.Background(), []*ChannelModelsCandidate{
+		quotaRoutingCandidate(1, ""),
+	}, &llm.Request{}, 0)
+
+	// Then the candidate is preferred, not reserved.
+	require.Equal(t, []int{1}, quotaRoutingIDs(preferred))
+	require.Empty(t, lastResort)
+	require.Zero(t, gate.DroppedCount())
+}
+
+func TestLoadBalancedSelector_appends_reserved_quota_fallback_candidates(t *testing.T) {
+	// Given one open and three pressured channels; the retry policy allows two
+	// channel retries, so at most two fallbacks are reserved.
+	selector, _ := newQuotaRoutingSelector(
+		[]*ChannelModelsCandidate{
+			quotaRoutingCandidate(1, ""),
+			quotaRoutingCandidate(2, ""),
+			quotaRoutingCandidate(3, ""),
+			quotaRoutingCandidate(4, ""),
+		},
+		map[int]*biz.QuotaChannelStatus{
+			1: quotaRoutingStatus(providerquotastatus.StatusAvailable),
+			2: quotaStickyOnlyStatus(),
+			3: quotaStickyOnlyStatus(),
+			4: quotaStickyOnlyStatus(),
+		},
+		biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure},
+	)
+
+	// When
+	got, err := selector.Select(context.Background(), &llm.Request{Model: "model"})
+
+	// Then the preferred channel leads and the fallbacks follow, capped by the
+	// retry budget.
+	require.NoError(t, err)
+	require.Equal(t, []int{1, 2, 3}, quotaRoutingIDs(got))
+}
+
+func TestLoadBalancedSelector_sticky_path_appends_quota_fallback_candidates(t *testing.T) {
+	// Given a sticky open channel, another open channel and a pressured channel.
+	selector, _ := newQuotaRoutingSelector(
+		[]*ChannelModelsCandidate{
+			quotaRoutingCandidate(1, ""),
+			quotaRoutingCandidate(2, ""),
+			quotaRoutingCandidate(3, ""),
+		},
+		map[int]*biz.QuotaChannelStatus{
+			1: quotaRoutingStatus(providerquotastatus.StatusAvailable),
+			2: quotaRoutingStatus(providerquotastatus.StatusAvailable),
+			3: quotaStickyOnlyStatus(),
+		},
+		biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure},
+	)
+	ctx := contexts.WithTrace(context.Background(), &ent.Trace{ID: 10, ThreadID: 20})
+
+	// When
+	got, err := selector.Select(ctx, &llm.Request{Model: "model"})
+
+	// Then the sticky channel leads, the remaining preferred channel follows and
+	// the pressured channel is appended at the tail.
+	require.NoError(t, err)
+	require.Equal(t, []int{2, 1, 3}, quotaRoutingIDs(got))
+	require.True(t, got[0].TraceSticky)
+}
+
+func TestSelectCandidates_appends_pressured_candidate_without_load_balancer(t *testing.T) {
+	// Given no load balancer configured.
+	inbound := &PersistentInboundTransformer{state: &PersistenceState{
+		CandidateSelector: &staticChannelSelector{candidates: []*ChannelModelsCandidate{
+			quotaRoutingCandidate(1, ""),
+			quotaRoutingCandidate(2, ""),
+		}},
+		LoadBalancers: map[string]*LoadBalancer{},
+		Settings: &RequestSettings{
+			QuotaRouting: biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure},
+			RetryPolicy:  biz.RetryPolicy{Enabled: true, MaxChannelRetries: 2},
+		},
+	}}
+	middleware := selectCandidates(
+		inbound,
+		&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{
+			1: quotaRoutingStatus(providerquotastatus.StatusAvailable),
+			2: quotaStickyOnlyStatus(),
+		}},
+	)
+
+	// When
+	_, err := middleware.OnInboundLlmRequest(context.Background(), &llm.Request{Model: "model"})
+
+	// Then the pressured channel is appended instead of being dropped.
+	require.NoError(t, err)
+	require.Equal(t, []int{1, 2}, quotaRoutingIDs(inbound.state.ChannelModelsCandidates))
+}
+
+func TestQuotaFallbackLimit(t *testing.T) {
+	require.Zero(t, quotaFallbackLimit(nil))
+	require.Zero(t, quotaFallbackLimit(&biz.RetryPolicy{Enabled: false, MaxChannelRetries: 3}))
+	require.Zero(t, quotaFallbackLimit(&biz.RetryPolicy{Enabled: true, MaxChannelRetries: 0}))
+	require.Equal(t, 3, quotaFallbackLimit(&biz.RetryPolicy{Enabled: true, MaxChannelRetries: 3}))
+}
+
+func TestQuotaFallbackCandidates_orders_by_priority_and_skips_duplicate_channels(t *testing.T) {
+	// Given pressured candidates of the same channel under different priorities.
+	highPriority := quotaRoutingCandidate(1, "")
+	highPriority.Priority = 5
+	first := quotaRoutingCandidate(2, "")
+	first.Priority = 1
+	lowPriority := quotaRoutingCandidate(1, "")
+	lowPriority.Priority = 0
+	second := quotaRoutingCandidate(3, "")
+	second.Priority = 1
+
+	// When
+	got := quotaFallbackCandidates([]*ChannelModelsCandidate{highPriority, first, lowPriority, second}, 3)
+
+	// Then priority order wins and the duplicate channel keeps its best entry.
+	require.Equal(t, []int{1, 2, 3}, quotaRoutingIDs(got))
+	require.Same(t, lowPriority, got[0])
+
+	// And the retry budget caps the appended candidates.
+	require.Equal(t, []int{1}, quotaRoutingIDs(quotaFallbackCandidates([]*ChannelModelsCandidate{first, lowPriority}, 1)))
 }
 
 func quotaRoutingIDs(candidates []*ChannelModelsCandidate) []int {
