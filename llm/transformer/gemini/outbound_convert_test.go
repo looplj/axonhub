@@ -1455,6 +1455,61 @@ func TestConvertLLMToolMessageToGeminiContent(t *testing.T) {
 	}
 }
 
+func TestConvertLLMToolResultToGeminiContent_JSONSchemaRef(t *testing.T) {
+	msg := &llm.Message{
+		Role:         "tool",
+		ToolCallID:   lo.ToPtr("call_schema"),
+		ToolCallName: lo.ToPtr("tool_describe"),
+		Content: llm.MessageContent{
+			Content: lo.ToPtr(`{
+				"tools": {
+					"terminals_open": {
+						"parameters": {
+							"source": {"$ref": "#/$defs/TerminalOpenSource"},
+							"items": [{"$ref": "#/$defs/Item"}],
+							"$defs": {"TerminalOpenSource": {"type": "string"}}
+						}
+					}
+				},
+				"kept": {"_ref": "existing", "$ref": "#/$defs/Other"},
+				"temperature": 72
+			}`),
+		},
+	}
+
+	result := convertLLMToolResultToGeminiContent(msg, nil)
+	require.NotNil(t, result)
+	require.NotNil(t, result.Parts[0].FunctionResponse)
+
+	response := result.Parts[0].FunctionResponse.Response
+	require.Len(t, response, 1)
+	require.Equal(t, *msg.Content.Content, response["result"])
+	require.Contains(t, response["result"], `"$ref"`)
+	require.Contains(t, response["result"], `"$defs"`)
+
+	encoded, err := json.Marshal(result.Parts[0].FunctionResponse.Response)
+	require.NoError(t, err)
+	require.NotContains(t, string(encoded), `"$ref":`)
+}
+
+func TestConvertLLMToolResultToGeminiContent_DefsWithoutRefStayStructured(t *testing.T) {
+	msg := &llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr("call_defs"),
+		Content: llm.MessageContent{
+			Content: lo.ToPtr(`{"$defs":{"TerminalOpenSource":{"type":"string"}},"temperature":72}`),
+		},
+	}
+
+	result := convertLLMToolResultToGeminiContent(msg, nil)
+	require.NotNil(t, result)
+
+	response := result.Parts[0].FunctionResponse.Response
+	require.Equal(t, 72.0, response["temperature"])
+	defs := response["$defs"].(map[string]any)
+	require.Equal(t, "string", defs["TerminalOpenSource"].(map[string]any)["type"])
+}
+
 func TestConvertLLMToolResultToGeminiContent_VertexAI(t *testing.T) {
 	// Test that Vertex AI doesn't include ID field in function response
 	req := &GenerateContentRequest{
