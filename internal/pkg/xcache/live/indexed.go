@@ -13,6 +13,9 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/watcher"
 )
 
+// ErrLoadExpired means a source snapshot exhausted the cache freshness budget.
+var ErrLoadExpired = fmt.Errorf("cache load exceeded freshness deadline: %w", context.DeadlineExceeded)
+
 // cacheItem wraps a value with its expiration time.
 // When isEmpty is true, value is zero value and represents a "not found" cache entry.
 type cacheItem[V any] struct {
@@ -137,17 +140,23 @@ func NewIndexedCache[K comparable, V any](opts IndexedOptions[K, V]) *IndexedCac
 	}
 
 	refreshFunc := func(ctx context.Context, _ struct{}, lastUpdate time.Time) (struct{}, time.Time, bool, error) {
+		expiresAt := ic.calcExpireAt()
 		items, newUpdateTime, err := opts.LoadSinceFunc(ctx, lastUpdate)
 		if err != nil {
 			return struct{}{}, lastUpdate, false, err
 		}
 
+		ic.mu.Lock()
+		if !expiresAt.IsZero() && !time.Now().Before(expiresAt) {
+			ic.mu.Unlock()
+			return struct{}{}, lastUpdate, false, ErrLoadExpired
+		}
+
 		if len(items) == 0 {
+			ic.mu.Unlock()
 			ic.CleanupExpired()
 			return struct{}{}, newUpdateTime, false, nil
 		}
-
-		ic.mu.Lock()
 
 		for _, item := range items {
 			key := opts.KeyFunc(item)
@@ -156,7 +165,7 @@ func NewIndexedCache[K comparable, V any](opts IndexedOptions[K, V]) *IndexedCac
 			} else {
 				ic.index[key] = &cacheItem[V]{
 					value:    item,
-					expireAt: ic.calcExpireAt(),
+					expireAt: expiresAt,
 				}
 			}
 		}
@@ -293,7 +302,8 @@ func (c *IndexedCache[K, V]) loadOne(ctx context.Context, key K) (V, error) {
 
 		c.mu.RUnlock()
 
-		// Load from source
+		// Anchor freshness before the query so a slow read cannot renew an old snapshot.
+		expiresAt := c.calcExpireAt()
 		v, err := c.opts.LoadOneFunc(ctx, key)
 		if err != nil {
 			// Cache negative result for ErrKeyNotFound to prevent cache penetration
@@ -322,11 +332,15 @@ func (c *IndexedCache[K, V]) loadOne(ctx context.Context, key K) (V, error) {
 			return nil, ErrKeyNotFound
 		}
 
-		// Store in cache
+		// Lock contention consumes the same freshness budget as the source query.
 		c.mu.Lock()
+		if !expiresAt.IsZero() && !time.Now().Before(expiresAt) {
+			c.mu.Unlock()
+			return nil, ErrLoadExpired
+		}
 		c.index[key] = &cacheItem[V]{
 			value:    v,
-			expireAt: c.calcExpireAt(),
+			expireAt: expiresAt,
 		}
 		c.mu.Unlock()
 
@@ -417,12 +431,17 @@ func (c *IndexedCache[K, V]) Len() int {
 // Load performs a full synchronous load using LoadSinceFunc with zero time.
 // This is typically called during initialization.
 func (c *IndexedCache[K, V]) Load(ctx context.Context) error {
+	expiresAt := c.calcExpireAt()
 	items, updateTime, err := c.opts.LoadSinceFunc(ctx, time.Time{})
 	if err != nil {
 		return err
 	}
 
 	c.mu.Lock()
+	if !expiresAt.IsZero() && !time.Now().Before(expiresAt) {
+		c.mu.Unlock()
+		return ErrLoadExpired
+	}
 
 	for _, item := range items {
 		key := c.opts.KeyFunc(item)
@@ -431,7 +450,7 @@ func (c *IndexedCache[K, V]) Load(ctx context.Context) error {
 		} else {
 			c.index[key] = &cacheItem[V]{
 				value:    item,
-				expireAt: c.calcExpireAt(),
+				expireAt: expiresAt,
 			}
 		}
 	}

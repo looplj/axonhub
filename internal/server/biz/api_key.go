@@ -89,8 +89,9 @@ func NewAPIKeyService(params APIKeyServiceParams) *APIKeyService {
 		panic(fmt.Errorf("api key watcher init failed: %w", err))
 	}
 
+	// Bound stale authentication when cross-instance invalidation is unavailable.
 	ttl := params.CacheConfig.Memory.Expiration
-	if ttl == 0 {
+	if ttl <= 0 || ttl > 5*time.Minute {
 		ttl = 5 * time.Minute
 	}
 
@@ -108,7 +109,11 @@ func NewAPIKeyService(params APIKeyServiceParams) *APIKeyService {
 	})
 
 	if err := svc.APIKeyCache.Load(context.Background()); err != nil {
-		panic(fmt.Errorf("api key cache initial load failed: %w", err))
+		if !errors.Is(err, live.ErrLoadExpired) {
+			svc.Stop()
+			panic(fmt.Errorf("api key cache initial load failed: %w", err))
+		}
+		log.Warn(context.Background(), "api key cache warmup expired; keys will load on demand", log.Cause(err))
 	}
 
 	return svc
@@ -629,8 +634,10 @@ func (s *APIKeyService) UpdateAPIKeyStatus(ctx context.Context, id int, status a
 		return nil, fmt.Errorf("failed to update API key status: %w", err)
 	}
 
-	// Invalidate cache
-	s.invalidateAPIKeyCaches(ctx, apiKey.Key)
+	runAfterCommit(ctx, func(ctx context.Context) {
+		s.APIKeyCache.Invalidate(buildAPIKeyCacheKey(apiKey.Key))
+		s.invalidateAPIKeyCaches(ctx, apiKey.Key)
+	})
 
 	return apiKey, nil
 }
