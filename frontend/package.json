@@ -118,7 +118,7 @@
     "globals": "^17.14.0",
     "husky": "^9.1.7",
     "knip": "^6.44.1",
-    "lint-staged": "^15.4.3",
+    "lint-staged": "^17.6.0",
     "prettier": "^3.9.10",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "typescript": "~5.8.3",
