@@ -44,6 +44,8 @@ func TestGetProviderType_ExistingTypesPreserved(t *testing.T) {
 		{"zhipu_anthropic", channel.TypeZhipuAnthropic, "zhipu"},
 		{"zai", channel.TypeZai, "zai"},
 		{"zai_anthropic", channel.TypeZaiAnthropic, "zai"},
+		{"deepseek", channel.TypeDeepseek, "deepseek"},
+		{"deepseek_anthropic", channel.TypeDeepseekAnthropic, "deepseek"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -78,6 +80,19 @@ func TestGetProviderType_OpenaiWithNeuralWattURL(t *testing.T) {
 	}
 	result := svc.getProviderType(ch)
 	require.Equal(t, "neuralwatt", result)
+}
+
+func TestGetProviderType_OpenaiWithDeepSeekURL(t *testing.T) {
+	svc := &ProviderQuotaService{
+		checkers: make(map[string]provider_quota.QuotaChecker),
+	}
+
+	ch := &ent.Channel{
+		Type:    channel.TypeOpenai,
+		BaseURL: "https://api.deepseek.com/v1",
+	}
+	result := svc.getProviderType(ch)
+	require.Equal(t, "deepseek", result)
 }
 
 func TestGetProviderType_OpenaiWithEmptyURL(t *testing.T) {

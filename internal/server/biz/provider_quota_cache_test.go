@@ -250,6 +250,29 @@ func TestMergeAndExtractLimitsRoundTrip(t *testing.T) {
 		assert.Equal(t, "data", merged["existing"])
 		assert.NotNil(t, merged["_limits"])
 	})
+
+	t.Run("persists balances", func(t *testing.T) {
+		granted := 10.0
+		toppedUp := 100.0
+		quotaData := provider_quota.QuotaData{
+			Status:       "available",
+			ProviderType: "deepseek",
+			Balances: []provider_quota.QuotaBalance{
+				{Account: "0001", Currency: "CNY", Total: 110, Granted: &granted, ToppedUp: &toppedUp},
+			},
+		}
+
+		merged := svc.mergeLimitsIntoQuotaData(quotaData)
+		balances, ok := merged["_balances"].([]map[string]any)
+		assert.True(t, ok)
+		assert.Len(t, balances, 1)
+		assert.Equal(t, "0001", balances[0]["account"])
+		assert.Equal(t, "CNY", balances[0]["currency"])
+		assert.Equal(t, 110.0, balances[0]["total"])
+		assert.Equal(t, granted, balances[0]["granted"])
+		assert.Equal(t, toppedUp, balances[0]["topped_up"])
+		assert.Nil(t, merged["_limits"])
+	})
 }
 
 func TestMergeAndExtractLimitsKeepsAccountAlternatives(t *testing.T) {

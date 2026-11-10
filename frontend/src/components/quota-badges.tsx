@@ -28,6 +28,8 @@ import {
   ProviderNeuralWattQuotaData,
   ProviderApertisQuotaData,
   ProviderCharmHyperQuotaData,
+  formatQuotaBalance,
+  parseQuotaBalances,
   ProviderKimiCodeQuotaData,
   ProviderMinimaxQuotaData,
   ProviderZhipuQuotaData,
@@ -202,6 +204,8 @@ function getClineUsagePercent(window?: ClineQuotaWindow): number {
   return window?.usage_percent ?? (window?.usage_ratio ?? 0) * 100;
 }
 
+// getChannelPercentage maps provider quota data onto the 0-100 used percentage
+// shown by the quota badge.
 function getChannelPercentage(channel: ProviderQuotaChannel): number {
   let percentage = 0;
   if (channel.type === 'claudecode') {
@@ -496,6 +500,7 @@ function isResetCreditUnexpired(reset: { expiresAt?: string }, now = Date.now())
   return !Number.isNaN(expiresAtMs) && expiresAtMs > now;
 }
 
+// QuotaRow renders one channel's quota details in the provider quota popover.
 function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; effectiveMode: QuotaRoutingMode | null }) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -2421,6 +2426,54 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                 </div>
               </div>
             );
+          })()}
+        </div>
+      )}
+
+      {(channel.type === 'deepseek' ||
+        channel.type === 'deepseek_anthropic' ||
+        (isOpenaiType(channel.type) && channel.providerType === 'deepseek')) && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const balances = parseQuotaBalances(channel.quotaStatus.quotaData);
+            if (balances.length === 0) return null;
+
+            return balances.map((balance, index) => {
+              const currency = balance.currency?.trim().toUpperCase();
+              const total = formatQuotaBalance(balance.total);
+              const granted = formatQuotaBalance(balance.granted);
+              const toppedUp = formatQuotaBalance(balance.topped_up);
+
+              return (
+                <div
+                  key={`${balance.account ?? ''}-${currency ?? 'balance'}-${index}`}
+                  className={index > 0 ? 'border-border/60 space-y-1 border-t border-dashed pt-3' : 'space-y-1'}
+                >
+                  <div className='flex items-center justify-between text-xs'>
+                    <span className='text-muted-foreground font-medium'>
+                      {t('quota.label.account_balance')}
+                      {currency ? ` (${currency})` : ''}
+                      {balance.account ? ` · ${balance.account}` : ''}
+                    </span>
+                    <span className='text-foreground font-medium'>
+                      {total !== undefined ? (currency ? `${currency} ${total}` : total) : t('quota.label.unavailable')}
+                    </span>
+                  </div>
+                  {granted !== undefined && (
+                    <div className='flex items-center justify-between text-[11px]'>
+                      <span className='text-muted-foreground font-medium'>{t('quota.label.granted_balance')}</span>
+                      <span className='text-foreground font-medium'>{granted}</span>
+                    </div>
+                  )}
+                  {toppedUp !== undefined && (
+                    <div className='flex items-center justify-between text-[11px]'>
+                      <span className='text-muted-foreground font-medium'>{t('quota.label.topped_up_balance')}</span>
+                      <span className='text-foreground font-medium'>{toppedUp}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            });
           })()}
         </div>
       )}
