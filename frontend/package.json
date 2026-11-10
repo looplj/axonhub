@@ -30,7 +30,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@hookform/resolvers": "^6.0.2",
+    "@hookform/resolvers": "^7.0.3",
     "@lobehub/fluent-emoji": "^4.1.1",
     "@lobehub/icons": "^5.8.0",
     "@lobehub/ui": "^5.39.0",
