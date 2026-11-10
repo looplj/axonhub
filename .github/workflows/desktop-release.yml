@@ -7,8 +7,8 @@
 # frontend artifact so these jobs do not build it again. workflow_dispatch
 # rebuilds one tag on its own; mygo opens the draft when the release is missing.
 # Without frontend-artifact, each job builds the frontend itself.
-# A manual run always builds the frontend: the artifact belongs to the
-# release workflow, not to this run.
+# A called workflow keeps the caller's event name, so reuse is decided
+# only by whether that input is set. A manual run does not have it.
 
 name: Desktop release
 
@@ -54,24 +54,24 @@ jobs:
           ref: ${{ inputs.tag != '' && inputs.tag || github.ref }}
 
       - name: Download the shared frontend build
-        if: github.event_name == 'workflow_call' && inputs.frontend-artifact != ''
+        if: inputs.frontend-artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.frontend-artifact }}
           path: internal/server/static/dist
 
       - name: Check the shared frontend build
-        if: github.event_name == 'workflow_call' && inputs.frontend-artifact != ''
+        if: inputs.frontend-artifact
         run: test -f internal/server/static/dist/index.html
 
       - name: Install pnpm
-        if: github.event_name != 'workflow_call' || inputs.frontend-artifact == ''
+        if: ${{ !inputs.frontend-artifact }}
         uses: pnpm/action-setup@v6
         with:
           package_json_file: frontend/package.json
 
       - name: Set up Node.js
-        if: github.event_name != 'workflow_call' || inputs.frontend-artifact == ''
+        if: ${{ !inputs.frontend-artifact }}
         uses: actions/setup-node@v7
         with:
           node-version: "22"
@@ -79,7 +79,7 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install frontend dependencies
-        if: github.event_name != 'workflow_call' || inputs.frontend-artifact == ''
+        if: ${{ !inputs.frontend-artifact }}
         run: pnpm install --frozen-lockfile
         working-directory: frontend
 
@@ -113,7 +113,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
           MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
-          SKIP_FRONTEND_BUILD: ${{ github.event_name == 'workflow_call' && inputs.frontend-artifact != '' && '1' || '' }}
+          SKIP_FRONTEND_BUILD: ${{ inputs.frontend-artifact && '1' || '' }}
         run: make build-desktop MYGO_FLAGS="-platform ${{ matrix.platform }} -upload"
 
   # After every platform has uploaded, replace the release notes' download
