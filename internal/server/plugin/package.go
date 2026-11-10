@@ -382,9 +382,6 @@ func writePreparedUI(data []byte, dest string, uiFiles, dirs []string) ([]string
 		}
 		written = append(written, name)
 	}
-	if err := syncDir(dest); err != nil {
-		return nil, err
-	}
 	slices.Sort(written)
 	return written, nil
 }
@@ -422,9 +419,6 @@ func writeZipFile(dest string, file *zip.File, cleaned string) (int, error) {
 	if err != nil {
 		return int(n), fmt.Errorf("write file %q: %w", cleaned, err)
 	}
-	if err := out.Sync(); err != nil {
-		return int(n), fmt.Errorf("write file %q: %w", cleaned, err)
-	}
 	if err := out.Close(); err != nil {
 		return int(n), fmt.Errorf("write file %q: %w", cleaned, err)
 	}
@@ -449,16 +443,4 @@ func safeJoin(root, name string) (string, error) {
 		return "", fmt.Errorf("file path %q escapes the archive", name)
 	}
 	return target, nil
-}
-
-func syncDir(dir string) error {
-	handle, err := os.Open(dir)
-	if err != nil {
-		return fmt.Errorf("sync directory: %w", err)
-	}
-	defer handle.Close()
-	if err := handle.Sync(); err != nil {
-		return fmt.Errorf("sync directory: %w", err)
-	}
-	return nil
 }
