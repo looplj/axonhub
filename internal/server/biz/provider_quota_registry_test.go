@@ -22,7 +22,7 @@ func TestProviderQuotaService_RegistryCoverageMatrix(t *testing.T) {
 
 	expectedCheckers := []string{
 		"apertis", "antigravity", "charm_hyper", "claudecode", "cline", "codex",
-		"commandcode", "github_copilot", "kimi_code", "minimax", "nanogpt",
+		"commandcode", "deepseek", "github_copilot", "kimi_code", "minimax", "nanogpt",
 		"neuralwatt", "opencode_go", "synthetic", "xai_subscription",
 		"ollama", "zenmux", "zhipu", "zai",
 	}
@@ -61,6 +61,10 @@ func TestProviderQuotaService_RegistryCoverageMatrix(t *testing.T) {
 		{"zhipu", channel.TypeZhipuAnthropic, ""},
 		{"zai", channel.TypeZai, ""},
 		{"zai", channel.TypeZaiAnthropic, ""},
+		{"deepseek", channel.TypeDeepseek, ""},
+		{"deepseek", channel.TypeDeepseekAnthropic, ""},
+		{"deepseek", channel.TypeOpenai, "https://api.deepseek.com"},
+		{"deepseek", channel.TypeOpenaiResponses, "https://api.deepseek.com"},
 		{"charm_hyper", channel.TypeOpenai, "https://hyper.charm.land"},
 		{"charm_hyper", channel.TypeOpenaiResponses, "https://hyper.charm.land"},
 		{"commandcode", channel.TypeCommandcode, ""},

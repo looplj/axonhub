@@ -125,6 +125,24 @@ func TestDetectProviderFromURL_CharmHyper(t *testing.T) {
 	}
 }
 
+func TestDetectProviderFromURL_DeepSeek(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+	}{
+		{"exact domain", "https://api.deepseek.com"},
+		{"with version path", "https://api.deepseek.com/v1"},
+		{"anthropic path", "https://api.deepseek.com/anthropic"},
+		{"with port", "https://api.deepseek.com:443"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DetectProviderFromURL(tt.baseURL)
+			require.Equal(t, "deepseek", result)
+		})
+	}
+}
+
 func TestDetectProviderFromURL_Apertis(t *testing.T) {
 	tests := []struct {
 		name    string
