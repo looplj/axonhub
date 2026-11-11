@@ -118,11 +118,11 @@ func newResponsesIntegrationFixture(t *testing.T, upstreamURL string, configure 
 	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
 	systemService := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheConfig, Ent: client})
 	require.NoError(t, systemService.SetModelSettings(ctx, biz.SystemModelSettings{FallbackToChannelsOnModelNotFound: true, QueryAllChannelModels: true}))
-	channelService := biz.NewChannelService(biz.ChannelServiceParams{CacheConfig: cacheConfig, Ent: client, SystemService: systemService, HttpClient: httpclient.NewHttpClient()})
+	channelService := biz.NewChannelService(biz.ChannelServiceParams{ModelCache: biz.NewModelCacheService(biz.ModelCacheServiceParams{Ent: client}), CacheConfig: cacheConfig, Ent: client, SystemService: systemService, HttpClient: httpclient.NewHttpClient()})
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 	storage := &biz.DataStorageService{AbstractService: &biz.AbstractService{}, SystemService: systemService, Cache: xcache.NewFromConfig[ent.DataStorage](cacheConfig)}
 	requestService := biz.NewRequestService(client, cacheConfig, systemService, usageLogService, storage, biz.NewLiveStreamRegistry())
-	modelService := biz.NewModelService(biz.ModelServiceParams{ChannelService: channelService, SystemService: systemService, Ent: client})
+	modelService := biz.NewModelService(biz.ModelServiceParams{ModelCache: biz.NewModelCacheService(biz.ModelCacheServiceParams{Ent: client}), ChannelService: channelService, SystemService: systemService, Ent: client})
 	selector := orchestrator.NewDefaultSelector(channelService, modelService, systemService)
 	candidates, err := selector.Select(ctx, &llm.Request{Model: "synthetic-model", RequestType: llm.RequestTypeChat})
 	require.NoError(t, err)

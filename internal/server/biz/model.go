@@ -1,3 +1,14 @@
+// 职责: 管理模型配置，并通过共享 Model 索引缓存提供模型路由读取。
+// 关联文件:
+//
+//	internal/server/biz/model_cache.go
+//	internal/server/biz/channel.go
+//	internal/server/orchestrator/candidates.go
+//
+// 注意事项:
+//
+//	缓存读取仍执行 Model 查询权限检查，返回的缓存实体及嵌套配置不可修改。
+
 package biz
 
 import (
@@ -27,6 +38,8 @@ import (
 type ModelServiceParams struct {
 	fx.In
 
+	ModelCache *ModelCacheService
+
 	ChannelService *ChannelService
 	SystemService  *SystemService
 	Ent            *ent.Client
@@ -34,6 +47,7 @@ type ModelServiceParams struct {
 
 func NewModelService(params ModelServiceParams) *ModelService {
 	return &ModelService{
+		modelCache: params.ModelCache,
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
@@ -44,6 +58,8 @@ func NewModelService(params ModelServiceParams) *ModelService {
 
 type ModelService struct {
 	*AbstractService
+
+	modelCache *ModelCacheService
 
 	channelService *ChannelService
 	systemService  *SystemService
@@ -595,14 +611,21 @@ func (svc *ModelService) QueryModelChannelConnections(ctx context.Context, assoc
 	})), nil
 }
 
-// GetModelByModelID retrieves a model by its modelId and status.
+// GetModelByModelID retrieves a read-only model by its modelId and status.
+// Callers must not mutate the entity or its nested settings/model card.
 func (svc *ModelService) GetModelByModelID(ctx context.Context, modelID string, status model.Status) (*ent.Model, error) {
-	return svc.entFromContext(ctx).Model.Query().
-		Where(
-			model.ModelID(modelID),
-			model.StatusEQ(status),
-		).
-		First(ctx)
+	client := svc.entFromContext(ctx)
+	if err := model.Policy.EvalQuery(ctx, client.Model.Query()); err != nil {
+		return nil, err
+	}
+	item, err := svc.modelCache.get(ctx, client, modelID)
+	if err != nil {
+		return nil, err
+	}
+	if item.Status != status {
+		return nil, &ent.NotFoundError{}
+	}
+	return item, nil
 }
 
 // ListModels retrieves all models that have explicit Model entity configuration.

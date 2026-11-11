@@ -1,3 +1,15 @@
+// 职责: 管理渠道模型定价，并从共享 Model 索引缓存解析回退价格。
+// 关联文件:
+//
+//	internal/server/biz/channel.go
+//	internal/server/biz/model_cache.go
+//	internal/server/biz/usage_log.go
+//
+// 注意事项:
+//
+//	精确模型优先于去后缀模型；归档模型不参与价格回退。
+//	请求内价格复用保持费用注入与 usage 记录一致，查询错误不缓存。
+
 package biz
 
 import (
@@ -215,8 +227,8 @@ func (svc *ChannelService) resolveModelLibraryPrice(ctx context.Context, modelID
 	return price, found
 }
 
-// lookupModelLibraryPrice performs the model-library query used by
-// resolveModelLibraryPrice, without any request-scoped caching. The returned
+// lookupModelLibraryPrice resolves candidates against the shared Model indexed cache.
+// Transactional callers read their own database state without publishing it. The returned
 // error separates a genuine miss (nil error, found=false) from a failed lookup
 // (non-nil error), so callers can avoid caching results affected by an error.
 func (svc *ChannelService) lookupModelLibraryPrice(ctx context.Context, modelID string) (*objects.ModelPrice, bool, error) {
@@ -225,12 +237,9 @@ func (svc *ChannelService) lookupModelLibraryPrice(ctx context.Context, modelID 
 	var lookupErr error
 
 	for _, candidate := range modelLibraryPriceModelIDCandidates(modelID) {
-		catalogModel, err := db.Model.Query().
-			Where(
-				model.ModelID(candidate),
-				model.StatusIn(model.StatusEnabled, model.StatusDisabled),
-			).
-			First(ctx)
+		catalogModel, err := authz.RunAsHost(ctx, db, "model-price-fallback", func(hostCtx context.Context) (*ent.Model, error) {
+			return svc.modelCache.get(hostCtx, db, candidate)
+		})
 		if err != nil {
 			if !ent.IsNotFound(err) {
 				log.Warn(ctx, "failed to resolve model library price",
@@ -241,6 +250,10 @@ func (svc *ChannelService) lookupModelLibraryPrice(ctx context.Context, modelID 
 				lookupErr = fmt.Errorf("failed to query model library price for %q: %w", candidate, err)
 			}
 
+			continue
+		}
+
+		if catalogModel.Status != model.StatusEnabled && catalogModel.Status != model.StatusDisabled {
 			continue
 		}
 

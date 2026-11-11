@@ -21,6 +21,7 @@ func NewChannelServiceForTest(client *ent.Client) *ChannelService {
 	}
 
 	svc := NewChannelService(ChannelServiceParams{
+		ModelCache:    NewModelCacheService(ModelCacheServiceParams{Ent: client}),
 		CacheConfig:   xcache.Config{Mode: xcache.ModeMemory},
 		Ent:           client,
 		SystemService: mockSysSvc,

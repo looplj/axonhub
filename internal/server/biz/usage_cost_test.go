@@ -1099,7 +1099,7 @@ func TestModelLibraryPriceModelIDCandidates(t *testing.T) {
 
 // TestModelLibraryPriceMemo_ReusesLookupWithinRequest verifies that repeated
 // resolutions inside one request reuse a single catalog lookup, including a
-// miss, while a fresh request re-queries (so later price changes are observed).
+// miss, while a fresh request uses the updated shared Model cache.
 func TestModelLibraryPriceMemo_ReusesLookupWithinRequest(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -1129,7 +1129,7 @@ func TestModelLibraryPriceMemo_ReusesLookupWithinRequest(t *testing.T) {
 	_, stillMissing := channelService.resolveModelLibraryPrice(memoCtx, "m-absent")
 	require.False(t, stillMissing, "memoized miss must be reused within the request")
 
-	// A fresh request (new memo) sees the newly added price.
+	// The mutation hook invalidated the shared key; a fresh request loads it.
 	freshCtx := WithModelLibraryPriceMemo(ctx)
 	added, addedOK := channelService.resolveModelLibraryPrice(freshCtx, "m-absent")
 	require.True(t, addedOK)
