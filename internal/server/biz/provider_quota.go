@@ -708,7 +708,7 @@ func (svc *ProviderQuotaService) ListResets(ctx context.Context, channelID int) 
 }
 
 // ResetChannelQuotaNow attempts to redeem a provider-managed reset for a channel.
-func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, channelID int) error {
+func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, channelID int, resetIDs ...string) error {
 	// The quota edge gives saveQuotaStatus the pre-reset previous status for
 	// webhook transition detection without an extra query.
 	ch, err := svc.db.Channel.Query().Where(channel.IDEQ(channelID)).WithProviderQuotaStatus().Only(ctx)
@@ -737,8 +737,18 @@ func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, chann
 		return fmt.Errorf("channel has no credentials")
 	}
 
-	if err := resetter.Reset(ctx, ch); err != nil {
-		return fmt.Errorf("failed to reset %s quota: %w", providerType, err)
+	var resetErr error
+	if len(resetIDs) > 0 && resetIDs[0] != "" {
+		selective, ok := checker.(provider_quota.SelectiveResetter)
+		if !ok {
+			return fmt.Errorf("%w: selecting a reset for provider %q", provider_quota.ErrResetUnsupported, providerType)
+		}
+		resetErr = selective.ResetSelected(ctx, ch, resetIDs[0])
+	} else {
+		resetErr = resetter.Reset(ctx, ch)
+	}
+	if resetErr != nil {
+		return fmt.Errorf("failed to reset %s quota: %w", providerType, resetErr)
 	}
 
 	// Refresh the quota status immediately so the UI reflects the reset.
@@ -911,7 +921,9 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 	quotaData = provider_quota.NormalizeQuotaData(quotaData)
 
 	resetList := provider_quota.ResetList{Supported: false}
-	if resetter, ok := checker.(provider_quota.Resetter); ok {
+	if quotaData.Resets != nil {
+		resetList = *quotaData.Resets
+	} else if resetter, ok := checker.(provider_quota.Resetter); ok {
 		resetList.Supported = true
 		resetList, err = resetter.ListResets(ctx, ch)
 		resetList.Supported = true

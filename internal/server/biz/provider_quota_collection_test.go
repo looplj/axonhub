@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync/atomic"
@@ -989,4 +990,67 @@ func TestProviderQuotaService_ResetChannelQuotaNow_EmitsRecoveryWhenReloadSuccee
 
 	expectQuotaWebhook(t, notifications, EventProviderQuotaRecovered, "exhausted", "available")
 	expectNoQuotaWebhook(t, notifications)
+}
+
+// combinedQuotaResetter simulates a provider that returns usage and reset rights
+// in one response. A second ListResets call could disagree with that snapshot.
+type combinedQuotaResetter struct{ countingQuotaResetter }
+
+func (c *combinedQuotaResetter) CheckQuota(ctx context.Context, ch *ent.Channel) (provider_quota.QuotaData, error) {
+	data, err := c.countingQuotaChecker.CheckQuota(ctx, ch)
+	data.Resets = &c.resets
+	return data, err
+}
+
+func TestProviderQuotaService_CheckQuotaKeepsCombinedResetSnapshot(t *testing.T) {
+	service, _, ctx, client := setupProviderQuotaCollectionService(t)
+	defer client.Close()
+	checker := &combinedQuotaResetter{
+		providerType: "minimax",
+		resets:       provider_quota.ResetList{Supported: true, Resets: []provider_quota.Reset{{ID: "credit", Status: "held"}}},
+	}
+	service.checkers["minimax"] = checker
+	ch := createProviderQuotaCollectionChannel(t, ctx, client, "Combined quota", channel.TypeMinimax)
+	service.mu.Lock()
+	service.checkChannelQuota(ctx, quotaCheckGroup{channels: []*ent.Channel{ch}}, time.Now())
+	service.mu.Unlock()
+	require.EqualValues(t, 1, checker.calls.Load())
+	require.Zero(t, checker.listCalls.Load())
+	status, err := client.ProviderQuotaStatus.Query().Where(providerquotastatus.ChannelIDEQ(ch.ID)).Only(ctx)
+	require.NoError(t, err)
+	encoded, err := json.Marshal(status.QuotaData["_resets"])
+	require.NoError(t, err)
+	require.Contains(t, string(encoded), `"credit"`)
+}
+
+type selectingQuotaResetter struct {
+	countingQuotaResetter
+
+	selectedID string
+}
+
+func (c *selectingQuotaResetter) ResetSelected(_ context.Context, _ *ent.Channel, resetID string) error {
+	c.selectedID = resetID
+	return nil
+}
+
+func TestProviderQuotaService_ResetChannelQuotaNow_Selection(t *testing.T) {
+	service, _, ctx, client := setupProviderQuotaCollectionService(t)
+	defer client.Close()
+	ch := createProviderQuotaCollectionChannel(t, ctx, client, "Selectable resets", channel.TypeMinimax)
+	checker := &selectingQuotaResetter{providerType: "minimax"}
+	service.checkers["minimax"] = checker
+	require.NoError(t, service.ResetChannelQuotaNow(ctx, ch.ID, "full"))
+	require.Equal(t, "full", checker.selectedID)
+	require.Zero(t, checker.resetCalls.Load())
+}
+
+func TestProviderQuotaService_ResetChannelQuotaNow_SelectionDoesNotFallBack(t *testing.T) {
+	service, _, ctx, client := setupProviderQuotaCollectionService(t)
+	defer client.Close()
+	ch := createProviderQuotaCollectionChannel(t, ctx, client, "Default reset only", channel.TypeMinimax)
+	checker := &countingQuotaResetter{providerType: "minimax"}
+	service.checkers["minimax"] = checker
+	require.ErrorIs(t, service.ResetChannelQuotaNow(ctx, ch.ID, "full"), provider_quota.ErrResetUnsupported)
+	require.Zero(t, checker.resetCalls.Load())
 }
