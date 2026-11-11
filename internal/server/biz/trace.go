@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -38,6 +39,7 @@ const (
 type TraceServiceParams struct {
 	fx.In
 
+	CacheConfig    xcache.Config
 	RequestService *RequestService
 	Ent            *ent.Client
 }
@@ -48,6 +50,7 @@ func NewTraceService(params TraceServiceParams) *TraceService {
 			db: params.Ent,
 		},
 		requestService: params.RequestService,
+		identities:     newRequestIdentityCache(params.Ent, params.CacheConfig),
 	}
 }
 
@@ -55,6 +58,7 @@ type TraceService struct {
 	*AbstractService
 
 	requestService *RequestService
+	identities     *requestIdentityCache
 }
 
 // GetOrCreateTrace retrieves an existing trace by trace_id and project_id,
