@@ -36,7 +36,7 @@ func setupOpenAIRetrieveTest(t *testing.T) (*ent.Client, *biz.ChannelService, *b
 		CacheConfig: xcache.Config{Mode: xcache.ModeMemory},
 		Ent:         client,
 	})
-	modelSvc := biz.NewModelService(biz.ModelServiceParams{
+	modelSvc := biz.NewModelService(biz.ModelServiceParams{ModelCache: biz.NewModelCacheService(biz.ModelCacheServiceParams{Ent: client}),
 		ChannelService: channelSvc,
 		SystemService:  systemSvc,
 		Ent:            client,
@@ -554,7 +554,7 @@ func TestOpenAIHandlers_ListModels_ExtendedModeRespectsAPIKeyProfile(t *testing.
 	})
 
 	handlers := &OpenAIHandlers{
-		ModelService: biz.NewModelService(biz.ModelServiceParams{
+		ModelService: biz.NewModelService(biz.ModelServiceParams{ModelCache: biz.NewModelCacheService(biz.ModelCacheServiceParams{Ent: client}),
 			ChannelService: channelSvc,
 			SystemService:  systemSvc,
 			Ent:            client,
@@ -652,7 +652,7 @@ func TestOpenAIHandlers_ListModels_ExtendedModeFallsBackToBasicForMissingDBModel
 	})
 
 	handlers := &OpenAIHandlers{
-		ModelService:  biz.NewModelService(biz.ModelServiceParams{ChannelService: channelSvc, SystemService: systemSvc, Ent: client}),
+		ModelService:  biz.NewModelService(biz.ModelServiceParams{ModelCache: biz.NewModelCacheService(biz.ModelCacheServiceParams{Ent: client}), ChannelService: channelSvc, SystemService: systemSvc, Ent: client}),
 		SystemService: systemSvc,
 		EntClient:     client,
 	}
@@ -733,7 +733,7 @@ func TestOpenAIHandlers_ListModels_ExtendedModeWithZeroAllowedModelsReturnsEmpty
 	})
 
 	handlers := &OpenAIHandlers{
-		ModelService:  biz.NewModelService(biz.ModelServiceParams{ChannelService: channelSvc, SystemService: systemSvc, Ent: client}),
+		ModelService:  biz.NewModelService(biz.ModelServiceParams{ModelCache: biz.NewModelCacheService(biz.ModelCacheServiceParams{Ent: client}), ChannelService: channelSvc, SystemService: systemSvc, Ent: client}),
 		SystemService: systemSvc,
 		EntClient:     client,
 	}

@@ -65,7 +65,7 @@ func newCodexRouteHarness(t *testing.T) *codexRouteHarness {
 	keys := biz.NewAPIKeyService(biz.APIKeyServiceParams{Ent: db, CacheConfig: cache, ProjectService: projects, KeyPrefix: "ah"})
 	t.Cleanup(keys.Stop)
 	auth := biz.NewAuthService(biz.AuthServiceParams{Ent: db, SystemService: system, APIKeyService: keys, AllowNoAuth: true})
-	models := biz.NewModelService(biz.ModelServiceParams{Ent: db, SystemService: system, ChannelService: channels})
+	models := biz.NewModelService(biz.ModelServiceParams{ModelCache: biz.NewModelCacheService(biz.ModelCacheServiceParams{Ent: db}), Ent: db, SystemService: system, ChannelService: channels})
 	compatibility := api.NewCodexCompatibilityHandlers(system, channels, models)
 	h := &codexRouteHarness{db: db, ctx: ctx, system: system, channels: channels, key: key, keys: keys, source: source}
 	openAI, requests := setupCodexResponseHandlers(t, h, models)

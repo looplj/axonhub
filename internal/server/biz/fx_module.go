@@ -31,6 +31,10 @@ var Module = fx.Module("biz",
 	fx.Provide(NewDataStorageService),
 	fx.Provide(NewChannelOverrideTemplateService),
 	fx.Provide(NewModelService),
+	fx.Provide(NewModelCacheService),
+	fx.Invoke(func(lc fx.Lifecycle, svc *ModelCacheService) {
+		lc.Append(fx.Hook{OnStop: func(context.Context) error { svc.Stop(); return nil }})
+	}),
 	fx.Provide(NewChannelProbeService),
 	fx.Provide(NewPromptService),
 	fx.Provide(NewPromptProtectionRuleService),
