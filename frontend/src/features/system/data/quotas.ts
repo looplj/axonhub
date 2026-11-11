@@ -10,8 +10,8 @@ const CHECK_PROVIDER_QUOTAS_QUERY = `
 `;
 
 const RESET_CHANNEL_QUOTA_NOW_MUTATION = `
-  mutation ResetChannelQuotaNow($channelID: ID!) {
-    resetChannelQuotaNow(channelID: $channelID)
+  mutation ResetChannelQuotaNow($channelID: ID!, $resetID: String) {
+    resetChannelQuotaNow(channelID: $channelID, resetID: $resetID)
   }
 `;
 
@@ -45,11 +45,17 @@ export async function checkProviderQuotas() {
   return graphqlRequest(CHECK_PROVIDER_QUOTAS_QUERY);
 }
 
-export async function resetChannelQuotaNow(channelID: string) {
-  return graphqlRequest(RESET_CHANNEL_QUOTA_NOW_MUTATION, { channelID });
+export async function resetChannelQuotaNow(channelID: string, resetID?: string) {
+  return graphqlRequest(RESET_CHANNEL_QUOTA_NOW_MUTATION, { channelID, resetID });
 }
 
 export type ProviderQuotaReset = {
+  clears?: string[];
+  recommended?: boolean;
+  remaining?: number;
+  redeemable?: boolean;
+  unavailableReason?: string;
+  upstreamReason?: string;
   id: string;
   status: string;
   type?: string;
@@ -59,6 +65,10 @@ export type ProviderQuotaReset = {
 };
 
 export type ProviderQuotaResetList = {
+  ineligibleReason?: string;
+  eligible?: boolean;
+  cooldownUntil?: string;
+  windowModels?: Record<string, string>;
   supported: boolean;
   resets: ProviderQuotaReset[];
   error?: string;
@@ -93,6 +103,7 @@ type ProviderClaudeQuotaData = ProviderQuotaDataCommon & {
     '7d'?: ProviderClaudeQuotaWindow;
     overage?: ProviderClaudeQuotaWindow;
   };
+  model_windows?: (ProviderClaudeQuotaWindow & { model: string })[];
   representative_claim?: string;
 };
 

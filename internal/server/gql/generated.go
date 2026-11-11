@@ -1097,7 +1097,7 @@ type ComplexityRoot struct {
 		LoadAPIKeyProfileTemplate             func(childComplexity int, input LoadAPIKeyProfileTemplateInput) int
 		PreviewPromptProtectionRule           func(childComplexity int, input PromptProtectionRulePreviewInput) int
 		RemoveUserFromProject                 func(childComplexity int, input RemoveUserFromProjectInput) int
-		ResetChannelQuotaNow                  func(childComplexity int, channelID objects.GUID) int
+		ResetChannelQuotaNow                  func(childComplexity int, channelID objects.GUID, resetID *string) int
 		ResetClaudeCodeSafeguardsSettings     func(childComplexity int) int
 		Restore                               func(childComplexity int, file graphql.Upload, input backup.RestoreOptions) int
 		RetainThread                          func(childComplexity int, id objects.GUID) int
@@ -2549,7 +2549,7 @@ type MutationResolver interface {
 	UpdateProviderQuotaCollectionSettings(ctx context.Context, input UpdateProviderQuotaCollectionSettingsInput) (bool, error)
 	UpdateSecuritySettings(ctx context.Context, input UpdateSecuritySettingsInput) (bool, error)
 	CheckProviderQuotas(ctx context.Context) (bool, error)
-	ResetChannelQuotaNow(ctx context.Context, channelID objects.GUID) (bool, error)
+	ResetChannelQuotaNow(ctx context.Context, channelID objects.GUID, resetID *string) (bool, error)
 	TriggerGcCleanup(ctx context.Context, input gc.TriggerGcCleanupInput) (bool, error)
 	SaveProxyPreset(ctx context.Context, input biz.ProxyPreset) (bool, error)
 	DeleteProxyPreset(ctx context.Context, url string) (bool, error)
@@ -7081,7 +7081,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ResetChannelQuotaNow(childComplexity, args["channelID"].(objects.GUID)), true
+		return e.complexity.Mutation.ResetChannelQuotaNow(childComplexity, args["channelID"].(objects.GUID), args["resetID"].(*string)), true
 	case "Mutation.resetClaudeCodeSafeguardsSettings":
 		if e.complexity.Mutation.ResetClaudeCodeSafeguardsSettings == nil {
 			break
@@ -14505,6 +14505,11 @@ func (ec *executionContext) field_Mutation_resetChannelQuotaNow_args(ctx context
 		return nil, err
 	}
 	args["channelID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "resetID", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["resetID"] = arg1
 	return args, nil
 }
 
@@ -40052,7 +40057,7 @@ func (ec *executionContext) _Mutation_resetChannelQuotaNow(ctx context.Context, 
 		ec.fieldContext_Mutation_resetChannelQuotaNow,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().ResetChannelQuotaNow(ctx, fc.Args["channelID"].(objects.GUID))
+			return ec.resolvers.Mutation().ResetChannelQuotaNow(ctx, fc.Args["channelID"].(objects.GUID), fc.Args["resetID"].(*string))
 		},
 		nil,
 		ec.marshalNBoolean2bool,

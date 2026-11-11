@@ -1,11 +1,21 @@
+// 职责: 通过 Claude usage API 查询额度，并兼容响应头探测。
+// 关联文件:
+//
+//	internal/server/biz/provider_quota/claudecode_usage.go
+//	internal/server/biz/provider_quota.go
+//
+// 注意事项: 只有缺少 profile 权限、上游不支持 usage API，或渠道使用自定义 BaseURL 时才回退模型请求。
+
 package provider_quota
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -16,14 +26,17 @@ import (
 )
 
 type ClaudeCodeQuotaChecker struct {
-	httpClient *httpclient.HttpClient
+	httpClient       *httpclient.HttpClient
+	resetMu          sync.Mutex
+	pending          map[string]claudePendingReset
+	pendingByChannel map[int]string
 }
 
 func NewClaudeCodeQuotaChecker(httpClient *httpclient.HttpClient) *ClaudeCodeQuotaChecker {
 	return &ClaudeCodeQuotaChecker{httpClient: httpClient}
 }
 
-func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
+func (c *ClaudeCodeQuotaChecker) checkQuotaFromHeaders(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
 	// Verify credentials
 	if ch.Credentials.OAuth == nil && strings.TrimSpace(ch.Credentials.APIKey) == "" {
 		return QuotaData{}, fmt.Errorf("channel has no credentials")
@@ -79,6 +92,10 @@ func (c *ClaudeCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 
 	httpResponse, err := httpClient.Do(ctx, httpRequest)
 	if err != nil {
+		var upstream *httpclient.Error
+		if errors.As(err, &upstream) && upstream.StatusCode == http.StatusTooManyRequests && upstream.Headers.Get("Anthropic-Ratelimit-Unified-Status") != "" {
+			return c.parseResponse(upstream.Headers)
+		}
 		return QuotaData{}, fmt.Errorf("HTTP request failed: %w", err)
 	}
 
