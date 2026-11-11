@@ -12,7 +12,7 @@
 [![Test Status](https://github.com/looplj/axonhub/actions/workflows/test.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/test.yml)
 [![Lint Status](https://github.com/looplj/axonhub/actions/workflows/lint.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/lint.yml)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/looplj/axonhub?logo=go&logoColor=white)](https://golang.org/)
-[![Docker Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
+[![Docker Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/looplj/axonhub)
 [![Greptile: The War on Bugs](https://www.greptile.com/badge.svg)](https://www.greptile.com/?utm_source=oss_badge&utm_medium=readme&utm_campaign=greptile_for_open_source)
 
 [English](README.en-US.md) | [中文](README.md) | [日本語](README.ja-JP.md)
@@ -21,13 +21,15 @@
 
 ---
 
+> 🚀 **Check out my new project [Reveric](https://lj.s.gy/LDfOjx)**: An Agent Native creative workspace—from novels and screenplays to automatic video generation and editing, with agents involved throughout the creative process.
+
 ## ❤️ Sponsor
 
 <div align="center">
 
 <table width="100%">
   <tr>
-    <td width="50%" align="center" valign="top">
+    <td width="100%" align="center" valign="top">
       <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
         <img src="docs/sponsors/apikey-fun.png" alt="APIKEY.FUN" height="50"/>
         <br/>
@@ -42,29 +44,6 @@
         APIKEY.FUN is a professional enterprise-grade AI API relay service committed to providing enterprises and individual developers with stable, efficient, and cost-effective access to AI model APIs.<br/>
         The platform supports popular models including Claude, OpenAI, and Gemini, with prices as low as 7% of the official price.<br/>
         AxonHub users who <a href="https://apikey.fun/register?aff=axonhub" target="_blank">register through the exclusive link</a> can enjoy a permanent discount of up to 5% on recharges.
-      </div>
-    </td>
-    <td width="50%" align="center" valign="top">
-      <a href="https://lj.s.gy/DUq59H" target="_blank">
-        <img src="https://www.infistar.cc/logo.png" alt="无限星河 Infistar.cc" height="50"/>
-        <br/>
-        <strong>无限星河 Infistar.cc</strong>
-      </a>
-      <div align="center">
-        <a href="https://lj.s.gy/DUq59H" target="_blank">
-          <img src="docs/sponsors/infistar-banner.png" alt="Infistar.cc 无限星河" width="100%"/>
-        </a>
-      </div>
-      <div align="left">
-        <strong>AxonHub × Infistar.cc | High-Availability AI API</strong>
-      </div>
-      <div align="left">
-        ⚡ Stable routing | 10% rates · Transparent · Failover<br/>
-        🧠 Top models | ChatGPT · Claude · Gemini · Kimi · GLM · DeepSeek<br/>
-        🎨 Multimodal | Text · Image · Video · Embedding / Rerank
-      </div>
-      <div align="left">
-        AxonHub users: bonus credits via the <a href="https://lj.s.gy/DUq59H" target="_blank">exclusive link</a>.
       </div>
     </td>
   </tr>
@@ -171,9 +150,9 @@ For detailed technical documentation, API references, architecture design, and m
 
 ## 🎯 Demo
 
-Try AxonHub live at our [demo instance](https://axonhub.onrender.com)!
+Try AxonHub live at our [demo instance](https://axonhub.reveric.app)!
 
-**Note**：The demo instance currently configures Zhipu and OpenRouter free models.
+**Note**: The demo instance is configured with free models from OpenRouter.
 
 ### Demo Account
 
@@ -353,8 +332,6 @@ For detailed development instructions, architecture design, and contribution gui
 - 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTP framework
 - 🗄️ [ent/ent](https://github.com/ent/ent) - ORM framework
 - 🔧 [air-verse/air](https://github.com/air-verse/air) - Auto reload Go service
-- ☁️ [Render](https://render.com) - Free cloud deployment platform for hosting our demo
-- 🗃️ [TiDB Cloud](https://www.pingcap.com/tidb-cloud/) - Serverless database platform for demo deployment
 
 ---
 

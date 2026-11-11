@@ -24,6 +24,7 @@ export const traceSchema = z.object({
   traceID: z.string(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
+  lastRequestAt: z.coerce.date(),
   thread: threadSchema,
   requests: traceRequestsSummarySchema,
   firstUserQuery: z.string().nullable().optional(),

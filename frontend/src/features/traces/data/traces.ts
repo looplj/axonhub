@@ -24,6 +24,7 @@ function buildTracesQuery() {
             status
             createdAt
             updatedAt
+            lastRequestAt
             thread {
               id
               threadID
@@ -65,10 +66,6 @@ function buildTraceDetailQuery() {
             totalCachedTokens
             totalCachedWriteTokens
           }
-          project {
-            id
-            name
-          }
           thread {
             id
             threadID
@@ -100,10 +97,6 @@ function buildTraceWithRequestTracesQuery() {
             totalCachedTokens
             totalCachedWriteTokens
           }
-          project {
-            id
-            name
-          }
           thread {
             id
             threadID
@@ -122,7 +115,7 @@ function buildTraceWithRequestTracesQuery() {
 export function useTraces(variables?: {
   first?: number;
   after?: string;
-  orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' };
+  orderBy?: { field: 'CREATED_AT' | 'LAST_REQUEST_AT'; direction: 'ASC' | 'DESC' };
   where?: {
     projectID?: string;
     threadID?: string;

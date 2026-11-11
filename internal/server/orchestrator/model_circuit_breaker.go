@@ -86,6 +86,10 @@ func (m *modelCircuitBreakerTracker) OnOutboundLlmResponse(ctx context.Context, 
 }
 
 func (m *modelCircuitBreakerTracker) OnOutboundRawError(ctx context.Context, err error) {
+	if isLocalAdmissionError(err) {
+		m.releaseProbeLease()
+		return
+	}
 	if !m.shouldTrack() {
 		return
 	}
@@ -100,7 +104,7 @@ func (m *modelCircuitBreakerTracker) OnOutboundRawError(ctx context.Context, err
 	}
 
 	// Local skips never reached upstream — must not count as model errors.
-	if errors.Is(err, errSkipCandidateByCircuitBreaker) || isChannelQueueError(err) {
+	if errors.Is(err, errSkipCandidateByCircuitBreaker) {
 		return
 	}
 

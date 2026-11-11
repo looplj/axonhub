@@ -1,0 +1,163 @@
+extend type Query {
+  plugins: [Plugin!]!
+  pluginRuntimeStatuses: [PluginRuntimeStatus!]!
+  pluginCountersArePerInstance: Boolean!
+  pluginMarket: [PluginMarketEntry!]!
+}
+
+extend type Mutation {
+  installPlugin(file: Upload!, grantedPermissions: [String!], grantedNetwork: [String!]): PluginInstallResult!
+  installPluginFromMarket(pluginID: String!, version: String!, grantedPermissions: [String!], grantedNetwork: [String!]): PluginInstallResult!
+  enablePlugin(id: ID!, grantedPermissions: [String!]!, grantedNetwork: [String!]!): Plugin!
+  disablePlugin(id: ID!): Plugin!
+  updatePluginSettings(id: ID!, priority: Int!, config: Map!): Plugin!
+  deletePlugin(id: ID!): Boolean!
+}
+
+type Plugin {
+  id: ID!
+  pluginID: String!
+  name: String!
+  version: String!
+  description: String!
+  enabled: Boolean!
+  priority: Int!
+  builtin: Boolean!
+  grantedPermissions: [String!]!
+  grantedNetwork: [String!]!
+  manifestPermissions: [String!]!
+  manifestNetwork: [String!]!
+  manifestHooks: PluginManifestHooks!
+  configFields: [PluginConfigField!]!
+  config: Map!
+  runtimeStatus: String!
+  runtimeError: String!
+}
+
+type PluginManifestHooks {
+  request: PluginManifestRequestHook
+  attempt: PluginManifestAttemptHook
+}
+
+type PluginManifestRequestHook {
+  enabled: Boolean!
+  requestTypes: [String!]!
+}
+
+type PluginManifestAttemptHook {
+  enabled: Boolean!
+  apiFormats: [String!]!
+}
+
+type PluginConfigField {
+  name: String!
+  type: String!
+  title: String!
+  description: String!
+  format: String!
+  enumValues: [String!]!
+  minimum: Float
+  maximum: Float
+  defaultJSON: String!
+  required: Boolean!
+}
+
+type PluginRuntimeStatus {
+  id: ID!
+  pluginID: String!
+  status: String!
+  reason: String!
+  overloaded: Int!
+  protectedDrops: Int!
+  overriddenByPassThrough: Int!
+}
+
+type PluginUpgradePreview {
+  currentVersion: String!
+  newVersion: String!
+  permissions: [String!]!
+  network: [String!]!
+  events: [String!]!
+  hooks: [String!]!
+  pages: [String!]!
+  actions: [String!]!
+}
+
+type PluginInstallResult {
+  plugin: Plugin
+  upgradePreview: PluginUpgradePreview
+}
+
+type PluginMarketEntry {
+  id: String!
+  name: String!
+  description: String!
+  version: String!
+  axonhubVersion: String!
+  installedVersion: String
+  updateFrom: String
+}
+
+type PluginKVPage {
+  entries: [PluginKVEntry!]!
+  nextCursor: String
+}
+
+type PluginKVEntry {
+  namespace: String!
+  key: String!
+  value: String!
+  expiresAt: Time
+  updatedAt: Time!
+}
+
+extend type Query {
+  pluginKV(namespace: String, key: String!): PluginKVEntry
+  pluginKVList(namespace: String, prefix: String, first: Int = 100, after: String): PluginKVPage!
+}
+
+extend type Mutation {
+  setPluginKV(namespace: String, key: String!, value: String!, ttlSeconds: Int): PluginKVEntry!
+  deletePluginKV(namespace: String, key: String!): Boolean!
+}
+
+type PluginUIPage {
+  pluginID: String!
+  key: String!
+  entry: String!
+  title: JSONRawMessage!
+}
+
+type PluginUIActionEffect {
+  type: String!
+  entry: String!
+}
+
+type PluginUIAction {
+  pluginID: String!
+  key: String!
+  slot: String!
+  title: JSONRawMessage!
+  icon: String!
+  effect: PluginUIActionEffect!
+  revision: String!
+}
+
+type PluginUIEntries {
+  pages: [PluginUIPage!]!
+  actions: [PluginUIAction!]!
+}
+
+type PluginUISession {
+  token: String!
+  config: Map!
+  canWriteKV: Boolean!
+}
+
+extend type Query {
+  pluginUIEntries: PluginUIEntries!
+}
+
+extend type Mutation {
+  createPluginUISession(pluginID: String!, entry: String!): PluginUISession!
+}

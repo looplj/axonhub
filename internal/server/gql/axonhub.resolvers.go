@@ -890,7 +890,7 @@ func (r *queryResolver) AllChannelSummarys(ctx context.Context, includeArchived 
 		if !authz.HasScope(ctx, scopes.ScopeWriteRequests) && !authz.HasScope(ctx, scopes.ScopeWriteAPIKeys) {
 			return nil, authz.RequireScope(ctx, scopes.ScopeWriteRequests)
 		}
-		channels, err = authz.RunWithSystemBypass(ctx, "project-available-channels", func(ctx context.Context) ([]*ent.Channel, error) {
+		channels, err = authz.RunAsHost(ctx, r.client, "project-available-channels", func(ctx context.Context) ([]*ent.Channel, error) {
 			return r.client.Channel.Query().
 				Where(channel.StatusEQ(channel.StatusEnabled)).
 				Order(ent.Desc(channel.FieldOrderingWeight)).
@@ -901,9 +901,9 @@ func (r *queryResolver) AllChannelSummarys(ctx context.Context, includeArchived 
 		return nil, fmt.Errorf("failed to query project channels: %w", err)
 	}
 
-	proj, err := authz.RunWithSystemBypass(ctx, "project-available-channels-profile", func(ctx context.Context) (*ent.Project, error) {
-		return r.client.Project.Get(ctx, projectID)
-	})
+	var proj *ent.Project
+	// The caller was authorized above; the project profile only filters the result.
+	proj, err = authz.RunAsHost(ctx, r.client, "project-available-channels-profile", func(ctx context.Context) (*ent.Project, error) { return r.client.Project.Get(ctx, projectID) })
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project: %w", err)
 	}

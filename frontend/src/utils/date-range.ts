@@ -10,6 +10,8 @@ export type DateTimeRangeValue = {
 export const DEFAULT_START_TIME: TimeValue = { hh: '00', mm: '00', ss: '00' }
 export const DEFAULT_END_TIME: TimeValue = { hh: '23', mm: '59', ss: '59' }
 
+export type DateRangeField = 'createdAt' | 'lastRequestAt'
+
 export function normalizeDateTimeRangeValue(value?: DateTimeRangeValue): DateTimeRangeValue {
   return {
     from: value?.from,
@@ -35,10 +37,10 @@ function clampTime(value: string, max: number, fallback: number) {
   return Math.min(Math.max(parsed, 0), max)
 }
 
-export function buildDateRangeWhereClause(dateRange: DateTimeRangeValue | undefined) {
-  const where: { createdAtGTE?: string; createdAtLTE?: string } = {}
-
+function resolveRangeBounds(dateRange: DateTimeRangeValue | undefined) {
   const normalized = normalizeDateTimeRangeValue(dateRange)
+  let gte: string | undefined
+  let lte: string | undefined
 
   if (normalized.from) {
     const startDate = new Date(normalized.from)
@@ -49,7 +51,7 @@ export function buildDateRangeWhereClause(dateRange: DateTimeRangeValue | undefi
       clampTime(startTime.ss, 59, 0),
       0
     )
-    where.createdAtGTE = startDate.toISOString()
+    gte = startDate.toISOString()
   }
   if (normalized.to) {
     const endDate = new Date(normalized.to)
@@ -60,8 +62,28 @@ export function buildDateRangeWhereClause(dateRange: DateTimeRangeValue | undefi
       clampTime(endTime.ss, 59, 59),
       999
     )
-    where.createdAtLTE = endDate.toISOString()
+    lte = endDate.toISOString()
   }
+
+  return { gte, lte }
+}
+
+export function buildDateRangeWhereClause(dateRange: DateTimeRangeValue | undefined) {
+  const where: { createdAtGTE?: string; createdAtLTE?: string } = {}
+  const { gte, lte } = resolveRangeBounds(dateRange)
+
+  if (gte) where.createdAtGTE = gte
+  if (lte) where.createdAtLTE = lte
+
+  return where
+}
+
+export function buildLastRequestAtDateRangeWhereClause(dateRange: DateTimeRangeValue | undefined) {
+  const where: { lastRequestAtGTE?: string; lastRequestAtLTE?: string } = {}
+  const { gte, lte } = resolveRangeBounds(dateRange)
+
+  if (gte) where.lastRequestAtGTE = gte
+  if (lte) where.lastRequestAtLTE = lte
 
   return where
 }

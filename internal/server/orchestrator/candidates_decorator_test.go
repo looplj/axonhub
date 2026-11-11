@@ -18,17 +18,17 @@ func TestDecoratorChain_FullStack(t *testing.T) {
 	systemService := newTestSystemService(client)
 
 	strategies := []LoadBalanceStrategy{
-		NewErrorAwareStrategy(channelService),
-		NewWeightRoundRobinStrategy(channelService),
-		NewLatencyAwareStrategy(channelService),
+		NewErrorAwareStrategy(),
+		NewWeightRoundRobinStrategy(),
+		NewLatencyAwareStrategy(),
 	}
-	loadBalancer := NewLoadBalancer(systemService, nil, strategies...)
+	loadBalancer := NewLoadBalancer(channelService, nil, strategies...)
 
 	// Build decorator chain: Default -> SelectedChannels -> LoadBalanced
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
 	filteredSelector := WithSelectedChannelsSelector(baseSelector, []int{channels[0].ID, channels[1].ID})
-	selector := WithLoadBalancedSelector(filteredSelector, loadBalancer, systemService)
+	selector := WithLoadBalancedSelector(filteredSelector, loadBalancer, systemService.RetryPolicyOrDefault(ctx))
 
 	req := &llm.Request{
 		Model: "gpt-4",

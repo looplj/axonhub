@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "example.temperature-cap",
+  "name": "Temperature Cap",
+  "version": "1.0.0",
+  "description": "Sets each request's temperature from the maxTemperature setting.",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "hooks": {
+    "request": {
+      "enabled": true,
+      "requestTypes": [
+        "chat"
+      ]
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "maxTemperature": {
+        "type": "number",
+        "title": "Max temperature",
+        "description": "Temperature written on every request. The hook uses 0.2 until this value is saved.",
+        "minimum": 0,
+        "maximum": 2,
+        "default": 0.2
+      }
+    }
+  }
+}

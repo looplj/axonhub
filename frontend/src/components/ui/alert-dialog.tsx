@@ -1,7 +1,9 @@
 import * as React from 'react';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
+import type { VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
+import { dialogFooterVariants } from '@/components/ui/dialog';
 
 function AlertDialog({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
   return <AlertDialogPrimitive.Root data-slot='alert-dialog' {...props} />;
@@ -15,11 +17,7 @@ function AlertDialogPortal({ ...props }: React.ComponentProps<typeof AlertDialog
   return <AlertDialogPrimitive.Portal data-slot='alert-dialog-portal' {...props} />;
 }
 
-function AlertDialogOverlay({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Overlay>) {
+function AlertDialogOverlay({ className, children, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Overlay>) {
   return (
     <AlertDialogPrimitive.Overlay
       data-slot='alert-dialog-overlay'
@@ -55,9 +53,21 @@ function AlertDialogHeader({ className, ...props }: React.ComponentProps<'div'>)
   return <div data-slot='alert-dialog-header' className={cn('flex flex-col gap-2 text-center sm:text-left', className)} {...props} />;
 }
 
-function AlertDialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
+function AlertDialogFooter({
+  className,
+  layout,
+  align,
+  gap,
+  divided,
+  pinned,
+  ...props
+}: React.ComponentProps<'div'> & VariantProps<typeof dialogFooterVariants>) {
   return (
-    <div data-slot='alert-dialog-footer' className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)} {...props} />
+    <div
+      data-slot='alert-dialog-footer'
+      className={cn(dialogFooterVariants({ layout, align, gap, divided, pinned }), className)}
+      {...props}
+    />
   );
 }
 

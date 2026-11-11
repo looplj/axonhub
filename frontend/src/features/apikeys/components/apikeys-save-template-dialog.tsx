@@ -167,7 +167,7 @@ export function ApiKeySaveTemplateDialog({ open, onOpenChange, profileData, proj
                 )}
               />
 
-              <DialogFooter className='gap-2 pt-2'>
+              <DialogFooter className='pt-2'>
                 <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                   {t('common.buttons.cancel')}
                 </Button>

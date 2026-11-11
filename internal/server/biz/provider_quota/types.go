@@ -115,7 +115,22 @@ type QuotaData struct {
 	NextResetAt  *time.Time         `json:"next_reset_at"` // Next quota reset timestamp
 	Ready        bool               `json:"ready"`         // True if status is available or warning
 	Limits       []QuotaLimitStatus `json:"limits"`
+	Balances     []QuotaBalance     `json:"balances,omitempty"`
 	Resets       *ResetList         `json:"resets,omitempty"`
+}
+
+// QuotaBalance is a provider-reported account amount that is not a usage
+// window, such as a prepaid credit balance. The UI renders it as money instead
+// of a percentage bar.
+type QuotaBalance struct {
+	// Account labels the credential an amount belongs to when one channel
+	// draws from several accounts (the same role as QuotaLimitStatus.Account).
+	// It is a display label and never holds a credential.
+	Account  string   `json:"account,omitempty"`
+	Currency string   `json:"currency,omitempty"`
+	Total    float64  `json:"total"`
+	Granted  *float64 `json:"granted,omitempty"`
+	ToppedUp *float64 `json:"topped_up,omitempty"`
 }
 
 // WarningThresholdRatio is the usage ratio at which a channel transitions to "warning" status.

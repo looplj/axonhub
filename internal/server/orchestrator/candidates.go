@@ -119,7 +119,7 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 	if err != nil {
 		if ent.IsNotFound(err) {
 			// Check if fallback to legacy channel selection is allowed
-			settings := s.SystemService.ModelSettingsOrDefault(ctx)
+			settings := s.modelSettings(ctx)
 			if settings.FallbackToChannelsOnModelNotFound {
 				return s.selectChannelCadidates(ctx, req)
 			}
@@ -131,6 +131,16 @@ func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*Chan
 	}
 
 	return candidates, nil
+}
+
+// modelSettings prefers the snapshot of the request being served, since the
+// selector is shared across requests.
+func (s *DefaultSelector) modelSettings(ctx context.Context) *biz.SystemModelSettings {
+	if settings := requestSettingsFromContext(ctx); settings != nil {
+		return &settings.ModelSettings
+	}
+
+	return s.SystemService.ModelSettingsOrDefault(ctx)
 }
 
 // selectChannelCadidates performs the original channel selection logic.
@@ -146,8 +156,8 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 			continue
 		}
 
-		endpoints := applyForcedAPIFormatsForRequest(ctx, ch, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, ch.ResolveEndpoints())
-		apiFormat := SelectAPIFormat(endpoints, req)
+		endpoints, forced := applyForcedAPIFormatsForRequest(ctx, ch, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, ch.ResolveEndpoints())
+		apiFormat := selectEndpointAPIFormat(endpoints, req, forced)
 		if requiresExplicitEndpoint(req.RequestType) && apiFormat == "" {
 			continue
 		}
@@ -177,7 +187,7 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 		return nil, fmt.Errorf("failed to query AxonHub Model: %w", err)
 	}
 
-	systemSettings := s.SystemService.ModelSettingsOrDefault(ctx)
+	systemSettings := s.modelSettings(ctx)
 	developerAssociationCount, modelAssociationCount, developerInheritanceDisabled := effectiveAssociationSourceCounts(systemSettings, model)
 	associations := biz.EffectiveModelAssociations(systemSettings, model)
 	if log.DebugEnabled(ctx) {
@@ -682,7 +692,7 @@ type LoadBalancedSelector struct {
 	wrapped                 CandidateSelector
 	loadBalancer            *LoadBalancer
 	loadBalancers           map[string]*LoadBalancer
-	policy                  RetryPolicyProvider
+	retryPolicy             *biz.RetryPolicy
 	previousChannelProvider PreviousChannelProvider
 	apiKey                  *ent.APIKey
 	effectiveRoutingPolicy  *EffectiveRoutingPolicy
@@ -690,12 +700,12 @@ type LoadBalancedSelector struct {
 }
 
 // WithLoadBalancedSelector creates a selector that applies load balancing to sort candidates.
-// The policy is used to determine the retry policy for early stopping.
-func WithLoadBalancedSelector(wrapped CandidateSelector, loadBalancer *LoadBalancer, policy RetryPolicyProvider) *LoadBalancedSelector {
+// The retry policy determines the trace sticky mode and how many candidates to keep.
+func WithLoadBalancedSelector(wrapped CandidateSelector, loadBalancer *LoadBalancer, retryPolicy *biz.RetryPolicy) *LoadBalancedSelector {
 	return &LoadBalancedSelector{
 		wrapped:      wrapped,
 		loadBalancer: loadBalancer,
-		policy:       policy,
+		retryPolicy:  retryPolicy,
 	}
 }
 
@@ -705,13 +715,13 @@ func WithLoadBalancedSelector(wrapped CandidateSelector, loadBalancer *LoadBalan
 func WithTraceStickyLoadBalancedSelector(
 	wrapped CandidateSelector,
 	loadBalancer *LoadBalancer,
-	policy RetryPolicyProvider,
+	retryPolicy *biz.RetryPolicy,
 	previousChannelProvider PreviousChannelProvider,
 ) *LoadBalancedSelector {
 	return &LoadBalancedSelector{
 		wrapped:                 wrapped,
 		loadBalancer:            loadBalancer,
-		policy:                  policy,
+		retryPolicy:             retryPolicy,
 		previousChannelProvider: previousChannelProvider,
 	}
 }
@@ -721,7 +731,7 @@ func WithTraceStickyLoadBalancedSelector(
 func WithRoutingPolicyLoadBalancedSelector(
 	wrapped CandidateSelector,
 	loadBalancers map[string]*LoadBalancer,
-	policy RetryPolicyProvider,
+	retryPolicy *biz.RetryPolicy,
 	previousChannelProvider PreviousChannelProvider,
 	apiKey *ent.APIKey,
 	effectiveRoutingPolicy *EffectiveRoutingPolicy,
@@ -730,7 +740,7 @@ func WithRoutingPolicyLoadBalancedSelector(
 	return &LoadBalancedSelector{
 		wrapped:                 wrapped,
 		loadBalancers:           loadBalancers,
-		policy:                  policy,
+		retryPolicy:             retryPolicy,
 		previousChannelProvider: previousChannelProvider,
 		apiKey:                  apiKey,
 		effectiveRoutingPolicy:  effectiveRoutingPolicy,
@@ -744,8 +754,7 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		return nil, err
 	}
 
-	// Get retry policy to determine the required number of candidates
-	retryPolicy := s.policy.RetryPolicyOrDefault(ctx)
+	retryPolicy := s.retryPolicy
 	loadBalancer := s.loadBalancer
 	traceStickyMode := retryPolicy.TraceStickyMode
 	if s.effectiveRoutingPolicy != nil {
@@ -785,8 +794,12 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	if traceStickyMode == biz.TraceStickyPreferPreviousChannel {
 		stickyID, stickyOK = s.resolveStickyChannelID(ctx, req, candidates)
 	}
+
+	var quotaFallback []*ChannelModelsCandidate
 	if s.quotaGate != nil {
-		candidates = s.quotaGate.Filter(ctx, candidates, req, stickyID)
+		var lastResort []*ChannelModelsCandidate
+		candidates, lastResort = s.quotaGate.Filter(ctx, candidates, req, stickyID)
+		quotaFallback = quotaFallbackCandidates(lastResort, quotaFallbackLimit(retryPolicy))
 	}
 
 	if stickyOK {
@@ -794,8 +807,11 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 			stickyCandidate.TraceSticky = true
 
 			fallbackCount := max(requiredCount-1, 0)
-			fallbackCandidates := s.sortCandidates(ctx, loadBalancer, remainingCandidates, req, fallbackCount, false)
-			result := append([]*ChannelModelsCandidate{stickyCandidate}, fallbackCandidates...)
+			fallbackCandidates := s.sortCandidates(ctx, loadBalancer, remainingCandidates, req, fallbackCount, requiredCount, false)
+			result := make([]*ChannelModelsCandidate, 0, 1+len(fallbackCandidates)+len(quotaFallback))
+			result = append(result, stickyCandidate)
+			result = append(result, fallbackCandidates...)
+			result = append(result, quotaFallback...)
 
 			if loadBalancer != nil {
 				loadBalancer.TrackSelection(stickyCandidate)
@@ -805,7 +821,16 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		}
 	}
 
-	return s.sortCandidates(ctx, loadBalancer, candidates, req, requiredCount, true), nil
+	preferred := s.sortCandidates(ctx, loadBalancer, candidates, req, requiredCount, requiredCount, true)
+	if len(quotaFallback) == 0 {
+		return preferred, nil
+	}
+
+	result := make([]*ChannelModelsCandidate, 0, len(preferred)+len(quotaFallback))
+	result = append(result, preferred...)
+	result = append(result, quotaFallback...)
+
+	return result, nil
 }
 
 func resolveLoadBalancer(loadBalancers map[string]*LoadBalancer, strategy string) (*LoadBalancer, string) {
@@ -934,6 +959,9 @@ func (s *LoadBalancedSelector) sortCandidates(
 	candidates []*ChannelModelsCandidate,
 	req *llm.Request,
 	requiredCount int,
+	// sortTopK stays the retry-policy size even when fewer candidates are
+	// required: the partial sort orders tied scores differently for each k.
+	sortTopK int,
 	trackSelection bool,
 ) []*ChannelModelsCandidate {
 	if requiredCount <= 0 {
@@ -980,7 +1008,7 @@ func (s *LoadBalancedSelector) sortCandidates(
 			// the caller asked for instead of the retry-derived top-K.
 			sortedCandidates = loadBalancer.SortTopKWithoutTracking(ctx, group, req.Model, useStream, requiredCount)
 		default:
-			sortedCandidates = loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream)
+			sortedCandidates = loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream, sortTopK)
 		}
 
 		// Add candidates, but stop if we have enough
@@ -1013,6 +1041,70 @@ func (s *LoadBalancedSelector) sortCandidates(
 	}
 
 	return result
+}
+
+// quotaFallbackLimit bounds how many last-resort candidates a request may
+// append. Channel switching stops at MaxChannelRetries, so candidates beyond
+// that budget could never be reached; disabled retries append nothing.
+func quotaFallbackLimit(policy *biz.RetryPolicy) int {
+	if policy == nil || !policy.Enabled || policy.MaxChannelRetries <= 0 {
+		return 0
+	}
+
+	return policy.MaxChannelRetries
+}
+
+// quotaFallbackCandidates returns the pressured candidates that the quota gate
+// kept out of the preferred list, appended after every preferred candidate so
+// only a request that exhausted them can reach these channels. The routing
+// priority order is preserved and each channel appears once, so the limited
+// retry budget is not spent on duplicate candidates of the same channel.
+func quotaFallbackCandidates(candidates []*ChannelModelsCandidate, limit int) []*ChannelModelsCandidate {
+	if len(candidates) == 0 || limit <= 0 {
+		return nil
+	}
+
+	ordered := orderCandidatesByPriority(candidates)
+	fallback := make([]*ChannelModelsCandidate, 0, min(len(ordered), limit))
+	seenChannels := make(map[int]struct{}, len(ordered))
+
+	for _, candidate := range ordered {
+		if len(fallback) >= limit {
+			break
+		}
+
+		if _, ok := seenChannels[candidate.Channel.ID]; ok {
+			continue
+		}
+
+		seenChannels[candidate.Channel.ID] = struct{}{}
+		fallback = append(fallback, candidate)
+	}
+
+	return fallback
+}
+
+// orderCandidatesByPriority sorts candidates by routing priority (lower value
+// first) and preserves the original order inside a priority group.
+func orderCandidatesByPriority(candidates []*ChannelModelsCandidate) []*ChannelModelsCandidate {
+	groups := make(map[int][]*ChannelModelsCandidate, len(candidates))
+	for _, candidate := range candidates {
+		if candidate == nil {
+			continue
+		}
+
+		groups[candidate.Priority] = append(groups[candidate.Priority], candidate)
+	}
+
+	priorities := lo.Keys(groups)
+	slices.Sort(priorities)
+
+	ordered := make([]*ChannelModelsCandidate, 0, len(candidates))
+	for _, priority := range priorities {
+		ordered = append(ordered, groups[priority]...)
+	}
+
+	return ordered
 }
 
 // TagsFilterSelector is a decorator that filters candidates by allowed channel tags.
@@ -1091,8 +1183,8 @@ func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request)
 		return nil, fmt.Errorf("model %s not supported in channel %s", req.Model, channel.Name)
 	}
 
-	endpoints := applyForcedAPIFormatsForRequest(ctx, channel, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, channel.ResolveEndpoints())
-	apiFormat := SelectAPIFormat(endpoints, req)
+	endpoints, forced := applyForcedAPIFormatsForRequest(ctx, channel, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, channel.ResolveEndpoints())
+	apiFormat := selectEndpointAPIFormat(endpoints, req, forced)
 	if requiresExplicitEndpoint(req.RequestType) && apiFormat == "" {
 		return []*ChannelModelsCandidate{}, nil
 	}

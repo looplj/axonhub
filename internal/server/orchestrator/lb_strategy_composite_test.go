@@ -22,7 +22,7 @@ func TestCompositeStrategy_Score(t *testing.T) {
 		Channel: &ent.Channel{ID: 1, Name: "test"},
 	}
 
-	score := composite.Score(ctx, channel)
+	score := composite.Score(ctx, channel, nil)
 	assert.Equal(t, 150.0, score, "Should sum all strategy scores with default weights")
 }
 
@@ -38,7 +38,7 @@ func TestCompositeStrategy_WithWeights(t *testing.T) {
 		Channel: &ent.Channel{ID: 1, Name: "test"},
 	}
 
-	score := composite.Score(ctx, channel)
+	score := composite.Score(ctx, channel, nil)
 	// (100 * 2.0) + (50 * 0.5) = 200 + 25 = 225
 	assert.Equal(t, 225.0, score, "Should apply weights to strategy scores")
 }
@@ -83,8 +83,8 @@ func TestCompositeStrategy_ScoreConsistency(t *testing.T) {
 				Channel: &ent.Channel{ID: 1, Name: "test"},
 			}
 
-			score := composite.Score(ctx, channel)
-			debugScore, _ := composite.ScoreWithDebug(ctx, channel)
+			score := composite.Score(ctx, channel, nil)
+			debugScore, _ := composite.ScoreWithDebug(ctx, channel, nil)
 
 			assert.Equal(t, score, debugScore,
 				"Score and ScoreWithDebug must return identical scores for %s", tc.name)

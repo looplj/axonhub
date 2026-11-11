@@ -400,6 +400,16 @@ func TestExecutor_GetEndpointsInOrder(t *testing.T) {
 		assert.Equal(t, EndpointAutopush, endpoints[1])
 		assert.Equal(t, EndpointProd, endpoints[2])
 	})
+
+	t.Run("configured base URL takes precedence", func(t *testing.T) {
+		customExec := NewExecutor(nil)
+		customExec.SetBaseURL(EndpointProd)
+		endpoints := customExec.getEndpointsInOrder("gemini-2.5-pro")
+		require.Len(t, endpoints, 3)
+		assert.Equal(t, EndpointProd, endpoints[0])
+		assert.Contains(t, endpoints, EndpointDaily)
+		assert.Contains(t, endpoints, EndpointAutopush)
+	})
 }
 
 func TestExecutor_DoWithCooldown_SkipsFailedEndpoint(t *testing.T) {

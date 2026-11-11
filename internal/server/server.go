@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -15,12 +17,14 @@ import (
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/dependencies"
+	"github.com/looplj/axonhub/internal/server/events"
 	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/gql"
 	"github.com/looplj/axonhub/internal/server/gql/openapi"
 	"github.com/looplj/axonhub/internal/server/lifecycle"
 	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/internal/server/plugin"
 	"github.com/looplj/axonhub/internal/server/safeguards"
 	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/internal/server/video_storage"
@@ -77,7 +81,7 @@ func (srv *Server) Run() error {
 		log.String("host", srv.Config.Host),
 		log.Int("port", srv.Config.Port),
 	)
-	addr := fmt.Sprintf("%s:%d", srv.Config.Host, srv.Config.Port)
+	addr := listenAddr(srv.Config.Host, srv.Config.Port)
 	srv.server = &http.Server{
 		Addr:         addr,
 		Handler:      srv.Engine,
@@ -96,6 +100,12 @@ func (srv *Server) Run() error {
 	}
 
 	return nil
+}
+
+// listenAddr is the address passed to net.Listen. JoinHostPort brackets an
+// IPv6 host, so "::1" listens on "[::1]:port".
+func listenAddr(host string, port int) string {
+	return net.JoinHostPort(host, strconv.Itoa(port))
 }
 
 func (srv *Server) Shutdown(ctx context.Context) error {
@@ -125,6 +135,8 @@ func Run(opts ...fx.Option) {
 			scheduler.Module,
 			biz.Module,
 			orchestrator.Module,
+			events.Module,
+			plugin.Module,
 			backup.Module,
 			video_storage.Module,
 			api.Module,
@@ -157,6 +169,7 @@ func Run(opts ...fx.Option) {
 				})
 			}),
 			fx.Invoke(SetupRoutes),
+			fx.Invoke(registerPprof),
 		}, opts...)...,
 	)
 	app.Run()

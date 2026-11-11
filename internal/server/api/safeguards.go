@@ -128,7 +128,7 @@ func (s *safeguardsStream) Next() bool {
 // the optional abort callback bounds a stalled tail to one second.
 func (s *safeguardsStream) drainTerminalTail() error {
 	// Bound incomplete terminal tails. Completed Anthropic transports close at
-	// message_stop before capture fan-out, without canceling downstream delivery.
+	// message_stop before pass-through capture, without canceling downstream delivery.
 	if s.abortUpstream != nil {
 		timer := time.AfterFunc(time.Second, s.abortUpstream)
 		defer timer.Stop()

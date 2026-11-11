@@ -10,7 +10,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/safeguards"
@@ -84,7 +83,7 @@ func (c ClaudeCodeSafeguardsConfig) runtimeConfig() (safeguards.Config, error) {
 func (s *SystemService) claudeCodeSafeguardsSettings(ctx context.Context) (*ClaudeCodeSafeguardsSettings, error) {
 	// Read directly so an older in-flight cache fill, or another process's local
 	// cache, cannot restore stale policy after an administrator saves or resets it.
-	record, err := s.entFromContext(ctx).System.Query().Where(system.KeyEQ(SystemKeyClaudeCodeSafeguards)).Only(ctx)
+	record, err := s.querySystemRow(ctx, SystemKeyClaudeCodeSafeguards)
 	if err != nil && !ent.IsNotFound(err) {
 		return nil, fmt.Errorf("read Claude Code safeguards settings: %w", err)
 	}
@@ -125,9 +124,7 @@ func (s *SystemService) ClaudeCodeSafeguardsSettings(ctx context.Context) (*Clau
 // ClaudeCodeSafeguardsConfig reads only server-owned settings; reviewer model calls
 // still run under the original caller's model access and quota restrictions.
 func (s *SystemService) ClaudeCodeSafeguardsConfig(ctx context.Context) (safeguards.Config, error) {
-	settings, err := authz.RunWithSystemBypass(ctx, "claude-code-safeguards-config", func(ctx context.Context) (*ClaudeCodeSafeguardsSettings, error) {
-		return s.claudeCodeSafeguardsSettings(ctx)
-	})
+	settings, err := s.claudeCodeSafeguardsSettings(ctx)
 	if err != nil {
 		return safeguards.Config{}, err
 	}

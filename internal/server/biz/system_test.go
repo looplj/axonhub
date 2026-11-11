@@ -3,7 +3,9 @@ package biz
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -31,7 +33,7 @@ func TestSystemService_GetSecretKey_NotInitialized(t *testing.T) {
 
 	// Getting secret key before initialization should return error
 	ctx = authz.WithTestBypass(ctx)
-	secretKey, err := service.SecretKey(ctx)
+	secretKey, err := service.SecretKey(authz.NewSystemContext(ctx))
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrSystemNotInitialized)
 	require.Contains(t, err.Error(), "secret key not found")
@@ -147,7 +149,7 @@ func TestSystemService_WithTwoLevelCache(t *testing.T) {
 	err := service.SetSecretKey(ctx, secretKey)
 	require.NoError(t, err)
 
-	retrievedSecretKey, err := service.SecretKey(ctx)
+	retrievedSecretKey, err := service.SecretKey(authz.NewSystemContext(ctx))
 	require.NoError(t, err)
 	require.Equal(t, secretKey, retrievedSecretKey)
 }
@@ -669,7 +671,7 @@ func TestSystemService_Initialize_WithCache(t *testing.T) {
 
 	// Verify secret key is cached
 	ctx = authz.WithTestBypass(ctx)
-	secretKey, err := service.SecretKey(ctx)
+	secretKey, err := service.SecretKey(authz.NewSystemContext(ctx))
 	require.NoError(t, err)
 	require.NotEmpty(t, secretKey)
 	require.Len(t, secretKey, 64)
@@ -684,7 +686,7 @@ func TestSystemService_Initialize_WithCache(t *testing.T) {
 	require.NoError(t, err)
 
 	// Values should remain the same
-	secretKey2, err := service.SecretKey(ctx)
+	secretKey2, err := service.SecretKey(authz.NewSystemContext(ctx))
 	require.NoError(t, err)
 	require.Equal(t, secretKey, secretKey2)
 }
@@ -1118,7 +1120,7 @@ func TestSystemService_Initialize_SetsAllSystemKeys(t *testing.T) {
 	require.Equal(t, "Test Brand", brandName)
 
 	// Verify secret key is set and has correct length
-	secretKey, err := service.SecretKey(ctx)
+	secretKey, err := service.SecretKey(authz.NewSystemContext(ctx))
 	require.NoError(t, err)
 	require.Len(t, secretKey, 64)
 }
@@ -1434,4 +1436,326 @@ func TestSetRetryPolicy_RejectsPermanentDelete(t *testing.T) {
 	require.Error(t, err)
 	var coded *xerrors.CodedError
 	require.ErrorAs(t, err, &coded)
+}
+
+func TestSystemService_GetSystemValue_CachesMissingKey(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	key := "missing_key_cache_test"
+
+	_, err := service.getSystemValue(ctx, key)
+	require.True(t, ent.IsNotFound(err))
+
+	// A row written behind the service's back stays hidden while the missing marker is cached,
+	// which shows the second lookup did not query the database.
+	require.NoError(t, client.System.Create().SetKey(key).SetValue("direct").Exec(ctx))
+
+	value, err := service.getSystemValue(ctx, key)
+	require.True(t, ent.IsNotFound(err))
+	require.Contains(t, err.Error(), "failed to get system value")
+	require.Empty(t, value)
+
+	// Restores call InvalidateSystemValueCaches after writing rows directly.
+	service.InvalidateSystemValueCaches(ctx, key)
+
+	value, err = service.getSystemValue(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "direct", value)
+}
+
+func TestSystemService_SetSystemValue_ClearsMissingMarker(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+
+	policy, err := service.StoragePolicy(ctx)
+	require.NoError(t, err)
+	require.False(t, policy.StoreChunks)
+
+	// The cached miss must keep falling back to the default.
+	policy, err = service.StoragePolicy(ctx)
+	require.NoError(t, err)
+	require.Equal(t, defaultStoragePolicy.StoreRequestBody, policy.StoreRequestBody)
+
+	updated := defaultStoragePolicy
+	updated.StoreChunks = true
+	require.NoError(t, service.SetStoragePolicy(ctx, &updated))
+
+	policy, err = service.StoragePolicy(ctx)
+	require.NoError(t, err)
+	require.True(t, policy.StoreChunks)
+}
+
+// A request that reads a key after a transactional write but before the commit does not see the
+// row and records a miss; once the transaction commits the saved value must be served.
+func TestSystemService_SetSystemValue_ReadBeforeCommitDoesNotHideValue(t *testing.T) {
+	dsn := "file:" + filepath.Join(t.TempDir(), "system.db") + "?_fk=0&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
+	writer := enttest.NewEntClient(t, "sqlite3", dsn)
+	defer writer.Close()
+
+	reader := enttest.NewEntClient(t, "sqlite3", dsn)
+	defer reader.Close()
+
+	service := &SystemService{Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory})}
+	readerCtx := authz.WithTestBypass(ent.NewContext(context.Background(), reader))
+	key := "read_before_commit_test"
+
+	tx, err := writer.Tx(context.Background())
+	require.NoError(t, err)
+
+	txCtx := authz.WithTestBypass(ent.NewTxContext(ent.NewContext(context.Background(), tx.Client()), tx))
+	require.NoError(t, service.setSystemValue(txCtx, key, "saved"))
+
+	_, err = service.getSystemValue(readerCtx, key)
+	require.True(t, ent.IsNotFound(err))
+
+	require.NoError(t, tx.Commit())
+
+	value, err := service.getSystemValue(readerCtx, key)
+	require.NoError(t, err)
+	require.Equal(t, "saved", value)
+}
+
+// A lookup that started before a save and records its miss afterwards must not hide the value.
+func TestSystemService_SetSystemValue_IgnoresMissFromEarlierLookup(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	key := "late_miss_test"
+
+	generation := service.missing.snapshot()
+	require.NoError(t, service.setSystemValue(ctx, key, "saved"))
+	service.missing.remember(key, generation, time.Now())
+
+	value, err := service.getSystemValue(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "saved", value)
+}
+
+func TestSystemService_SetSystemValue_LastWriteInTransactionWins(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	key := "repeated_write_test"
+
+	tx, err := client.Tx(ctx)
+	require.NoError(t, err)
+
+	txCtx := authz.WithTestBypass(ent.NewTxContext(ent.NewContext(context.Background(), tx.Client()), tx))
+	require.NoError(t, service.setSystemValue(txCtx, key, "first"))
+	require.NoError(t, service.setSystemValue(txCtx, key, "second"))
+	require.NoError(t, tx.Commit())
+
+	value, err := service.getSystemValue(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "second", value)
+}
+
+func TestSystemService_SetSystemValue_RollbackKeepsCommittedValue(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	key := "rollback_test"
+	require.NoError(t, service.setSystemValue(ctx, key, "committed"))
+
+	tx, err := client.Tx(ctx)
+	require.NoError(t, err)
+
+	txCtx := authz.WithTestBypass(ent.NewTxContext(ent.NewContext(context.Background(), tx.Client()), tx))
+	require.NoError(t, service.setSystemValue(txCtx, key, "rolled-back"))
+	require.NoError(t, tx.Rollback())
+
+	value, err := service.getSystemValue(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "committed", value)
+}
+
+// Initialize attaches only the transaction client to its context; a failed setup must not leave
+// values from the rolled-back writes in the cache.
+func TestSystemService_SetSystemValue_RollbackWithoutTxContextLeavesNoValue(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	key := "rollback_without_tx_context_test"
+
+	tx, err := client.Tx(ctx)
+	require.NoError(t, err)
+
+	clientOnlyCtx := authz.WithTestBypass(ent.NewContext(context.Background(), tx.Client()))
+	require.NoError(t, service.setSystemValue(clientOnlyCtx, key, "rolled-back"))
+	require.NoError(t, tx.Rollback())
+
+	_, err = service.getSystemValue(ctx, key)
+	require.True(t, ent.IsNotFound(err))
+}
+
+// Reads later in the same transaction must see the row written by that transaction.
+func TestSystemService_SetSystemValue_ReadYourWriteInTransaction(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	key := "read_your_write_test"
+	require.NoError(t, service.setSystemValue(ctx, key, "before"))
+
+	tx, err := client.Tx(ctx)
+	require.NoError(t, err)
+
+	txCtx := authz.WithTestBypass(ent.NewTxContext(ent.NewContext(context.Background(), tx.Client()), tx))
+	require.NoError(t, service.setSystemValue(txCtx, key, "after"))
+
+	value, err := service.getSystemValue(txCtx, key)
+	require.NoError(t, err)
+	require.Equal(t, "after", value)
+	require.NoError(t, tx.Commit())
+
+	value, err = service.getSystemValue(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "after", value)
+}
+
+func TestMissingSystemValues_ExpiresAndIgnoresStaleLookups(t *testing.T) {
+	var missing missingSystemValues
+
+	now := time.Now()
+
+	missing.remember("key", missing.snapshot(), now)
+	require.True(t, missing.contains("key", now))
+	require.False(t, missing.contains("key", now.Add(systemValueMissingTTL)))
+
+	generation := missing.snapshot()
+	missing.forget("other")
+	missing.remember("key", generation, now)
+	require.False(t, missing.contains("key", now))
+}
+
+// A read through a transaction must not publish an uncommitted value that a rollback discards.
+func TestSystemService_GetSystemValue_DoesNotCacheTransactionReads(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	key := "transaction_read_test"
+	require.NoError(t, service.setSystemValue(ctx, key, "committed"))
+
+	tx, err := client.Tx(ctx)
+	require.NoError(t, err)
+
+	txCtx := authz.WithTestBypass(ent.NewTxContext(ent.NewContext(context.Background(), tx.Client()), tx))
+	require.NoError(t, service.setSystemValue(txCtx, key, "rolled-back"))
+
+	value, err := service.getSystemValue(txCtx, key)
+	require.NoError(t, err)
+	require.Equal(t, "rolled-back", value)
+	require.NoError(t, tx.Rollback())
+
+	value, err = service.getSystemValue(ctx, key)
+	require.NoError(t, err)
+	require.Equal(t, "committed", value)
+}
+
+// Mutations such as UpdateVideoStorageSettings write a setting and then read it again in the same
+// transaction. Another request reading the key in between caches the committed state (a miss, or
+// the previous value); the transaction must still read its own write.
+func TestSystemService_GetSystemValue_TransactionReadsOwnWriteDespiteConcurrentCaching(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		before string // committed value before the transaction; empty means the key was never saved
+	}{
+		{name: "first save"},
+		{name: "update", before: "before"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dsn := "file:" + filepath.Join(t.TempDir(), "system.db") + "?_fk=0&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
+			writer := enttest.NewEntClient(t, "sqlite3", dsn)
+			defer writer.Close()
+
+			reader := enttest.NewEntClient(t, "sqlite3", dsn)
+			defer reader.Close()
+
+			service := &SystemService{Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory})}
+			readerCtx := authz.WithTestBypass(ent.NewContext(context.Background(), reader))
+			key := "transaction_own_write_test"
+
+			if tc.before != "" {
+				require.NoError(t, service.setSystemValue(authz.WithTestBypass(ent.NewContext(context.Background(), writer)), key, tc.before))
+			}
+
+			tx, err := writer.Tx(context.Background())
+			require.NoError(t, err)
+
+			txCtx := authz.WithTestBypass(ent.NewTxContext(ent.NewContext(context.Background(), tx.Client()), tx))
+			require.NoError(t, service.setSystemValue(txCtx, key, "after"))
+
+			value, err := service.getSystemValue(readerCtx, key)
+			if tc.before == "" {
+				require.True(t, ent.IsNotFound(err))
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.before, value)
+			}
+
+			value, err = service.getSystemValue(txCtx, key)
+			require.NoError(t, err)
+			require.Equal(t, "after", value)
+			require.NoError(t, tx.Commit())
+
+			value, err = service.getSystemValue(readerCtx, key)
+			require.NoError(t, err)
+			require.Equal(t, "after", value)
+		})
+	}
+}
+
+// A request such as a token refresh can read the secret key while Initialize is still running and
+// record it as missing; once setup commits the secret key must be readable.
+func TestSystemService_Initialize_ReadDuringSetupDoesNotHideSecretKey(t *testing.T) {
+	dsn := "file:" + filepath.Join(t.TempDir(), "initialize.db") + "?_fk=1&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
+	writer := enttest.NewEntClient(t, "sqlite3", dsn)
+	defer writer.Close()
+
+	reader := enttest.NewEntClient(t, "sqlite3", dsn)
+	defer reader.Close()
+
+	service := NewSystemService(SystemServiceParams{})
+	readerCtx := authz.WithTestBypass(ent.NewContext(context.Background(), reader))
+
+	// The brand name is written after the secret key, so this read runs once the secret key has been
+	// written and invalidated but before the setup transaction commits.
+	var missedDuringSetup atomic.Bool
+
+	writer.System.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			value, err := next.Mutate(ctx, m)
+			if mutation, ok := m.(*ent.SystemMutation); ok && err == nil {
+				if key, ok := mutation.Key(); ok && key == SystemKeyBrandName {
+					_, readErr := service.SecretKey(authz.NewSystemContext(readerCtx))
+					missedDuringSetup.Store(errors.Is(readErr, ErrSystemNotInitialized))
+				}
+			}
+
+			return value, err
+		})
+	})
+
+	err := service.Initialize(ent.NewContext(t.Context(), writer), &InitializeSystemParams{
+		OwnerEmail:     "owner@example.com",
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
+	})
+	require.NoError(t, err)
+	require.True(t, missedDuringSetup.Load())
+
+	secretKey, err := service.SecretKey(authz.NewSystemContext(readerCtx))
+	require.NoError(t, err)
+	require.NotEmpty(t, secretKey)
 }

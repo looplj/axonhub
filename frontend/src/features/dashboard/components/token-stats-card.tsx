@@ -113,7 +113,7 @@ export function TokenStatsCard() {
             <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5 shrink-0'>
               <BarChart4 className='h-4 w-4' />
             </div>
-            <CardTitle className='text-sm font-medium truncate'>{t('dashboard.cards.tokenStats')}</CardTitle>
+            <CardTitle className='text-sm font-medium'>{t('dashboard.cards.tokenStats')}</CardTitle>
           </div>
           <div className='flex items-center gap-1 shrink-0'>
             <span className='bg-primary/10 text-primary dark:bg-primary/20 rounded-md px-2 py-1 text-xs'>{t('dashboard.stats.month')}</span>
@@ -159,14 +159,14 @@ export function TokenStatsCard() {
 
   return (
     <Card className='hover-card min-w-0'>
-      <CardHeader className='flex flex-row items-start justify-between gap-2 pb-2 sm:items-center'>
+      <CardHeader className='flex flex-wrap items-start gap-2 pb-2 sm:items-center'>
         <div className='flex min-w-0 items-center gap-2'>
           <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5 shrink-0'>
             <BarChart4 className='h-4 w-4' />
           </div>
-          <CardTitle className='truncate text-sm leading-tight font-medium'>{t('dashboard.cards.tokenStats')}</CardTitle>
+          <CardTitle className='text-sm leading-tight font-medium'>{t('dashboard.cards.tokenStats')}</CardTitle>
         </div>
-        <div className='flex shrink-0 items-center gap-1 whitespace-nowrap'>
+        <div className='ml-auto flex shrink-0 items-center gap-1 whitespace-nowrap'>
           {/* <span className='text-xs text-muted-foreground'>{t('dashboard.stats.this')}</span> */}
           {timeRange === 'allTime' && (
             <LastUpdatedInfo

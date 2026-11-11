@@ -15,7 +15,7 @@ RUN pnpm build
 FROM alpine AS frontend-dist
 COPY --from=frontend-builder /build/dist /dist
 
-FROM golang:1.27.3-alpine3.24 AS backend-builder
+FROM golang:1.27.4-alpine3.24 AS backend-builder
 
 WORKDIR /build
 

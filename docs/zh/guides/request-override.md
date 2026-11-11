@@ -150,6 +150,18 @@ AxonHub 支持以下重写操作：
 ]
 ```
 
+除 Go 模板内置函数外，AxonHub 还提供：
+
+| 函数 | 说明 | 示例 |
+| :--- | :--- | :--- |
+| `contains` | 值是否包含给定子串，区分大小写。 | `{{contains "claude" .Model}}` |
+| `regexMatch` | 值是否匹配给定的 [Go 正则表达式](https://pkg.go.dev/regexp/syntax)，不做首尾锚定。 | `{{regexMatch "^anthropic/claude-" .Model}}` |
+| `globMatch` | 值是否匹配 glob 模式，只有 `/` 作为分段分隔符：`*` 和 `?` 不跨段，独占一段的 `**/` 匹配零个或多个段。 | `{{globMatch "**/claude-*" .Model}}` |
+
+被匹配的值是最后一个参数，因此也可以写成管道：`{{.Model | regexMatch "(?i)sonnet"}}`。
+
+条件渲染失败（例如正则非法）按 `false` 处理：跳过该操作并记录一条 warning。
+
 ### 字段重命名与复制
 
 ```json
@@ -287,6 +299,19 @@ AxonHub 支持以下重写操作：
   }
 ]
 ```
+
+请求体的 `delete` 操作支持用 `[*]` 遍历数组中的每个元素，删除字段并保留消息本身：
+
+```json
+[
+  {
+    "op": "delete",
+    "path": "input[*].internal_chat_message_metadata_passthrough"
+  }
+]
+```
+
+通配符可以嵌套，例如 `messages[*].content[*].cache_control`。字段不存在、数组为空或目标不是数组时，保持原值不变。其他操作和请求头路径继续使用原有语法。
 
 ## 重写请求头 (Override Headers)
 

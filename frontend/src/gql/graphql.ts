@@ -1,5 +1,19 @@
+// 职责: 发送管理端 GraphQL 请求，并在凭证失效时放弃会话。
+// 关联文件:
+//   frontend/src/lib/auth-redirect.ts
+//   frontend/src/lib/auth-session.ts
+//   frontend/src/stores/authStore.ts
+//   frontend/src/main.tsx
+//   frontend/src/locales/en.json
+//   frontend/src/locales/zh.json
+// 遵循的 Rules:
+//   .agents/rules/frontend-general.md
+// 注意事项:
+//   401 只有在 shouldRedirectUnauthorizedToSignIn 为真时才能清会话并跳转 /sign-in。
+//   回调页上的未登录请求会返回 401；按过期会话处理会打断 OIDC exchange。
 import { toast } from 'sonner';
 import { getTokenFromStorage, removeTokenFromStorage } from '@/stores/authStore';
+import { shouldRedirectUnauthorizedToSignIn } from '@/lib/auth-redirect';
 import { ensureFreshAccessToken } from '@/lib/auth-session';
 import i18n from '@/lib/i18n';
 
@@ -52,6 +66,14 @@ function redirectToSignIn() {
   window.location.href = `/sign-in?redirect=${encodeURIComponent(pathname + search + hash)}`;
 }
 
+function abandonSessionForSignIn(token: string) {
+  if (getTokenFromStorage() !== token) return;
+  if (!shouldRedirectUnauthorizedToSignIn(token, window.location.pathname)) return;
+  removeTokenFromStorage();
+  toast.error(i18n.t('common.errors.sessionExpiredSignIn'));
+  redirectToSignIn();
+}
+
 // GraphQL client function with token support
 export async function graphqlRequest<T>(
   query: string,
@@ -101,12 +123,7 @@ export async function graphqlRequest<T>(
 
   // Handle explicit auth failures (401 only — 403 is a permission denial, not a session issue)
   if (response.status === 401) {
-    // Clear token and redirect to login
-    if (getTokenFromStorage() === token) {
-      removeTokenFromStorage();
-      toast.error(i18n.t('common.errors.sessionExpiredSignIn'));
-      redirectToSignIn();
-    }
+    abandonSessionForSignIn(token);
     throw new GraphQLRequestError('Unauthorized', { status: response.status, isAuthError: true });
   }
 
@@ -145,12 +162,7 @@ export async function graphqlRequest<T>(
     const authError = result.errors.find(isUnauthorizedGraphQLError);
 
     if (authError) {
-      // Clear token and redirect to login
-      if (getTokenFromStorage() === token) {
-        removeTokenFromStorage();
-        toast.error(i18n.t('common.errors.sessionExpiredSignIn'));
-        redirectToSignIn();
-      }
+      abandonSessionForSignIn(token);
       throw new GraphQLRequestError('Unauthorized', { status: 401, isAuthError: true });
     }
 

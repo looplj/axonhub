@@ -73,6 +73,26 @@ export const routeConfigs: RouteGroup[] = [
         mode: 'hidden',
       },
       {
+        path: '/system/requests',
+        requiredScopes: ['read_settings'],
+        mode: 'hidden',
+      },
+      {
+        path: '/system/integrations',
+        requiredScopes: ['read_settings'],
+        mode: 'hidden',
+      },
+      {
+        path: '/system/operations',
+        requiredScopes: ['read_settings'],
+        mode: 'hidden',
+      },
+      {
+        path: '/plugins',
+        requiredScopes: ['read_plugins'],
+        mode: 'hidden',
+      },
+      {
         path: '/permission-demo',
         // 权限演示页面所有用户都可以访问
       },

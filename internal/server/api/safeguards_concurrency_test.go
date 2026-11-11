@@ -35,7 +35,7 @@ func TestSafeguardsSharedChannelSingleConcurrency(t *testing.T) {
 		if !body.Stream {
 			reviewCalls.Add(1)
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = io.WriteString(w, `{"id":"review","object":"chat.completion","model":"gpt-test","choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":"{\"verdicts\":{\"tool1\":{\"flagged\":false}}}"}}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)
+			_, _ = io.WriteString(w, `{"id":"review","object":"chat.completion","model":"gpt-test","choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":"{\"verdicts\":{\"t0\":{\"flagged\":false}}}"}}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)
 			return
 		}
 		w.Header().Set("Content-Type", "text/event-stream")

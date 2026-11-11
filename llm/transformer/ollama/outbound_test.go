@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
 )
 
 func TestTransformRequestPreservesImageURLParts(t *testing.T) {
@@ -115,8 +116,8 @@ func TestTransformRequestWithMessageToolCalls(t *testing.T) {
 				},
 			},
 			{
-				Role:    "tool",
-				Content: llm.MessageContent{Content: lo.ToPtr("22°C")},
+				Role:       "tool",
+				Content:    llm.MessageContent{Content: lo.ToPtr("22°C")},
 				ToolCallID: lo.ToPtr("call-1"),
 			},
 		},
@@ -241,4 +242,58 @@ func TestTransformStreamChunkWithToolCallsSetsFinishReason(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resp.Choices, 1)
 	require.Equal(t, "tool_calls", *resp.Choices[0].FinishReason)
+}
+
+func TestTransformStreamAssignsDistinctToolCallIndexAcrossChunks(t *testing.T) {
+	ollamaTransformer, err := NewOutboundTransformerWithConfig(&Config{BaseURL: "http://localhost:11434"})
+	require.NoError(t, err)
+
+	transformer, ok := ollamaTransformer.(*OutboundTransformer)
+	require.True(t, ok)
+
+	chunks := []*httpclient.StreamEvent{
+		{Data: []byte(`{"model":"qwen3","message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"get_weather","arguments":{"location":"Paris"}}}]},"done":false}`)},
+		{Data: []byte(`{"model":"qwen3","message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"get_time","arguments":{"tz":"CET"}}}]},"done":true,"done_reason":"stop"}`)},
+	}
+
+	out, err := transformer.TransformStream(context.Background(), nil, streams.SliceStream(chunks))
+	require.NoError(t, err)
+
+	var calls []llm.ToolCall
+
+	for out.Next() {
+		calls = append(calls, out.Current().Choices[0].Delta.ToolCalls...)
+	}
+
+	require.NoError(t, out.Err())
+	require.Len(t, calls, 2)
+	require.Equal(t, 0, calls[0].Index)
+	require.Equal(t, 1, calls[1].Index)
+	require.NotEqual(t, calls[0].ID, calls[1].ID)
+}
+
+func TestAggregateStreamChunksKeepsToolCallsFromAllChunks(t *testing.T) {
+	ollamaTransformer, err := NewOutboundTransformerWithConfig(&Config{BaseURL: "http://localhost:11434"})
+	require.NoError(t, err)
+
+	transformer, ok := ollamaTransformer.(*OutboundTransformer)
+	require.True(t, ok)
+
+	chunks := []*httpclient.StreamEvent{
+		{Data: []byte(`{"model":"qwen3","message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"get_weather","arguments":{"location":"Paris"}}}]},"done":false}`)},
+		{Data: []byte(`{"model":"qwen3","message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"get_time","arguments":{"tz":"CET"}}}]},"done":true,"done_reason":"stop"}`)},
+	}
+
+	body, _, err := transformer.AggregateStreamChunks(context.Background(), nil, chunks)
+	require.NoError(t, err)
+
+	var resp llm.Response
+	require.NoError(t, json.Unmarshal(body, &resp))
+	require.Len(t, resp.Choices, 1)
+
+	calls := resp.Choices[0].Message.ToolCalls
+	require.Len(t, calls, 2)
+	require.Equal(t, "get_weather", calls[0].Function.Name)
+	require.Equal(t, "get_time", calls[1].Function.Name)
+	require.NotEqual(t, calls[0].ID, calls[1].ID)
 }

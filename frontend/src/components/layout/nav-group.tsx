@@ -45,11 +45,11 @@ export function NavGroup({ title, items }: NavGroup) {
   }
 
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>{title}</SidebarGroupLabel>
+    <SidebarGroup className='py-1'>
+      {title && <SidebarGroupLabel className='h-6 group-data-[collapsible=icon]:-mt-6'>{title}</SidebarGroupLabel>}
       <SidebarMenu>
         {visibleItems.map((item) => {
-          const key = `${item.title}-${item.url}`;
+          const key = `${item.title}-${navTarget(item)}`;
 
           if (!item.items) return <SidebarMenuLink key={key} item={item} href={href} />;
 
@@ -69,8 +69,8 @@ const SidebarMenuLink = ({ item, href }: { item: NavLink; href: string }) => {
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={checkIsActive(href, item)} tooltip={item.title} className='h-12 rounded-2xl transition-all'>
-        <Link to={item.url} onClick={() => setOpenMobile(false)}>
+      <SidebarMenuButton asChild isActive={checkIsActive(href, item)} tooltip={item.title} className='h-8 rounded-lg transition-all'>
+        <Link {...navLinkProps(item)} onClick={() => setOpenMobile(false)}>
           {item.icon && <item.icon className='text-xl' />}
           <span>{item.title}</span>
           {item.badge && <NavBadge>{item.badge}</NavBadge>}
@@ -89,7 +89,7 @@ const SidebarMenuCollapsible = ({ item, href }: { item: NavCollapsible; href: st
     <Collapsible asChild defaultOpen={checkIsActive(href, item, true)} className='group/collapsible'>
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton tooltip={item.title} className='h-12 rounded-2xl transition-all'>
+          <SidebarMenuButton tooltip={item.title} className='h-8 rounded-lg transition-all'>
             {item.icon && <item.icon className='text-xl' />}
             <span>{item.title}</span>
             {item.badge && <NavBadge>{item.badge}</NavBadge>}
@@ -101,7 +101,7 @@ const SidebarMenuCollapsible = ({ item, href }: { item: NavCollapsible; href: st
             {visibleSubItems.map((subItem) => (
               <SidebarMenuSubItem key={subItem.title}>
                 <SidebarMenuSubButton asChild isActive={checkIsActive(href, subItem)}>
-                  <Link to={subItem.url} onClick={() => setOpenMobile(false)}>
+                  <Link {...navLinkProps(subItem)} onClick={() => setOpenMobile(false)}>
                     {subItem.icon && <subItem.icon />}
                     <span>{subItem.title}</span>
                     {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
@@ -124,7 +124,7 @@ const SidebarMenuCollapsedDropdown = ({ item, href }: { item: NavCollapsible; hr
     <SidebarMenuItem>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <SidebarMenuButton tooltip={item.title} isActive={checkIsActive(href, item)} className='h-12 rounded-2xl transition-all'>
+          <SidebarMenuButton tooltip={item.title} isActive={checkIsActive(href, item)} className='h-8 rounded-lg transition-all'>
             {item.icon && <item.icon className='text-xl' />}
             <span>{item.title}</span>
             {item.badge && <NavBadge>{item.badge}</NavBadge>}
@@ -138,7 +138,7 @@ const SidebarMenuCollapsedDropdown = ({ item, href }: { item: NavCollapsible; hr
           <DropdownMenuSeparator />
           {visibleSubItems.map((sub) => (
             <DropdownMenuItem key={`${sub.title}-${sub.url}`} asChild>
-              <Link to={sub.url} className={`${checkIsActive(href, sub) ? 'bg-secondary' : ''}`}>
+              <Link {...navLinkProps(sub)} className={`${checkIsActive(href, sub) ? 'bg-secondary' : ''}`}>
                 {sub.icon && <sub.icon />}
                 <span className='max-w-52 text-wrap'>{sub.title}</span>
                 {sub.badge && <span className='ml-auto text-xs'>{sub.badge}</span>}
@@ -151,11 +151,24 @@ const SidebarMenuCollapsedDropdown = ({ item, href }: { item: NavCollapsible; hr
   );
 };
 
+function navTarget(item: { url?: string; matchPath?: string }) {
+  return item.matchPath || item.url || '';
+}
+
+function navLinkProps(item: { url: NavLink['url']; params?: Record<string, string> }): { to: NavLink['url'] } {
+  return {
+    to: item.url,
+    ...(item.params ? { params: item.params } : {}),
+  } as { to: NavLink['url'] };
+}
+
 function checkIsActive(href: string, item: NavItem, mainNav = false) {
+  const path = href.split('?')[0];
+  const target = navTarget(item);
   return (
-    href === item.url || // /endpint?search=param
-    href.split('?')[0] === item.url || // endpoint
-    !!item?.items?.filter((i) => i.url === href).length || // if child nav is active
-    (mainNav && href.split('/')[1] !== '' && href.split('/')[1] === item?.url?.split('/')[1])
+    href === target ||
+    path === target ||
+    !!item?.items?.some((subItem) => navTarget(subItem) === href || navTarget(subItem) === path) ||
+    (mainNav && path.split('/')[1] !== '' && path.split('/')[1] === String(item.url ?? '').split('/')[1])
   );
 }

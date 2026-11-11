@@ -1,0 +1,40 @@
+<!doctype html>
+<meta charset="utf-8">
+<script>
+/* The runner page of the Design System (ds/preview-runner.ts) and of Migrated Design (design-editor src/compat/runner.ts): takes the document its parent parked under the hash's token and
+ * writes it at that document's own URL in this parse, so references resolve from that document's folder. Every Migrated Design page runs through it: see design-editor/CLAUDE.md rule 4. */
+(function () {
+  /* Each name is asked in turn, by take(token) alone: Migrated Design's in-page shim (design-editor src/compat/omelette.js) sets __designCompat too, with take and nothing else. */
+  function ask(name) {
+    try {
+      var host = parent[name];
+      return host && typeof host.take === 'function' ? host.take(location.hash.slice(1)) || null : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  /* At an opaque origin this page cannot read its parent, so the canvas also puts the document in this frame's name (design-editor src/compat/runner.ts frameName).
+   * An embedder, or a page loaded here earlier, can set that name, so it counts ONLY at an opaque origin, where the written page can reach no cookies, storage or other page; the token only rejects a name left by an earlier load. */
+  function named() {
+    var n = null;
+    try { n = JSON.parse(window.name); } catch (e) {}
+    try { window.name = ''; } catch (e) {}
+    return n && typeof n === 'object' && n.t === location.hash.slice(1) && typeof n.url === 'string' && typeof n.html === 'string' ? n : null;
+  }
+  var parked = parent === window ? null : ask('__dsPreviewRunner') || ask('__designCompat');
+  if (!parked && parent !== window && window.origin === 'null') parked = named();
+  if (!parked) {
+    document.write('<p style="font:13px/1.4 system-ui,sans-serif;color:#777;margin:16px">This page shows nothing by itself. Open the design canvas or design system it belongs to.</p>');
+    return;
+  }
+  /* Frame may splice <base href="/_f/{ver}/"> and its runtime ahead of this script. The base would resolve every reference from the version root. window.claude is deleted where the browser
+   * allows (under Frame, Firefox only): Migrated Design's shim uses the canvas page's own, and a Design System preview uses none. */
+  var bases = document.querySelectorAll('base');
+  for (var i = 0; i < bases.length; i += 1) bases[i].remove();
+  try { delete window.claude; } catch (e) {}
+  history.replaceState(null, '', parked.url);
+  /* Migrated Design only: its shim (omelette.js) answers a fetch of this address with the page's own text */
+  if (typeof parked.source === 'string') window.__omPageSource = parked.source;
+  document.write(parked.html);
+})();
+</script>

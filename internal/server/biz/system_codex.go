@@ -38,9 +38,7 @@ func (s *SystemService) CodexCompatibilitySettings(ctx context.Context) (*CodexC
 }
 
 func (s *SystemService) CodexCompatibilityEnabled(ctx context.Context) (bool, error) {
-	value, err := authz.RunWithSystemBypass(ctx, "codex-compatibility-enabled", func(bypassCtx context.Context) (string, error) {
-		return s.getSystemValue(bypassCtx, SystemKeyCodexCompatibility)
-	})
+	value, err := s.getSystemValue(ctx, SystemKeyCodexCompatibility)
 	if ent.IsNotFound(err) {
 		return false, nil
 	}

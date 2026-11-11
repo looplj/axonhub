@@ -50,7 +50,7 @@ export const USERS_QUERY = `
           isOwner
           preferLanguage
           scopes
-          roles {
+          roles(where: { level: system }) {
             edges {
               node {
                 id
@@ -83,7 +83,7 @@ export const USER_QUERY = `
       isOwner
       preferLanguage
       scopes
-      roles {
+      roles(where: { level: system }) {
         edges {
           node {
             id
@@ -108,7 +108,7 @@ export const CREATE_USER_MUTATION = `
       isOwner
       preferLanguage
       scopes
-      roles {
+      roles(where: { level: system }) {
         edges {
           node {
             id
@@ -133,7 +133,7 @@ export const UPDATE_USER_MUTATION = `
       isOwner
       preferLanguage
       scopes
-      roles {
+      roles(where: { level: system }) {
         edges {
           node {
             id
@@ -158,7 +158,7 @@ export const UPDATE_USER_STATUS_MUTATION = `
       isOwner
       preferLanguage
       scopes
-      roles {
+      roles(where: { level: system }) {
         edges {
           node {
             id

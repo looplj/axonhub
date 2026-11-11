@@ -50,8 +50,8 @@ func TestProviderQuotaService_UpdateQuotaCache(t *testing.T) {
 		quotaCache: sync.Map{},
 	}
 
-	svc.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, nil)
-	svc.updateQuotaCache(2, "", providerquotastatus.StatusExhausted, false, nil)
+	svc.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, "ignore-carry", nil)
+	svc.updateQuotaCache(2, "", providerquotastatus.StatusExhausted, false, "ignore-carry", nil)
 
 	status1 := svc.GetQuotaStatus(t.Context(), 1)
 	assert.NotNil(t, status1)
@@ -69,8 +69,8 @@ func TestProviderQuotaService_UpdateQuotaCache_Overwrite(t *testing.T) {
 		quotaCache: sync.Map{},
 	}
 
-	svc.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, nil)
-	svc.updateQuotaCache(1, "", providerquotastatus.StatusExhausted, false, nil)
+	svc.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, "ignore-carry", nil)
+	svc.updateQuotaCache(1, "", providerquotastatus.StatusExhausted, false, "ignore-carry", nil)
 
 	status := svc.GetQuotaStatus(t.Context(), 1)
 	assert.NotNil(t, status)
@@ -90,7 +90,7 @@ func TestProviderQuotaService_ConcurrentAccess(t *testing.T) {
 	for i := range goroutines {
 		go func(id int) {
 			defer wg.Done()
-			svc.updateQuotaCache(id, "", providerquotastatus.StatusAvailable, true, nil)
+			svc.updateQuotaCache(id, "", providerquotastatus.StatusAvailable, true, "ignore-carry", nil)
 		}(i)
 	}
 
@@ -117,7 +117,7 @@ func TestProviderQuotaService_ConcurrentReadWrite(t *testing.T) {
 		quotaCache: sync.Map{},
 	}
 
-	svc.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, nil)
+	svc.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, "ignore-carry", nil)
 
 	var wg sync.WaitGroup
 	const iterations = 100
@@ -126,7 +126,7 @@ func TestProviderQuotaService_ConcurrentReadWrite(t *testing.T) {
 	for range iterations {
 		go func() {
 			defer wg.Done()
-			svc.updateQuotaCache(1, "", providerquotastatus.StatusExhausted, false, nil)
+			svc.updateQuotaCache(1, "", providerquotastatus.StatusExhausted, false, "ignore-carry", nil)
 		}()
 	}
 
@@ -156,7 +156,7 @@ func TestProviderQuotaService_UpdateQuotaCache_WithLimits(t *testing.T) {
 		{Type: provider_quota.QuotaLimitTypeImage, Status: "exhausted", UsageRatio: 1.0, Ready: false},
 	}
 
-	svc.updateQuotaCache(1, "", providerquotastatus.StatusWarning, true, limits)
+	svc.updateQuotaCache(1, "", providerquotastatus.StatusWarning, true, "ignore-carry", limits)
 
 	status := svc.GetQuotaStatus(t.Context(), 1)
 	assert.NotNil(t, status)
@@ -249,6 +249,29 @@ func TestMergeAndExtractLimitsRoundTrip(t *testing.T) {
 		merged := svc.mergeLimitsIntoQuotaData(quotaData)
 		assert.Equal(t, "data", merged["existing"])
 		assert.NotNil(t, merged["_limits"])
+	})
+
+	t.Run("persists balances", func(t *testing.T) {
+		granted := 10.0
+		toppedUp := 100.0
+		quotaData := provider_quota.QuotaData{
+			Status:       "available",
+			ProviderType: "deepseek",
+			Balances: []provider_quota.QuotaBalance{
+				{Account: "0001", Currency: "CNY", Total: 110, Granted: &granted, ToppedUp: &toppedUp},
+			},
+		}
+
+		merged := svc.mergeLimitsIntoQuotaData(quotaData)
+		balances, ok := merged["_balances"].([]map[string]any)
+		assert.True(t, ok)
+		assert.Len(t, balances, 1)
+		assert.Equal(t, "0001", balances[0]["account"])
+		assert.Equal(t, "CNY", balances[0]["currency"])
+		assert.Equal(t, 110.0, balances[0]["total"])
+		assert.Equal(t, granted, balances[0]["granted"])
+		assert.Equal(t, toppedUp, balances[0]["topped_up"])
+		assert.Nil(t, merged["_limits"])
 	})
 }
 

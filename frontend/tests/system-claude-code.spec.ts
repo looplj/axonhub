@@ -63,10 +63,9 @@ test('Claude Code safeguards can edit, save, reload, validate, and reset', async
         } } });
     }
   });
-  await page.goto('/sign-in?redirect=%2Fsystem%3Ftab%3Dclaude-code', { waitUntil: 'domcontentloaded' });
+  await page.goto('/sign-in?redirect=%2Fsystem%2Fintegrations%3Ftab%3Dclaude-code', { waitUntil: 'domcontentloaded' });
   await signInAsAdmin(page);
-  await page.goto('/system?tab=claude-code', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('tab', { name: 'Claude Code', exact: true }).click();
+  await page.goto('/system/integrations?tab=claude-code', { waitUntil: 'domcontentloaded' });
   const reviewer = page.getByTestId('claude-reviewer');
   const policy = page.getByTestId('claude-policy');
   const fallbacks = page.getByTestId('claude-fallbacks');
@@ -88,7 +87,6 @@ test('Claude Code safeguards can edit, save, reload, validate, and reset', async
   await expect(save).toBeDisabled();
   expect(updates).toEqual([{ ...defaults, classifierModel: 'custom-reviewer', fallbackModels: ['backup-a', 'backup-b'], policy: 'Allow updates to feature branches.' }]);
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.getByRole('tab', { name: 'Claude Code', exact: true }).click();
   await expect(policy).toHaveValue('Allow updates to feature branches.');
   await expect(fallbacks).toHaveValue('backup-a\nbackup-b');
   await fallbacks.fill('custom-reviewer');

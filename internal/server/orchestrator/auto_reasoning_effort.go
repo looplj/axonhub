@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/pipeline"
 )
@@ -18,16 +17,16 @@ var supportedAutoReasoningEfforts = map[string]struct{}{
 	"low":    {},
 }
 
-func applyAutoReasoningEffort(systemService *biz.SystemService) pipeline.Middleware {
+func applyAutoReasoningEffort(settings *RequestSettings) pipeline.Middleware {
 	return &autoReasoningEffortMiddleware{
-		systemService: systemService,
+		settings: settings,
 	}
 }
 
 type autoReasoningEffortMiddleware struct {
 	pipeline.DummyMiddleware
 
-	systemService *biz.SystemService
+	settings *RequestSettings
 }
 
 func (m *autoReasoningEffortMiddleware) Name() string {
@@ -39,8 +38,7 @@ func (m *autoReasoningEffortMiddleware) OnInboundLlmRequest(ctx context.Context,
 		return llmRequest, nil
 	}
 
-	settings := m.systemService.ModelSettingsOrDefault(ctx)
-	if !settings.AutoReasoningEffort {
+	if !m.settings.ModelSettings.AutoReasoningEffort {
 		return llmRequest, nil
 	}
 

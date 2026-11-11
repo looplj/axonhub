@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 
+	"github.com/looplj/axonhub/internal/authz/identity"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
@@ -66,11 +67,18 @@ func getUserFromContext(ctx context.Context) (*ent.User, error) {
 		return nil, privacy.Denyf(ErrNoUser)
 	}
 
+	_, hasAPIKey := contexts.GetAPIKey(ctx)
+	if identity.IsPlugin(ctx) && (hasAPIKey || !identity.ValidPlugin(ctx, user.ID)) {
+		return nil, privacy.Denyf("invalid plugin identity")
+	}
 	return user, nil
 }
 
 // getAPIKeyFromContext safely retrieves API key from context.
 func getAPIKeyFromContext(ctx context.Context) (*ent.APIKey, error) {
+	if identity.IsPlugin(ctx) {
+		return nil, privacy.Skip
+	}
 	apiKey, ok := contexts.GetAPIKey(ctx)
 	if !ok || apiKey == nil {
 		return nil, privacy.Skipf(ErrNoAPIKey)

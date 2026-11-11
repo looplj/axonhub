@@ -15,6 +15,7 @@
   "traces.actions.viewDetails": "查看详情",
   "traces.actions.openMenu": "打开菜单",
   "traces.filters.filterTraceId": "按追踪ID筛选...",
+  "traces.filters.dateField": "筛选依据",
   "traces.detail.title": "追踪详情",
   "traces.detail.notFound": "未找到追踪",
   "traces.detail.noTraceData": "暂无追踪数据",
@@ -100,5 +101,6 @@
   "traces.messages.unretainSuccess": "已取消保留",
   "traces.status.active": "正常",
   "traces.status.archived": "已归档",
-  "traces.status.retained": "已保留"
+  "traces.status.retained": "已保留",
+  "traces.columns.lastRequestAt": "最后请求时间"
 }

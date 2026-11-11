@@ -556,11 +556,12 @@ export async function previewGcCleanup(input: TriggerGcCleanupInput, signal?: Ab
   return data.previewGcCleanup;
 }
 
-export function useRetryPolicy() {
+export function useRetryPolicy(options?: { enabled?: boolean }) {
   const { handleError } = useErrorHandler();
 
   return useQuery({
     queryKey: ['retryPolicy'],
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ retryPolicy: RetryPolicy }>(RETRY_POLICY_QUERY);
@@ -1893,7 +1894,6 @@ const CATALOG_SETTINGS_QUERY = `
   query CatalogSettings {
     catalogSettings {
       upstreamURL
-      refreshSeconds
     }
   }
 `;
@@ -1906,12 +1906,10 @@ const UPDATE_CATALOG_SETTINGS_MUTATION = `
 
 export interface CatalogSettings {
   upstreamURL: string;
-  refreshSeconds: number;
 }
 
 export interface UpdateCatalogSettingsInput {
   upstreamURL?: string;
-  refreshSeconds?: number;
 }
 
 export function useCatalogSettings() {

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useModels } from '../context/models-context';
@@ -104,9 +104,9 @@ export function ModelsUnassociatedDialog() {
           )}
         </div>
 
-        <div className='flex flex-shrink-0 justify-end border-t pt-4'>
+        <DialogFooter pinned divided>
           <Button onClick={handleClose}>{t('common.close')}</Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

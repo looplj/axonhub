@@ -13,9 +13,12 @@ import (
 	"github.com/tidwall/gjson"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/looplj/axonhub/internal/authz/identity"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
+	"github.com/looplj/axonhub/internal/pkg/xsecret"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -65,7 +68,7 @@ func NewTestChannelOrchestrator(
 		httpClient:                  httpClient,
 		modelCircuitBreaker:         biz.NewModelCircuitBreaker(),
 		modelMapper:                 NewModelMapper(),
-		loadBalancer:                NewLoadBalancer(systemService, channelService, NewWeightStrategy()),
+		loadBalancer:                NewLoadBalancer(nil, channelService, NewWeightStrategy()),
 		channelLimiterManager:       NewChannelLimiterManager(),
 	}
 }
@@ -337,6 +340,12 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	modelID *string,
 	proxy *httpclient.ProxyConfig,
 ) (*TestChannelResult, error) {
+	// Plugin channel tests are not supported yet; reject before reading credentials
+	// or performing any upstream request or persistence work.
+	if identity.IsPlugin(ctx) {
+		return nil, xerrors.ForbiddenError("channel testing is not available to plugins")
+	}
+
 	channel, err := processor.channelService.GetChannel(ctx, channelID.ID)
 	if err != nil {
 		return nil, err
@@ -571,6 +580,12 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 	modelID *string,
 	proxy *httpclient.ProxyConfig,
 ) (*TestChannelAPIKeysResult, error) {
+	// Plugin channel tests are not supported yet; reject before reading credentials
+	// or performing any upstream request or persistence work.
+	if identity.IsPlugin(ctx) {
+		return nil, xerrors.ForbiddenError("channel testing is not available to plugins")
+	}
+
 	ch, err := processor.channelService.GetChannel(ctx, channelID.ID)
 	if err != nil {
 		return nil, err
@@ -619,7 +634,7 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 			case <-groupCtx.Done():
 				errMsg := groupCtx.Err().Error()
 				results[index] = &TestAPIKeyResult{
-					KeyPrefix: maskAPIKey(apiKey),
+					KeyPrefix: xsecret.MaskAPIKey(apiKey),
 					Success:   false,
 					Error:     &errMsg,
 				}
@@ -668,6 +683,12 @@ func (processor *TestChannelOrchestrator) TestSingleAPIKey(
 	modelID *string,
 	proxy *httpclient.ProxyConfig,
 ) (*TestAPIKeyResult, error) {
+	// Plugin channel tests are not supported yet; reject before reading credentials
+	// or performing any upstream request or persistence work.
+	if identity.IsPlugin(ctx) {
+		return nil, xerrors.ForbiddenError("channel testing is not available to plugins")
+	}
+
 	ch, err := processor.channelService.GetChannel(ctx, channelID.ID)
 	if err != nil {
 		return nil, err
@@ -722,7 +743,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 	userPrompt string,
 	apiFormat llm.APIFormat,
 ) *TestAPIKeyResult {
-	keyPrefix := maskAPIKey(key)
+	keyPrefix := xsecret.MaskAPIKey(key)
 
 	inbound, body, err := processor.buildChannelTestInput(ctx, testModel, useStream, systemPrompt, userPrompt, responsesWebSocket, apiFormat)
 	if err != nil {
@@ -828,13 +849,4 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 		Success:   true,
 		Latency:   latency,
 	}
-}
-
-// maskAPIKey returns a masked version of the API key for display.
-func maskAPIKey(key string) string {
-	if len(key) <= 8 {
-		return "****"
-	}
-
-	return key[:4] + "****" + key[len(key)-4:]
 }

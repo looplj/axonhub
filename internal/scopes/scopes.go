@@ -31,6 +31,11 @@ const (
 	// ScopeWriteSettings manage the settings of the project.
 	ScopeWriteSettings ScopeSlug = "write_settings"
 
+	// ScopeReadPlugins view plugins. This scope is granted to users, not to plugins.
+	ScopeReadPlugins ScopeSlug = "read_plugins"
+	// ScopeWritePlugins manage plugin configuration. This scope is granted to users, not to plugins.
+	ScopeWritePlugins ScopeSlug = "write_plugins"
+
 	// ScopeReadRoles read the roles of the system or project.
 	ScopeReadRoles ScopeSlug = "read_roles"
 	// ScopeWriteRoles manage the roles of the system or project.
@@ -91,6 +96,16 @@ var scopeConfigs = []Scope{
 	{
 		Slug:        ScopeWriteSettings,
 		Description: "Manage system settings",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeReadPlugins,
+		Description: "View plugins",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeWritePlugins,
+		Description: "Manage plugin configuration",
 		Levels:      []ScopeLevel{ScopeLevelSystem},
 	},
 	{
@@ -210,6 +225,23 @@ func IsValidScope(scope string) bool {
 		if string(validScope.Slug) == scope {
 			return true
 		}
+	}
+
+	return false
+}
+
+// IsSystemOnlyScope reports whether a scope can only be granted at system level.
+// API key scopes are evaluated without a project dimension, so granting a
+// system-only scope to a project-scoped principal would hand it system-wide
+// reach.
+func IsSystemOnlyScope(scope string) bool {
+	for _, config := range scopeConfigs {
+		if string(config.Slug) != scope {
+			continue
+		}
+
+		return slices.Contains(config.Levels, ScopeLevelSystem) &&
+			!slices.Contains(config.Levels, ScopeLevelProject)
 	}
 
 	return false

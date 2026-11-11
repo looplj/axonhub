@@ -14,7 +14,7 @@ import (
 func TestQuotaCacheSnapshot_ConsumerMutationDoesNotChangeCache(t *testing.T) {
 	// Given
 	service := &ProviderQuotaService{}
-	service.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, snapshotTestLimits())
+	service.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, "ignore-carry", snapshotTestLimits())
 
 	// When
 	returned := service.GetQuotaStatus(t.Context(), 1)
@@ -49,7 +49,7 @@ func TestQuotaCacheSnapshot_ProducerMutationDoesNotChangeCache(t *testing.T) {
 	limits := snapshotTestLimits()
 
 	// When
-	service.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, limits)
+	service.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, "ignore-carry", limits)
 	limits[0].Status = "changed"
 	*limits[0].NextResetAt = time.Date(2026, 9, 8, 14, 0, 0, 0, time.UTC)
 	*limits[0].PeriodStart = time.Date(2026, 9, 8, 11, 0, 0, 0, time.UTC)
@@ -70,7 +70,7 @@ func TestQuotaCacheSnapshot_ProducerMutationDoesNotChangeCache(t *testing.T) {
 func TestQuotaCacheSnapshot_RaceUpdateAndRead(t *testing.T) {
 	// Given
 	service := &ProviderQuotaService{}
-	service.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, snapshotTestLimits())
+	service.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, "ignore-carry", snapshotTestLimits())
 	const iterations = 1000
 	const readers = 4
 	var group sync.WaitGroup
@@ -85,7 +85,7 @@ func TestQuotaCacheSnapshot_RaceUpdateAndRead(t *testing.T) {
 		for i := range iterations {
 			limits := snapshotTestLimits()
 			limits[0].UsageRatio = float64(i) / iterations
-			service.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, limits)
+			service.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, "ignore-carry", limits)
 		}
 	})
 

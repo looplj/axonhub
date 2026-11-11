@@ -6,7 +6,7 @@ AxonHub supports non-streaming image generation and editing via the OpenAI-compa
 
 **Note**: Images SSE is not currently supported. Omit `stream` or set it to `false`. Generation JSON, edit JSON, and edit multipart requests with `stream: true` are explicitly rejected before upstream execution; AxonHub does not synthesize image streaming events. `partial_images` does not enable streaming.
 
-Codex uses native Images endpoints by default, reusing the channel's Base URL, authentication, proxy, and explicit Images endpoint overrides. Existing URL markers and path-prefix rules still apply; the default Codex Base URL is `https://chatgpt.com/backend-api/codex#`. Responses endpoints do not imply an Images API at the same Base URL, including on Fenno and other non-Codex channels. Existing native image provider endpoints remain available, and users can explicitly configure Images endpoints on other channels. Images endpoints do not inherit custom Responses Base URLs or paths. Images requests are no longer converted to Responses `image_generation` tool calls. Native `/v1/responses` requests and their image tools retain their own behavior.
+Codex uses native Images endpoints by default, reusing the channel's Base URL, authentication, proxy, and explicit Images endpoint overrides. Existing URL markers and path-prefix rules still apply; the default Codex Base URL is `https://chatgpt.com/backend-api/codex#`. The Codex `/models` catalog does not list image models, so AxonHub supplements the native image model IDs separately. Responses endpoints do not imply an Images API at the same Base URL, including on Fenno and other non-Codex channels. Existing native image provider endpoints remain available, and users can explicitly configure Images endpoints on other channels. Images endpoints do not inherit custom Responses Base URLs or paths. Images requests are no longer converted to Responses `image_generation` tool calls. Native `/v1/responses` requests and their image tools retain their own behavior.
 
 ## API Usage
 
@@ -104,7 +104,7 @@ The JSON response preserves upstream `created`, `data[].b64_json`, `data[].url`,
 | `model` | string | The model to use for image generation. | `dall-e-2` |
 | `n` | integer | The number of images to generate. | 1 |
 | `quality` | string | The quality of the image: `"standard"`, `"hd"`, `"high"`, `"medium"`, `"low"`, or `"auto"`. | `"auto"` |
-| `response_format` | string | The format in which to return the images: `"url"` or `"b64_json"`. | `"b64_json"` |
+| `response_format` | string | The format in which to return the images: `"url"` or `"b64_json"`. For OpenAI-compatible channels, if omitted, AxonHub leaves the field out and the upstream model determines the default; provider-specific channels may apply their own defaults. | - |
 | `size` | string | The size of the generated images: `"256x256"`, `"512x512"`, or `"1024x1024"`. | `"1024x1024"` |
 | `style` | string | The style of the generated images (DALL-E 3 only): `"vivid"` or `"natural"`. | - |
 | `user` | string | A unique identifier representing your end-user. | - |
@@ -168,7 +168,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | `model` | string | The model to use. | `dall-e-2` |
 | `n` | integer | The number of images to generate. | 1 |
 | `size` | string | The size of the generated images. | `"1024x1024"` |
-| `response_format` | string | The format: `"url"` or `"b64_json"`. | `"b64_json"` |
+| `response_format` | string | The format: `"url"` or `"b64_json"`. For OpenAI-compatible channels, if omitted, AxonHub leaves the field out and the upstream model determines the default; provider-specific channels may apply their own defaults. Image edits sent to a JSON upstream reject a non-empty value, including Codex edits and edits with remote image references. | - |
 | `user` | string | A unique identifier for your end-user. | - |
 | `background` | string | Background style: `"opaque"` or `"transparent"`. | - |
 | `output_format` | string | Image format: `"png"`, `"webp"`, or `"jpeg"`. | `"png"` |
@@ -181,7 +181,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | Provider             | Status  | Supported Models                                              | Notes                 |
 | -------------------- | ------- | ------------------------------------------------------------- | --------------------- |
 | **OpenAI**           | ✅ Done | gpt-image-1, dall-e-2, dall-e-3, etc.                         | No streaming support  |
-| **Codex**            | ✅ Done | gpt-image-2                                                    | Native non-streaming generation and JSON upstream edits; availability depends on account access |
+| **Codex**            | ✅ Done | gpt-image-2, gpt-image-2.5-sunburst, gpt-image-2.5-flare, gpt-image-2.6-sunburst, gpt-image-2.6-flare | Native non-streaming generation and JSON upstream edits; availability depends on account access |
 | **ByteDance Doubao** | ✅ Done | doubao-seed-dream-4-0, etc.                                   | No streaming support  |
 | **OpenRouter**       | ✅ Done | gpt-image-1, gemini-2.5-flash-image-preview, etc.             | No streaming support  |
 | **Gemini**           | ✅ Done | gemini-2.5-flash-image, gemini-2.0-flash-preview-image-generation, etc. | No streaming support  |

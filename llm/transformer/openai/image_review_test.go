@@ -113,3 +113,16 @@ func TestImageEditJSONStyleReachesUnsupportedRejection(t *testing.T) {
 	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
 	require.Nil(t, req)
 }
+
+func TestImageEditJSONResponseFormatReachesUnsupportedRejection(t *testing.T) {
+	// Given: response_format is parsed through the public JSON edit inbound.
+	in, err := openai.NewImageEditInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Headers: http.Header{"Content-Type": {"application/json"}}, Body: []byte(`{"model":"gpt-image-2","prompt":"edit","images":[{"file_id":"file-fixture"}],"response_format":"b64_json"}`)})
+	require.NoError(t, err)
+	out, err := openai.NewOutboundTransformerWithConfig(&openai.Config{PlatformType: openai.PlatformOpenAI, BaseURL: "https://example.invalid/v1", APIKeyProvider: auth.NewStaticKeyProvider("test-key"), ImageEditJSON: true})
+	require.NoError(t, err)
+	// When
+	req, err := out.TransformRequest(t.Context(), in)
+	// Then
+	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	require.Nil(t, req)
+}

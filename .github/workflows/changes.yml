@@ -1,0 +1,91 @@
+# Shared change detection for CI workflows.
+# Callers gate their jobs on these outputs so frontend/backend/Docker checks
+# only run when relevant files change. Jobs are skipped (not left pending), so
+# required status checks still resolve. Events other than push/pull_request
+# (schedule, workflow_dispatch) report every area as changed.
+
+name: Detect changes
+
+on:
+  workflow_call:
+    outputs:
+      backend:
+        description: Backend (Go) sources or backend CI changed
+        value: ${{ jobs.changes.outputs.backend }}
+      frontend:
+        description: Frontend sources or frontend CI changed
+        value: ${{ jobs.changes.outputs.frontend }}
+      docker:
+        description: Docker build configuration or Docker CI changed
+        value: ${{ jobs.changes.outputs.docker }}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend || 'true' }}
+      frontend: ${{ steps.filter.outputs.frontend || 'true' }}
+      docker: ${{ steps.filter.outputs.docker || 'true' }}
+    steps:
+      # Pull requests are diffed through the GitHub API; only pushes need git history.
+      - name: Checkout
+        if: github.event_name == 'push'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Filter changed paths
+        id: filter
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v4
+        with:
+          # For pushes, diff against the commit before the push instead of the default branch.
+          base: ${{ github.ref_name }}
+          filters: |
+            backend:
+              - '**/*.go'
+              - '**/go.mod'
+              - '**/go.sum'
+              # Match Go inputs explicitly: JS, docs, and plugin UI changes
+              # under internal/ must not trigger the Go checks.
+              - 'go.work'
+              - 'go.work.sum'
+              - 'internal/server/gql/**/*.graphql'
+              - 'internal/server/gql/**/gqlgen.yml'
+              - 'internal/ent/template/**'
+              - 'internal/ent/migrate/migrations/**'
+              - 'internal/**/testdata/**'
+              - 'llm/**/testdata/**'
+              - 'internal/build/VERSION'
+              - 'internal/server/assets/favicon.ico'
+              - 'internal/server/biz/catalogdata/**'
+              - 'scripts/verify-go-sse-dependency*.sh'
+              - 'Makefile'
+              - '.golangci.yml'
+              - '.github/workflows/changes.yml'
+              - '.github/workflows/build.yml'
+              - '.github/workflows/test.yml'
+              - '.github/workflows/lint.yml'
+              - '.github/workflows/vulncheck.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/changes.yml'
+              - '.github/workflows/build.yml'
+              - '.github/workflows/test.yml'
+            docker:
+              # Source changes are covered by the frontend/backend checks.
+              # PR image builds validate changes to Docker configuration only.
+              - 'Dockerfile'
+              - '.dockerignore'
+              - '.github/workflows/changes.yml'
+              - '.github/workflows/docker-build.yml'
+              - '.github/workflows/docker-pr.yml'

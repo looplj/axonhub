@@ -481,6 +481,32 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 	return content
 }
 
+// geminiFunctionResponseContainsRef reports whether a function response payload
+// has a "$ref" key at any depth. Gemini treats that key as a multimodal part
+// pointer and rejects the request when no matching part exists.
+func geminiFunctionResponseContainsRef(value any) bool {
+	switch typed := value.(type) {
+	case map[string]any:
+		if _, ok := typed["$ref"]; ok {
+			return true
+		}
+
+		for _, child := range typed {
+			if geminiFunctionResponseContainsRef(child) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range typed {
+			if geminiFunctionResponseContainsRef(child) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // convertLLMToolResultToGeminiContent converts an LLM tool message to Gemini Content.
 func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) *Content {
 	content := &Content{
@@ -492,7 +518,10 @@ func convertLLMToolResultToGeminiContent(msg *llm.Message, contents []*Content) 
 		_ = json.Unmarshal([]byte(*msg.Content.Content), &responseData)
 	}
 
-	if responseData == nil {
+	if responseData == nil || geminiFunctionResponseContainsRef(responseData) {
+		// Keep the original text when it is not a JSON object, or when it
+		// contains "$ref". Gemini only treats an object key named "$ref" as a
+		// media-part pointer, so the schema reference stays intact inside a string.
 		responseData = map[string]any{"result": lo.FromPtrOr(msg.Content.Content, "")}
 	}
 
@@ -715,7 +744,7 @@ func convertGeminiCandidateToLLMChoiceWithState(candidate *Candidate, isStream b
 			switch {
 			case part.Text != "":
 				if part.Thought {
-					reasoningContent = part.Text
+					reasoningContent += part.Text
 				} else {
 					textParts = append(textParts, part.Text)
 				}

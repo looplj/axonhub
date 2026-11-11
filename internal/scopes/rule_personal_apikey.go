@@ -32,7 +32,7 @@ func UserPersonalAPIKeyReadRule(requiredScope ScopeSlug) privacy.QueryRule {
 		}
 
 		// System-scope users can access any project, but personal keys are still filtered below
-		if !HasSystemScope(currentUser, requiredScope) && !userHasProjectScope(currentUser, projectID, requiredScope) {
+		if !EffectiveSystemScope(ctx, currentUser, requiredScope) && !EffectiveProjectScope(ctx, currentUser, projectID, requiredScope) {
 			return privacy.Skipf("User %d can not query project %d with scope %s", currentUser.ID, projectID, requiredScope)
 		}
 

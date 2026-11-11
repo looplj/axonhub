@@ -243,6 +243,162 @@ const {
   buildQuotaDisplayItems,
 } = await loadTsModule(modeHelpers);
 
+test('Codex next-expiry pick ignores reset credits that already expired', async () => {
+  // The picker lives inside the Codex render branch, so rebuild it from the
+  // exact production source and run it against mixed fixtures.
+  let nextExpiringDecl;
+  const findNextExpiring = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === 'nextExpiringReset') {
+      nextExpiringDecl = node;
+    }
+    ts.forEachChild(node, findNextExpiring);
+  };
+  findNextExpiring(badgesAst);
+  assert.ok(nextExpiringDecl?.initializer, 'the Codex next-expiry picker must stay in quota-badges.tsx');
+
+  const predicate = badgesAst.statements.find(
+    (node) => ts.isFunctionDeclaration(node) && node.name?.text === 'isResetCreditUnexpired'
+  );
+  assert.ok(predicate, 'the reset-credit expiry predicate must stay a module-level helper');
+
+  const { pickNextExpiringReset } = await loadTsModule(
+    [
+      `export ${predicate.getText(badgesAst)}`,
+      `export const pickNextExpiringReset = (availableResets) => (${nextExpiringDecl.initializer.getText(badgesAst)});`,
+    ].join('\n')
+  );
+
+  const now = Date.now();
+  const hoursFromNow = (hours) => new Date(now + hours * 60 * 60 * 1000).toISOString();
+
+  // The expired credit is first by expiresAt: a naive ascending sort would pick
+  // it, render a date in the past, and hide the credit that is actually next.
+  const picked = pickNextExpiringReset([
+    { id: 'expired', expiresAt: hoursFromNow(-1) },
+    { id: 'valid-soon', expiresAt: hoursFromNow(2) },
+    { id: 'valid-later', expiresAt: hoursFromNow(10) },
+  ]);
+  assert.equal(picked?.id, 'valid-soon', 'the next expiry must come from the unexpired credits');
+  assert.equal(
+    pickNextExpiringReset([{ id: 'expired', expiresAt: hoursFromNow(-1) }]),
+    undefined,
+    'a list of only expired credits has no next expiry'
+  );
+  assert.equal(
+    pickNextExpiringReset([
+      { id: 'missing' },
+      { id: 'invalid', expiresAt: 'not-a-date' },
+      { id: 'valid', expiresAt: hoursFromNow(1) },
+    ])?.id,
+    'valid',
+    'missing or invalid expiry metadata is still ignored'
+  );
+});
+
+// --- Codex reset-credit expiry window ---
+
+// The Codex branch offers redemption early when the earliest available credit
+// is about to lapse. Extract the pure threshold helper so the 72-hour boundary
+// is exercised directly instead of only matching its source text.
+const resetCreditExpiryHelperNames = ['isResetCreditExpiringSoon'];
+const resetCreditExpiryHelperNodes = badgesAst.statements.filter(
+  (node) => ts.isFunctionDeclaration(node) && resetCreditExpiryHelperNames.includes(node.name?.text)
+);
+assert.equal(resetCreditExpiryHelperNodes.length, 1, 'the Codex reset-credit expiry helper must stay at module scope');
+const resetCreditExpiryConstNodes = badgesAst.statements.filter(
+  (node) =>
+    ts.isVariableStatement(node) &&
+    node.declarationList.declarations.some(
+      (decl) => ts.isIdentifier(decl.name) && decl.name.text === 'RESET_CREDIT_EXPIRING_SOON_MS'
+    )
+);
+assert.equal(resetCreditExpiryConstNodes.length, 1, 'the Codex reset-credit expiry window must stay a module constant');
+const { isResetCreditExpiringSoon, RESET_CREDIT_EXPIRING_SOON_MS } = await loadTsModule(
+  [...resetCreditExpiryConstNodes, ...resetCreditExpiryHelperNodes]
+    .map((node) => `export ${node.getText(badgesAst).replace(/^export\s+/, '')}`)
+    .join('\n')
+);
+
+test('Codex reset credits count as expiring soon inside the 72-hour window', () => {
+  const now = Date.UTC(2026, 0, 1, 12, 0, 0);
+  const hoursFromNow = (hours) => new Date(now + hours * 60 * 60 * 1000).toISOString();
+
+  assert.equal(RESET_CREDIT_EXPIRING_SOON_MS, 72 * 60 * 60 * 1000);
+  assert.equal(isResetCreditExpiringSoon(hoursFromNow(1), now), true, 'a credit hours from expiry must qualify');
+  assert.equal(isResetCreditExpiringSoon(hoursFromNow(71), now), true, 'a credit inside the window must qualify');
+  assert.equal(isResetCreditExpiringSoon(hoursFromNow(72), now), true, 'the threshold is inclusive');
+  assert.equal(isResetCreditExpiringSoon(hoursFromNow(73), now), false, 'a credit days away must not qualify');
+  // Cached quota data can outlive the credit itself; a lapsed credit must never
+  // advertise a redemption (it used to render an enabled button with "0m left").
+  assert.equal(isResetCreditExpiringSoon(hoursFromNow(-1), now), false, 'a credit that already expired must not qualify');
+  assert.equal(
+    isResetCreditExpiringSoon(new Date(now).toISOString(), now),
+    false,
+    'a credit expiring exactly now must not qualify'
+  );
+  assert.equal(isResetCreditExpiringSoon(undefined, now), false, 'missing expiry metadata must not qualify');
+  assert.equal(isResetCreditExpiringSoon('not-a-date', now), false, 'invalid expiry metadata must not qualify');
+});
+
+test('Codex expiry window and countdown cannot surface a lapsed credit', () => {
+  const source = read('components/quota-badges.tsx');
+
+  assert.match(
+    source,
+    /return expiresAtMs > now && expiresAtMs - now <= RESET_CREDIT_EXPIRING_SOON_MS;/,
+    'the expiring-soon check must require a positive remaining interval'
+  );
+  // The countdown floors to whole minutes, so a still-valid credit less than a
+  // minute away is clamped to "1m" instead of rendering "0m".
+  assert.match(
+    source,
+    /const totalMinutes = Math\.max\(1, Math\.floor\(diffMs \/ 60000\)\);/,
+    'the remaining-time formatter must never render zero minutes'
+  );
+});
+
+test('Codex reset button also appears when the earliest reset credit is expiring soon', () => {
+  const codexBlock = isolateCodexBlock(read('components/quota-badges.tsx'));
+
+  assert.match(
+    codexBlock,
+    /const expiringSoonReset =\s*nextExpiringReset && isResetCreditExpiringSoon\(nextExpiringReset\.expiresAt\) \? nextExpiringReset : undefined;/,
+    'the Codex branch must derive an expiring-soon credit from the earliest expiry'
+  );
+  assert.match(
+    codexBlock,
+    /\(status === 'exhausted' \|\| status === 'warning' \|\| Boolean\(expiringSoonReset\)\) &&/,
+    'the reset action must render for exhausted, warning, and expiring-credit channels'
+  );
+  assert.match(
+    codexBlock,
+    /t\('quota\.codex\.resetCreditExpiringSoon', \{ time: formatResetCreditRemaining\(expiringSoonReset\.expiresAt\) \}\)/,
+    'the hint must explain the expiry in the user locale'
+  );
+});
+
+test('Codex reset button keeps its warning, exhausted, and disabled behavior', () => {
+  const codexBlock = isolateCodexBlock(read('components/quota-badges.tsx'));
+
+  assert.match(codexBlock, /status === 'exhausted' \|\| status === 'warning'/, 'the original status triggers must stay');
+  assert.match(codexBlock, /disabled=\{isResetting \|\| !canAttemptReset\}/, 'availability still governs the disabled state');
+  assert.match(codexBlock, /title=\{!canAttemptReset \? t\('quota\.codex\.noResetCredits'\) : resetCreditExpiryHint\}/);
+});
+
+test('Codex expiring-credit hint is translated in both locales', () => {
+  const en = JSON.parse(read('locales/en/system.json'));
+  const zh = JSON.parse(read('locales/zh-CN/system.json'));
+
+  for (const [name, locale] of [
+    ['en', en],
+    ['zh-CN', zh],
+  ]) {
+    const hint = locale['quota.codex.resetCreditExpiringSoon'];
+    assert.equal(typeof hint, 'string', `${name}/system.json must define the expiring-credit hint`);
+    assert.match(hint, /\{\{time\}\}/, `${name} hint must interpolate the remaining time`);
+  }
+});
+
 test('per-channel mode falls back to the global default when the channel defers via INHERIT', () => {
   // parseChannelNode maps channels without settings.quotaRoutingMode to INHERIT.
   assert.match(read('features/system/data/quotas.ts'), /quotaRoutingMode: node\.settings\?\.quotaRoutingMode \?\? 'INHERIT'/);

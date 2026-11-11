@@ -36,3 +36,15 @@ func TestResponsesToolOutputConversionPreservesItemIdentity(t *testing.T) {
 		})
 	}
 }
+
+func TestResponsesToolOutputWithoutCallIDPreservesName(t *testing.T) {
+	body := []byte(`{"model":"synthetic-model","input":[{"type":"function_call_output","name":"codex_apps_open_page","output":"{\"page_id\":null}"}]}`)
+	request, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
+	require.NoError(t, err)
+	encoded, err := json.Marshal(convertInputFromMessages(request.Messages, request.TransformOptions))
+	require.NoError(t, err)
+	require.Equal(t, "codex_apps_open_page", gjson.GetBytes(encoded, "0.name").String())
+	require.Equal(t, "function_call_output", gjson.GetBytes(encoded, "0.type").String())
+	require.False(t, gjson.GetBytes(encoded, "0.call_id").Exists())
+	require.Equal(t, "{\"page_id\":null}", gjson.GetBytes(encoded, "0.output").String())
+}

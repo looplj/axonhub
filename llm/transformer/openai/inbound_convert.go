@@ -162,6 +162,11 @@ func (m Message) ToLLMMessage() llm.Message {
 		}
 	}
 
+	// Normalize reasoning_text (GitHub Copilot) when no other reasoning field is present.
+	if msg.ReasoningContent == nil && msg.Reasoning == nil && m.ReasoningText != nil {
+		msg.ReasoningContent = m.ReasoningText
+	}
+
 	// Sync reasoning fields: if one field has value and the other is nil, copy the value
 	if msg.ReasoningContent == nil && m.Reasoning != nil && *m.Reasoning != "" {
 		msg.ReasoningContent = m.Reasoning

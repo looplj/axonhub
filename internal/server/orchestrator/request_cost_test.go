@@ -66,7 +66,6 @@ func setupUsageCostMiddleware(t *testing.T, format, modelID string) (*persistReq
 	require.NoError(t, err)
 	channelService.PreloadModelPricesForTest(ctx, built)
 	channelService.SetEnabledChannelsForTest([]*biz.Channel{built})
-	require.NoError(t, systemService.SetInjectUsageCostEnabled(ctx, true))
 
 	state := &PersistenceState{
 		Request: &ent.Request{
@@ -83,7 +82,7 @@ func setupUsageCostMiddleware(t *testing.T, format, modelID string) (*persistReq
 			ModelID:   modelID,
 		},
 		UsageLogService: biz.NewUsageLogService(client, systemService, channelService),
-		SystemService:   systemService,
+		Settings:        &RequestSettings{InjectUsageCost: true},
 	}
 
 	return &persistRequestMiddleware{
@@ -133,7 +132,7 @@ func TestPersistRequestMiddleware_SkipsInjectionWhenDisabled(t *testing.T) {
 	t.Parallel()
 
 	middleware, ctx, _ := setupUsageCostMiddleware(t, string(llm.APIFormatOpenAIChatCompletion), "m1")
-	require.NoError(t, middleware.inbound.state.SystemService.SetInjectUsageCostEnabled(ctx, false))
+	middleware.inbound.state.Settings.InjectUsageCost = false
 
 	result, err := middleware.OnOutboundLlmResponse(ctx, &llm.Response{
 		ID: "resp-1",

@@ -106,9 +106,7 @@ func convertGeminiFinishReasonToLLM(reason string, hasToolCall bool) *string {
 		}
 	case "MAX_TOKENS":
 		llmReason = "length"
-	case "SAFETY":
-		llmReason = "content_filter"
-	case "RECITATION":
+	case "SAFETY", "RECITATION", "LANGUAGE", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION":
 		llmReason = "content_filter"
 	default:
 		llmReason = "stop"
@@ -460,7 +458,7 @@ func convertToLLMUsage(geminiUsage *UsageMetadata) *llm.Usage {
 	}
 
 	usage := &llm.Usage{
-		PromptTokens:     geminiUsage.PromptTokenCount,
+		PromptTokens:     geminiUsage.PromptTokenCount + geminiUsage.ToolUsePromptTokenCount,
 		CompletionTokens: geminiUsage.CandidatesTokenCount + geminiUsage.ThoughtsTokenCount,
 		TotalTokens:      geminiUsage.TotalTokenCount,
 	}

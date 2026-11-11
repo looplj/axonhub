@@ -2342,7 +2342,7 @@ func (_m *Trace) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "Trace",
-		Fields: make([]*Field, 6),
+		Fields: make([]*Field, 7),
 		Edges:  make([]*Edge, 3),
 	}
 	var buf []byte
@@ -2392,6 +2392,14 @@ func (_m *Trace) Node(ctx context.Context) (node *Node, err error) {
 	node.Fields[5] = &Field{
 		Type:  "trace.Status",
 		Name:  "status",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.LastRequestAt); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "time.Time",
+		Name:  "last_request_at",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{

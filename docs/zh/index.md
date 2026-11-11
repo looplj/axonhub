@@ -55,6 +55,7 @@
 | [实体关系图](development/erd.md) | 数据库模型关系图 |
 | [转换流程](development/transformation-flow.md) | 请求/响应转换流程详解 |
 | [授权编码规范](development/authz-coding-guidelines.md) | 权限相关代码编写规范 |
+| [插件开发](development/plugins.md) | 编写插件包、钩子和页面 |
 
 ### ❓ 常见问题
 

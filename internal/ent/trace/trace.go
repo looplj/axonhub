@@ -30,6 +30,8 @@ const (
 	FieldThreadID = "thread_id"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldLastRequestAt holds the string denoting the last_request_at field in the database.
+	FieldLastRequestAt = "last_request_at"
 	// EdgeProject holds the string denoting the project edge name in mutations.
 	EdgeProject = "project"
 	// EdgeThread holds the string denoting the thread edge name in mutations.
@@ -70,6 +72,7 @@ var Columns = []string{
 	FieldTraceID,
 	FieldThreadID,
 	FieldStatus,
+	FieldLastRequestAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -96,6 +99,8 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// DefaultLastRequestAt holds the default value on creation for the "last_request_at" field.
+	DefaultLastRequestAt func() time.Time
 )
 
 // Status defines the type for the "status" enum field.
@@ -161,6 +166,11 @@ func ByThreadID(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByLastRequestAt orders the results by the last_request_at field.
+func ByLastRequestAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastRequestAt, opts...).ToFunc()
 }
 
 // ByProjectField orders the results by project field.

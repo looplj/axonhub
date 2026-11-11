@@ -402,12 +402,13 @@ func TestConvertToChatCompletionResponse_EdgeCases(t *testing.T) {
 				t.Helper()
 				// Test each stop reason
 				stopReasons := map[string]string{
-					"end_turn":      "stop",
-					"max_tokens":    "length",
-					"stop_sequence": "stop",
-					"tool_use":      "tool_calls",
-					"pause_turn":    "stop",
-					"refusal":       "content_filter",
+					"end_turn":                      "stop",
+					"max_tokens":                    "length",
+					"stop_sequence":                 "stop",
+					"tool_use":                      "tool_calls",
+					"pause_turn":                    "stop",
+					"refusal":                       "content_filter",
+					"model_context_window_exceeded": "length",
 				}
 
 				for anthropicReason, expectedReason := range stopReasons {

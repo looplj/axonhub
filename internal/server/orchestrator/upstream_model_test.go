@@ -46,7 +46,6 @@ func newUpstreamModelPersistenceTest(t *testing.T) (context.Context, *ent.Client
 	return ctx, client, &PersistenceState{
 		Request:         req,
 		RequestService:  requestService,
-		SystemService:   systemService,
 		UsageLogService: usageLogService,
 		ModelMapper:     NewModelMapper(),
 	}

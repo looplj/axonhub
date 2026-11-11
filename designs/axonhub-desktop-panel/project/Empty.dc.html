@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AxonHub panel — first run</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#d4b98a}a:hover{color:#e6d5b3}
+.ax-btn{transition:background-color 120ms,transform 120ms cubic-bezier(.2,.8,.2,1)}
+.ax-btn:hover{background-color:rgba(255,255,255,.08)!important}
+.ax-btn:active{transform:scale(.94)}
+.ax-live{animation:ax-breathe 1.6s ease-in-out infinite}
+@keyframes ax-breathe{0%,100%{opacity:1}50%{opacity:.45}}
+.ax-wait{animation:ax-wait 2.4s ease-in-out infinite}
+@keyframes ax-wait{0%,100%{opacity:.35}50%{opacity:.9}}
+@media (prefers-reduced-motion:reduce){.ax-live,.ax-wait{animation:none}}
+</style>
+</helmet>
+<div style="width: 400px; height: 640px; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; gap: 8px; background-color: #070d1a; color: #f8fafc; border-radius: 16px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; font-size: 13px; line-height: 1.4; font-variant-numeric: tabular-nums; overflow: hidden">
+
+  <header style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 2px 0 6px; flex-shrink: 0">
+    <svg width="24" height="24" viewBox="0 0 64 64" fill="none" aria-hidden="true" style="flex-shrink: 0; position: relative"><path d="M32 7V15C32 24 24 32 15 32H7M32 15C32 24 40 32 49 32H57M32 57V49C32 40 24 32 15 32M32 49C32 40 40 32 49 32" stroke="#f8fafc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="7" cy="32" r="5.5" fill="#f8fafc"></circle><circle cx="57" cy="32" r="5.5" fill="#f8fafc"></circle><circle cx="32" cy="7" r="5.5" fill="{{accent}}"></circle><circle cx="32" cy="57" r="5.5" fill="{{accent}}"></circle></svg>
+    <h1 style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em">AxonHub</h1>
+    <span style="display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; white-space: nowrap; border-radius: 999px; background-color: rgba(0,188,125,.14); color: #00bc7d; font-size: 11px; font-weight: 500">
+      <span class="ax-live" style="width: 6px; height: 6px; border-radius: 999px; background-color: #00bc7d"></span>
+      Running
+    </span>
+    <div style="flex-grow: 1"></div>
+    <button class="ax-btn" type="button" aria-label="Refresh" title="Refresh" style="width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 7px; background-color: transparent; color: #cad5e2; cursor: pointer; padding: 0">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8a5 5 0 11-1.6-3.7"></path><path d="M13 2.5v2.8h-2.8"></path></svg>
+    </button>
+    <button class="ax-btn" type="button" aria-label="Open admin" title="Open admin" style="width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 7px; background-color: transparent; color: #cad5e2; cursor: pointer; padding: 0">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h4v4"></path><path d="M13 3L7.5 8.5"></path><path d="M11.5 9.5V12a1 1 0 01-1 1H4a1 1 0 01-1-1V5.5a1 1 0 011-1h2.5"></path></svg>
+    </button>
+  </header>
+
+  <section aria-label="Today" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 10px 4px; border-radius: 12px; background-color: #121b29; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); flex-shrink: 0">
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Today</span>
+      <span style="font-size: 17px; font-weight: 600; color: #90a1b9">0</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px; border-left: 1px solid rgba(255,255,255,.07)">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Tokens</span>
+      <span style="font-size: 17px; font-weight: 600; color: #90a1b9">0</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px; border-left: 1px solid rgba(255,255,255,.07)">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Cached</span>
+      <span style="font-size: 17px; font-weight: 600; color: #90a1b9">0</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px; border-left: 1px solid rgba(255,255,255,.07)">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Failed</span>
+      <span style="font-size: 17px; font-weight: 600; color: #90a1b9">0</span>
+    </div>
+  </section>
+
+  <section aria-label="Routing" style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background-color: #121b29; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); flex-shrink: 0">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Routing</span>
+      <div style="flex-grow: 1"></div>
+      <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background-color: #1b2433; color: #cad5e2">Waiting</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px; height: 40px">
+      <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; flex-shrink: 0; max-width: 132px; white-space: nowrap; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); font-size: 12px; color: #90a1b9">Your client</span>
+      <svg class="ax-wait" height="10" style="flex: 1 1 0; min-width: 10px" aria-hidden="true"><line x1="0" y1="5" x2="100%" y2="5" stroke="#90a1b9" stroke-width="1.25" stroke-dasharray="2 5" stroke-linecap="round"></line></svg>
+      <svg width="30" height="30" viewBox="0 0 64 64" fill="none" role="img" aria-label="AxonHub" style="flex-shrink: 0; position: relative"><path d="M32 7V15C32 24 24 32 15 32H7M32 15C32 24 40 32 49 32H57M32 57V49C32 40 24 32 15 32M32 49C32 40 40 32 49 32" stroke="#f8fafc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="7" cy="32" r="5.5" fill="#f8fafc"></circle><circle cx="57" cy="32" r="5.5" fill="#f8fafc"></circle><circle cx="32" cy="7" r="5.5" fill="{{accent}}"></circle><circle cx="32" cy="57" r="5.5" fill="{{accent}}"></circle></svg>
+      <svg class="ax-wait" height="10" style="flex: 1 1 0; min-width: 10px" aria-hidden="true"><line x1="0" y1="5" x2="100%" y2="5" stroke="#90a1b9" stroke-width="1.25" stroke-dasharray="2 5" stroke-linecap="round"></line></svg>
+      <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; flex-shrink: 0; max-width: 132px; white-space: nowrap; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); font-size: 12px; color: #90a1b9">Channel</span>
+    </div>
+    <p style="margin: 0; font-size: 11.5px; color: #90a1b9">The next request shows here as it flows through.</p>
+  </section>
+
+  <div style="display: flex; align-items: center; gap: 6px; padding: 4px 6px 0; flex-shrink: 0">
+    <h2 style="margin: 0; font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Recent requests</h2>
+  </div>
+
+  <div style="display: flex; flex-direction: column; justify-content: center; gap: 14px; flex-grow: 1; min-height: 0; padding: 4px 14px">
+    <p style="margin: 0; font-size: 14px; font-weight: 600">No requests yet</p>
+    <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px">
+      <li style="display: flex; gap: 10px; align-items: flex-start">
+        <span style="width: 20px; height: 20px; flex-shrink: 0; display: grid; place-items: center; border-radius: 999px; background-color: {{accent}}; color: #0f172b; font-size: 11px; font-weight: 600">1</span>
+        <span style="font-size: 12.5px; color: #cad5e2">Copy the base URL into your client’s OpenAI or Anthropic provider settings.</span>
+      </li>
+      <li style="display: flex; gap: 10px; align-items: flex-start">
+        <span style="width: 20px; height: 20px; flex-shrink: 0; display: grid; place-items: center; border-radius: 999px; background-color: {{accent}}; color: #0f172b; font-size: 11px; font-weight: 600">2</span>
+        <span style="font-size: 12.5px; color: #cad5e2">Copy the Desktop key and paste it as the API key.</span>
+      </li>
+      <li style="display: flex; gap: 10px; align-items: flex-start">
+        <span style="width: 20px; height: 20px; flex-shrink: 0; display: grid; place-items: center; border-radius: 999px; background-color: {{accent}}; color: #0f172b; font-size: 11px; font-weight: 600">3</span>
+        <span style="font-size: 12.5px; color: #cad5e2">No channels yet? Add one in <a href="#" style="font-weight: 500">admin</a>.</span>
+      </li>
+    </ol>
+  </div>
+
+  <section aria-label="Connect a client" style="display: flex; flex-direction: column; border-radius: 12px; background-color: #121b29; box-shadow: inset 0 0 0 1px {{ringColor}}; flex-shrink: 0">
+    <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 6px 0 12px">
+      <span style="font-size: 12px; color: #90a1b9; width: 64px; flex-shrink: 0">Base URL</span>
+      <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">http://127.0.0.1:8090/v1</span>
+      <button class="ax-btn" type="button" style="height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background-color: {{accent}}; color: #0f172b; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0">Copy</button>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 6px 0 12px; border-top: 1px solid rgba(255,255,255,.06)">
+      <span style="font-size: 12px; color: #90a1b9; width: 64px; flex-shrink: 0">API key</span>
+      <span style="display: inline-flex; align-items: center; gap: 6px; flex-grow: 1; min-width: 0">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#cad5e2" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><circle cx="5.5" cy="10.5" r="3"></circle><path d="M7.7 8.3L13 3M11 5l1.5 1.5"></path></svg>
+        <span style="font-size: 12.5px; font-weight: 500">Desktop</span>
+      </span>
+      <button class="ax-btn" type="button" style="height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background-color: {{accent}}; color: #0f172b; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0">Copy</button>
+    </div>
+  </section>
+
+  <footer style="display: flex; align-items: center; gap: 8px; height: 36px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.06); flex-shrink: 0">
+    <button class="ax-btn" type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background-color: {{accent}}; color: #0f172b; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer">Open admin</button>
+    <div style="flex-grow: 1"></div>
+    <button class="ax-btn" type="button" style="height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background-color: transparent; color: #cad5e2; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer">Quit</button>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#d4b98a","options":["#d4b98a","#90a1b9","#00bc7d","#fe9a00"]},"$preview":{"width":400,"height":640}}'>
+function tint(hex, a) {
+  var h = String(hex || '#d4b98a').replace('#', '');
+  if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+  var n = parseInt(h, 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+
+class Component extends DCLogic {
+  renderVals() {
+    var accent = this.props.accent ?? '#d4b98a';
+    return { accent: accent, ringColor: tint(accent, 0.35) };
+  }
+}
+</script>
+</body>
+</html>

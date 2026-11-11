@@ -382,7 +382,7 @@ export function ChannelsDisabledAPIKeysDialog({ open, onOpenChange }: ChannelsDi
           )}
         </div>
 
-        <DialogFooter className='flex items-center justify-between sm:justify-between'>
+        <DialogFooter align='between' className='items-center'>
           <div>
             {disabledKeys.length > 0 && (
               <Popover open={confirmEnableAll} onOpenChange={setConfirmEnableAll}>

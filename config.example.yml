@@ -45,6 +45,12 @@ server:
   # Accepts plain bytes or K/M/G suffixes: "32M", "512MB", "1G", "536870912".
   # Default: "32M" (env: AXONHUB_SERVER_MAX_MULTIPART_MEMORY)
   max_multipart_memory: "32M"
+  # Go runtime profiling (heap, CPU, goroutines) for diagnosing memory or CPU use.
+  # Served on a separate listener that must bind a loopback IP; never on the API port.
+  # Usage: go tool pprof http://127.0.0.1:6060/debug/pprof/heap
+  pprof:
+    enabled: false              # (env: AXONHUB_SERVER_PPROF_ENABLED)
+    addr: "127.0.0.1:6060"      # Loopback IP and port only (env: AXONHUB_SERVER_PPROF_ADDR)
   cors:
     enabled: true               # Enable CORS middleware (env: AXONHUB_SERVER_CORS_ENABLED)
     debug: false                # Enable CORS debug logging (env: AXONHUB_SERVER_CORS_DEBUG)

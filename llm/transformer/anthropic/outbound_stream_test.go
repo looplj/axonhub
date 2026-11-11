@@ -193,3 +193,61 @@ func TestOutboundTransformer_StreamTransformation_UsesFinalPromptTokensWhenPrese
 	require.EqualValues(t, 3, actualResponses[2].Usage.CompletionTokens)
 	require.EqualValues(t, 13, actualResponses[2].Usage.TotalTokens)
 }
+
+func TestOutboundTransformer_StreamTransformation_MapsStopReasonLikeNonStreaming(t *testing.T) {
+	tests := map[string]string{
+		"end_turn":                      "stop",
+		"max_tokens":                    "length",
+		"stop_sequence":                 "stop",
+		"tool_use":                      "tool_calls",
+		"pause_turn":                    "stop",
+		"refusal":                       "content_filter",
+		"model_context_window_exceeded": "length",
+	}
+
+	for stopReason, want := range tests {
+		t.Run(stopReason, func(t *testing.T) {
+			transformer, err := NewOutboundTransformerWithConfig(&Config{
+				Type:           PlatformZhipu,
+				BaseURL:        "https://example.com",
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			})
+			require.NoError(t, err)
+
+			reason := stopReason
+			messageStartData, err := json.Marshal(StreamEvent{
+				Type:    "message_start",
+				Message: &StreamMessage{ID: "msg_1", Type: "message", Role: "assistant", Model: "glm-5.1", Usage: &Usage{}},
+			})
+			require.NoError(t, err)
+			messageDeltaData, err := json.Marshal(StreamEvent{
+				Type:  "message_delta",
+				Delta: &StreamDelta{StopReason: &reason},
+				Usage: &Usage{InputTokens: 1, OutputTokens: 1},
+			})
+			require.NoError(t, err)
+			messageStopData, err := json.Marshal(StreamEvent{Type: "message_stop"})
+			require.NoError(t, err)
+
+			mockStream := streams.SliceStream([]*httpclient.StreamEvent{
+				{Type: "message_start", Data: messageStartData},
+				{Type: "message_delta", Data: messageDeltaData},
+				{Type: "message_stop", Data: messageStopData},
+			})
+			transformedStream, err := transformer.TransformStream(t.Context(), nil, mockStream)
+			require.NoError(t, err)
+
+			var got *string
+			for transformedStream.Next() {
+				for _, choice := range transformedStream.Current().Choices {
+					if choice.FinishReason != nil {
+						got = choice.FinishReason
+					}
+				}
+			}
+			require.NoError(t, transformedStream.Err())
+			require.NotNil(t, got)
+			require.Equal(t, want, *got)
+		})
+	}
+}

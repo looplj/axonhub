@@ -15,16 +15,14 @@ type livePreviewMiddleware struct {
 	pipeline.DummyMiddleware
 
 	state              *PersistenceState
-	systemService      *biz.SystemService
 	liveStreamRegistry *biz.LiveStreamRegistry
 	enabled            bool
 	initialized        bool
 }
 
-func withLivePreview(state *PersistenceState, systemService *biz.SystemService, liveStreamRegistry *biz.LiveStreamRegistry) pipeline.Middleware {
+func withLivePreview(state *PersistenceState, liveStreamRegistry *biz.LiveStreamRegistry) pipeline.Middleware {
 	return &livePreviewMiddleware{
 		state:              state,
-		systemService:      systemService,
 		liveStreamRegistry: liveStreamRegistry,
 	}
 }
@@ -45,7 +43,7 @@ func (m *livePreviewMiddleware) OnInboundLlmRequest(ctx context.Context, request
 	}
 
 	if !m.initialized {
-		m.enabled = m.systemService != nil && m.systemService.StoragePolicyOrDefault(ctx).LivePreview
+		m.enabled = m.state.settings().StoragePolicy.LivePreview
 		m.initialized = true
 	}
 

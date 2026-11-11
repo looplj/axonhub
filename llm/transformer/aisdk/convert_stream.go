@@ -24,6 +24,7 @@ func (t *DataStreamTransformer) TransformStream(
 		source:          stream,
 		ctx:             ctx,
 		activeToolCalls: make(map[string]*llm.ToolCall),
+		toolCallIDs:     make(map[int]string),
 	}
 	doneEvent := lo.ToPtr(llm.DoneStreamEvent)
 	// Append the DONE event to the filtered stream
@@ -52,6 +53,7 @@ type aiSDKConvertStream struct {
 	currentTextID              string
 	currentReasoningID         string
 	activeToolCalls            map[string]*llm.ToolCall // Track tool calls by ID
+	toolCallIDs                map[int]string           // Tool call ID by delta index, for deltas without ID
 }
 
 func (s *aiSDKConvertStream) enqueueEvent(_ string, data any) error {
@@ -216,8 +218,15 @@ func (s *aiSDKConvertStream) Next() bool {
 			for _, deltaToolCall := range choice.Delta.ToolCalls {
 				toolCallID := deltaToolCall.ID
 				if toolCallID == "" {
+					// Continuation deltas carry only the index; reuse the ID assigned to it.
+					toolCallID = s.toolCallIDs[deltaToolCall.Index]
+				}
+
+				if toolCallID == "" {
 					toolCallID = generateID("tool")
 				}
+
+				s.toolCallIDs[deltaToolCall.Index] = toolCallID
 
 				// Initialize tool call if it doesn't exist
 				if _, exists := s.activeToolCalls[toolCallID]; !exists {

@@ -6403,6 +6403,20 @@ var (
 			}
 		},
 	}
+	// TraceOrderFieldLastRequestAt orders Trace by last_request_at.
+	TraceOrderFieldLastRequestAt = &TraceOrderField{
+		Value: func(_m *Trace) (ent.Value, error) {
+			return _m.LastRequestAt, nil
+		},
+		column: trace.FieldLastRequestAt,
+		toTerm: trace.ByLastRequestAt,
+		toCursor: func(_m *Trace) Cursor {
+			return Cursor{
+				ID:    _m.ID,
+				Value: _m.LastRequestAt,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -6413,6 +6427,8 @@ func (f TraceOrderField) String() string {
 		str = "CREATED_AT"
 	case TraceOrderFieldUpdatedAt.column:
 		str = "UPDATED_AT"
+	case TraceOrderFieldLastRequestAt.column:
+		str = "LAST_REQUEST_AT"
 	}
 	return str
 }
@@ -6433,6 +6449,8 @@ func (f *TraceOrderField) UnmarshalGQL(v interface{}) error {
 		*f = *TraceOrderFieldCreatedAt
 	case "UPDATED_AT":
 		*f = *TraceOrderFieldUpdatedAt
+	case "LAST_REQUEST_AT":
+		*f = *TraceOrderFieldLastRequestAt
 	default:
 		return fmt.Errorf("%s is not a valid TraceOrderField", str)
 	}

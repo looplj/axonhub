@@ -6,7 +6,7 @@ AxonHub 通过 OpenAI 兼容的 `/v1/images/generations` 和 `/v1/images/edits` 
 
 **注意**：目前不支持 Images SSE。请省略 `stream` 或设置为 `false`。生成 JSON、编辑 JSON 和编辑 multipart 请求中的 `stream: true` 会在执行上游请求前被明确拒绝；AxonHub 不会合成图像流式事件。`partial_images` 不会启用流式传输。
 
-Codex 默认使用原生 Images 端点，复用渠道 Base URL、认证、代理和显式 Images 端点覆盖配置。现有 URL 标记与路径前缀规则仍然生效；Codex 默认 Base URL 为 `https://chatgpt.com/backend-api/codex#`。Responses 端点不代表相同 Base URL 下存在 Images API，Fenno 和其他非 Codex 渠道也不例外。已有原生图像提供商端点继续可用，用户也可以为其他渠道显式配置 Images 端点。Images 端点不会继承自定义 Responses 的 Base URL 或路径。Images 请求不再转换为 Responses `image_generation` 工具调用。原生 `/v1/responses` 请求及其图像工具保留各自的行为。
+Codex 默认使用原生 Images 端点，复用渠道 Base URL、认证、代理和显式 Images 端点覆盖配置。现有 URL 标记与路径前缀规则仍然生效；Codex 默认 Base URL 为 `https://chatgpt.com/backend-api/codex#`。Codex 的 `/models` 目录不会列出图像模型，因此 AxonHub 会单独补充原生图像模型 ID。Responses 端点不代表相同 Base URL 下存在 Images API，Fenno 和其他非 Codex 渠道也不例外。已有原生图像提供商端点继续可用，用户也可以为其他渠道显式配置 Images 端点。Images 端点不会继承自定义 Responses 的 Base URL 或路径。Images 请求不再转换为 Responses `image_generation` 工具调用。原生 `/v1/responses` 请求及其图像工具保留各自的行为。
 
 ## API 使用
 
@@ -104,7 +104,7 @@ JSON 响应会保留上游返回的 `created`、`data[].b64_json`、`data[].url`
 | `model` | string | 用于图像生成的模型。 | `dall-e-2` |
 | `n` | integer | 要生成的图像数量。 | 1 |
 | `quality` | string | 图像质量：`"standard"`、`"hd"`、`"high"`、`"medium"`、`"low"` 或 `"auto"`。 | `"auto"` |
-| `response_format` | string | 返回图像的格式：`"url"` 或 `"b64_json"`。 | `"b64_json"` |
+| `response_format` | string | 返回图像的格式：`"url"` 或 `"b64_json"`。对于 OpenAI 兼容渠道，未指定时 AxonHub 不发送该字段，由上游模型决定默认格式；特定提供商渠道可能使用自己的默认值。 | - |
 | `size` | string | 生成图像的尺寸：`"256x256"`、`"512x512"` 或 `"1024x1024"`。 | `"1024x1024"` |
 | `style` | string | 生成图像的风格（仅 DALL-E 3）：`"vivid"` 或 `"natural"`。 | - |
 | `user` | string | 代表最终用户的唯一标识符。 | - |
@@ -167,7 +167,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | `model` | string | 要使用的模型。 | `dall-e-2` |
 | `n` | integer | 要生成的图像数量。 | 1 |
 | `size` | string | 生成图像的尺寸。 | `"1024x1024"` |
-| `response_format` | string | 格式：`"url"` 或 `"b64_json"`。 | `"b64_json"` |
+| `response_format` | string | 格式：`"url"` 或 `"b64_json"`。对于 OpenAI 兼容渠道，未指定时 AxonHub 不发送该字段，由上游模型决定默认格式；特定提供商渠道可能使用自己的默认值。发送到 JSON 上游的图像编辑会拒绝非空值，包括 Codex 编辑以及使用远程图像引用的编辑。 | - |
 | `user` | string | 最终用户的唯一标识符。 | - |
 | `background` | string | 背景样式：`"opaque"` 或 `"transparent"`。 | - |
 | `output_format` | string | 图像格式：`"png"`、`"webp"` 或 `"jpeg"`。 | `"png"` |
@@ -180,7 +180,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | 提供商 | 状态 | 支持的模型 | 备注 |
 | -------------------- | ------- | ------------------------------------------------------------- | --------------------- |
 | **OpenAI** | ✅ 完成 | gpt-image-1、dall-e-2、dall-e-3 等 | 不支持流式传输 |
-| **Codex** | ✅ 完成 | gpt-image-2 | 原生非流式生成与 JSON 上游编辑；可用性取决于账号权限 |
+| **Codex** | ✅ 完成 | gpt-image-2、gpt-image-2.5-sunburst、gpt-image-2.5-flare、gpt-image-2.6-sunburst、gpt-image-2.6-flare | 原生非流式生成与 JSON 上游编辑；可用性取决于账号权限 |
 | **字节跳动豆包** | ✅ 完成 | doubao-seed-dream-4-0 等 | 不支持流式传输 |
 | **OpenRouter** | ✅ 完成 | gpt-image-1、gemini-2.5-flash-image-preview 等 | 不支持流式传输 |
 | **Gemini** | ✅ 完成 | gemini-2.5-flash-image、gemini-2.0-flash-preview-image-generation 等 | 不支持流式传输 |

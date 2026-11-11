@@ -53,6 +53,8 @@ func enforceQuota(inbound *PersistentInboundTransformer, quotaService *biz.Quota
 		}
 		log.Info(ctx, "api key quota exceeded", fields...)
 
+		inbound.publishAPIKeyQuotaExceeded(ctx, llmRequest, profile.Name, result.Window)
+
 		return nil, &llm.ResponseError{
 			StatusCode: http.StatusForbidden,
 			Detail: llm.ErrorDetail{

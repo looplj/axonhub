@@ -98,7 +98,7 @@ func TestDefaultChannelSelector_Select_WithTraceContext(t *testing.T) {
 	channelService := newTestChannelServiceForChannels(client)
 	systemService := newTestSystemService(client)
 	requestService := newTestRequestServiceForChannels(client, systemService)
-	require.NoError(t, requestService.UpdateRequestChannelID(ctx, stickyRequest.ID, channels[1].ID))
+	requestService.AssignRequestChannel(ctx, stickyRequest, channels[1].ID)
 
 	selector := newTestLoadBalancedSelector(channelService, client, systemService, requestService)
 
@@ -144,12 +144,12 @@ func TestDefaultChannelSelector_Select_WithChannelFailures(t *testing.T) {
 	// Record failures for the high weight channel to test error awareness
 	for range 3 {
 		perf := &biz.PerformanceRecord{
-			ChannelID:        channels[0].ID,
-			StartTime:        time.Now().Add(-time.Minute),
-			EndTime:          time.Now(),
-			Success:          false,
-			RequestCompleted: true,
-			ResponseStatusCode:  500,
+			ChannelID:          channels[0].ID,
+			StartTime:          time.Now().Add(-time.Minute),
+			EndTime:            time.Now(),
+			Success:            false,
+			RequestCompleted:   true,
+			ResponseStatusCode: 500,
 		}
 		channelService.RecordPerformance(ctx, perf)
 	}
@@ -429,15 +429,15 @@ func TestLoadBalancedSelector_Select(t *testing.T) {
 	systemService := newTestSystemService(client)
 
 	strategies := []LoadBalanceStrategy{
-		NewErrorAwareStrategy(channelService),
-		NewWeightRoundRobinStrategy(channelService),
-		NewLatencyAwareStrategy(channelService),
+		NewErrorAwareStrategy(),
+		NewWeightRoundRobinStrategy(),
+		NewLatencyAwareStrategy(),
 	}
-	loadBalancer := NewLoadBalancer(systemService, nil, strategies...)
+	loadBalancer := NewLoadBalancer(channelService, nil, strategies...)
 
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
-	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService)
+	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService.RetryPolicyOrDefault(ctx))
 
 	req := &llm.Request{
 		Model: "gpt-4",
@@ -479,11 +479,11 @@ func TestLoadBalancedSelector_Select_SingleChannel(t *testing.T) {
 
 	channelService := newTestChannelServiceForChannels(client)
 	systemService := newTestSystemService(client)
-	loadBalancer := NewLoadBalancer(systemService, nil)
+	loadBalancer := NewLoadBalancer(nil, nil)
 
 	modelService := newTestModelService(client)
 	baseSelector := NewDefaultSelector(channelService, modelService, systemService)
-	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService)
+	selector := WithLoadBalancedSelector(baseSelector, loadBalancer, systemService.RetryPolicyOrDefault(ctx))
 
 	req := &llm.Request{
 		Model: "gpt-4",

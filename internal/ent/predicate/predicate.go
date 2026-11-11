@@ -39,6 +39,12 @@ type Model func(*sql.Selector)
 // OIDCIdentity is the predicate function for oidcidentity builders.
 type OIDCIdentity func(*sql.Selector)
 
+// Plugin is the predicate function for plugin builders.
+type Plugin func(*sql.Selector)
+
+// PluginStorage is the predicate function for pluginstorage builders.
+type PluginStorage func(*sql.Selector)
+
 // Project is the predicate function for project builders.
 type Project func(*sql.Selector)
 

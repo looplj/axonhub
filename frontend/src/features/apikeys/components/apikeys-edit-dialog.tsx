@@ -152,15 +152,13 @@ export function ApiKeysEditDialog() {
                 </p>
               </div>
             </div>
-            <DialogFooter className='flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end'>
-              <div className='flex w-full gap-2 sm:w-auto'>
-                <Button type='button' variant='outline' onClick={handleClose} disabled={isSubmitting}>
-                  {t('common.buttons.cancel')}
-                </Button>
-                <Button type='submit' disabled={isSubmitting}>
-                  {isSubmitting ? t('common.buttons.saving') : t('common.buttons.save')}
-                </Button>
-              </div>
+            <DialogFooter>
+              <Button type='button' variant='outline' onClick={handleClose} disabled={isSubmitting}>
+                {t('common.buttons.cancel')}
+              </Button>
+              <Button type='submit' disabled={isSubmitting}>
+                {isSubmitting ? t('common.buttons.saving') : t('common.buttons.save')}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

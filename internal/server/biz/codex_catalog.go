@@ -270,7 +270,9 @@ func (svc *ChannelService) onTokenRefreshedDetached(ch *ent.Channel) func(contex
 		defer mu.Unlock()
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), codexCatalogCredentialSaveTimeout)
 		defer cancel()
-		ctx = authz.WithSystemBypass(ctx, "codex-catalog-refresh")
-		return svc.refreshOAuthTokenWithClient(ctx, svc.db, &snapshot, refreshed)
+		_, err := authz.RunAsHost(ctx, svc.db, "codex-catalog-refresh", func(hostCtx context.Context) (struct{}, error) {
+			return struct{}{}, svc.refreshOAuthTokenWithClient(hostCtx, svc.db, &snapshot, refreshed)
+		})
+		return err
 	}
 }

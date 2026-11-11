@@ -15,6 +15,16 @@ interface DataTableViewOptionsProps<TData> {
   table: Table<TData>;
 }
 
+const COLUMN_LABEL_KEYS: Record<string, string> = {
+  firstUserQuery: 'traces.columns.userQuery',
+  traceID: 'traces.columns.traceId',
+  thread: 'traces.columns.thread',
+  requestCount: 'traces.columns.requestCount',
+  details: 'traces.columns.details',
+  createdAt: 'common.columns.createdAt',
+  lastRequestAt: 'traces.columns.lastRequestAt',
+};
+
 export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps<TData>) {
   const { t } = useTranslation();
 
@@ -31,7 +41,7 @@ export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps
         <DropdownMenuSeparator />
         {table
           .getAllColumns()
-          .filter((column) => typeof column.accessorFn !== 'undefined' && column.getCanHide())
+          .filter((column) => column.getCanHide())
           .map((column) => {
             return (
               <DropdownMenuCheckboxItem
@@ -40,7 +50,7 @@ export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps
                 checked={column.getIsVisible()}
                 onCheckedChange={(value) => column.toggleVisibility(!!value)}
               >
-                {column.id}
+                {t(COLUMN_LABEL_KEYS[column.id] ?? `traces.columns.${column.id}`)}
               </DropdownMenuCheckboxItem>
             );
           })}
