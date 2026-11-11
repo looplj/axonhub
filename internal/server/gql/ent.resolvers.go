@@ -10,13 +10,12 @@ import (
 	"fmt"
 
 	"entgo.io/contrib/entgql"
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/samber/lo"
 )
 
 // ID is the resolver for the id field.
@@ -557,10 +556,6 @@ func (r *queryResolver) Threads(ctx context.Context, after *entgql.Cursor[int], 
 func (r *queryResolver) Traces(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) (*ent.TraceConnection, error) {
 	if err := validatePaginationArgs(first, last); err != nil {
 		return nil, err
-	}
-
-	if orderBy != nil && orderBy.Field.String() == "CREATED_AT" {
-		orderBy.Field = ent.DefaultTraceOrder.Field
 	}
 
 	return r.client.Trace.Query().Paginate(ctx, after, first, before, last,

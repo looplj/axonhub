@@ -21,7 +21,7 @@ func TestRateLimitAwareStrategy_Score_NoRateLimit(t *testing.T) {
 	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}
 
 	ctx := context.Background()
-	assert.Equal(t, 100.0, strategy.Score(ctx, channel))
+	assert.Equal(t, 100.0, strategy.Score(ctx, channel, nil))
 }
 
 func TestRateLimitAwareStrategy_Score_NoRateLimitChannelIgnoresManagerStats(t *testing.T) {
@@ -33,7 +33,7 @@ func TestRateLimitAwareStrategy_Score_NoRateLimitChannelIgnoresManagerStats(t *t
 
 	ctx := context.Background()
 	// No limiter is created for the channel because RateLimit is nil; full score expected.
-	assert.Equal(t, 100.0, strategy.Score(ctx, channel))
+	assert.Equal(t, 100.0, strategy.Score(ctx, channel, nil))
 }
 
 func TestRateLimitAwareStrategy_Score_Cooldown(t *testing.T) {
@@ -45,7 +45,7 @@ func TestRateLimitAwareStrategy_Score_Cooldown(t *testing.T) {
 	tracker.SetCooldown(channel.ID, time.Now().Add(30*time.Second))
 
 	ctx := context.Background()
-	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel, nil))
 }
 
 func TestRateLimitAwareStrategy_Score_RPMExhausted(t *testing.T) {
@@ -68,7 +68,7 @@ func TestRateLimitAwareStrategy_Score_RPMExhausted(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel, nil))
 }
 
 func TestRateLimitAwareStrategy_Score_TPMExhausted(t *testing.T) {
@@ -89,7 +89,7 @@ func TestRateLimitAwareStrategy_Score_TPMExhausted(t *testing.T) {
 	tracker.AddTokens(channel.ID, tpm)
 
 	ctx := context.Background()
-	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel, nil))
 }
 
 func TestRateLimitAwareStrategy_Score_CooldownTakesPriority(t *testing.T) {
@@ -111,7 +111,7 @@ func TestRateLimitAwareStrategy_Score_CooldownTakesPriority(t *testing.T) {
 	tracker.TryAcquireRequest(channel.ID, rpm)
 
 	ctx := context.Background()
-	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel, nil))
 }
 
 func TestRateLimitAwareStrategy_Score_NormalUsage(t *testing.T) {
@@ -136,7 +136,7 @@ func TestRateLimitAwareStrategy_Score_NormalUsage(t *testing.T) {
 
 	// maxRatio = max(2/100, 500/1000) = 0.5 -> score 50
 	ctx := context.Background()
-	assert.Equal(t, 50.0, strategy.Score(ctx, channel))
+	assert.Equal(t, 50.0, strategy.Score(ctx, channel, nil))
 }
 
 func TestRateLimitAwareStrategy_Score_UnboundedQueue_ConcurrencyContributes(t *testing.T) {
@@ -166,7 +166,7 @@ func TestRateLimitAwareStrategy_Score_UnboundedQueue_ConcurrencyContributes(t *t
 		require.NoError(t, lim.Acquire(t.Context()))
 	}
 
-	assert.InDelta(t, 44.0, strategy.Score(ctx, channel), 0.0001)
+	assert.InDelta(t, 44.0, strategy.Score(ctx, channel, nil), 0.0001)
 
 	// Saturate to capacity (10/10, no waiters): an unbounded queue is NEVER
 	// exhausted — the channel sits at the queueing ceiling (30) and stays a candidate.
@@ -174,7 +174,7 @@ func TestRateLimitAwareStrategy_Score_UnboundedQueue_ConcurrencyContributes(t *t
 		require.NoError(t, lim.Acquire(t.Context()))
 	}
 
-	score := strategy.Score(ctx, channel)
+	score := strategy.Score(ctx, channel, nil)
 	assert.InDelta(t, 30.0, score, 0.0001)
 	assert.NotEqual(t, float64(rateLimitExhaustedScore), score, "unbounded queue must never be exhausted by concurrency")
 
@@ -209,7 +209,7 @@ func TestRateLimitAwareStrategy_Score_HardMode_QueuingCappedScore(t *testing.T) 
 	require.NoError(t, lim.Acquire(t.Context()))
 
 	ctx := context.Background()
-	score := strategy.Score(ctx, channel)
+	score := strategy.Score(ctx, channel, nil)
 	// inFlight==capacity but waiting==0 -> waitingRatio=0 -> score = 100 * 0.3 * 1 = 30
 	assert.InDelta(t, 30.0, score, 0.0001)
 
@@ -225,7 +225,7 @@ func TestRateLimitAwareStrategy_Score_HardMode_QueuingCappedScore(t *testing.T) 
 	}, time.Second, 5*time.Millisecond)
 
 	// waitingRatio = 5/10 = 0.5 -> score = 100 * 0.3 * 0.5 = 15
-	assert.InDelta(t, 15.0, strategy.Score(ctx, channel), 0.0001)
+	assert.InDelta(t, 15.0, strategy.Score(ctx, channel, nil), 0.0001)
 
 	// Now fully load capacity + queue -> exhausted.
 	enqueuedExtra := launchAcquire(t, lim, waitCtx, 5)
@@ -234,7 +234,7 @@ func TestRateLimitAwareStrategy_Score_HardMode_QueuingCappedScore(t *testing.T) 
 		return w == 10
 	}, time.Second, 5*time.Millisecond)
 
-	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel))
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, channel, nil))
 
 	cancel()
 	drainGrants(t, lim, enqueued)
@@ -273,12 +273,12 @@ func TestRateLimitAwareStrategy_Score_HardMode_Monotonic(t *testing.T) {
 		require.NoError(t, lim.Acquire(t.Context()))
 	}
 
-	belowCapacityScore := strategy.Score(ctx, channel)
+	belowCapacityScore := strategy.Score(ctx, channel, nil)
 
 	// Saturate to capacity (no waiters yet).
 	require.NoError(t, lim.Acquire(t.Context()))
 
-	atCapacityScore := strategy.Score(ctx, channel)
+	atCapacityScore := strategy.Score(ctx, channel, nil)
 
 	assert.Greater(t, belowCapacityScore, atCapacityScore,
 		"below-capacity must score higher than at-capacity-with-empty-queue")
@@ -318,7 +318,7 @@ func TestRateLimitAwareStrategy_Score_StaleEntryAfterLimiterDisabled(t *testing.
 	ctx := context.Background()
 
 	// Must not panic and must treat the channel as unlimited.
-	assert.Equal(t, 100.0, strategy.Score(ctx, channel))
+	assert.Equal(t, 100.0, strategy.Score(ctx, channel, nil))
 }
 
 func TestRateLimitAwareStrategy_Score_MinOfRPMAndConcurrency(t *testing.T) {
@@ -353,7 +353,7 @@ func TestRateLimitAwareStrategy_Score_MinOfRPMAndConcurrency(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	assert.InDelta(t, 44.0, strategy.Score(ctx, channel), 0.0001)
+	assert.InDelta(t, 44.0, strategy.Score(ctx, channel, nil), 0.0001)
 
 	for range 8 {
 		lim.Release()
@@ -370,7 +370,7 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_Cooldown(t *testing.T) {
 	tracker.SetCooldown(channel.ID, until)
 
 	ctx := context.Background()
-	score, debug := strategy.ScoreWithDebug(ctx, channel)
+	score, debug := strategy.ScoreWithDebug(ctx, channel, nil)
 
 	assert.Equal(t, float64(rateLimitExhaustedScore), score)
 	assert.Equal(t, "RateLimitAware", debug.StrategyName)
@@ -401,7 +401,7 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_RPMExhausted(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	score, debug := strategy.ScoreWithDebug(ctx, channel)
+	score, debug := strategy.ScoreWithDebug(ctx, channel, nil)
 
 	assert.Equal(t, float64(rateLimitExhaustedScore), score)
 	assert.Equal(t, true, debug.Details["rpm_exhausted"])
@@ -416,7 +416,7 @@ func TestRateLimitAwareStrategy_ScoreWithDebug_NoRateLimit(t *testing.T) {
 	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}
 
 	ctx := context.Background()
-	score, debug := strategy.ScoreWithDebug(ctx, channel)
+	score, debug := strategy.ScoreWithDebug(ctx, channel, nil)
 
 	assert.Equal(t, 100.0, score)
 	assert.Equal(t, "no_rpm_tpm_configured", debug.Details["rpm_tpm_reason"])
@@ -431,7 +431,7 @@ func TestRateLimitAwareStrategy_Score_ExpiredCooldown(t *testing.T) {
 	tracker.SetCooldown(channel.ID, time.Now().Add(-10*time.Second))
 
 	ctx := context.Background()
-	assert.Equal(t, 100.0, strategy.Score(ctx, channel))
+	assert.Equal(t, 100.0, strategy.Score(ctx, channel, nil))
 	assert.False(t, tracker.IsCoolingDown(channel.ID))
 }
 
@@ -445,8 +445,8 @@ func TestRateLimitAwareStrategy_Score_MultipleChannels(t *testing.T) {
 	tracker.SetCooldown(1, time.Now().Add(30*time.Second))
 
 	ctx := context.Background()
-	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, c1))
-	assert.Equal(t, 100.0, strategy.Score(ctx, c2))
+	assert.Equal(t, float64(rateLimitExhaustedScore), strategy.Score(ctx, c1, nil))
+	assert.Equal(t, 100.0, strategy.Score(ctx, c2, nil))
 }
 
 func TestRateLimitAwareStrategy_Name(t *testing.T) {

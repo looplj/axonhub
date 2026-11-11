@@ -1,0 +1,9 @@
+# Written by baoyu-design when the editor first opened this folder: what only this computer's editor server needs.
+.artifact-server.json
+.artifact-server.log
+.sharing.json
+/history/
+/exports/
+*.tmp
+.tmp-*
+.DS_Store

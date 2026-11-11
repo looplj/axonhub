@@ -85,6 +85,9 @@ func (s *UserService) CreateUser(ctx context.Context, input ent.CreateUserInput)
 
 // UpdateUser updates an existing user.
 func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUserInput) (*ent.User, error) {
+	if err := s.permissionValidator.CanChangeOwnership(ctx, input.IsOwner); err != nil {
+		return nil, err
+	}
 	// Validate permissions before updating
 	if err := s.permissionValidator.CanEditUserPermissions(ctx, id, nil); err != nil {
 		return nil, fmt.Errorf("permission denied: %w", err)
@@ -93,6 +96,12 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 	// Validate scope grants if scopes are being updated
 	if input.Scopes != nil {
 		if err := s.permissionValidator.CanGrantScopes(ctx, input.Scopes, nil); err != nil {
+			return nil, fmt.Errorf("permission denied: %w", err)
+		}
+	}
+
+	if len(input.AppendScopes) > 0 {
+		if err := s.permissionValidator.CanGrantScopes(ctx, input.AppendScopes, nil); err != nil {
 			return nil, fmt.Errorf("permission denied: %w", err)
 		}
 	}
@@ -167,6 +176,10 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 
 // UpdateOwnProfile updates fields users are allowed to change for their own account.
 func (s *UserService) UpdateOwnProfile(ctx context.Context, input ent.UpdateUserInput) (*ent.User, error) {
+	if err := authz.RequireDirectUser(ctx); err != nil {
+		return nil, err
+	}
+
 	currentUser, ok := contexts.GetUser(ctx)
 	if !ok || currentUser == nil {
 		return nil, fmt.Errorf("user not found in context")
@@ -393,6 +406,9 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 
 // AddUserToProject adds a user to a project with optional owner status, scopes, and roles.
 func (s *UserService) AddUserToProject(ctx context.Context, userID, projectID int, isOwner *bool, scopes []string, roleIDs []int) (*ent.UserProject, error) {
+	if err := s.permissionValidator.CanChangeOwnership(ctx, isOwner); err != nil {
+		return nil, err
+	}
 	principal, hasPrincipal := authz.GetPrincipal(ctx)
 	if !hasPrincipal || !principal.IsTest() {
 		if scopes != nil {
@@ -401,7 +417,7 @@ func (s *UserService) AddUserToProject(ctx context.Context, userID, projectID in
 			}
 		}
 		for _, roleID := range roleIDs {
-			projectRole, err := authz.RunWithSystemBypass(ctx, "project-role-assignment", func(ctx context.Context) (*ent.Role, error) {
+			projectRole, err := authz.RunAsHost(ctx, s.entFromContext(ctx), "project-role-assignment", func(ctx context.Context) (*ent.Role, error) {
 				return s.entFromContext(ctx).Role.Query().Where(role.IDEQ(roleID), role.ProjectIDEQ(projectID)).Only(ctx)
 			})
 			if err != nil {
@@ -501,6 +517,10 @@ func (s *UserService) RemoveUserFromProject(ctx context.Context, userID, project
 
 // UpdateProjectUser updates a user's project relationship including scopes and roles.
 func (s *UserService) UpdateProjectUser(ctx context.Context, userID, projectID int, isOwner *bool, scopes []string, addRoleIDs, removeRoleIDs []int) (*ent.UserProject, error) {
+	if err := s.permissionValidator.CanChangeOwnership(ctx, isOwner); err != nil {
+		return nil, err
+	}
+
 	// Validate permissions before updating
 	if err := s.permissionValidator.CanEditUserPermissions(ctx, userID, &projectID); err != nil {
 		return nil, fmt.Errorf("permission denied: %w", err)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -13,10 +14,11 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
+	"github.com/looplj/axonhub/internal/server/events"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -100,7 +102,21 @@ type WebhookRenderContext struct {
 		Limits                []string `json:"limits"`
 		WarningThresholdRatio float64  `json:"warning_threshold_ratio"`
 	} `json:"quota"`
+
+	// Data is the plugin webhook payload. NotifyXxx leaves it nil.
+	Data any `json:"data,omitempty"`
+	// Message is payload.message when that value is a string.
+	Message string `json:"message,omitempty"`
 }
+
+var (
+	// ErrWebhookTargetNotFound means the configured target list has no such name.
+	ErrWebhookTargetNotFound = errors.New("webhook target not found")
+	// ErrWebhookTargetDisabled means the target is turned off or has no URL.
+	ErrWebhookTargetDisabled = errors.New("webhook target is disabled")
+	// ErrWebhookUnavailable means the single delivery attempt failed.
+	ErrWebhookUnavailable = errors.New("webhook delivery failed")
+)
 
 type WebhookNotifier struct {
 	SystemService *SystemService
@@ -192,7 +208,7 @@ func (n *WebhookNotifier) notify(
 	renderCtx WebhookRenderContext,
 	occurredAt time.Time,
 ) {
-	ctx = authz.WithSystemBypass(context.WithoutCancel(ctx), "webhook-notifier")
+	ctx = context.WithoutCancel(ctx)
 	renderCtx.OccurredAt = occurredAt.In(n.SystemService.TimeLocation(ctx)).Format(time.RFC3339)
 	cfg := *n.SystemService.WebhookNotifierConfigOrDefault(ctx)
 	targets := n.selectTargets(cfg, eventName)
@@ -297,6 +313,116 @@ func (n *WebhookNotifier) send(ctx context.Context, target WebhookTarget, body s
 		return fmt.Errorf("do request: %w", err)
 	}
 
+	return nil
+}
+
+// SendToTarget renders one configured target and delivers it once.
+// payload is the template Data value. A string payload.message also sets Message.
+// The current event supplies Event, Severity, OccurredAt, and Channel.
+// A missing target is ErrWebhookTargetNotFound. A disabled target, or one with a
+// blank URL, is ErrWebhookTargetDisabled. Transport errors and non-2xx responses
+// are ErrWebhookUnavailable. This method does not retry.
+func (n *WebhookNotifier) SendToTarget(ctx context.Context, name string, payload map[string]any, event events.Event) error {
+	if n == nil || n.SystemService == nil || n.httpClient == nil {
+		return fmt.Errorf("%w: notifier is not configured", ErrWebhookUnavailable)
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	target, ok := webhookTargetByName(n.SystemService.WebhookNotifierConfigOrDefault(ctx), name)
+	if !ok {
+		return ErrWebhookTargetNotFound
+	}
+	if !target.Enabled || strings.TrimSpace(target.URL) == "" {
+		return ErrWebhookTargetDisabled
+	}
+
+	renderCtx := WebhookRenderContext{
+		Event:    event.Type,
+		Severity: event.Severity,
+		Data:     payload,
+	}
+	if message, ok := payload["message"].(string); ok {
+		renderCtx.Message = message
+	}
+	occurredAt := event.OccurredAt
+	if occurredAt.IsZero() {
+		occurredAt = time.Now()
+	}
+	renderCtx.OccurredAt = occurredAt.In(n.SystemService.TimeLocation(ctx)).Format(time.RFC3339)
+	if event.Subject.Channel != nil {
+		renderCtx.Channel.ID = event.Subject.Channel.ID
+		renderCtx.Channel.Name = event.Subject.Channel.Name
+		renderCtx.Channel.Provider = event.Subject.Channel.Type
+		renderCtx.Channel.BaseURL = event.Subject.Channel.BaseURL
+		renderCtx.Channel.Status = event.Subject.Channel.Status
+	}
+
+	body, err := renderWebhookTemplate(target.Body, renderCtx)
+	if err != nil {
+		return fmt.Errorf("%w: render body: %w", ErrWebhookUnavailable, err)
+	}
+	headers, err := renderWebhookHeaders(target.Headers, renderCtx)
+	if err != nil {
+		return fmt.Errorf("%w: render headers: %w", ErrWebhookUnavailable, err)
+	}
+	if err := n.sendOnce(ctx, target, body, headers); err != nil {
+		if xerrors.Is(err, context.Canceled) || xerrors.Is(err, context.DeadlineExceeded) {
+			return err
+		}
+		return fmt.Errorf("%w: %w", ErrWebhookUnavailable, err)
+	}
+	return nil
+}
+
+func webhookTargetByName(cfg *WebhookNotifierConfig, name string) (WebhookTarget, bool) {
+	if cfg == nil {
+		return WebhookTarget{}, false
+	}
+	for _, target := range cfg.Targets {
+		if target.Name == name {
+			return target, true
+		}
+	}
+	return WebhookTarget{}, false
+}
+
+// sendOnce delivers one request. A non-2xx status is an error. It does not retry.
+func (n *WebhookNotifier) sendOnce(ctx context.Context, target WebhookTarget, body string, headers http.Header) error {
+	timeout := time.Duration(target.TimeoutMs) * time.Millisecond
+	if timeout <= 0 {
+		timeout = defaultWebhookTimeoutMs * time.Millisecond
+	}
+
+	reqCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	if headers.Get("Content-Type") == "" {
+		headers.Set("Content-Type", "application/json")
+	}
+
+	client := n.httpClient
+	if target.Proxy != nil {
+		client = client.WithProxy(target.Proxy)
+	}
+
+	resp, err := client.Do(reqCtx, &httpclient.Request{
+		Method:      defaultWebhookMethod,
+		URL:         target.URL,
+		Headers:     headers,
+		ContentType: headers.Get("Content-Type"),
+		Body:        []byte(body),
+	})
+	if err != nil {
+		return err
+	}
+	if resp == nil || resp.StatusCode < http.StatusOK || resp.StatusCode >= 300 {
+		status := 0
+		if resp != nil {
+			status = resp.StatusCode
+		}
+		return fmt.Errorf("webhook status %d", status)
+	}
 	return nil
 }
 

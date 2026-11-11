@@ -21,7 +21,7 @@ The load balancing flow now has an accompanying SVG animation (`load-balancing.s
 ### Core Components
 
 1. **LoadBalanceStrategy Interface** - Defines how strategies score channels
-2. **LoadBalancer** - Orchestrates multiple strategies to sort channels
+2. **LoadBalancer** - Orchestrates multiple strategies to sort channels. It fetches each candidate's `AggregatedMetrics` once and passes the same snapshot to every strategy's `Score(ctx, channel, metrics)`. A load balancer built with a nil metrics provider skips the fetch, and metrics-based strategies fall back to a neutral score.
 3. **Strategy Implementations** - Concrete implementations for different prioritization criteria
 
 ### Strategy Pattern
@@ -61,7 +61,7 @@ The load balancing system uses the Strategy pattern to make the prioritization l
 
 **Implementation**:
 ```go
-NewErrorAwareStrategy(channelService)
+NewErrorAwareStrategy()
 ```
 
 ### 2. WeightStrategy (Priority: 0-100 points)
@@ -85,7 +85,7 @@ NewErrorAwareStrategy(channelService)
 **Purpose**: Blends historic request distribution with admin-defined weights.
 
 **Algorithm**:
-1. Fetches `AggregatedMetrics` for each channel.
+1. Reads the channel's `AggregatedMetrics` snapshot provided by the load balancer.
 2. Normalizes the sliding-window request count by `OrderingWeight` (non-positive values use the default effective weight of 100 to preserve the scoring scale relative to health and latency signals).
 3. Computes `150 / (1 + normalizedCount / 150)`, which stays strictly decreasing without a count cap or score floor.
 4. Lets the shared sliding window expire old load; the strategy does not apply a second inactivity decay.
@@ -116,13 +116,15 @@ NewErrorAwareStrategy(channelService)
 The `DefaultChannelSelector` uses these strategies in order:
 
 ```go
-loadBalancer := NewLoadBalancer(
-    NewErrorAwareStrategy(channelService),                          // Health
-    NewWeightRoundRobinStrategy(channelService),                    // Fairness + admin weight
-    NewLatencyAwareStrategy(channelService),                        // Streaming FTTL/TPS or non-streaming latency
-    NewRateLimitAwareStrategy(rateLimitTracker, connectionTracker), // Rate limits + concurrency fallback
+loadBalancer := NewLoadBalancer(channelService, channelService, // metrics provider, selection tracker
+    NewErrorAwareStrategy(),                                        // Health
+    NewWeightRoundRobinStrategy(),                                  // Fairness + admin weight
+    NewLatencyAwareStrategy(),                                      // Streaming FTTL/TPS or non-streaming latency
+    NewRateLimitAwareStrategy(rateLimitTracker, limiterManager),    // Rate limits + concurrency
 )
 ```
+
+The number of candidates to rank (top k) is passed to `Sort` by `LoadBalancedSelector`, derived from the request's retry policy snapshot: `1 + MaxChannelRetries` when retry is enabled, otherwise 1.
 
 The selector wraps this load balancer with `WithTraceStickyLoadBalancedSelector`, which performs trace/thread affinity before score-based sorting.
 

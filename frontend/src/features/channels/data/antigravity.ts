@@ -27,3 +27,27 @@ export async function antigravityOAuthExchange(
     requireAuth: true,
   })
 }
+
+export const ANTIGRAVITY_BASE_URL_DAILY_SANDBOX = 'https://daily-cloudcode-pa.sandbox.googleapis.com';
+export const ANTIGRAVITY_BASE_URL_DAILY = 'https://daily-cloudcode-pa.googleapis.com';
+export const ANTIGRAVITY_BASE_URL_PROD = 'https://cloudcode-pa.googleapis.com';
+export const ANTIGRAVITY_BASE_URL_AUTOPUSH = 'https://autopush-cloudcode-pa.sandbox.googleapis.com';
+
+export const ANTIGRAVITY_BASE_URLS = [
+  {
+    label: 'Daily Sandbox (https://daily-cloudcode-pa.sandbox.googleapis.com)',
+    value: ANTIGRAVITY_BASE_URL_DAILY_SANDBOX,
+  },
+  {
+    label: 'Daily (https://daily-cloudcode-pa.googleapis.com)',
+    value: ANTIGRAVITY_BASE_URL_DAILY,
+  },
+  {
+    label: 'Production (https://cloudcode-pa.googleapis.com)',
+    value: ANTIGRAVITY_BASE_URL_PROD,
+  },
+  {
+    label: 'Autopush Sandbox (https://autopush-cloudcode-pa.sandbox.googleapis.com)',
+    value: ANTIGRAVITY_BASE_URL_AUTOPUSH,
+  },
+];

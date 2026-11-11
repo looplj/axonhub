@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestStreamOutcomeFinalState(t *testing.T) {
@@ -152,4 +154,21 @@ func TestStreamOutcomeFinalDecisionSelectsCause(t *testing.T) {
 			require.ErrorIs(t, decision.cause, tt.wantCause)
 		})
 	}
+}
+
+func TestStreamOutcomePreservesTerminalCause(t *testing.T) {
+	outcome := streamOutcome{}
+	outcome.observeTerminalEvent(streamTerminalFailed, &httpclient.StreamEvent{
+		Data: []byte(`{"response":{"error":{"message":"provider failed"}}}`),
+	})
+	outcome.observeTransportError(errors.New("late transport error"))
+	outcome.observeContextError(context.Canceled)
+	outcome.observeTerminal(streamTerminalCompleted)
+	decision := outcome.deliveryDecision()
+	require.Equal(t, streamTerminalFailed, decision.state)
+	require.EqualError(t, decision.cause, "provider failed")
+
+	outcome = streamOutcome{}
+	outcome.observeTerminal(streamTerminalIncomplete)
+	require.EqualError(t, outcome.deliveryDecision().cause, string(streamTerminalIncomplete))
 }

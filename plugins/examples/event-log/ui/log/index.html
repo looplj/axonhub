@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Event Log</title>
+        <link rel="stylesheet" href="./style.css" />
+    </head>
+    <body>
+        <main>
+            <header class="masthead">
+                <h1 id="title">Event log</h1>
+            </header>
+            <p id="status" class="status" role="status"></p>
+            <section class="card">
+                <div class="section-head">
+                    <h2 id="count"></h2>
+                    <button
+                        id="refresh"
+                        type="button"
+                        class="secondary"
+                    ></button>
+                </div>
+                <p id="hint" class="muted"></p>
+                <ul id="events" class="list"></ul>
+                <p id="empty" class="muted" hidden></p>
+                <button id="clear" type="button" hidden></button>
+            </section>
+        </main>
+        <!-- ui/log/index.html is two levels below the package root. -->
+        <script crossorigin="anonymous" src="../../_axonhub/bridge.js"></script>
+        <script type="module" crossorigin="anonymous" src="./app.js"></script>
+    </body>
+</html>

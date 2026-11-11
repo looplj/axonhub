@@ -68,13 +68,13 @@ func (r *LiveStreamRegistry) GetExecutionBuffer(executionID int) *chunkbuffer.Bu
 }
 
 // GetRequestChunks returns the current live request chunks as JSON in the same format
-// as SaveRequestChunks.
+// as persisted request chunks.
 func (r *LiveStreamRegistry) GetRequestChunks(requestID int) []objects.JSONRawMessage {
 	return marshalPreviewChunks(r.GetRequestBuffer(requestID))
 }
 
 // GetExecutionChunks returns the current live request execution chunks as JSON in the same format
-// as SaveRequestExecutionChunks.
+// as persisted execution chunks.
 func (r *LiveStreamRegistry) GetExecutionChunks(executionID int) []objects.JSONRawMessage {
 	return marshalPreviewChunks(r.GetExecutionBuffer(executionID))
 }

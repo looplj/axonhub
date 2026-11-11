@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 )
 
 func TestCachedDashboardQuerySharesConcurrentAndRepeatedCalls(t *testing.T) {
@@ -429,4 +431,29 @@ func TestNormalizeChannelSuccessRatesParams(t *testing.T) {
 			require.Equal(t, tt.wantLimit, *gotLimit)
 		})
 	}
+}
+
+// Dashboard aggregates do not depend on the caller, so an authorized plugin shares the
+// cache with direct users; the scope is still checked before any cache read.
+func TestPluginDashboardCacheSharesAggregates(t *testing.T) {
+	resetDashboardQueryCache()
+	t.Cleanup(resetDashboardQueryCache)
+	user := &ent.User{ID: 1, IsOwner: true}
+	parent := contexts.WithUser(authz.NewUserContext(context.Background(), user.ID), user)
+	direct, err := cachedDashboardQuery(parent, "same-key", time.Minute, func(context.Context) (int, error) { return 1, nil })
+	require.NoError(t, err)
+	require.Equal(t, 1, direct)
+	for _, installation := range []int{1, 2} {
+		ctx, err := authz.DelegatePlugin(parent, installation, []string{"read_dashboard"})
+		require.NoError(t, err)
+		value, err := cachedDashboardQuery(ctx, "same-key", time.Minute, func(context.Context) (int, error) { return installation + 1, nil })
+		require.NoError(t, err)
+		require.Equal(t, 1, value)
+	}
+	revoked, err := authz.DelegatePlugin(parent, 1, nil)
+	require.NoError(t, err)
+	called := false
+	_, err = cachedDashboardQuery(revoked, "same-key", time.Minute, func(context.Context) (int, error) { called = true; return 9, nil })
+	require.Error(t, err)
+	require.False(t, called)
 }

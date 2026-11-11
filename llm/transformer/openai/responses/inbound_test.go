@@ -2440,3 +2440,50 @@ func TestInboundTransformer_TransformResponse_WithReasoningContent(t *testing.T)
 		})
 	}
 }
+
+func TestInboundTransformer_TransformResponse_FinishReasonStatus(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	tests := []struct {
+		name          string
+		finishReason  string
+		wantStatus    string
+		wantIncReason string
+	}{
+		{"content_filter", "content_filter", "incomplete", "content_filter"},
+		{"length", "length", "incomplete", "max_output_tokens"},
+		{"cancelled", "cancelled", "cancelled", ""},
+		{"stop", "stop", "completed", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := trans.TransformResponse(context.Background(), &llm.Response{
+				ID:     "chatcmpl-1",
+				Object: "chat.completion",
+				Model:  "gpt-4",
+				Choices: []llm.Choice{{
+					Index: 0,
+					Message: &llm.Message{
+						Role:    "assistant",
+						Content: llm.MessageContent{Content: lo.ToPtr("partial")},
+					},
+					FinishReason: lo.ToPtr(tt.finishReason),
+				}},
+			})
+			require.NoError(t, err)
+
+			var resp Response
+			require.NoError(t, json.Unmarshal(result.Body, &resp))
+			require.NotNil(t, resp.Status)
+			require.Equal(t, tt.wantStatus, *resp.Status)
+
+			if tt.wantIncReason == "" {
+				require.Nil(t, resp.IncompleteDetails)
+			} else {
+				require.NotNil(t, resp.IncompleteDetails)
+				require.Equal(t, tt.wantIncReason, resp.IncompleteDetails.Reason)
+			}
+		})
+	}
+}

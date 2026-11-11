@@ -13,6 +13,16 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
+// WithScopeDecision checks requiredScope and returns a context carrying an Ent
+// privacy Allow or Deny decision. On success, Allow bypasses ALL Ent privacy
+// policies for subsequent queries and mutations using this context, including
+// policy-based row filters such as the plugin JWT signing-key exclusion. It is
+// not limited to entities or operations associated with requiredScope.
+//
+// Use the returned context only for fixed host operations whose complete access
+// has been authorized. Never pass it to plugin-supplied callbacks or use it for
+// queries that rely on privacy policies to filter their results. Use RequireScope
+// with the original context when those policies must remain active.
 func WithScopeDecision(ctx context.Context, requiredScope scopes.ScopeSlug) context.Context {
 	has := HasScope(ctx, requiredScope)
 
@@ -31,6 +41,14 @@ func WithScopeDecision(ctx context.Context, requiredScope scopes.ScopeSlug) cont
 	return privacy.DecisionContext(ctx, privacy.Deny)
 }
 
+// RunWithScopeDecision calls fn with the context produced by WithScopeDecision.
+// On success, all Ent privacy policies, including policy-based row filters, are
+// bypassed inside fn. Keep fn limited to a fixed, authorized host operation and
+// do not let the decision context escape the callback.
+//
+// fn is called even when the scope check fails; in that case its context carries
+// Deny, which rejects Ent operations but does not prevent other side effects.
+// Use RequireScope before invoking fn when failure must prevent its execution.
 func RunWithScopeDecision[T any](ctx context.Context, requiredScope scopes.ScopeSlug, fn func(ctx context.Context) (T, error)) (T, error) {
 	scopeCtx := WithScopeDecision(ctx, requiredScope)
 	return fn(scopeCtx)
@@ -45,6 +63,16 @@ func HasScope(ctx context.Context, requiredScope scopes.ScopeSlug) bool {
 	switch p.Type {
 	case PrincipalTypeSystem, PrincipalTypeTest:
 		return true
+	case PrincipalTypePlugin:
+		user, ok := contexts.GetUser(ctx)
+		if !ok || user == nil {
+			return false
+		}
+		if scopes.EffectiveSystemScope(ctx, user, requiredScope) {
+			return true
+		}
+		projectID, ok := contexts.GetProjectID(ctx)
+		return ok && scopes.EffectiveProjectScope(ctx, user, projectID, requiredScope)
 	case PrincipalTypeUser:
 		return userHasScope(ctx, requiredScope)
 	case PrincipalTypeAPIKey:

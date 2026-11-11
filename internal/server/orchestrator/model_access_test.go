@@ -163,13 +163,6 @@ func TestAutoReasoningEffortRunsBeforeModelAccess(t *testing.T) {
 	defer client.Close()
 
 	ctx = ent.NewContext(ctx, client)
-	_, _, systemService, _ := setupTestServices(t, client)
-
-	err := systemService.SetModelSettings(ctx, biz.SystemModelSettings{
-		AutoReasoningEffort: true,
-	})
-	require.NoError(t, err)
-
 	state := &PersistenceState{
 		APIKey: &ent.APIKey{
 			Name: "test-key",
@@ -193,7 +186,9 @@ func TestAutoReasoningEffortRunsBeforeModelAccess(t *testing.T) {
 		ReasoningEffort: "low",
 	}
 
-	normalized, err := applyAutoReasoningEffort(systemService).OnInboundLlmRequest(ctx, request)
+	normalized, err := applyAutoReasoningEffort(&RequestSettings{
+		ModelSettings: biz.SystemModelSettings{AutoReasoningEffort: true},
+	}).OnInboundLlmRequest(ctx, request)
 	require.NoError(t, err)
 	require.NotNil(t, normalized)
 	assert.Equal(t, "gpt-5.4", normalized.Model)

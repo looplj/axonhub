@@ -14,23 +14,17 @@ func TestFailoverStrategy_Simulation(t *testing.T) {
 	ctx := context.Background()
 	modelID := "gpt-4"
 
-	// Setup metrics provider (not used by Weight+Random but kept for structure)
+	// Weight + Random never read metrics; wiring a provider proves recorded
+	// failures still cannot change the failover order.
 	metricsProvider := &mockMetricsProvider{
 		metrics: make(map[int]*biz.AggregatedMetrics),
 	}
 
 	// Setup LoadBalancer with Weight + Random strategies
 	// This combination is used in the 'failover' load balancer strategy in orchestrator.go
-	policyProvider := &mockRetryPolicyProvider{
-		policy: &biz.RetryPolicy{
-			Enabled:              true,
-			MaxChannelRetries:    3,
-			LoadBalancerStrategy: biz.LoadBalancerStrategyFailover,
-		},
-	}
 	selectionTracker := &mockSelectionTracker{selections: make(map[int]int)}
 
-	lb := NewLoadBalancer(policyProvider, selectionTracker,
+	lb := NewLoadBalancer(metricsProvider, selectionTracker,
 		NewWeightStrategy(),
 		NewRandomStrategy(),
 	)
@@ -71,7 +65,7 @@ func TestFailoverStrategy_Simulation(t *testing.T) {
 
 	// Helper to select all sorted candidates
 	selectAll := func() []*ChannelModelsCandidate {
-		return lb.Sort(ctx, candidates, modelID, false)
+		return lb.Sort(ctx, candidates, modelID, false, sortAllCandidates)
 	}
 
 	// 1. Initial state: all channels are healthy

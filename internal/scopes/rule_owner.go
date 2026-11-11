@@ -2,6 +2,7 @@ package scopes
 
 import (
 	"context"
+	"github.com/looplj/axonhub/internal/authz/identity"
 
 	"github.com/looplj/axonhub/internal/ent/privacy"
 )
@@ -9,6 +10,9 @@ import (
 // OwnerRule allows owner users to access all functionality.
 func OwnerRule() privacy.QueryMutationRule {
 	return privacy.ContextQueryMutationRule(func(ctx context.Context) error {
+		if identity.IsPlugin(ctx) {
+			return privacy.Skip
+		}
 		user, err := getUserFromContext(ctx)
 		if err != nil {
 			return privacy.Skipf("User not found in context")

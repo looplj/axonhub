@@ -12,8 +12,39 @@ import (
 // SelectAPIFormat selects the most appropriate APIFormat from a channel's resolved endpoints
 // based on the request type and inbound API format. Prefers an endpoint whose API format
 // matches the inbound request format so that pass-through can be enabled when identical
-// formats are used. Falls back to the first capable endpoint, then the first endpoint.
+// formats are used. For ordinary endpoint surfaces, Responses HTTP and WebSocket are
+// transport variants of the same protocol family, so either can be preferred before
+// falling back to an unrelated format. Finally, falls back to the first capable endpoint,
+// then the first endpoint.
 func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) string {
+	return selectAPIFormat(endpoints, req, true)
+}
+
+// selectForcedAPIFormat selects from endpoints already narrowed and ordered by
+// ModelProtocols. The configured order is authoritative: use an exact inbound match when
+// present, otherwise the first capable configured format. Implicit Responses transport
+// upgrades must not reorder an explicit operator configuration.
+func selectForcedAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) string {
+	return selectAPIFormat(endpoints, req, false)
+}
+
+func selectEndpointAPIFormat(
+	endpoints []objects.ChannelEndpoint,
+	req *llm.Request,
+	forced bool,
+) string {
+	if forced {
+		return selectForcedAPIFormat(endpoints, req)
+	}
+
+	return SelectAPIFormat(endpoints, req)
+}
+
+func selectAPIFormat(
+	endpoints []objects.ChannelEndpoint,
+	req *llm.Request,
+	allowResponsesTransportFamily bool,
+) string {
 	if len(endpoints) == 0 {
 		return ""
 	}
@@ -26,6 +57,16 @@ func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) stri
 			for _, ep := range endpoints {
 				if _, ok := allowed[ep.APIFormat]; ok && ep.APIFormat == preferredFormat {
 					return ep.APIFormat
+				}
+			}
+
+			if allowResponsesTransportFamily {
+				if compatibleFormat := compatibleResponsesAPIFormat(req.APIFormat); compatibleFormat != "" {
+					for _, ep := range endpoints {
+						if _, ok := allowed[ep.APIFormat]; ok && ep.APIFormat == compatibleFormat {
+							return ep.APIFormat
+						}
+					}
 				}
 			}
 		}
@@ -42,6 +83,17 @@ func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) stri
 	}
 
 	return endpoints[0].APIFormat
+}
+
+func compatibleResponsesAPIFormat(format llm.APIFormat) string {
+	switch format {
+	case llm.APIFormatOpenAIResponse:
+		return llm.APIFormatOpenAIResponseWebSocket.String()
+	case llm.APIFormatOpenAIResponseWebSocket:
+		return llm.APIFormatOpenAIResponse.String()
+	default:
+		return ""
+	}
 }
 
 func requiresExplicitEndpoint(requestType llm.RequestType) bool {
@@ -127,21 +179,21 @@ func forcedAPIFormatsForCandidate(ch *biz.Channel, entries []biz.ChannelModelEnt
 // applyForcedAPIFormats narrows the channel's endpoint surface to the per-model
 // protocol overrides for this candidate. When the overrides reference no configured
 // endpoint (configuration drift), all endpoints are kept so the request can still
-// be served.
+// be served. The boolean reports whether an override actually narrowed the surface.
 func applyForcedAPIFormats(
 	ctx context.Context,
 	ch *biz.Channel,
 	entries []biz.ChannelModelEntry,
 	requestModel string,
 	endpoints []objects.ChannelEndpoint,
-) []objects.ChannelEndpoint {
+) ([]objects.ChannelEndpoint, bool) {
 	forced := forcedAPIFormatsForCandidate(ch, entries, requestModel)
 	if len(forced) == 0 {
-		return endpoints
+		return endpoints, false
 	}
 
 	if filtered := FilterEndpointsByAPIFormats(endpoints, forced); len(filtered) > 0 {
-		return filtered
+		return filtered, true
 	}
 
 	log.Debug(ctx, "model protocol override matches no configured endpoint, falling back to all endpoints",
@@ -150,7 +202,7 @@ func applyForcedAPIFormats(
 		log.Strings("forced_formats", forced),
 	)
 
-	return endpoints
+	return endpoints, false
 }
 
 func applyForcedAPIFormatsForRequest(
@@ -160,12 +212,12 @@ func applyForcedAPIFormatsForRequest(
 	requestModel string,
 	requestType llm.RequestType,
 	endpoints []objects.ChannelEndpoint,
-) []objects.ChannelEndpoint {
+) ([]objects.ChannelEndpoint, bool) {
 	forced := forcedAPIFormatsForCandidate(ch, entries, requestModel)
-	filtered := applyForcedAPIFormats(ctx, ch, entries, requestModel, endpoints)
+	filtered, forcedActive := applyForcedAPIFormats(ctx, ch, entries, requestModel, endpoints)
 	if len(forced) > 0 && len(filtered) == len(endpoints) && requiresExplicitEndpoint(requestType) && len(FilterEndpointsByAPIFormats(endpoints, forced)) == 0 {
-		return nil
+		return nil, true
 	}
 
-	return filtered
+	return filtered, forcedActive
 }

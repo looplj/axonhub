@@ -3801,6 +3801,7 @@ enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/
   charm_hyper
   zenmux
   commandcode
+  deepseek
   ollama
 }
 """
@@ -5957,6 +5958,10 @@ type Trace implements Node {
   Record status: active (default), archived (hidden), retained (protected from GC)
   """
   status: TraceStatus!
+  """
+  Time of the last request recorded for this trace
+  """
+  lastRequestAt: Time!
   project: Project!
   thread: Thread
   requests(
@@ -6040,6 +6045,7 @@ Properties by which Trace connections can be ordered.
 enum TraceOrderField {
   CREATED_AT
   UPDATED_AT
+  LAST_REQUEST_AT
 }
 """
 TraceStatus is enum for the field status
@@ -6129,6 +6135,17 @@ input TraceWhereInput {
   statusNEQ: TraceStatus
   statusIn: [TraceStatus!]
   statusNotIn: [TraceStatus!]
+  """
+  last_request_at field predicates
+  """
+  lastRequestAt: Time
+  lastRequestAtNEQ: Time
+  lastRequestAtIn: [Time!]
+  lastRequestAtNotIn: [Time!]
+  lastRequestAtGT: Time
+  lastRequestAtGTE: Time
+  lastRequestAtLT: Time
+  lastRequestAtLTE: Time
   """
   project edge predicates
   """

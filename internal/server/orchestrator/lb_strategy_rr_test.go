@@ -17,10 +17,7 @@ import (
 )
 
 func TestRoundRobinStrategy_Name(t *testing.T) {
-	mockProvider := &mockMetricsProvider{
-		metrics: make(map[int]*biz.AggregatedMetrics),
-	}
-	strategy := NewRoundRobinStrategy(mockProvider)
+	strategy := NewRoundRobinStrategy()
 	assert.Equal(t, "RoundRobin", strategy.Name())
 }
 
@@ -30,18 +27,13 @@ func TestRoundRobinStrategy_Score_ZeroRequests(t *testing.T) {
 	// Channel with zero requests
 	metrics := &biz.AggregatedMetrics{}
 	metrics.RequestCount = 0
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: metrics,
-		},
-	}
-	strategy := NewRoundRobinStrategy(mockProvider)
+	strategy := NewRoundRobinStrategy()
 
 	channel := &biz.Channel{
 		Channel: &ent.Channel{ID: 1, Name: "new-channel"},
 	}
 
-	score := strategy.Score(ctx, channel)
+	score := strategy.Score(ctx, channel, metrics)
 	assert.Equal(t, 150.0, score, "New channels with zero requests should get max score")
 }
 
@@ -51,18 +43,13 @@ func TestRoundRobinStrategy_Score_LowRequests(t *testing.T) {
 	// Channel with low request count (10 requests)
 	metrics := &biz.AggregatedMetrics{}
 	metrics.RequestCount = 10
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: metrics,
-		},
-	}
-	strategy := NewRoundRobinStrategy(mockProvider)
+	strategy := NewRoundRobinStrategy()
 
 	channel := &biz.Channel{
 		Channel: &ent.Channel{ID: 1, Name: "low-usage"},
 	}
 
-	score := strategy.Score(ctx, channel)
+	score := strategy.Score(ctx, channel, metrics)
 	assert.InDelta(t, 140.625, score, 0.0001)
 }
 
@@ -72,18 +59,13 @@ func TestRoundRobinStrategy_Score_ModerateRequests(t *testing.T) {
 	// Channel with moderate request count (100 requests)
 	metrics := &biz.AggregatedMetrics{}
 	metrics.RequestCount = 100
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: metrics,
-		},
-	}
-	strategy := NewRoundRobinStrategy(mockProvider)
+	strategy := NewRoundRobinStrategy()
 
 	channel := &biz.Channel{
 		Channel: &ent.Channel{ID: 1, Name: "moderate-usage"},
 	}
 
-	score := strategy.Score(ctx, channel)
+	score := strategy.Score(ctx, channel, metrics)
 	assert.InDelta(t, 90.0, score, 0.0001)
 }
 
@@ -93,18 +75,13 @@ func TestRoundRobinStrategy_Score_HighRequests(t *testing.T) {
 	// Channel with high request count (500 requests)
 	metrics := &biz.AggregatedMetrics{}
 	metrics.RequestCount = 500
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: metrics,
-		},
-	}
-	strategy := NewRoundRobinStrategy(mockProvider)
+	strategy := NewRoundRobinStrategy()
 
 	channel := &biz.Channel{
 		Channel: &ent.Channel{ID: 1, Name: "high-usage"},
 	}
 
-	score := strategy.Score(ctx, channel)
+	score := strategy.Score(ctx, channel, metrics)
 	assert.InDelta(t, 34.615385, score, 0.0001)
 }
 
@@ -122,13 +99,7 @@ func TestRoundRobinStrategy_Score_UsesWindowCountRegardlessOfLastActivity(t *tes
 	idleMetrics.RequestCount = 500
 	idleMetrics.LastSelectedAt = &idleTime
 
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: activeMetrics,
-			2: idleMetrics,
-		},
-	}
-	strategy := NewRoundRobinStrategy(mockProvider)
+	strategy := NewRoundRobinStrategy()
 
 	activeChannel := &biz.Channel{
 		Channel: &ent.Channel{ID: 1, Name: "recently-active"},
@@ -137,8 +108,8 @@ func TestRoundRobinStrategy_Score_UsesWindowCountRegardlessOfLastActivity(t *tes
 		Channel: &ent.Channel{ID: 2, Name: "idle"},
 	}
 
-	activeScore := strategy.Score(ctx, activeChannel)
-	idleScore := strategy.Score(ctx, idleChannel)
+	activeScore := strategy.Score(ctx, activeChannel, activeMetrics)
+	idleScore := strategy.Score(ctx, idleChannel, idleMetrics)
 
 	assert.Equal(t, activeScore, idleScore, "the sliding window owns expiration; activity timestamps must not flatten or revive counts")
 }
@@ -149,39 +120,30 @@ func TestRoundRobinStrategy_Score_HighCountsRemainDistinct(t *testing.T) {
 	// Counts exceed the former cap and produce a score below the former floor.
 	metrics := &biz.AggregatedMetrics{}
 	metrics.RequestCount = 3000
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: metrics,
-		},
-	}
-	strategy := NewRoundRobinStrategy(mockProvider)
+	strategy := NewRoundRobinStrategy()
 
 	channel := &biz.Channel{
 		Channel: &ent.Channel{ID: 1, Name: "very-high-usage"},
 	}
 
-	score := strategy.Score(ctx, channel)
+	score := strategy.Score(ctx, channel, metrics)
 	assert.InDelta(t, 7.142857, score, 0.0001)
 
 	metrics.RequestCount = 1000
-	assert.Greater(t, strategy.Score(ctx, channel), score, "lower request counts must remain distinguishable at high volume")
+	assert.Greater(t, strategy.Score(ctx, channel, metrics), score, "lower request counts must remain distinguishable at high volume")
 }
 
-func TestRoundRobinStrategy_Score_MetricsError(t *testing.T) {
+func TestRoundRobinStrategy_Score_NilMetrics(t *testing.T) {
 	ctx := context.Background()
 
-	// Mock provider that returns error
-	mockProvider := &mockMetricsProvider{
-		metrics: make(map[int]*biz.AggregatedMetrics),
-		err:     assert.AnError,
-	}
-	strategy := NewRoundRobinStrategy(mockProvider)
+	// Nil metrics means the load balancer could not fetch a snapshot.
+	strategy := NewRoundRobinStrategy()
 
 	channel := &biz.Channel{
-		Channel: &ent.Channel{ID: 999, Name: "error-channel"},
+		Channel: &ent.Channel{ID: 999, Name: "no-metrics-channel"},
 	}
 
-	score := strategy.Score(ctx, channel)
+	score := strategy.Score(ctx, channel, nil)
 	assert.Equal(t, 75.0, score, "Should return moderate score when metrics unavailable")
 }
 
@@ -199,15 +161,13 @@ func TestRoundRobinStrategy_MultipleChannels(t *testing.T) {
 	metrics4.RequestCount = 800
 
 	// Multiple channels with different request counts
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: metrics1, // New channel
-			2: metrics2, // Low usage
-			3: metrics3, // Moderate usage
-			4: metrics4, // High usage
-		},
+	channelMetrics := map[int]*biz.AggregatedMetrics{
+		1: metrics1, // New channel
+		2: metrics2, // Low usage
+		3: metrics3, // Moderate usage
+		4: metrics4, // High usage
 	}
-	strategy := NewRoundRobinStrategy(mockProvider)
+	strategy := NewRoundRobinStrategy()
 
 	channels := []struct {
 		id   int
@@ -224,7 +184,7 @@ func TestRoundRobinStrategy_MultipleChannels(t *testing.T) {
 		channel := &biz.Channel{
 			Channel: &ent.Channel{ID: ch.id, Name: ch.name},
 		}
-		scores[i] = strategy.Score(ctx, channel)
+		scores[i] = strategy.Score(ctx, channel, channelMetrics[channel.ID])
 	}
 
 	// Verify ordering: new > low > moderate > high
@@ -242,18 +202,13 @@ func TestRoundRobinStrategy_ScoreWithDebug(t *testing.T) {
 
 	metrics := &biz.AggregatedMetrics{}
 	metrics.RequestCount = 100
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: metrics,
-		},
-	}
-	strategy := NewRoundRobinStrategy(mockProvider)
+	strategy := NewRoundRobinStrategy()
 
 	channel := &biz.Channel{
 		Channel: &ent.Channel{ID: 1, Name: "test"},
 	}
 
-	score, strategyScore := strategy.ScoreWithDebug(ctx, channel)
+	score, strategyScore := strategy.ScoreWithDebug(ctx, channel, metrics)
 
 	assert.Equal(t, "RoundRobin", strategyScore.StrategyName)
 	assert.Greater(t, score, 0.0)
@@ -283,19 +238,14 @@ func TestRoundRobinStrategy_ScoreConsistency(t *testing.T) {
 			metrics := &biz.AggregatedMetrics{}
 			metrics.RequestCount = tc.requestCount
 
-			mockProvider := &mockMetricsProvider{
-				metrics: map[int]*biz.AggregatedMetrics{
-					1: metrics,
-				},
-			}
-			strategy := NewRoundRobinStrategy(mockProvider)
+			strategy := NewRoundRobinStrategy()
 
 			channel := &biz.Channel{
 				Channel: &ent.Channel{ID: 1, Name: "test"},
 			}
 
-			score := strategy.Score(ctx, channel)
-			debugScore, _ := strategy.ScoreWithDebug(ctx, channel)
+			score := strategy.Score(ctx, channel, metrics)
+			debugScore, _ := strategy.ScoreWithDebug(ctx, channel, metrics)
 
 			assert.Equal(t, score, debugScore,
 				"Score and ScoreWithDebug must return identical scores for request_count=%d", tc.requestCount)
@@ -346,14 +296,11 @@ func TestRoundRobinHealthStrategy_Score(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockProvider := &mockMetricsProvider{
-				metrics: map[int]*biz.AggregatedMetrics{1: tt.metrics},
-			}
-			strategy := NewRoundRobinHealthStrategy(mockProvider)
+			strategy := NewRoundRobinHealthStrategy()
 			channel := &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}
 
-			assert.Equal(t, tt.expected, strategy.Score(ctx, channel))
-			debugScore, debug := strategy.ScoreWithDebug(ctx, channel)
+			assert.Equal(t, tt.expected, strategy.Score(ctx, channel, tt.metrics))
+			debugScore, debug := strategy.ScoreWithDebug(ctx, channel, tt.metrics)
 			assert.Equal(t, tt.expected, debugScore)
 			assert.Equal(t, strategy.Name(), debug.StrategyName)
 		})
@@ -406,13 +353,15 @@ func TestRoundRobinStrategy_WithRealDatabase(t *testing.T) {
 		}
 	}
 
-	strategy := NewRoundRobinStrategy(channelService)
+	strategy := NewRoundRobinStrategy()
 
 	// Score all channels
 	scores := make([]float64, len(channels))
 	for i, ch := range channels {
 		channel := &biz.Channel{Channel: ch}
-		scores[i] = strategy.Score(ctx, channel)
+		metrics, err := channelService.GetChannelMetrics(ctx, ch.ID)
+		require.NoError(t, err)
+		scores[i] = strategy.Score(ctx, channel, metrics)
 	}
 
 	// Verify ordering based on request counts
@@ -423,10 +372,7 @@ func TestRoundRobinStrategy_WithRealDatabase(t *testing.T) {
 }
 
 func TestWeightRoundRobinStrategy_Name(t *testing.T) {
-	mockProvider := &mockMetricsProvider{
-		metrics: make(map[int]*biz.AggregatedMetrics),
-	}
-	strategy := NewWeightRoundRobinStrategy(mockProvider)
+	strategy := NewWeightRoundRobinStrategy()
 	assert.Equal(t, "WeightRoundRobin", strategy.Name())
 }
 
@@ -449,12 +395,7 @@ func TestWeightRoundRobinStrategy_Score_ZeroRequests(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			metrics := &biz.AggregatedMetrics{}
 			metrics.RequestCount = 0
-			mockProvider := &mockMetricsProvider{
-				metrics: map[int]*biz.AggregatedMetrics{
-					1: metrics,
-				},
-			}
-			strategy := NewWeightRoundRobinStrategy(mockProvider)
+			strategy := NewWeightRoundRobinStrategy()
 
 			channel := &biz.Channel{
 				Channel: &ent.Channel{
@@ -464,7 +405,7 @@ func TestWeightRoundRobinStrategy_Score_ZeroRequests(t *testing.T) {
 				},
 			}
 
-			score := strategy.Score(ctx, channel)
+			score := strategy.Score(ctx, channel, metrics)
 			assert.Equal(t, 150.0, score, "Zero requests should always give max score")
 		})
 	}
@@ -495,12 +436,7 @@ func TestWeightRoundRobinStrategy_Score_ModerateRequests(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			metrics := &biz.AggregatedMetrics{}
 			metrics.RequestCount = tt.requestCount
-			mockProvider := &mockMetricsProvider{
-				metrics: map[int]*biz.AggregatedMetrics{
-					1: metrics,
-				},
-			}
-			strategy := NewWeightRoundRobinStrategy(mockProvider)
+			strategy := NewWeightRoundRobinStrategy()
 
 			channel := &biz.Channel{
 				Channel: &ent.Channel{
@@ -510,7 +446,7 @@ func TestWeightRoundRobinStrategy_Score_ModerateRequests(t *testing.T) {
 				},
 			}
 
-			score := strategy.Score(ctx, channel)
+			score := strategy.Score(ctx, channel, metrics)
 			assert.GreaterOrEqual(t, score, tt.expectedMinScore, "Score should be at least expected minimum")
 			assert.LessOrEqual(t, score, tt.expectedMaxScore, "Score should not exceed expected maximum")
 		})
@@ -525,12 +461,7 @@ func TestWeightRoundRobinStrategy_Score_HighRequests(t *testing.T) {
 	// score = 150 / (1 + 1000/150) = ~19.57
 	metrics := &biz.AggregatedMetrics{}
 	metrics.RequestCount = 500
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: metrics,
-		},
-	}
-	strategy := NewWeightRoundRobinStrategy(mockProvider)
+	strategy := NewWeightRoundRobinStrategy()
 
 	channel := &biz.Channel{
 		Channel: &ent.Channel{
@@ -540,30 +471,26 @@ func TestWeightRoundRobinStrategy_Score_HighRequests(t *testing.T) {
 		},
 	}
 
-	score := strategy.Score(ctx, channel)
+	score := strategy.Score(ctx, channel, metrics)
 	// With weight=50 and 500 requests, normalized_count=1000
 	assert.InDelta(t, 19.565, score, 0.01, "High usage must retain a distinct score")
 }
 
-func TestWeightRoundRobinStrategy_Score_MetricsError(t *testing.T) {
+func TestWeightRoundRobinStrategy_Score_NilMetrics(t *testing.T) {
 	ctx := context.Background()
 
-	// Mock provider that returns error
-	mockProvider := &mockMetricsProvider{
-		metrics: make(map[int]*biz.AggregatedMetrics),
-		err:     assert.AnError,
-	}
-	strategy := NewWeightRoundRobinStrategy(mockProvider)
+	// Nil metrics means the load balancer could not fetch a snapshot.
+	strategy := NewWeightRoundRobinStrategy()
 
 	channel := &biz.Channel{
 		Channel: &ent.Channel{
 			ID:             999,
-			Name:           "error-channel",
+			Name:           "no-metrics-channel",
 			OrderingWeight: 25,
 		},
 	}
 
-	score := strategy.Score(ctx, channel)
+	score := strategy.Score(ctx, channel, nil)
 	assert.Equal(t, 75.0, score, "Should return moderate score when metrics unavailable")
 }
 
@@ -581,15 +508,13 @@ func TestWeightRoundRobinStrategy_MultipleChannels(t *testing.T) {
 	metrics4 := &biz.AggregatedMetrics{}
 	metrics4.RequestCount = 10 // 10 requests with weight 10 -> normalized=100
 
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: metrics1,
-			2: metrics2,
-			3: metrics3,
-			4: metrics4,
-		},
+	channelMetrics := map[int]*biz.AggregatedMetrics{
+		1: metrics1,
+		2: metrics2,
+		3: metrics3,
+		4: metrics4,
 	}
-	strategy := NewWeightRoundRobinStrategy(mockProvider)
+	strategy := NewWeightRoundRobinStrategy()
 
 	channels := []struct {
 		id     int
@@ -611,7 +536,7 @@ func TestWeightRoundRobinStrategy_MultipleChannels(t *testing.T) {
 				OrderingWeight: ch.weight,
 			},
 		}
-		scores[i] = strategy.Score(ctx, channel)
+		scores[i] = strategy.Score(ctx, channel, channelMetrics[channel.ID])
 	}
 
 	// Channel 1 (new) should have highest score
@@ -647,12 +572,7 @@ func TestWeightRoundRobinStrategy_ScoreConsistency(t *testing.T) {
 			metrics := &biz.AggregatedMetrics{}
 			metrics.RequestCount = tc.requestCount
 
-			mockProvider := &mockMetricsProvider{
-				metrics: map[int]*biz.AggregatedMetrics{
-					1: metrics,
-				},
-			}
-			strategy := NewWeightRoundRobinStrategy(mockProvider)
+			strategy := NewWeightRoundRobinStrategy()
 
 			channel := &biz.Channel{
 				Channel: &ent.Channel{
@@ -662,8 +582,8 @@ func TestWeightRoundRobinStrategy_ScoreConsistency(t *testing.T) {
 				},
 			}
 
-			score := strategy.Score(ctx, channel)
-			debugScore, _ := strategy.ScoreWithDebug(ctx, channel)
+			score := strategy.Score(ctx, channel, metrics)
+			debugScore, _ := strategy.ScoreWithDebug(ctx, channel, metrics)
 
 			assert.Equal(t, score, debugScore,
 				"Score and ScoreWithDebug must return identical scores for %s", tc.name)
@@ -685,13 +605,7 @@ func TestWeightRoundRobinStrategy_Score_UsesWindowCountRegardlessOfLastActivity(
 	idleMetrics.RequestCount = 400
 	idleMetrics.LastSelectedAt = &idleTime
 
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: activeMetrics,
-			2: idleMetrics,
-		},
-	}
-	strategy := NewWeightRoundRobinStrategy(mockProvider)
+	strategy := NewWeightRoundRobinStrategy()
 
 	// Using weight=100 so normalized_count = effective_count
 	activeChannel := &biz.Channel{
@@ -709,8 +623,8 @@ func TestWeightRoundRobinStrategy_Score_UsesWindowCountRegardlessOfLastActivity(
 		},
 	}
 
-	activeScore := strategy.Score(ctx, activeChannel)
-	idleScore := strategy.Score(ctx, idleChannel)
+	activeScore := strategy.Score(ctx, activeChannel, activeMetrics)
+	idleScore := strategy.Score(ctx, idleChannel, idleMetrics)
 
 	assert.Equal(t, activeScore, idleScore, "the sliding window owns expiration; activity timestamps must not discount counts twice")
 }
@@ -719,26 +633,24 @@ func TestWeightRoundRobinStrategy_Score_HighCountsRemainDistinct(t *testing.T) {
 	ctx := context.Background()
 	metrics := &biz.AggregatedMetrics{}
 	metrics.RequestCount = 2000
-	mockProvider := &mockMetricsProvider{metrics: map[int]*biz.AggregatedMetrics{1: metrics}}
-	strategy := NewWeightRoundRobinStrategy(mockProvider)
+	strategy := NewWeightRoundRobinStrategy()
 	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, OrderingWeight: 50}}
 
-	highCountScore := strategy.Score(ctx, channel)
+	highCountScore := strategy.Score(ctx, channel, metrics)
 	metrics.RequestCount = 1000
-	assert.Greater(t, strategy.Score(ctx, channel), highCountScore)
+	assert.Greater(t, strategy.Score(ctx, channel, metrics), highCountScore)
 }
 
 func TestWeightRoundRobinStrategy_Score_NonPositiveWeightsMatchDefaultWeight(t *testing.T) {
 	ctx := context.Background()
 	metrics := &biz.AggregatedMetrics{}
 	metrics.RequestCount = 100
-	mockProvider := &mockMetricsProvider{metrics: map[int]*biz.AggregatedMetrics{1: metrics, 2: metrics}}
-	strategy := NewWeightRoundRobinStrategy(mockProvider)
+	strategy := NewWeightRoundRobinStrategy()
 
 	defaultWeight := &biz.Channel{Channel: &ent.Channel{ID: 2, OrderingWeight: 100}}
-	defaultScore := strategy.Score(ctx, defaultWeight)
+	defaultScore := strategy.Score(ctx, defaultWeight, metrics)
 	for _, weight := range []int{0, -1, -100} {
 		channel := &biz.Channel{Channel: &ent.Channel{ID: 1, OrderingWeight: weight}}
-		assert.Equal(t, defaultScore, strategy.Score(ctx, channel), "weight %d should retain the default scoring scale", weight)
+		assert.Equal(t, defaultScore, strategy.Score(ctx, channel, metrics), "weight %d should retain the default scoring scale", weight)
 	}
 }

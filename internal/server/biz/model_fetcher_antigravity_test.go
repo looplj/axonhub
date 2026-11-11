@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
@@ -89,55 +91,75 @@ func TestFetchModelsAntigravityOAuthOnlyChannel(t *testing.T) {
 
 // TestFetchModelsAntigravitySavedCredentialsAndRefreshPersistence checks verified token reuse and storage.
 func TestFetchModelsAntigravitySavedCredentialsAndRefreshPersistence(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:antigravity_catalog_persistence?mode=memory&_fk=0")
-	defer client.Close()
-	ctx := authz.WithSystemBypass(context.Background(), "test")
-	ch, err := client.Channel.Create().
-		SetName("antigravity-catalog").
-		SetType(channel.TypeAntigravity).
-		SetBaseURL(antigravity.EndpointDaily).
-		SetCredentials(objects.ChannelCredentials{APIKey: "stored-refresh|stored-project"}).
-		SetSupportedModels([]string{"old-model"}).
-		SetDefaultTestModel("old-model").
-		Save(ctx)
-	require.NoError(t, err)
-	refreshCalls := 0
-	catalogCalls := 0
-	transport := antigravityCatalogTransport(func(r *http.Request) (*http.Response, error) {
-		if r.URL.String() == antigravity.TokenURL {
-			refreshCalls++
-			require.NoError(t, r.ParseForm())
-			require.Equal(t, "stored-refresh", r.Form.Get("refresh_token"))
-			return antigravityCatalogResponse(r, 200, `{"access_token":"saved-access","refresh_token":"rotated-refresh","expires_in":3600,"token_type":"Bearer"}`), nil
-		}
-		catalogCalls++
-		require.Equal(t, "Bearer saved-access", r.Header.Get("Authorization"))
-		var body map[string]string
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		require.Equal(t, "stored-project", body["project"])
-		return antigravityCatalogResponse(r, 200, `{"models":{"new-account-model":{}}}`), nil
-	})
-	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(&http.Client{Transport: transport}), &ChannelService{AbstractService: &AbstractService{db: client}})
-	input := FetchModelsInput{ChannelType: "antigravity", BaseURL: ch.BaseURL, ChannelID: &ch.ID}
-	for range 2 {
-		result, err := fetcher.FetchModels(ctx, input)
-		require.NoError(t, err)
-		require.Nil(t, result.Error)
-		require.Equal(t, []ModelIdentify{{ID: "new-account-model"}}, result.Models)
-	}
-	require.Equal(t, 1, refreshCalls, "the persisted access token should be reused")
-	require.Equal(t, 2, catalogCalls)
-	updated, err := client.Channel.Get(ctx, ch.ID)
-	require.NoError(t, err)
-	require.Equal(t, "rotated-refresh|stored-project", updated.Credentials.APIKey)
-	require.Equal(t, "saved-access", updated.Credentials.OAuth.AccessToken)
+	for _, caller := range []string{"system", "plugin"} {
+		t.Run(caller, func(t *testing.T) {
+			client := enttest.NewEntClient(t, "sqlite3", "file:antigravity_catalog_persistence?mode=memory&_fk=0")
+			defer client.Close()
+			ctx := authz.WithSystemBypass(context.Background(), "test")
+			requestCtx := ctx
+			if caller == "plugin" {
+				u := &ent.User{ID: 1, Scopes: []string{"read_channels", "write_channels"}}
+				parent := contexts.WithUser(authz.NewUserContext(ent.NewContext(t.Context(), client), u.ID), u)
+				var err error
+				requestCtx, err = authz.DelegatePlugin(parent, 1, u.Scopes)
+				require.NoError(t, err)
+			}
+			ch, err := client.Channel.Create().
+				SetName("antigravity-catalog").
+				SetType(channel.TypeAntigravity).
+				SetBaseURL(antigravity.EndpointDaily).
+				SetCredentials(objects.ChannelCredentials{APIKey: "stored-refresh|stored-project"}).
+				SetSupportedModels([]string{"old-model"}).
+				SetDefaultTestModel("old-model").
+				Save(ctx)
+			require.NoError(t, err)
+			refreshCalls := 0
+			catalogCalls := 0
+			transport := antigravityCatalogTransport(func(r *http.Request) (*http.Response, error) {
+				if r.URL.String() == antigravity.TokenURL {
+					refreshCalls++
+					require.NoError(t, r.ParseForm())
+					require.Equal(t, "stored-refresh", r.Form.Get("refresh_token"))
+					return antigravityCatalogResponse(r, 200, `{"access_token":"saved-access","refresh_token":"rotated-refresh","expires_in":3600,"token_type":"Bearer"}`), nil
+				}
+				catalogCalls++
+				require.Equal(t, "Bearer saved-access", r.Header.Get("Authorization"))
+				var body map[string]string
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+				require.Equal(t, "stored-project", body["project"])
+				return antigravityCatalogResponse(r, 200, `{"models":{"new-account-model":{}}}`), nil
+			})
+			fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(&http.Client{Transport: transport}), &ChannelService{AbstractService: &AbstractService{db: client}})
+			input := FetchModelsInput{ChannelType: "antigravity", BaseURL: ch.BaseURL, ChannelID: &ch.ID}
+			for range 2 {
+				result, err := fetcher.FetchModels(requestCtx, input)
+				require.NoError(t, err)
+				require.Nil(t, result.Error)
+				require.Equal(t, []ModelIdentify{{ID: "new-account-model"}}, result.Models)
+			}
+			require.Equal(t, 1, refreshCalls, "the persisted access token should be reused")
+			require.Equal(t, 2, catalogCalls)
+			updated, err := client.Channel.Get(ctx, ch.ID)
+			require.NoError(t, err)
+			require.Equal(t, "rotated-refresh|stored-project", updated.Credentials.APIKey)
+			require.Equal(t, "saved-access", updated.Credentials.OAuth.AccessToken)
 
-	input.BaseURL = "https://changed.example"
-	result, err := fetcher.FetchModels(ctx, input)
-	require.NoError(t, err)
-	require.NotNil(t, result.Error)
-	require.Empty(t, result.Models)
-	require.Equal(t, 2, catalogCalls, "changed input must not silently reuse saved credentials")
+			input.BaseURL = "https://changed.example"
+			result, err := fetcher.FetchModels(requestCtx, input)
+			require.NoError(t, err)
+			require.NotNil(t, result.Error)
+			require.Empty(t, result.Models)
+			require.Equal(t, 2, catalogCalls, "changed input must not silently reuse saved credentials")
+			if caller == "plugin" {
+				p, ok := authz.GetPrincipal(requestCtx)
+				require.True(t, ok)
+				require.True(t, p.IsPlugin())
+				require.False(t, authz.IsBypassActive(requestCtx))
+				_, err := client.Channel.Query().All(authz.WithSystemBypass(requestCtx, "must-still-deny"))
+				require.Error(t, err)
+			}
+		})
+	}
 }
 
 // antigravityCatalogResponse constructs a JSON response for the intercepted request.

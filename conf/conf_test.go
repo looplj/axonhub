@@ -10,6 +10,58 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+func TestExplicitConfigFileSkipsSearchPaths(t *testing.T) {
+	t.Cleanup(func() { SetConfigFile("") })
+
+	searchDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(searchDir, "config.yml"), []byte("server:\n  port: 1111\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(searchDir)
+
+	explicit := writeTestConfig(t, "server:\n  host: 127.0.0.1\n  port: 18090\n")
+	SetConfigFile(explicit)
+
+	cfg, loader, err := NewLoader()
+	if err != nil {
+		t.Fatalf("NewLoader() error = %v", err)
+	}
+	if cfg.APIServer.Host != "127.0.0.1" || cfg.APIServer.Port != 18090 {
+		t.Fatalf("explicit file host = %q port = %d, want 127.0.0.1:18090", cfg.APIServer.Host, cfg.APIServer.Port)
+	}
+	abs, err := filepath.Abs(explicit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loader.ConfigFile() != abs {
+		t.Fatalf("ConfigFile() = %q, want %q", loader.ConfigFile(), abs)
+	}
+
+	SetConfigFile("")
+	searched, _, err := NewLoader()
+	if err != nil {
+		t.Fatalf("search NewLoader() error = %v", err)
+	}
+	if searched.APIServer.Port != 1111 {
+		t.Fatalf("search port = %d, want 1111", searched.APIServer.Port)
+	}
+}
+
+func TestExplicitConfigFileMissingDoesNotSearch(t *testing.T) {
+	t.Cleanup(func() { SetConfigFile("") })
+
+	searchDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(searchDir, "config.yml"), []byte("server:\n  port: 2222\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(searchDir)
+
+	SetConfigFile(filepath.Join(t.TempDir(), "missing.yml"))
+	if _, _, err := NewLoader(); err == nil {
+		t.Fatal("missing explicit config file was ignored and a search path was used")
+	}
+}
+
 func TestLoaderReloadUsesFreshViper(t *testing.T) {
 	configFile := writeTestConfig(t, `
 log:
@@ -102,6 +154,37 @@ func TestMetricsExporterConfigFromEnvironment(t *testing.T) {
 	}
 	if !cfg.Metrics.Exporter.Insecure {
 		t.Fatal("metrics exporter should use an insecure connection")
+	}
+}
+
+func TestPprofDefaultsToDisabledOnLoopback(t *testing.T) {
+	configFile := writeTestConfig(t, "")
+	cfg, _, err := loadConfig(configFile)
+	if err != nil {
+		t.Fatalf("loadConfig() error = %v", err)
+	}
+	if cfg.APIServer.Pprof.Enabled {
+		t.Fatal("pprof should default to disabled")
+	}
+	if cfg.APIServer.Pprof.Addr != "127.0.0.1:6060" {
+		t.Fatalf("pprof addr = %q, want %q", cfg.APIServer.Pprof.Addr, "127.0.0.1:6060")
+	}
+}
+
+func TestPprofConfigFromEnvironment(t *testing.T) {
+	t.Setenv("AXONHUB_SERVER_PPROF_ENABLED", "true")
+	t.Setenv("AXONHUB_SERVER_PPROF_ADDR", "127.0.0.1:7070")
+
+	configFile := writeTestConfig(t, "")
+	cfg, _, err := loadConfig(configFile)
+	if err != nil {
+		t.Fatalf("loadConfig() error = %v", err)
+	}
+	if !cfg.APIServer.Pprof.Enabled {
+		t.Fatal("pprof should be enabled from environment")
+	}
+	if cfg.APIServer.Pprof.Addr != "127.0.0.1:7070" {
+		t.Fatalf("pprof addr = %q, want %q", cfg.APIServer.Pprof.Addr, "127.0.0.1:7070")
 	}
 }
 

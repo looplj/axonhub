@@ -38,7 +38,7 @@ func (s *ModelAwareCircuitBreakerStrategy) Name() string {
 
 // Score calculates the score based on model circuit breaker status.
 // This is the production path with minimal overhead.
-func (s *ModelAwareCircuitBreakerStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+func (s *ModelAwareCircuitBreakerStrategy) Score(ctx context.Context, channel *biz.Channel, _ *biz.AggregatedMetrics) float64 {
 	// Get the requested model from context
 	modelID := requestedModelFromContext(ctx)
 	if modelID == "" {
@@ -62,7 +62,7 @@ func (s *ModelAwareCircuitBreakerStrategy) Score(ctx context.Context, channel *b
 }
 
 // ScoreWithDebug calculates the score with detailed debug information.
-func (s *ModelAwareCircuitBreakerStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
+func (s *ModelAwareCircuitBreakerStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel, _ *biz.AggregatedMetrics) (float64, StrategyScore) {
 	startTime := time.Now()
 
 	// Get the requested model from context

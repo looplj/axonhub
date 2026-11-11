@@ -19,7 +19,7 @@ func TestRandomStrategy_Score(t *testing.T) {
 	scores := make(map[float64]bool)
 
 	for range 100 {
-		score := strategy.Score(ctx, channel)
+		score := strategy.Score(ctx, channel, nil)
 		require.GreaterOrEqual(t, score, float64(0))
 		require.LessOrEqual(t, score, 0.5)
 		scores[score] = true
@@ -35,7 +35,7 @@ func TestRandomStrategy_ScoreWithDebug(t *testing.T) {
 
 	channel := &biz.Channel{}
 
-	score, strategyScore := strategy.ScoreWithDebug(ctx, channel)
+	score, strategyScore := strategy.ScoreWithDebug(ctx, channel, nil)
 
 	require.Equal(t, "Random", strategyScore.StrategyName)
 	require.Equal(t, score, strategyScore.Score)

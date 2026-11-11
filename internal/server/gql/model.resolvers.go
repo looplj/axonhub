@@ -102,6 +102,21 @@ func (r *mutationResolver) BulkDeleteModels(ctx context.Context, ids []*objects.
 	return true, nil
 }
 
+// PreviewChannelModelEntries is the resolver for the previewChannelModelEntries field.
+func (r *queryResolver) PreviewChannelModelEntries(ctx context.Context, input ChannelModelPreviewInput) ([]*biz.ChannelModelEntry, error) {
+	if err := authz.RequireScope(ctx, scopes.ScopeReadChannels); err != nil {
+		return nil, err
+	}
+
+	// Resolve an ephemeral channel so previews use the same rules as routing,
+	// without writing settings or touching a cached channel instance.
+	ch := biz.Channel{Channel: &ent.Channel{
+		SupportedModels: input.SupportedModels,
+		Settings:        input.Settings,
+	}}
+	return lo.ToSlicePtr(sortChannelModelEntries(lo.Values(ch.GetModelEntries()))), nil
+}
+
 // FetchModels is the resolver for the fetchModels field.
 func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error) {
 	if err := authz.RequireScope(ctx, scopes.ScopeWriteChannels); err != nil {
@@ -142,7 +157,7 @@ func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput)
 			return nil, authz.RequireScope(ctx, scopes.ScopeReadChannels)
 		}
 
-		return authz.RunWithSystemBypass(ctx, "project-model-metadata", list)
+		return authz.RunAsHost(ctx, r.client, "project-model-metadata", list)
 	}
 
 	if settings.QueryAllChannelModels || lo.FromPtrOr(input.IncludeAllChannelModels, false) {

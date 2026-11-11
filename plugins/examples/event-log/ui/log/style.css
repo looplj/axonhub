@@ -1,0 +1,107 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--background, #f4f5f7);
+    color: var(--foreground, #1c1f24);
+    font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 28px 20px 40px;
+}
+
+h1,
+h2 {
+    margin: 0;
+    font-weight: 650;
+}
+h1 {
+    font-size: 28px;
+    letter-spacing: -0.03em;
+}
+h2 {
+    font-size: 16px;
+}
+
+.status {
+    min-height: 1.4em;
+    margin: 12px 0;
+    color: var(--destructive, #9f3a34);
+}
+
+.card {
+    padding: 16px;
+    border: 1px solid var(--border, #e3e6eb);
+    border-radius: var(--radius, 0.75rem);
+    background: var(--card, #ffffff);
+    color: var(--card-foreground, inherit);
+}
+
+.section-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+}
+
+.muted {
+    color: var(--muted-foreground, #5e6772);
+}
+
+button {
+    padding: 8px 12px;
+    border: 0;
+    border-radius: var(--radius, 0.75rem);
+    background: var(--primary, #1f6b4a);
+    color: var(--primary-foreground, #ffffff);
+    font: inherit;
+    cursor: pointer;
+}
+
+button.secondary {
+    background: transparent;
+    color: var(--foreground, #1c1f24);
+    border: 1px solid var(--border, #e3e6eb);
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+#clear {
+    margin-top: 16px;
+}
+
+.list {
+    display: grid;
+    gap: 10px;
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.list li {
+    padding-top: 10px;
+    border-top: 1px solid var(--border, #e3e6eb);
+}
+
+.list strong,
+.list p {
+    margin: 0;
+}
+.list time,
+.list p {
+    color: var(--muted-foreground, #5e6772);
+    font-size: 13px;
+}
+.list p {
+    margin-top: 4px;
+}

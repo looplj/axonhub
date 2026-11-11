@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AxonHub panel — idle, light</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#a8844e}a:hover{color:#7a5f37}
+.ax-btn{transition:background-color 120ms,transform 120ms cubic-bezier(.2,.8,.2,1)}
+.ax-btn:hover{background-color:rgba(0,0,0,.06)!important}
+.ax-btn:active{transform:scale(.94)}
+.ax-row{transition:background-color 120ms}
+.ax-row:hover{background-color:rgba(0,0,0,.04)}
+</style>
+</helmet>
+<div style="width: 400px; height: 640px; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; gap: 8px; background-color: #f0eeeb; color: #0f172b; border-radius: 16px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; font-size: 13px; line-height: 1.4; font-variant-numeric: tabular-nums; overflow: hidden">
+
+  <header style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 2px 0 6px; flex-shrink: 0">
+    <svg width="24" height="24" viewBox="0 0 64 64" fill="none" aria-hidden="true" style="flex-shrink: 0; position: relative"><path d="M32 7V15C32 24 24 32 15 32H7M32 15C32 24 40 32 49 32H57M32 57V49C32 40 24 32 15 32M32 49C32 40 40 32 49 32" stroke="#0f172b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="7" cy="32" r="5.5" fill="#0f172b"></circle><circle cx="57" cy="32" r="5.5" fill="#0f172b"></circle><circle cx="32" cy="7" r="5.5" fill="{{accent}}"></circle><circle cx="32" cy="57" r="5.5" fill="{{accent}}"></circle></svg>
+    <h1 style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em">AxonHub</h1>
+    <span style="display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; white-space: nowrap; border-radius: 999px; background-color: rgba(0,156,63,.12); color: #087a37; font-size: 11px; font-weight: 500">
+      <span style="width: 6px; height: 6px; border-radius: 999px; background-color: #009c3f"></span>
+      Running
+    </span>
+    <div style="flex-grow: 1"></div>
+    <button class="ax-btn" type="button" aria-label="Copy OpenAI base URL" title="Copy OpenAI base URL" style="width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 7px; background-color: transparent; color: #45556c; cursor: pointer; padding: 0">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M6.5 9.5l3-3"></path><path d="M7.5 4.5l1-1a2.83 2.83 0 014 4l-1 1"></path><path d="M8.5 11.5l-1 1a2.83 2.83 0 01-4-4l1-1"></path></svg>
+    </button>
+    <button class="ax-btn" type="button" aria-label="Refresh" title="Refresh" style="width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 7px; background-color: transparent; color: #45556c; cursor: pointer; padding: 0">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8a5 5 0 11-1.6-3.7"></path><path d="M13 2.5v2.8h-2.8"></path></svg>
+    </button>
+    <button class="ax-btn" type="button" aria-label="Open admin" title="Open admin" style="width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 7px; background-color: transparent; color: #45556c; cursor: pointer; padding: 0">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h4v4"></path><path d="M13 3L7.5 8.5"></path><path d="M11.5 9.5V12a1 1 0 01-1 1H4a1 1 0 01-1-1V5.5a1 1 0 011-1h2.5"></path></svg>
+    </button>
+  </header>
+
+  <section aria-label="Today" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 10px 4px; border-radius: 12px; background-color: #fcfcf9; box-shadow: 0 0 0 1px rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.04); flex-shrink: 0">
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #4b5666">Today</span>
+      <span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em">1,284</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px; border-left: 1px solid #e6e4df">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #4b5666">Tokens</span>
+      <span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em">3.2m</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px; border-left: 1px solid #e6e4df">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #4b5666">Cached</span>
+      <span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em">1.1m</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px; border-left: 1px solid #e6e4df">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #4b5666">Failed</span>
+      <span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: #c8262b">3</span>
+    </div>
+  </section>
+
+  <section aria-label="Routing" style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background-color: #fcfcf9; box-shadow: 0 0 0 1px rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.04); flex-shrink: 0">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #4b5666">Routing</span>
+      <div style="flex-grow: 1"></div>
+      <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background-color: rgba(0,156,63,.12); color: #087a37">Completed</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px; height: 40px">
+      <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; flex-shrink: 0; max-width: 132px; white-space: nowrap; border-radius: 999px; background-color: #e6e4df; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); font-size: 12px; font-weight: 500">
+        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Cursor</span>
+      </span>
+      <svg height="10" style="flex: 1 1 0; min-width: 10px" aria-hidden="true"><line x1="0" y1="5" x2="100%" y2="5" stroke="#a19f98" stroke-width="1.25" stroke-dasharray="5 4"></line></svg>
+      <svg width="30" height="30" viewBox="0 0 64 64" fill="none" role="img" aria-label="AxonHub" style="flex-shrink: 0; position: relative"><path d="M32 7V15C32 24 24 32 15 32H7M32 15C32 24 40 32 49 32H57M32 57V49C32 40 24 32 15 32M32 49C32 40 40 32 49 32" stroke="#0f172b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="7" cy="32" r="5.5" fill="#0f172b"></circle><circle cx="57" cy="32" r="5.5" fill="#0f172b"></circle><circle cx="32" cy="7" r="5.5" fill="{{accent}}"></circle><circle cx="32" cy="57" r="5.5" fill="{{accent}}"></circle></svg>
+      <svg height="10" style="flex: 1 1 0; min-width: 10px" aria-hidden="true"><line x1="0" y1="5" x2="100%" y2="5" stroke="#a19f98" stroke-width="1.25" stroke-dasharray="5 4"></line></svg>
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; flex-shrink: 0; max-width: 132px; white-space: nowrap; border-radius: 999px; background-color: #e6e4df; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); font-size: 12px; font-weight: 500">
+        <span style="width: 7px; height: 7px; border-radius: 999px; flex-shrink: 0; background-color: #009c3f"></span>
+        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">openai-main</span>
+      </span>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 8px; font-size: 11.5px; color: #4b5666">
+      <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; color: #45556c">gpt-5</span>
+      <div style="flex-grow: 1"></div>
+      <span style="white-space: nowrap">12.4k tokens · 2.8 s · 86 tok/s</span>
+    </div>
+  </section>
+
+  <div style="display: flex; align-items: center; gap: 6px; padding: 4px 6px 0; flex-shrink: 0">
+    <h2 style="margin: 0; font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #4b5666">Recent requests</h2>
+    <span style="display: inline-flex; align-items: center; height: 16px; padding: 0 6px; border-radius: 999px; background-color: #e0ded8; color: #45556c; font-size: 10.5px">5</span>
+  </div>
+
+  <div role="list" style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-height: 0; overflow-y: auto">
+    <sc-for list="{{rows}}" as="row" hint-placeholder-count="5">
+      <button class="ax-row" role="listitem" type="button" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 6px 10px 6px 8px; border: 0; border-radius: 10px; background-color: {{row.bg}}; color: inherit; font: inherit; text-align: left; cursor: pointer">
+        <span style="width: 22px; height: 22px; flex-shrink: 0; display: grid; place-items: center">
+          <sc-if value="{{row.isOk}}" hint-placeholder-val="{{true}}">
+            <svg width="14" height="14" viewBox="0 0 14 14" role="img" aria-label="Completed"><circle cx="7" cy="7" r="6" fill="rgba(0,156,63,.12)"></circle><path d="M4.4 7.2l1.8 1.8 3.4-3.6" fill="none" stroke="#087a37" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </sc-if>
+          <sc-if value="{{row.isFail}}" hint-placeholder-val="{{false}}">
+            <svg width="14" height="14" viewBox="0 0 14 14" role="img" aria-label="{{row.statusLabel}}"><circle cx="7" cy="7" r="6" fill="rgba(238,52,57,.1)"></circle><path d="M5 5l4 4M9 5l-4 4" fill="none" stroke="#c8262b" stroke-width="1.5" stroke-linecap="round"></path></svg>
+          </sc-if>
+        </span>
+        <span style="display: flex; flex-direction: column; gap: 1px; flex-grow: 1; min-width: 0">
+          <span style="display: flex; align-items: baseline; gap: 6px; min-width: 0">
+            <span style="font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{row.caller}}</span>
+            <span style="font-size: 11.5px; color: #4b5666; white-space: nowrap">→ {{row.channel}}</span>
+          </span>
+          <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; color: #4b5666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{row.model}}</span>
+        </span>
+        <span style="display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0">
+          <span style="font-size: 12px; font-weight: 500; color: {{row.primaryColor}}">{{row.primary}}</span>
+          <span style="font-size: 11px; color: #4b5666">{{row.secondary}}</span>
+        </span>
+      </button>
+    </sc-for>
+  </div>
+
+  <section aria-label="Connect a client" style="display: flex; flex-direction: column; border-radius: 12px; background-color: #fcfcf9; box-shadow: 0 0 0 1px rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.04); flex-shrink: 0">
+    <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 6px 0 12px">
+      <span style="font-size: 12px; color: #4b5666; width: 64px; flex-shrink: 0">Base URL</span>
+      <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">http://127.0.0.1:8090/v1</span>
+      <button class="ax-btn" type="button" style="height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background-color: #e6e4df; color: #0f172b; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; flex-shrink: 0">Copy</button>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 6px 0 12px; border-top: 1px solid #e6e4df">
+      <span style="font-size: 12px; color: #4b5666; width: 64px; flex-shrink: 0">API key</span>
+      <span style="display: inline-flex; align-items: center; gap: 6px; flex-grow: 1; min-width: 0">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#45556c" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><circle cx="5.5" cy="10.5" r="3"></circle><path d="M7.7 8.3L13 3M11 5l1.5 1.5"></path></svg>
+        <span style="font-size: 12.5px; font-weight: 500">Desktop</span>
+      </span>
+      <button class="ax-btn" type="button" style="height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background-color: #e6e4df; color: #0f172b; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; flex-shrink: 0">Copy</button>
+    </div>
+  </section>
+
+  <footer style="display: flex; align-items: center; gap: 8px; height: 36px; padding-top: 6px; border-top: 1px solid #dad7d1; flex-shrink: 0">
+    <button class="ax-btn" type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background-color: #0f172b; color: #fcfcf9; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer">Open admin</button>
+    <span style="font-size: 11px; color: #4b5666">Refreshes every 5 s</span>
+    <div style="flex-grow: 1"></div>
+    <button class="ax-btn" type="button" style="height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background-color: transparent; color: #45556c; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer">Quit</button>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#a8844e","options":["#a8844e","#45556c","#087a37","#b45309"]},"$preview":{"width":400,"height":640}}'>
+var REQUESTS = [
+  { caller: 'Cursor', channel: 'openai-main', model: 'gpt-5', status: 'completed', tokens: '12.4k tokens', latency: '2.8 s', rate: '86 tok/s', selected: true },
+  { caller: 'Claude Code', channel: 'anthropic', model: 'claude-sonnet-4-5', status: 'completed', tokens: '28.1k tokens', latency: '9.6 s', rate: '64 tok/s' },
+  { caller: 'Codex CLI', channel: 'openrouter', model: 'gpt-5-codex', status: 'completed', tokens: '4.2k tokens', latency: '1.4 s', rate: '112 tok/s' },
+  { caller: 'Desktop', channel: 'deepseek', model: 'deepseek-chat', status: 'failed', latency: '312 ms' },
+  { caller: 'Claude Code', channel: 'anthropic', model: 'claude-haiku-4-5', status: 'completed', tokens: '860 tokens', latency: '640 ms', rate: '140 tok/s' }
+];
+
+function tint(hex, a) {
+  var h = String(hex || '#a8844e').replace('#', '');
+  if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+  var n = parseInt(h, 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+
+class Component extends DCLogic {
+  renderVals() {
+    var accent = this.props.accent ?? '#a8844e';
+    var rows = REQUESTS.map(function (r) {
+      var failed = r.status === 'failed' || r.status === 'canceled';
+      return {
+        caller: r.caller, channel: r.channel, model: r.model,
+        isOk: r.status === 'completed', isFail: failed, statusLabel: r.status,
+        primary: failed ? r.status : r.tokens,
+        primaryColor: failed ? '#c8262b' : '#0f172b',
+        secondary: failed ? r.latency : r.latency + ' · ' + r.rate,
+        bg: r.selected ? tint(accent, 0.09) : 'transparent'
+      };
+    });
+    return { accent: accent, rows: rows };
+  }
+}
+</script>
+</body>
+</html>

@@ -31,6 +31,11 @@ const (
 	// ScopeWriteSettings manage the settings of the project.
 	ScopeWriteSettings ScopeSlug = "write_settings"
 
+	// ScopeReadPlugins view plugins. This scope is granted to users, not to plugins.
+	ScopeReadPlugins ScopeSlug = "read_plugins"
+	// ScopeWritePlugins manage plugin configuration. This scope is granted to users, not to plugins.
+	ScopeWritePlugins ScopeSlug = "write_plugins"
+
 	// ScopeReadRoles read the roles of the system or project.
 	ScopeReadRoles ScopeSlug = "read_roles"
 	// ScopeWriteRoles manage the roles of the system or project.
@@ -91,6 +96,16 @@ var scopeConfigs = []Scope{
 	{
 		Slug:        ScopeWriteSettings,
 		Description: "Manage system settings",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeReadPlugins,
+		Description: "View plugins",
+		Levels:      []ScopeLevel{ScopeLevelSystem},
+	},
+	{
+		Slug:        ScopeWritePlugins,
+		Description: "Manage plugin configuration",
 		Levels:      []ScopeLevel{ScopeLevelSystem},
 	},
 	{

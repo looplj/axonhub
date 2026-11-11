@@ -25,14 +25,14 @@ func NewRandomStrategy() *RandomStrategy {
 }
 
 // Score returns a random score between min and max.
-func (s *RandomStrategy) Score(ctx context.Context, channel *biz.Channel) float64 {
+func (s *RandomStrategy) Score(_ context.Context, _ *biz.Channel, _ *biz.AggregatedMetrics) float64 {
 	//nolint:gosec // Checked.
 	return s.min + rand.Float64()*(s.max-s.min)
 }
 
 // ScoreWithDebug returns a random score with detailed debug information.
-func (s *RandomStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel) (float64, StrategyScore) {
-	score := s.Score(ctx, channel)
+func (s *RandomStrategy) ScoreWithDebug(ctx context.Context, channel *biz.Channel, metrics *biz.AggregatedMetrics) (float64, StrategyScore) {
+	score := s.Score(ctx, channel, metrics)
 
 	return score, StrategyScore{
 		StrategyName: s.Name(),

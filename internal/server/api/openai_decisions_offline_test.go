@@ -78,7 +78,7 @@ func TestOpenAIHandlers_CreateDecisions_usesOfflineUpstreamAndPreservesClientSha
 	t.Cleanup(promptProtectionService.Stop)
 	outbound, err := decisions.NewOutboundTransformer(channelRow.BaseURL, providerKey)
 	require.NoError(t, err)
-	orchestratorInstance := orchestrator.NewChatCompletionOrchestrator(channelService, nil, requestService, httpclient.NewHttpClient(), decisions.NewInboundTransformer(), systemService, usageLogService, promptService, nil, promptProtectionService, biz.NewLiveStreamRegistry(), orchestrator.NewChannelLimiterManager(), nil).WithChannelSelector(&decisionsAPITestSelector{candidates: []*orchestrator.ChannelModelsCandidate{{Channel: &biz.Channel{Channel: channelRow, Outbound: outbound}, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-6-luna", ActualModel: "gpt-6-luna"}}}}})
+	orchestratorInstance := orchestrator.NewChatCompletionOrchestrator(channelService, nil, requestService, httpclient.NewHttpClient(), decisions.NewInboundTransformer(), systemService, usageLogService, promptService, nil, promptProtectionService, biz.NewLiveStreamRegistry(), orchestrator.NewChannelLimiterManager(), nil, orchestrator.PluginIntegration{}).WithChannelSelector(&decisionsAPITestSelector{candidates: []*orchestrator.ChannelModelsCandidate{{Channel: &biz.Channel{Channel: channelRow, Outbound: outbound}, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-6-luna", ActualModel: "gpt-6-luna"}}}}})
 	handlers := &OpenAIHandlers{DecisionsHandlers: NewChatCompletionHandlers(orchestratorInstance)}
 	router := gin.New()
 	router.Use(middleware.WithEntClient(client), middleware.WithAPIKeyConfig(authService, nil))
@@ -146,7 +146,7 @@ func newDecisionsOfflineHarness(t *testing.T, upstreamBody string, withTrace boo
 	promptService := biz.NewPromptService(biz.PromptServiceParams{Ent: client})
 	promptProtectionService := biz.NewPromptProtectionRuleService(biz.PromptProtectionRuleServiceParams{CacheConfig: xcache.Config{Mode: xcache.ModeMemory}, Ent: client})
 	t.Cleanup(promptProtectionService.Stop)
-	orchestratorInstance := orchestrator.NewChatCompletionOrchestrator(channelService, nil, requestService, httpclient.NewHttpClient(), decisions.NewInboundTransformer(), systemService, usageLogService, promptService, nil, promptProtectionService, biz.NewLiveStreamRegistry(), orchestrator.NewChannelLimiterManager(), nil).
+	orchestratorInstance := orchestrator.NewChatCompletionOrchestrator(channelService, nil, requestService, httpclient.NewHttpClient(), decisions.NewInboundTransformer(), systemService, usageLogService, promptService, nil, promptProtectionService, biz.NewLiveStreamRegistry(), orchestrator.NewChannelLimiterManager(), nil, orchestrator.PluginIntegration{}).
 		WithChannelSelector(&decisionsAPITestSelector{candidates: []*orchestrator.ChannelModelsCandidate{{Channel: &biz.Channel{Channel: channelRow, Outbound: outbound}, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-6-luna", ActualModel: "gpt-6-luna"}}}}})
 	handlers := &OpenAIHandlers{DecisionsHandlers: NewChatCompletionHandlers(orchestratorInstance)}
 	projectService := biz.NewProjectService(biz.ProjectServiceParams{CacheConfig: xcache.Config{Mode: xcache.ModeMemory}, Ent: client})

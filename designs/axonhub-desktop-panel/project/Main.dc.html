@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AxonHub panel — live</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#d4b98a}a:hover{color:#e6d5b3}
+.ax-panel{animation:ax-panel-in 180ms cubic-bezier(.2,.8,.2,1) both}
+@keyframes ax-panel-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.ax-btn{transition:background-color 120ms,transform 120ms cubic-bezier(.2,.8,.2,1)}
+.ax-btn:hover{background-color:rgba(255,255,255,.08)!important}
+.ax-btn:active{transform:scale(.94)}
+.ax-row{transition:background-color 120ms;animation:ax-row-in 220ms cubic-bezier(.2,.8,.2,1) both}
+.ax-row:hover{background-color:rgba(255,255,255,.05)}
+.ax-row:nth-child(2){animation-delay:30ms}.ax-row:nth-child(3){animation-delay:60ms}.ax-row:nth-child(4){animation-delay:90ms}.ax-row:nth-child(5){animation-delay:120ms}.ax-row:nth-child(6){animation-delay:150ms}
+@keyframes ax-row-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.ax-live{animation:ax-breathe 1.6s ease-in-out infinite}
+@keyframes ax-breathe{0%,100%{opacity:1}50%{opacity:.45}}
+.ax-wire-on{animation:ax-dash 900ms linear infinite}
+@keyframes ax-dash{from{stroke-dashoffset:9}to{stroke-dashoffset:0}}
+.ax-halo-on{animation:ax-halo 1.8s cubic-bezier(.2,.8,.2,1) infinite}
+@keyframes ax-halo{0%{transform:scale(.7);opacity:.55}100%{transform:scale(1.5);opacity:0}}
+.ax-eq rect{transform-box:fill-box;transform-origin:50% 100%;animation:ax-eq 900ms ease-in-out infinite}
+.ax-eq rect:nth-child(2){animation-delay:-300ms;animation-duration:760ms}
+.ax-eq rect:nth-child(3){animation-delay:-520ms;animation-duration:1040ms}
+@keyframes ax-eq{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+.ax-still *{animation:none!important}
+@media (prefers-reduced-motion:reduce){.ax-panel *,.ax-panel{animation:none!important}}
+</style>
+</helmet>
+<div class="ax-panel {{stillClass}}" style="width: 400px; height: 640px; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; gap: 8px; background-color: #070d1a; color: #f8fafc; border-radius: 16px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif; font-size: 13px; line-height: 1.4; font-variant-numeric: tabular-nums; overflow: hidden">
+
+  <header style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 2px 0 6px; flex-shrink: 0">
+    <svg width="24" height="24" viewBox="0 0 64 64" fill="none" aria-hidden="true" style="flex-shrink: 0; position: relative"><path d="M32 7V15C32 24 24 32 15 32H7M32 15C32 24 40 32 49 32H57M32 57V49C32 40 24 32 15 32M32 49C32 40 40 32 49 32" stroke="#f8fafc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="7" cy="32" r="5.5" fill="#f8fafc"></circle><circle cx="57" cy="32" r="5.5" fill="#f8fafc"></circle><circle cx="32" cy="7" r="5.5" fill="{{accent}}"></circle><circle cx="32" cy="57" r="5.5" fill="{{accent}}"></circle></svg>
+    <h1 style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em">AxonHub</h1>
+    <span style="display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; white-space: nowrap; border-radius: 999px; background-color: rgba(0,188,125,.14); color: #00bc7d; font-size: 11px; font-weight: 500">
+      <span class="ax-live" style="width: 6px; height: 6px; border-radius: 999px; background-color: #00bc7d"></span>
+      Running
+    </span>
+    <div style="flex-grow: 1"></div>
+    <button class="ax-btn" type="button" aria-label="Copy OpenAI base URL" title="Copy OpenAI base URL" onClick="{{copyUrl}}" style="width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 7px; background-color: transparent; color: #cad5e2; cursor: pointer; padding: 0">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M6.5 9.5l3-3"></path><path d="M7.5 4.5l1-1a2.83 2.83 0 014 4l-1 1"></path><path d="M8.5 11.5l-1 1a2.83 2.83 0 01-4-4l1-1"></path></svg>
+    </button>
+    <button class="ax-btn" type="button" aria-label="Refresh" title="Refresh" style="width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 7px; background-color: transparent; color: #cad5e2; cursor: pointer; padding: 0">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8a5 5 0 11-1.6-3.7"></path><path d="M13 2.5v2.8h-2.8"></path></svg>
+    </button>
+    <button class="ax-btn" type="button" aria-label="Open admin" title="Open admin" style="width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 7px; background-color: transparent; color: #cad5e2; cursor: pointer; padding: 0">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h4v4"></path><path d="M13 3L7.5 8.5"></path><path d="M11.5 9.5V12a1 1 0 01-1 1H4a1 1 0 01-1-1V5.5a1 1 0 011-1h2.5"></path></svg>
+    </button>
+  </header>
+
+  <section aria-label="Today" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 10px 4px; border-radius: 12px; background-color: #121b29; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); flex-shrink: 0">
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Today</span>
+      <span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em">1,284</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px; border-left: 1px solid rgba(255,255,255,.07)">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Tokens</span>
+      <span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em">3.2m</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px; border-left: 1px solid rgba(255,255,255,.07)">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Cached</span>
+      <span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em">1.1m</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 0 10px; border-left: 1px solid rgba(255,255,255,.07)">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Failed</span>
+      <span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: #fb575c">3</span>
+    </div>
+  </section>
+
+  <section aria-label="Routing" style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background-color: #121b29; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); flex-shrink: 0">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span style="font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Routing</span>
+      <div style="flex-grow: 1"></div>
+      <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background-color: {{sel.chipBg}}; color: {{sel.chipFg}}">{{sel.statusLabel}}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px; height: 40px">
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; flex-shrink: 0; max-width: 132px; white-space: nowrap; border-radius: 999px; background-color: #070d1a; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); font-size: 12px; font-weight: 500">
+        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{sel.caller}}</span>
+      </span>
+      <svg height="10" style="flex: 1 1 0; min-width: 10px" aria-hidden="true"><line class="{{wireClass}}" x1="0" y1="5" x2="100%" y2="5" stroke="#90a1b9" stroke-width="1.25" stroke-dasharray="5 4"></line></svg>
+      <span style="position: relative; width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center">
+        <span class="{{haloClass}}" style="position: absolute; inset: 0; border-radius: 999px; border: 1.5px solid {{accent}}; opacity: 0"></span>
+        <svg width="30" height="30" viewBox="0 0 64 64" fill="none" role="img" aria-label="AxonHub" style="flex-shrink: 0; position: relative"><path d="M32 7V15C32 24 24 32 15 32H7M32 15C32 24 40 32 49 32H57M32 57V49C32 40 24 32 15 32M32 49C32 40 40 32 49 32" stroke="#f8fafc" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="7" cy="32" r="5.5" fill="#f8fafc"></circle><circle cx="57" cy="32" r="5.5" fill="#f8fafc"></circle><circle cx="32" cy="7" r="5.5" fill="{{accent}}"></circle><circle cx="32" cy="57" r="5.5" fill="{{accent}}"></circle></svg>
+      </span>
+      <svg height="10" style="flex: 1 1 0; min-width: 10px" aria-hidden="true"><line class="{{wireClass}}" x1="0" y1="5" x2="100%" y2="5" stroke="#90a1b9" stroke-width="1.25" stroke-dasharray="5 4"></line></svg>
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; flex-shrink: 0; max-width: 132px; white-space: nowrap; border-radius: 999px; background-color: #070d1a; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); font-size: 12px; font-weight: 500">
+        <span style="width: 7px; height: 7px; border-radius: 999px; flex-shrink: 0; background-color: {{sel.dot}}"></span>
+        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{sel.channel}}</span>
+      </span>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 8px; font-size: 11.5px; color: #90a1b9">
+      <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; color: #cad5e2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0">{{sel.model}}</span>
+      <div style="flex-grow: 1"></div>
+      <span style="white-space: nowrap">{{sel.metrics}}</span>
+    </div>
+  </section>
+
+  <div style="display: flex; align-items: center; gap: 6px; padding: 4px 6px 0; flex-shrink: 0">
+    <h2 style="margin: 0; font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: #90a1b9">Recent requests</h2>
+    <span style="display: inline-flex; align-items: center; height: 16px; padding: 0 6px; border-radius: 999px; background-color: #1b2433; color: #cad5e2; font-size: 10.5px">6</span>
+  </div>
+
+  <div role="list" style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-height: 0; overflow-y: auto">
+    <sc-for list="{{rows}}" as="row" hint-placeholder-count="6">
+      <button class="ax-row" role="listitem" type="button" onClick="{{row.pick}}" aria-current="{{row.current}}" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 6px 10px 6px 8px; border: 0; border-radius: 10px; background-color: {{row.bg}}; color: inherit; font: inherit; text-align: left; cursor: pointer">
+        <span style="width: 22px; height: 22px; flex-shrink: 0; display: grid; place-items: center">
+          <sc-if value="{{row.isLive}}" hint-placeholder-val="{{false}}">
+            <svg class="ax-eq" width="14" height="14" viewBox="0 0 14 14" role="img" aria-label="In progress"><rect x="1" y="2" width="3" height="11" rx="1.5" fill="#fe9a00"></rect><rect x="5.5" y="2" width="3" height="11" rx="1.5" fill="#fe9a00"></rect><rect x="10" y="2" width="3" height="11" rx="1.5" fill="#fe9a00"></rect></svg>
+          </sc-if>
+          <sc-if value="{{row.isOk}}" hint-placeholder-val="{{true}}">
+            <svg width="14" height="14" viewBox="0 0 14 14" role="img" aria-label="Completed"><circle cx="7" cy="7" r="6" fill="rgba(0,188,125,.14)"></circle><path d="M4.4 7.2l1.8 1.8 3.4-3.6" fill="none" stroke="#00bc7d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </sc-if>
+          <sc-if value="{{row.isFail}}" hint-placeholder-val="{{false}}">
+            <svg width="14" height="14" viewBox="0 0 14 14" role="img" aria-label="{{row.statusLabel}}"><circle cx="7" cy="7" r="6" fill="rgba(251,87,92,.13)"></circle><path d="M5 5l4 4M9 5l-4 4" fill="none" stroke="#fb575c" stroke-width="1.5" stroke-linecap="round"></path></svg>
+          </sc-if>
+        </span>
+        <span style="display: flex; flex-direction: column; gap: 1px; flex-grow: 1; min-width: 0">
+          <span style="display: flex; align-items: baseline; gap: 6px; min-width: 0">
+            <span style="font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1">{{row.caller}}</span>
+            <span style="font-size: 11.5px; color: #90a1b9; white-space: nowrap">→ {{row.channel}}</span>
+          </span>
+          <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; color: #90a1b9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{row.model}}</span>
+        </span>
+        <span style="display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0">
+          <span style="font-size: 12px; font-weight: 500; color: {{row.primaryColor}}">{{row.primary}}</span>
+          <span style="font-size: 11px; color: #90a1b9">{{row.secondary}}</span>
+        </span>
+      </button>
+    </sc-for>
+  </div>
+
+  <section aria-label="Connect a client" style="display: flex; flex-direction: column; border-radius: 12px; background-color: #121b29; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); flex-shrink: 0">
+    <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 6px 0 12px">
+      <span style="font-size: 12px; color: #90a1b9; width: 64px; flex-shrink: 0">Base URL</span>
+      <span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">http://127.0.0.1:8090/v1</span>
+      <button class="ax-btn" type="button" onClick="{{copyUrl}}" style="height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background-color: #1b2433; color: #f8fafc; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; flex-shrink: 0">{{urlLabel}}</button>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 6px 0 12px; border-top: 1px solid rgba(255,255,255,.06)">
+      <span style="font-size: 12px; color: #90a1b9; width: 64px; flex-shrink: 0">API key</span>
+      <span style="display: inline-flex; align-items: center; gap: 6px; flex-grow: 1; min-width: 0">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#cad5e2" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><circle cx="5.5" cy="10.5" r="3"></circle><path d="M7.7 8.3L13 3M11 5l1.5 1.5"></path></svg>
+        <span style="font-size: 12.5px; font-weight: 500">Desktop</span>
+      </span>
+      <button class="ax-btn" type="button" onClick="{{copyKey}}" style="height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background-color: #1b2433; color: #f8fafc; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; flex-shrink: 0">{{keyLabel}}</button>
+    </div>
+  </section>
+
+  <footer style="display: flex; align-items: center; gap: 8px; height: 36px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.06); flex-shrink: 0">
+    <button class="ax-btn" type="button" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background-color: {{accent}}; color: #0f172b; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer">Open admin</button>
+    <span style="font-size: 11px; color: #90a1b9">Refreshes every 5 s</span>
+    <div style="flex-grow: 1"></div>
+    <button class="ax-btn" type="button" style="height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background-color: transparent; color: #cad5e2; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer">Quit</button>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#d4b98a","options":["#d4b98a","#90a1b9","#00bc7d","#fe9a00"]},"motion":{"editor":"boolean","default":true},"$preview":{"width":400,"height":640}}'>
+var REQUESTS = [
+  { id: 'r1', caller: 'Claude Code', channel: 'anthropic', model: 'claude-sonnet-4-5', status: 'processing', live: true },
+  { id: 'r2', caller: 'Cursor', channel: 'openai-main', model: 'gpt-5', status: 'completed', tokens: '12.4k tokens', latency: '2.8 s', rate: '86 tok/s' },
+  { id: 'r3', caller: 'Codex CLI', channel: 'openrouter', model: 'gpt-5-codex', status: 'completed', tokens: '4.2k tokens', latency: '1.4 s', rate: '112 tok/s' },
+  { id: 'r4', caller: 'Desktop', channel: 'deepseek', model: 'deepseek-chat', status: 'failed', latency: '312 ms' },
+  { id: 'r5', caller: 'Claude Code', channel: 'anthropic', model: 'claude-haiku-4-5', status: 'completed', tokens: '860 tokens', latency: '640 ms', rate: '140 tok/s' },
+  { id: 'r6', caller: 'Cherry Studio', channel: 'dashscope', model: 'qwen3-max', status: 'canceled', latency: '1.1 s' }
+];
+
+function tint(hex, a) {
+  var h = String(hex || '#d4b98a').replace('#', '');
+  if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+  var n = parseInt(h, 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { selected: 'r1', copied: '' };
+  }
+  copy(what) {
+    this.setState({ copied: what });
+    clearTimeout(this.copyTimer);
+    this.copyTimer = setTimeout(() => this.setState({ copied: '' }), 1400);
+  }
+  componentWillUnmount() { clearTimeout(this.copyTimer); }
+  renderVals() {
+    var accent = this.props.accent ?? '#d4b98a';
+    var motion = this.props.motion ?? true;
+    var selectedId = this.state.selected;
+    var rows = REQUESTS.map((r) => {
+      var failed = r.status === 'failed' || r.status === 'canceled';
+      var selected = r.id === selectedId;
+      return {
+        caller: r.caller, channel: r.channel, model: r.model,
+        isLive: !!r.live, isOk: r.status === 'completed', isFail: failed,
+        statusLabel: r.status,
+        primary: r.live ? 'streaming' : failed ? r.status : r.tokens,
+        primaryColor: r.live ? '#fe9a00' : failed ? '#fb575c' : '#f8fafc',
+        secondary: r.live ? 'in progress' : failed ? r.latency : r.latency + ' · ' + r.rate,
+        bg: selected ? tint(accent, 0.14) : 'transparent',
+        current: selected ? 'true' : 'false',
+        pick: () => this.setState({ selected: r.id })
+      };
+    });
+    var s = REQUESTS.find((r) => r.id === selectedId) || REQUESTS[0];
+    var sFailed = s.status === 'failed' || s.status === 'canceled';
+    var sel = {
+      caller: s.caller, channel: s.channel, model: s.model,
+      statusLabel: s.live ? 'Streaming' : sFailed ? (s.status === 'failed' ? 'Failed' : 'Canceled') : 'Completed',
+      chipBg: s.live ? 'rgba(254,154,0,.14)' : sFailed ? 'rgba(251,87,92,.13)' : 'rgba(0,188,125,.14)',
+      chipFg: s.live ? '#fe9a00' : sFailed ? '#fb575c' : '#00bc7d',
+      dot: s.live ? '#fe9a00' : sFailed ? '#fb575c' : '#00bc7d',
+      metrics: s.live ? 'in progress' : sFailed ? s.latency : s.tokens + ' · ' + s.latency + ' · ' + s.rate
+    };
+    return {
+      accent: accent,
+      stillClass: motion ? '' : 'ax-still',
+      wireClass: s.live ? 'ax-wire-on' : '',
+      haloClass: s.live ? 'ax-halo-on' : '',
+      rows: rows,
+      sel: sel,
+      urlLabel: this.state.copied === 'url' ? 'Copied' : 'Copy',
+      keyLabel: this.state.copied === 'key' ? 'Copied' : 'Copy',
+      copyUrl: () => this.copy('url'),
+      copyKey: () => this.copy('key')
+    };
+  }
+}
+</script>
+</body>
+</html>

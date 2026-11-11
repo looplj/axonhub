@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -44,6 +47,15 @@ var overrideTemplateFuncs = template.FuncMap{
 		}
 		return string(data), nil
 	},
+	// The matched value is the last argument so these functions also work in
+	// pipelines, e.g. {{.Model | regexMatch "^claude-"}}.
+	"contains": func(substr, value string) bool {
+		return strings.Contains(value, substr)
+	},
+	"regexMatch": func(pattern, value string) (bool, error) {
+		return regexp.MatchString(pattern, value)
+	},
+	"globMatch": globMatch,
 }
 
 func buildRequestHeaderMap(llmReq *llm.Request) map[string]string {
@@ -316,7 +328,175 @@ func applyBodySet(
 		return sjson.DeleteBytes(body, op.Path)
 	}
 
-	return sjson.SetBytes(body, op.Path, renderedValue)
+	// sjson only writes to the first element a query path such as
+	// `messages.#.content.#(type=="image_url")` matches, so expand it first.
+	targets := expandQueryPath(body, op.Path)
+
+	updated, ok, err := spliceTargets(body, targets, renderedValue)
+	if err != nil {
+		return body, err
+	}
+
+	if !ok {
+		// A target without a usable offset (for example a field that does not exist
+		// yet) is written by sjson, one path at a time.
+		updated = body
+
+		for _, target := range targets {
+			updated, err = sjson.SetBytes(updated, target.path, renderedValue)
+			if err != nil {
+				return body, err
+			}
+		}
+	}
+
+	// sjson reports no error for some path shapes it cannot handle, such as the
+	// `#(...)#` all-matches form, and returns a broken document instead.
+	if !gjson.ValidBytes(updated) {
+		return body, fmt.Errorf("set at path %q produced invalid JSON", op.Path)
+	}
+
+	return updated, nil
+}
+
+// pathTarget is a concrete path a set operation writes to, with the value currently
+// stored there.
+type pathTarget struct {
+	path  string
+	value gjson.Result
+}
+
+// expandQueryPath resolves the `#` and `#(query)` segments of a path against body and
+// returns one target per matching element. A path without a `#(query)` segment is
+// returned as is, as is a path using the `#(query)#` all-matches form, which sjson cannot
+// set. A query path that matches nothing returns no targets.
+func expandQueryPath(body []byte, path string) []pathTarget {
+	segments := splitPathSegments(path)
+
+	hasQuery := false
+
+	for _, segment := range segments {
+		if isQuerySegment(segment) {
+			hasQuery = true
+		}
+
+		if strings.HasPrefix(segment, "#(") && strings.HasSuffix(segment, ")#") {
+			return []pathTarget{{path: path}}
+		}
+	}
+
+	if !hasQuery {
+		return []pathTarget{{path: path}}
+	}
+
+	return resolvePathSegments(gjson.ParseBytes(body), nil, segments)
+}
+
+func isQuerySegment(segment string) bool {
+	return strings.HasPrefix(segment, "#(") && strings.HasSuffix(segment, ")")
+}
+
+func resolvePathSegments(node gjson.Result, prefix, rest []string) []pathTarget {
+	if len(rest) == 0 {
+		return []pathTarget{{path: strings.Join(prefix, "."), value: node}}
+	}
+
+	segment := rest[0]
+	if segment != "#" && !isQuerySegment(segment) {
+		return resolvePathSegments(node.Get(segment), append(slices.Clip(prefix), segment), rest[1:])
+	}
+
+	if !node.IsArray() {
+		return nil
+	}
+
+	var targets []pathTarget
+
+	for index, element := range node.Array() {
+		if segment != "#" && !gjson.Get("["+element.Raw+"]", segment).Exists() {
+			continue
+		}
+
+		next := append(slices.Clip(prefix), strconv.Itoa(index))
+		targets = append(targets, resolvePathSegments(element, next, rest[1:])...)
+	}
+
+	return targets
+}
+
+// spliceTargets replaces every target's current value in body with value in a single
+// pass, instead of rewriting the whole body once per target. It reports false, without
+// touching body, when a target has no verifiable offset or the targets overlap.
+func spliceTargets(body []byte, targets []pathTarget, value any) ([]byte, bool, error) {
+	if len(targets) == 0 {
+		return body, true, nil
+	}
+
+	// Format the value exactly as sjson would, once.
+	formatted, err := sjson.SetBytes([]byte("[null]"), "0", value)
+	if err != nil {
+		return nil, false, err
+	}
+
+	replacement := gjson.GetBytes(formatted, "0").Raw
+
+	spans := make([][2]int, 0, len(targets))
+
+	for _, target := range targets {
+		start, raw := target.value.Index, target.value.Raw
+		if start <= 0 || raw == "" || start+len(raw) > len(body) || string(body[start:start+len(raw)]) != raw {
+			return nil, false, nil
+		}
+
+		spans = append(spans, [2]int{start, start + len(raw)})
+	}
+
+	slices.SortFunc(spans, func(a, b [2]int) int { return a[0] - b[0] })
+
+	out := make([]byte, 0, len(body)+len(spans)*len(replacement))
+	last := 0
+
+	for _, span := range spans {
+		if span[0] < last {
+			return nil, false, nil
+		}
+
+		out = append(out, body[last:span[0]]...)
+		out = append(out, replacement...)
+		last = span[1]
+	}
+
+	return append(out, body[last:]...), true, nil
+}
+
+// splitPathSegments splits a gjson path at its unescaped dots, keeping dots, quotes and
+// parentheses inside a `#(query)` segment intact.
+func splitPathSegments(path string) []string {
+	var (
+		segments []string
+		start    int
+		depth    int
+		quoted   bool
+	)
+
+	for i := 0; i < len(path); i++ {
+		switch c := path[i]; {
+		case c == '\\':
+			i++
+		case c == '"' && depth > 0:
+			quoted = !quoted
+		case quoted:
+		case c == '(':
+			depth++
+		case c == ')' && depth > 0:
+			depth--
+		case c == '.' && depth == 0:
+			segments = append(segments, path[start:i])
+			start = i + 1
+		}
+	}
+
+	return append(segments, path[start:])
 }
 
 func applyBodySetIfAbsent(

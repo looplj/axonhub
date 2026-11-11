@@ -867,7 +867,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
           )}
         </div>
 
-        <DialogFooter className='shrink-0 border-t pt-4'>
+        <DialogFooter pinned divided>
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             {t('common.buttons.cancel')}
           </Button>

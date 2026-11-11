@@ -41,7 +41,7 @@ func TestSystemService_Initialize(t *testing.T) {
 
 	// Verify secret key is set
 	ctx = authz.WithTestBypass(ctx)
-	secretKey, err := service.SecretKey(ctx)
+	secretKey, err := service.SecretKey(authz.NewSystemContext(ctx))
 	require.NoError(t, err)
 	require.NotEmpty(t, secretKey)
 	require.Len(t, secretKey, 64) // Should be 64 hex characters (32 bytes)
@@ -82,7 +82,7 @@ func TestSystemService_Initialize(t *testing.T) {
 	require.NoError(t, err)
 
 	// Secret key should remain the same after second initialization
-	secretKey2, err := service.SecretKey(ctx)
+	secretKey2, err := service.SecretKey(authz.NewSystemContext(ctx))
 	require.NoError(t, err)
 	require.Equal(t, originalKey, secretKey2)
 

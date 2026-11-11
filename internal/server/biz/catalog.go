@@ -8,13 +8,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tidwall/gjson"
 	"golang.org/x/sync/singleflight"
 
 	_ "embed"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -22,6 +22,11 @@ const (
 	catalogSourceUpstream = "upstream"
 	catalogSourceFallback = "fallback"
 	catalogFetchTimeout   = 20 * time.Second
+
+	// catalogHoldTTL bounds how long a fetched catalog stays in memory. It
+	// matches the admin UI's query staleTime so one page visit reuses a single
+	// fetch, and nothing stays resident between admin sessions.
+	catalogHoldTTL = 5 * time.Minute
 )
 
 // Bundled snapshots. scripts/sync/sync-model-developers.js copies providers.json here.
@@ -40,163 +45,139 @@ type CatalogSnapshot struct {
 	Filtered  bool                   `json:"filtered"`
 }
 
-type catalogCache struct {
-	raw       catalogFile
+// catalogPayload is a finished JSON payload. Only encoded bytes are retained:
+// the upstream catalog decoded into maps costs ~4x its JSON size and is all
+// pointers the GC has to scan.
+type catalogPayload struct {
+	data      []byte
 	fetchedAt time.Time
 	source    string
 }
 
-// CatalogService fetches the public model catalog, applies AxonHub developer
-// filters, and serves the result through GraphQL.
+type heldCatalog struct {
+	payload *catalogPayload
+	release *time.Timer
+}
+
+// CatalogService fetches the public model catalog on demand, applies AxonHub
+// developer filters for the filtered variant, and serves it through GraphQL.
+// Each variant is held for holdTTL after a fetch and then released.
 type CatalogService struct {
 	system     *SystemService
 	httpClient *httpclient.HttpClient
-	scheduler  *scheduler.Scheduler
 
-	mu    sync.RWMutex
-	cache *catalogCache
-	sf    singleflight.Group
+	mu         sync.Mutex
+	filtered   heldCatalog
+	unfiltered heldCatalog
+	holdTTL    time.Duration
+	sf         singleflight.Group
 }
 
 func NewCatalogService(system *SystemService, httpClient *httpclient.HttpClient) *CatalogService {
 	return &CatalogService{
 		system:     system,
 		httpClient: httpClient,
-	}
-}
-
-func (s *CatalogService) RegisterScheduledTasks(ctx context.Context, sched *scheduler.Scheduler) error {
-	s.scheduler = sched
-	settings := s.system.CatalogSettingsOrDefault(ctx)
-
-	if err := sched.Register(ctx, s.taskSpec(settings), s.refreshPeriodically); err != nil {
-		return err
-	}
-
-	refreshCtx := context.WithoutCancel(ctx)
-	go func() {
-		defer func() {
-			if rec := recover(); rec != nil {
-				log.Error(refreshCtx, "initial catalog refresh panicked", log.Any("panic", rec))
-			}
-		}()
-
-		if _, err := s.Refresh(refreshCtx); err != nil {
-			log.Warn(refreshCtx, "initial catalog refresh failed", log.Cause(err))
-		}
-	}()
-
-	return nil
-}
-
-func (s *CatalogService) Reschedule(ctx context.Context, sched *scheduler.Scheduler) {
-	if sched == nil {
-		return
-	}
-
-	settings := s.system.CatalogSettingsOrDefault(ctx)
-	if err := sched.Reschedule(ctx, "providers-catalog-refresh", s.taskSpec(settings)); err != nil {
-		log.Warn(ctx, "failed to reschedule catalog refresh", log.Cause(err))
-	}
-}
-
-func (s *CatalogService) taskSpec(settings CatalogSettings) scheduler.TaskSpec {
-	return scheduler.TaskSpec{
-		Name:        "providers-catalog-refresh",
-		Description: "Refresh built-in model catalog from upstream",
-		FixRate:     time.Duration(settings.RefreshSeconds) * time.Second,
-	}
-}
-
-func (s *CatalogService) refreshPeriodically(ctx context.Context) {
-	if _, err := s.Refresh(ctx); err != nil {
-		log.Warn(ctx, "scheduled catalog refresh failed", log.Cause(err))
+		holdTTL:    catalogHoldTTL,
 	}
 }
 
 func (s *CatalogService) Snapshot(ctx context.Context, filtered bool) (CatalogSnapshot, error) {
-	return s.snapshotFromCache(s.ensureCache(ctx), filtered)
+	payload, err := s.ensure(ctx, filtered)
+	if err != nil {
+		return CatalogSnapshot{}, err
+	}
+
+	return snapshotFromPayload(payload, filtered), nil
 }
 
-func (s *CatalogService) Refresh(ctx context.Context) (CatalogSnapshot, error) {
+// Invalidate releases both held variants so the next request refetches, e.g.
+// after the upstream URL changes.
+func (s *CatalogService) Invalidate() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.filtered.clear()
+	s.unfiltered.clear()
+}
+
+func (s *CatalogService) ensure(ctx context.Context, filtered bool) (*catalogPayload, error) {
+	if held := s.held(filtered); held != nil {
+		return held, nil
+	}
+
+	key := "catalog-unfiltered"
+	if filtered {
+		key = "catalog-filtered"
+	}
+
+	value, err, _ := s.sf.Do(key, func() (any, error) {
+		if held := s.held(filtered); held != nil {
+			return held, nil
+		}
+
+		data, source, err := s.load(ctx, filtered)
+		if err != nil {
+			return nil, err
+		}
+
+		return s.hold(filtered, data, source), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	payload, ok := value.(*catalogPayload)
+	if !ok || payload == nil {
+		return nil, fmt.Errorf("catalog load returned no payload")
+	}
+
+	return payload, nil
+}
+
+// load fetches the upstream catalog and falls back to the bundled one when the
+// fetch or filtering fails. The fallback is held for the same TTL so an
+// unreachable upstream is not retried on every request.
+func (s *CatalogService) load(ctx context.Context, filtered bool) ([]byte, string, error) {
+	// Callers share this load through singleflight, so one caller going away
+	// must not turn the shared result into a held fallback.
+	ctx = context.WithoutCancel(ctx)
 	settings := s.system.CatalogSettingsOrDefault(ctx)
 
 	fetchCtx, cancel := context.WithTimeout(ctx, catalogFetchTimeout)
 	defer cancel()
 
-	raw, err := s.fetchUpstream(fetchCtx, settings.EffectiveUpstreamURL())
-	if err != nil {
-		return CatalogSnapshot{}, err
-	}
-
-	return s.snapshotFromCache(s.storeCache(raw, catalogSourceUpstream), true)
-}
-
-func (s *CatalogService) ensureCache(ctx context.Context) *catalogCache {
-	settings := s.system.CatalogSettingsOrDefault(ctx)
-	if cached := s.freshCache(settings); cached != nil {
-		return cached
-	}
-
-	value, err, _ := s.sf.Do("catalog-refresh", func() (any, error) {
-		settings := s.system.CatalogSettingsOrDefault(ctx)
-		if cached := s.freshCache(settings); cached != nil {
-			return cached, nil
+	body, err := s.fetchUpstream(fetchCtx, settings.EffectiveUpstreamURL())
+	if err == nil {
+		if !filtered {
+			return body, catalogSourceUpstream, nil
 		}
 
-		fetchCtx, cancel := context.WithTimeout(ctx, catalogFetchTimeout)
-		defer cancel()
-
-		raw, err := s.fetchUpstream(fetchCtx, settings.EffectiveUpstreamURL())
-		if err != nil {
-			log.Warn(ctx, "catalog fetch failed, using fallback", log.Cause(err))
-			if cached := s.cached(); cached != nil {
-				return cached, nil
-			}
-
-			fallback := s.fallbackCache()
-
-			return s.storeCache(fallback.raw, catalogSourceFallback), nil
+		var built []byte
+		if built, err = buildFilteredCatalog(body); err == nil {
+			return built, catalogSourceUpstream, nil
 		}
+	}
 
-		return s.storeCache(raw, catalogSourceUpstream), nil
-	})
+	log.Warn(ctx, "catalog fetch failed, using bundled fallback", log.Cause(err), log.Any("filtered", filtered))
+
+	if !filtered {
+		return fallbackCatalogJSON(), catalogSourceFallback, nil
+	}
+
+	built, err := buildFilteredCatalog(catalogFallbackJSON)
 	if err != nil {
-		return s.fallbackOrCached()
+		return nil, "", fmt.Errorf("build fallback catalog: %w", err)
 	}
 
-	cache, ok := value.(*catalogCache)
-	if !ok || cache == nil {
-		return s.fallbackOrCached()
-	}
-
-	return cache
+	return built, catalogSourceFallback, nil
 }
 
-func (s *CatalogService) freshCache(settings CatalogSettings) *catalogCache {
-	cached := s.cached()
-	if cached == nil {
-		return nil
-	}
-
-	if time.Since(cached.fetchedAt) >= time.Duration(settings.RefreshSeconds)*time.Second {
-		return nil
-	}
-
-	return cached
-}
-
-func (s *CatalogService) fallbackOrCached() *catalogCache {
-	if cached := s.cached(); cached != nil {
-		return cached
-	}
-
-	return s.fallbackCache()
-}
-
-func (s *CatalogService) fetchUpstream(ctx context.Context, upstreamURL string) (catalogFile, error) {
+// fetchUpstream returns the upstream catalog body after checking it is a JSON
+// document with a providers object. The body is served verbatim to the admin
+// UI, so it must be valid JSON.
+func (s *CatalogService) fetchUpstream(ctx context.Context, upstreamURL string) ([]byte, error) {
 	if s.httpClient == nil {
-		return catalogFile{}, fmt.Errorf("catalog http client is not configured")
+		return nil, fmt.Errorf("catalog http client is not configured")
 	}
 
 	resp, err := s.httpClient.Do(ctx, &httpclient.Request{
@@ -207,97 +188,131 @@ func (s *CatalogService) fetchUpstream(ctx context.Context, upstreamURL string) 
 		},
 	})
 	if err != nil {
-		return catalogFile{}, fmt.Errorf("fetch catalog: %w", err)
+		return nil, fmt.Errorf("fetch catalog: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return catalogFile{}, fmt.Errorf("fetch catalog: unexpected status %d", resp.StatusCode)
+		return nil, fmt.Errorf("fetch catalog: unexpected status %d", resp.StatusCode)
 	}
 
+	if err := validateCatalogJSON(resp.Body); err != nil {
+		return nil, err
+	}
+
+	return resp.Body, nil
+}
+
+func validateCatalogJSON(body []byte) error {
+	if !json.Valid(body) {
+		return fmt.Errorf("parse catalog: invalid JSON")
+	}
+
+	if !gjson.GetBytes(body, "providers").IsObject() {
+		return fmt.Errorf("catalog is missing providers")
+	}
+
+	return nil
+}
+
+// buildFilteredCatalog decodes a full catalog, applies the developer filters
+// and extra models, and returns the encoded result. The decoded catalog is
+// discarded on return.
+func buildFilteredCatalog(body []byte) ([]byte, error) {
 	var data catalogFile
-	if err := json.Unmarshal(resp.Body, &data); err != nil {
-		return catalogFile{}, fmt.Errorf("parse catalog: %w", err)
+	if err := json.Unmarshal(body, &data); err != nil {
+		return nil, fmt.Errorf("parse catalog: %w", err)
 	}
 
 	if data.Providers == nil {
-		return catalogFile{}, fmt.Errorf("catalog is missing providers")
+		return nil, fmt.Errorf("catalog is missing providers")
 	}
 
-	return data, nil
+	prepared := filterCatalogProviders(data, DefaultDeveloperIDs)
+	if err := mergeExtraModels(&prepared, catalogExtraModelsJSON); err != nil {
+		return nil, fmt.Errorf("merge extra catalog models: %w", err)
+	}
+
+	sortCatalogModels(&prepared)
+
+	return json.Marshal(prepared)
 }
 
-func (s *CatalogService) snapshotFromCache(cache *catalogCache, filtered bool) (CatalogSnapshot, error) {
-	if cache == nil {
-		cache = s.fallbackOrCached()
+func fallbackCatalogJSON() []byte {
+	if validateCatalogJSON(catalogFallbackJSON) != nil {
+		return []byte(`{"providers":{}}`)
 	}
 
-	data := cache.raw
-	if filtered {
-		prepared := filterCatalogProviders(data, DefaultDeveloperIDs)
-		if err := mergeExtraModels(&prepared, catalogExtraModelsJSON); err != nil {
-			return CatalogSnapshot{}, fmt.Errorf("merge extra catalog models: %w", err)
-		}
-		sortCatalogModels(&prepared)
-		data = prepared
-	}
+	return catalogFallbackJSON
+}
 
-	payload, err := json.Marshal(data)
-	if err != nil {
-		return CatalogSnapshot{}, err
-	}
-
-	fetchedAt := cache.fetchedAt
-	source := cache.source
+func snapshotFromPayload(payload *catalogPayload, filtered bool) CatalogSnapshot {
+	fetchedAt := payload.fetchedAt
+	source := payload.source
 	if source == "" {
 		source = catalogSourceFallback
 	}
 
 	return CatalogSnapshot{
-		Data:      objects.JSONRawMessage(payload),
+		Data:      objects.JSONRawMessage(payload.data),
 		FetchedAt: &fetchedAt,
 		Source:    source,
 		Filtered:  filtered,
-	}, nil
+	}
 }
 
-func (s *CatalogService) storeCache(raw catalogFile, source string) *catalogCache {
+func (s *CatalogService) slot(filtered bool) *heldCatalog {
+	if filtered {
+		return &s.filtered
+	}
+
+	return &s.unfiltered
+}
+
+func (s *CatalogService) held(filtered bool) *catalogPayload {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.cache = &catalogCache{
-		raw:       raw,
+	return s.slot(filtered).payload
+}
+
+// hold keeps the payload for holdTTL, then releases it.
+func (s *CatalogService) hold(filtered bool, data []byte, source string) *catalogPayload {
+	payload := &catalogPayload{
+		data:      data,
 		fetchedAt: time.Now().UTC(),
 		source:    source,
 	}
 
-	return s.cache
-}
-
-func (s *CatalogService) cached() *catalogCache {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	return s.cache
-}
-
-func (s *CatalogService) fallbackCache() *catalogCache {
-	var data catalogFile
-	if err := json.Unmarshal(catalogFallbackJSON, &data); err != nil || data.Providers == nil {
-		data = catalogFile{Providers: map[string]catalogProvider{}}
-	}
-
-	now := time.Now().UTC()
-
-	return &catalogCache{
-		raw:       data,
-		fetchedAt: now,
-		source:    catalogSourceFallback,
-	}
-}
-
-func (s *CatalogService) Invalidate() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.cache = nil
+	slot := s.slot(filtered)
+	slot.clear()
+	slot.payload = payload
+	slot.release = time.AfterFunc(s.holdTTL, func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				log.Error(context.Background(), "catalog release panicked", log.Any("panic", rec))
+			}
+		}()
+
+		s.mu.Lock()
+		defer s.mu.Unlock()
+
+		if slot.payload == payload {
+			slot.payload = nil
+			slot.release = nil
+		}
+	})
+
+	return payload
+}
+
+func (h *heldCatalog) clear() {
+	if h.release != nil {
+		h.release.Stop()
+		h.release = nil
+	}
+
+	h.payload = nil
 }

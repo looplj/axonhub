@@ -457,6 +457,7 @@ type ChannelOption = {
   label: string;
   type: string;
   status: string;
+  orderingWeight: number;
   tags: string[];
   allModelEntries: Array<{ requestModel: string; actualModel: string; source: string }>;
 };
@@ -673,7 +674,7 @@ function buildDeveloperChannelPreview(associations: AssociationFormRow[], channe
   const seen = new Set<number>();
   const connections: ModelChannelConnection[] = [];
 
-  const addChannel = (channel: ChannelOption) => {
+  const addChannel = (channel: ChannelOption, priority: number) => {
     if (seen.has(channel.value)) {
       return;
     }
@@ -685,8 +686,10 @@ function buildDeveloperChannelPreview(associations: AssociationFormRow[], channe
         name: channel.label,
         type: channel.type,
         status: channel.status,
+        orderingWeight: channel.orderingWeight,
       },
       models: [],
+      priority,
     });
   };
 
@@ -698,7 +701,7 @@ function buildDeveloperChannelPreview(associations: AssociationFormRow[], channe
     if (assoc.type === 'channel_model' && assoc.channelId) {
       const channel = channelOptions.find((item) => item.value === assoc.channelId);
       if (channel) {
-        addChannel(channel);
+        addChannel(channel, assoc.priority);
       }
       return;
     }
@@ -706,7 +709,7 @@ function buildDeveloperChannelPreview(associations: AssociationFormRow[], channe
     if (assoc.type === 'channel_tags_model' && assoc.channelTags && assoc.channelTags.length > 0) {
       channelOptions
         .filter((channel) => assoc.channelTags?.some((tag) => channel.tags.includes(tag)))
-        .forEach(addChannel);
+        .forEach((channel) => addChannel(channel, assoc.priority));
     }
   });
 
@@ -757,6 +760,7 @@ export function ModelsAssociationDialog() {
       label: edge.node.name,
       type: edge.node.type,
       status: edge.node.status,
+      orderingWeight: edge.node.orderingWeight,
       tags: edge.node.tags || [],
       allModelEntries: edge.node.allModelEntries || [],
     }));
@@ -833,6 +837,7 @@ export function ModelsAssociationDialog() {
       return;
     }
 
+    let cancelled = false;
     const fetchConnections = async () => {
       try {
         if (isDeveloperMode) {
@@ -848,17 +853,24 @@ export function ModelsAssociationDialog() {
 
         if (associations.length > 0) {
           const result = await queryConnections(associations);
-          setConnections(result);
+          if (!cancelled) {
+            setConnections(result);
+          }
         } else {
           setConnections([]);
         }
       } catch (error) {
-        toast.error(t('common.errors.loadFailed'));
-        setConnections([]);
+        if (!cancelled) {
+          toast.error(t('common.errors.loadFailed'));
+          setConnections([]);
+        }
       }
     };
 
     fetchConnections();
+    return () => {
+      cancelled = true;
+    };
   }, [channelOptions, currentRow?.modelID, debouncedAssociations, inheritedAssociations, isOpen, isDeveloperMode, queryConnections]);
 
   useEffect(() => {
@@ -1156,6 +1168,7 @@ export function ModelsAssociationDialog() {
               <p className='text-muted-foreground text-xs'>
                 {isDeveloperMode ? t('models.dialogs.developerAssociation.previewDescription') : t('models.dialogs.association.previewDescription')}
               </p>
+              <p className='text-muted-foreground text-xs'>{t('models.dialogs.association.routingHint')}</p>
               <Input
                 placeholder={t('models.dialogs.association.filterByChannel')}
                 value={channelFilter}
@@ -1176,7 +1189,7 @@ export function ModelsAssociationDialog() {
           </div>
         </div>
 
-        <DialogFooter className='shrink-0 border-t pt-4 flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-end'>
+        <DialogFooter pinned divided>
           <Button type='button' variant='outline' onClick={handleClose} className='w-full sm:w-auto'>
             {t('common.buttons.cancel')}
           </Button>

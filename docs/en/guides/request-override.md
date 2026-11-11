@@ -150,6 +150,18 @@ Use the `condition` field to implement conditional logic:
 ]
 ```
 
+Besides the built-in Go template functions, AxonHub provides:
+
+| Function | Description | Example |
+| :--- | :--- | :--- |
+| `contains` | Whether the value contains the given substring. Case-sensitive. | `{{contains "claude" .Model}}` |
+| `regexMatch` | Whether the value matches the given [Go regular expression](https://pkg.go.dev/regexp/syntax). The pattern is not anchored. | `{{regexMatch "^anthropic/claude-" .Model}}` |
+| `globMatch` | Whether the value matches a glob pattern in which only `/` separates segments: `*` and `?` stay within one segment, and a whole-segment `**/` matches zero or more segments. | `{{globMatch "**/claude-*" .Model}}` |
+
+The matched value is the last argument, so both functions also work in a pipeline: `{{.Model | regexMatch "(?i)sonnet"}}`.
+
+A condition that fails to render, such as one with an invalid regular expression, counts as `false`: the operation is skipped and a warning is logged.
+
 ### Field Renaming and Copying
 
 ```json

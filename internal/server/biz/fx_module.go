@@ -25,6 +25,9 @@ var Module = fx.Module("biz",
 	fx.Provide(NewRoleService),
 	fx.Provide(NewThreadService),
 	fx.Provide(NewTraceService),
+	fx.Invoke(func(lc fx.Lifecycle, svc *TraceService) {
+		lc.Append(fx.Hook{OnStop: func(context.Context) error { svc.identities.stop(); return nil }})
+	}),
 	fx.Provide(NewDataStorageService),
 	fx.Provide(NewChannelOverrideTemplateService),
 	fx.Provide(NewModelService),
@@ -127,14 +130,6 @@ var Module = fx.Module("biz",
 				}()
 				return nil
 			},
-		})
-	}),
-	fx.Invoke(func(lc fx.Lifecycle, svc *CatalogService, s *scheduler.Scheduler) {
-		lc.Append(fx.Hook{
-			OnStart: func(ctx context.Context) error {
-				return svc.RegisterScheduledTasks(ctx, s)
-			},
-			OnStop: nil,
 		})
 	}),
 )

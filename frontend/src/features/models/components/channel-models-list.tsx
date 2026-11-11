@@ -10,12 +10,14 @@ interface Channel {
   name: string;
   type: string;
   status: string;
+  orderingWeight?: number;
 }
 
 interface ChannelModelsListProps {
   channels: Array<{
     channel: Channel;
     models: ChannelModel[];
+    priority?: number;
   }>;
   emptyMessage?: string;
 }
@@ -58,7 +60,7 @@ export function ChannelModelsList({ channels, emptyMessage }: ChannelModelsListP
   return (
     <div className='space-y-3'>
       {channels.map((conn) => (
-        <div key={conn.channel.id} className='rounded-lg border p-3'>
+        <div key={`${conn.channel.id}-${conn.priority}-${conn.models[0]?.requestModel ?? ''}`} className='rounded-lg border p-3'>
           <div className='mb-2 flex items-start justify-between gap-2'>
             <div className='flex items-center gap-1.5 flex-wrap'>
               <span className='text-sm font-medium'>{conn.channel.name}</span>
@@ -70,6 +72,18 @@ export function ChannelModelsList({ channels, emptyMessage }: ChannelModelsListP
               </Badge>
             </div>
           </div>
+          {conn.priority !== undefined && (
+            <div className='mb-2 flex flex-wrap gap-2 text-xs'>
+              <Badge variant='secondary' className='font-normal'>
+                {t('models.dialogs.association.effectivePriority')}: {conn.priority}
+              </Badge>
+              {conn.channel.orderingWeight !== undefined && (
+                <Badge variant='secondary' className='font-normal'>
+                  {t('models.dialogs.association.channelWeight')}: {conn.channel.orderingWeight}
+                </Badge>
+              )}
+            </div>
+          )}
           <div className='space-y-1'>
             {conn.models.map((model) => (
               <div key={model.requestModel} className='bg-muted rounded px-2 py-1 text-xs'>

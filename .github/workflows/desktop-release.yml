@@ -1,0 +1,145 @@
+# Packages AxonHub Desktop and uploads it to the same v* GitHub Release as
+# the server. The version is that tag, written into internal/build/VERSION
+# before the build: the desktop app reads it (mygo.config.ts) and the server
+# embedded in the app reads the same file.
+#
+# Release runs this after GoReleaser has opened the draft, and passes the
+# frontend artifact so these jobs do not build it again. workflow_dispatch
+# rebuilds one tag on its own; mygo opens the draft when the release is missing.
+# Without frontend-artifact, each job builds the frontend itself.
+# A called workflow keeps the caller's event name, so reuse is decided
+# only by whether that input is set. A manual run does not have it.
+
+name: Desktop release
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag. Empty uses the caller's ref name.
+        required: false
+        type: string
+        default: ""
+      frontend-artifact:
+        description: Actions artifact holding internal/server/static/dist. Empty builds the frontend in each job.
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, such as v1.2.3
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macOS, os: macos-latest, platform: "darwin/arm64,darwin/amd64" }
+          - { name: Windows, os: ubuntu-latest, platform: "windows/amd64,windows/arm64" }
+          - { name: Linux, os: ubuntu-latest, platform: "linux/amd64,linux/arm64" }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag != '' && inputs.tag || github.ref }}
+
+      - name: Download the shared frontend build
+        if: inputs.frontend-artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.frontend-artifact }}
+          path: internal/server/static/dist
+
+      - name: Check the shared frontend build
+        if: inputs.frontend-artifact
+        run: test -f internal/server/static/dist/index.html
+
+      - name: Install pnpm
+        if: ${{ !inputs.frontend-artifact }}
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+
+      - name: Set up Node.js
+        if: ${{ !inputs.frontend-artifact }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        if: ${{ !inputs.frontend-artifact }}
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: cmd/axonhub-desktop/go.mod
+          cache: true
+          cache-dependency-path: cmd/axonhub-desktop/go.sum
+
+      - name: Install NSIS, for the Windows installers
+        if: matrix.name == 'Windows' && runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y nsis
+
+      - name: Write the shared release version
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          case "$RELEASE_TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *)
+              echo "Desktop version must be the server's v* tag, got: $RELEASE_TAG" >&2
+              exit 1
+              ;;
+          esac
+          printf '%s\n' "$RELEASE_TAG" > internal/build/VERSION
+          echo "Desktop and embedded server version: $RELEASE_TAG"
+
+      - name: Build and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+          SKIP_FRONTEND_BUILD: ${{ inputs.frontend-artifact && '1' || '' }}
+        run: make build-desktop MYGO_FLAGS="-platform ${{ matrix.platform }} -upload"
+
+  # After every platform has uploaded, replace the release notes' download
+  # section with links to the installers. Updater archives stay in Assets.
+  notes:
+    name: Download table
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Upload desktop screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          shot=docs/screenshots/axonhub-desktop.png
+          if [ -f "$shot" ]; then
+            gh release upload "$RELEASE_TAG" "$shot" --repo "${{ github.repository }}" --clobber
+          fi
+
+      - name: Write the download table
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: python3 scripts/release-download-notes.py --tag "$RELEASE_TAG" --repo "${{ github.repository }}"

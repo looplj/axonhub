@@ -16,55 +16,44 @@ import (
 )
 
 func TestErrorAwareStrategy_Name(t *testing.T) {
-	mockProvider := &mockMetricsProvider{
-		metrics: make(map[int]*biz.AggregatedMetrics),
-	}
-	strategy := NewErrorAwareStrategy(mockProvider)
+	strategy := NewErrorAwareStrategy()
 	assert.Equal(t, "ErrorAware", strategy.Name())
 }
 
 func TestErrorAwareStrategy_Score_NoMetrics(t *testing.T) {
 	ctx := context.Background()
 
-	// Mock provider returns empty metrics
-	mockProvider := &mockMetricsProvider{
-		metrics: make(map[int]*biz.AggregatedMetrics),
-	}
-	strategy := NewErrorAwareStrategy(mockProvider)
+	strategy := NewErrorAwareStrategy()
 
 	channel := &biz.Channel{
 		Channel: &ent.Channel{ID: 999, Name: "test"},
 	}
 
-	score := strategy.Score(ctx, channel)
+	// A channel without recorded history has empty metrics.
+	score := strategy.Score(ctx, channel, &biz.AggregatedMetrics{})
 	// Should return maxScore (200) when no failures - no boosts applied
 	assert.Equal(t, 200.0, score)
 }
 
-func TestErrorAwareStrategy_Score_WithMockConsecutiveFailures(t *testing.T) {
+func TestErrorAwareStrategy_Score_WithConsecutiveFailures(t *testing.T) {
 	ctx := context.Background()
 
-	// Mock 3 consecutive failures
+	// 3 consecutive failures
 	metrics := &biz.AggregatedMetrics{}
 	metrics.ConsecutiveFailures = 3
 
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: metrics,
-		},
-	}
-	strategy := NewErrorAwareStrategy(mockProvider)
+	strategy := NewErrorAwareStrategy()
 
 	channel := &biz.Channel{
 		Channel: &ent.Channel{ID: 1, Name: "test"},
 	}
 
-	score := strategy.Score(ctx, channel)
+	score := strategy.Score(ctx, channel, metrics)
 	// Base 200 - 40 - (3 * 30) = 70
 	assert.Equal(t, 70.0, score)
 }
 
-func TestErrorAwareStrategy_Score_WithMockRecentSuccess(t *testing.T) {
+func TestErrorAwareStrategy_Score_WithRecentSuccess(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now()
@@ -75,18 +64,13 @@ func TestErrorAwareStrategy_Score_WithMockRecentSuccess(t *testing.T) {
 		LastSelectedAt: &recentSuccess,
 	}
 
-	mockProvider := &mockMetricsProvider{
-		metrics: map[int]*biz.AggregatedMetrics{
-			1: metrics,
-		},
-	}
-	strategy := NewErrorAwareStrategy(mockProvider)
+	strategy := NewErrorAwareStrategy()
 
 	channel := &biz.Channel{
 		Channel: &ent.Channel{ID: 1, Name: "test"},
 	}
 
-	score := strategy.Score(ctx, channel)
+	score := strategy.Score(ctx, channel, metrics)
 	// Base 200 - no boosts applied (we removed success-based boosts)
 	assert.Equal(t, 200.0, score)
 }
@@ -113,20 +97,23 @@ func TestErrorAwareStrategy_Score_ConsecutiveFailures(t *testing.T) {
 	// Record consecutive failures
 	for range 3 {
 		perf := &biz.PerformanceRecord{
-			ChannelID:        ch.ID,
-			StartTime:        time.Now().Add(-time.Minute),
-			EndTime:          time.Now(),
-			Success:          false,
-			RequestCompleted: true,
-			ResponseStatusCode:  500,
+			ChannelID:          ch.ID,
+			StartTime:          time.Now().Add(-time.Minute),
+			EndTime:            time.Now(),
+			Success:            false,
+			RequestCompleted:   true,
+			ResponseStatusCode: 500,
 		}
 		channelService.RecordPerformance(ctx, perf)
 	}
 
-	strategy := NewErrorAwareStrategy(channelService)
+	strategy := NewErrorAwareStrategy()
 	channel := &biz.Channel{Channel: ch}
 
-	score := strategy.Score(ctx, channel)
+	metrics, err := channelService.GetChannelMetrics(ctx, ch.ID)
+	require.NoError(t, err)
+
+	score := strategy.Score(ctx, channel, metrics)
 
 	// Should have significant penalty for 3 consecutive failures
 	// Base 200 - 40 - (3 * 30) = 70
@@ -161,10 +148,13 @@ func TestErrorAwareStrategy_Score_RecentSuccess(t *testing.T) {
 	}
 	channelService.RecordPerformance(ctx, perf)
 
-	strategy := NewErrorAwareStrategy(channelService)
+	strategy := NewErrorAwareStrategy()
 	channel := &biz.Channel{Channel: ch}
 
-	score := strategy.Score(ctx, channel)
+	metrics, err := channelService.GetChannelMetrics(ctx, ch.ID)
+	require.NoError(t, err)
+
+	score := strategy.Score(ctx, channel, metrics)
 
 	// No boost for recent success - we only apply penalties
 	// Base 200, no penalties = 200
@@ -234,19 +224,14 @@ func TestErrorAwareStrategy_ScoreConsistency(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockProvider := &mockMetricsProvider{
-				metrics: map[int]*biz.AggregatedMetrics{
-					1: tc.metrics,
-				},
-			}
-			strategy := NewErrorAwareStrategy(mockProvider)
+			strategy := NewErrorAwareStrategy()
 
 			channel := &biz.Channel{
 				Channel: &ent.Channel{ID: 1, Name: "test"},
 			}
 
-			score := strategy.Score(ctx, channel)
-			debugScore, _ := strategy.ScoreWithDebug(ctx, channel)
+			score := strategy.Score(ctx, channel, tc.metrics)
+			debugScore, _ := strategy.ScoreWithDebug(ctx, channel, tc.metrics)
 
 			// Allow small tolerance for time-based calculations (time.Since() may differ slightly)
 			assert.InDelta(t, score, debugScore, 0.01,
@@ -278,18 +263,13 @@ func TestErrorAwareStrategy_NoPenaltyForHealthyChannels(t *testing.T) {
 			metrics.RequestCount = tc.requestCount
 			metrics.SuccessCount = tc.successCount
 
-			mockProvider := &mockMetricsProvider{
-				metrics: map[int]*biz.AggregatedMetrics{
-					1: metrics,
-				},
-			}
-			strategy := NewErrorAwareStrategy(mockProvider)
+			strategy := NewErrorAwareStrategy()
 
 			channel := &biz.Channel{
 				Channel: &ent.Channel{ID: 1, Name: "test"},
 			}
 
-			score := strategy.Score(ctx, channel)
+			score := strategy.Score(ctx, channel, metrics)
 
 			// All healthy channels should get base score (200) - no boosts, no penalties
 			assert.Equal(t, 200.0, score, "Healthy channel should get base score for %s", tc.name)
@@ -312,18 +292,13 @@ func TestErrorAwareStrategy_OnlyPenaltiesNoBoosts(t *testing.T) {
 		metrics.RequestCount = 10
 		metrics.SuccessCount = 10 // 100% success rate
 
-		mockProvider := &mockMetricsProvider{
-			metrics: map[int]*biz.AggregatedMetrics{
-				1: metrics,
-			},
-		}
-		strategy := NewErrorAwareStrategy(mockProvider)
+		strategy := NewErrorAwareStrategy()
 
 		channel := &biz.Channel{
 			Channel: &ent.Channel{ID: 1, Name: "test"},
 		}
 
-		score := strategy.Score(ctx, channel)
+		score := strategy.Score(ctx, channel, metrics)
 		// Base 200, no boosts applied
 		assert.Equal(t, 200.0, score)
 	})
@@ -334,18 +309,13 @@ func TestErrorAwareStrategy_OnlyPenaltiesNoBoosts(t *testing.T) {
 		metrics.RequestCount = 10
 		metrics.SuccessCount = 10 // 100% success rate
 
-		mockProvider := &mockMetricsProvider{
-			metrics: map[int]*biz.AggregatedMetrics{
-				1: metrics,
-			},
-		}
-		strategy := NewErrorAwareStrategy(mockProvider)
+		strategy := NewErrorAwareStrategy()
 
 		channel := &biz.Channel{
 			Channel: &ent.Channel{ID: 1, Name: "test"},
 		}
 
-		score := strategy.Score(ctx, channel)
+		score := strategy.Score(ctx, channel, metrics)
 		// Base 200, no boosts applied
 		assert.Equal(t, 200.0, score)
 	})
@@ -397,8 +367,7 @@ func TestErrorAwareStrategy_FairDistribution(t *testing.T) {
 		}(),
 	}
 
-	mockProvider := &mockMetricsProvider{metrics: channelMetrics}
-	strategy := NewErrorAwareStrategy(mockProvider)
+	strategy := NewErrorAwareStrategy()
 
 	scores := make(map[int]float64)
 
@@ -406,7 +375,7 @@ func TestErrorAwareStrategy_FairDistribution(t *testing.T) {
 		channel := &biz.Channel{
 			Channel: &ent.Channel{ID: id, Name: "test"},
 		}
-		scores[id] = strategy.Score(ctx, channel)
+		scores[id] = strategy.Score(ctx, channel, channelMetrics[id])
 	}
 
 	// With no boosts, all healthy channels should get the same base score (200)

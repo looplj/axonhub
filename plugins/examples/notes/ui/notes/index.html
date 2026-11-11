@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Notes</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <main>
+      <header class="masthead">
+        <img src="../assets/mark.svg" alt="" width="36" height="36">
+        <h1 id="heading">Notes</h1>
+      </header>
+
+      <dl class="meta" id="meta"></dl>
+      <p id="status" class="status" role="status"></p>
+
+      <div class="layout">
+        <section class="card" aria-labelledby="notes-title">
+          <div class="section-head">
+            <h2 id="notes-title"></h2>
+            <p id="notes-count" class="muted"></p>
+          </div>
+          <form id="note-form">
+            <label>
+              <span id="title-label"></span>
+              <input id="title" name="title" maxlength="80" required>
+            </label>
+            <label id="category-field" hidden>
+              <span id="category-label"></span>
+              <select id="category" name="category"></select>
+            </label>
+            <label>
+              <span id="body-label"></span>
+              <textarea id="body" name="body" rows="4" maxlength="4000" required></textarea>
+            </label>
+            <div class="row">
+              <button id="save" type="submit"></button>
+              <p id="write-hint" class="muted" hidden></p>
+            </div>
+          </form>
+          <div id="filters" class="filters" role="group" hidden></div>
+          <ul id="notes" class="list"></ul>
+          <p id="notes-empty" class="muted" hidden></p>
+        </section>
+
+        <section class="card" aria-labelledby="channels-title">
+          <div class="section-head">
+            <h2 id="channels-title"></h2>
+          </div>
+          <p id="channels-hint" class="muted"></p>
+          <ul id="channels" class="list"></ul>
+          <button id="open-channels" type="button" class="secondary"></button>
+        </section>
+      </div>
+    </main>
+    <!-- ui/notes/index.html is two levels below the package root. -->
+    <script crossorigin="anonymous" src="../../_axonhub/bridge.js"></script>
+    <script type="module" crossorigin="anonymous" src="./app.js"></script>
+  </body>
+</html>

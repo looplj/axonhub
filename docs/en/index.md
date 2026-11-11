@@ -56,6 +56,7 @@ Welcome to the AxonHub documentation center! This index will help you quickly fi
 | [Entity Relationship Diagram](development/erd.md) | Database model relationship diagrams |
 | [Transformation Flow](development/transformation-flow.md) | Request/response transformation process |
 | [Authz Coding Guidelines](development/authz-coding-guidelines.md) | Guidelines for writing authorization code |
+| [Plugins](development/plugins.md) | Write plugin packages, hooks, and pages |
 
 ### ❓ FAQ
 

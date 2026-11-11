@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "id": "example.notes",
+  "name": "Notes",
+  "version": "1.1.0",
+  "description": "Example page that stores categorized notes in this plugin's KV and lists channels when read_channels is granted.",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "permissions": ["read_channels"],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "heading": {
+        "type": "string",
+        "title": "Heading",
+        "description": "Shown at the top of the notes page.",
+        "default": "Team notes"
+      },
+      "maxNotes": {
+        "type": "integer",
+        "title": "Maximum notes",
+        "description": "How many notes this page will store.",
+        "minimum": 1,
+        "maximum": 50,
+        "default": 20
+      },
+      "categories": {
+        "type": "array",
+        "items": { "type": "string" },
+        "title": "Categories",
+        "description": "Categories a note can be filed under. Remove every item to turn categories off.",
+        "default": ["General", "Ideas", "Todo"]
+      }
+    }
+  },
+  "ui": {
+    "pages": [
+      {
+        "key": "notes",
+        "entry": "ui/notes/index.html",
+        "title": { "en": "Notes", "zh-CN": "笔记" }
+      }
+    ]
+  }
+}

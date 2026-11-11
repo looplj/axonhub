@@ -107,7 +107,7 @@ bun.lock
 
 # Task files
 # tasks.json
-# tasks/ 
+# tasks/
 
 .kiro
 openspec
@@ -134,6 +134,8 @@ config.yml
 internal/server/static/dist/*
 !internal/server/static/dist/.gitkeep
 *.b64
+*.axplugin
+__pycache__/
 coverage.out
 *.test
 *.backup
@@ -162,7 +164,7 @@ locales_backup
 config.schema.json
 *.db-shm
 *.db-wal
-*.agent/summary
+.agents/summary
 .factory
 .omo/
 .omc/
@@ -171,7 +173,11 @@ config.schema.json
 .omx/
 deploy_dev.sh
 
+# mygo update signing key. The public key lives in cmd/axonhub-desktop/mygo.config.ts.
+mygo-update.key
+
 docs/superpowers/
 docs/superpowers/**
 superpowers/
 superpowers/**
+build/**

@@ -37,6 +37,7 @@ This architecture provides:
 - **`prompt.go`** - Prompt injection logic for projects and models
 - **`quota.go`** - API key quota enforcement middleware
 - **`override.go`** - Request body and header override middleware with template support
+- **`pass_through.go`** - Request body, header, and response pass-through when inbound and outbound API formats match (see [Stream Pass-Through](#stream-pass-through))
 - **`model_circuit_breaker.go`** - Circuit breaker tracker for specific models on channels
 - **`tester.go`** - Testing utilities
 
@@ -75,6 +76,16 @@ This architecture provides:
 - **`load-balancing.md`** - Detailed load balancing documentation
 - **`README.md`** - This file
 
+## Stream Pass-Through
+
+When pass-through applies to a streaming attempt (same API format on both sides, or the Responses identity and transport adaptations), the client receives the provider's raw events instead of re-encoded ones:
+
+- `captureRawProviderStream` wraps the provider stream in a `rawEventRecorder` that retains every raw event the outbound transformer reads.
+- `applyPassThroughStream` consumes the transformed inbound stream event by event, so LLM middlewares, persistence, and terminal tracking run exactly as without pass-through, and after each transformed event emits the raw events recorded so far, in order.
+- Everything runs on the consumer's goroutine. Raw events the transformer drops (for example Anthropic `ping`) reach the client with the next transformed event.
+- Raw events retained before the first client read (pipeline pre-read) are bounded by count and bytes; exceeding the budget fails the attempt with a retryable pre-commit error.
+- `OutboundPersistentStream.Close` releases the raw source on the consumer's goroutine after it stops reading. Once delivery is acknowledged, it first reads the remaining events within the tail budget (1s, 256 events, 1 MiB) so trailing usage is still accounted. If the client disconnects after acknowledgement, the same budget aborts the source so a reader blocked on a silent upstream is released.
+
 ## Candidate Selection Stage
 
 Before any score-based load balancing runs, an optional sticky stage can pin a candidate:
@@ -92,13 +103,12 @@ After the candidate selection stage, the orchestrator supports multiple score-ba
 5. **Model Aware Circuit Breaker** - Dynamically penalizes channels where the requested model is currently failing
 6. **Random** - Adds a small random factor to break ties between channels with identical scores
 
-The load balancer uses partial sorting for efficient top-k candidate selection based on retry policy configuration.
+The load balancer fetches each candidate's metrics once and shares the snapshot across strategies. It uses partial sorting for efficient top-k selection; `LoadBalancedSelector` passes top k from the request's retry policy snapshot.
 
 ## Key Interfaces
 
 - **`LoadBalanceStrategy`** - Interface for load balancing strategies with `Score()` and `ScoreWithDebug()` methods
-- **`ChannelMetricsProvider`** - Provides channel performance metrics (AggregatedMetrics)
-- **`RetryPolicyProvider`** - Supplies retry policy configuration
+- **`ChannelMetricsProvider`** - Provides channel performance metrics (AggregatedMetrics) to the load balancer
 - **`PreviousChannelProvider`** - Provides the cached previous channel for trace and thread sticky selection
 - **`CandidateSelector`** - Interface for selecting channel model candidates
 - **`ConnectionTracker`** - Interface for tracking active connections per channel

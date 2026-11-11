@@ -16,7 +16,7 @@ var supportedProviderQuotaTypes = []string{
 	"xai_subscription",
 	"synthetic", "neuralwatt", "apertis", "opencode_go",
 	"kimi_code", "minimax", "zhipu", "zai", "charm_hyper", "zenmux", "commandcode",
-	"ollama",
+	"deepseek", "ollama",
 }
 
 var supportedProviderQuotaTypeSet = func() map[string]struct{} {
@@ -143,23 +143,7 @@ func (s *SystemService) UpdateProviderQuotaCollectionSettings(
 	if err != nil {
 		return fmt.Errorf("failed to marshal provider quota collection settings: %w", err)
 	}
-	if err := s.setSystemValue(ctx, SystemKeyProviderQuotaCollectionSettings, string(jsonBytes)); err != nil {
-		return err
-	}
-
-	// Publish the exact primary value only after the surrounding transaction
-	// commits. This avoids exposing rolled-back settings while still preventing
-	// a lagging read replica from repopulating the cache with an older value.
-	runAfterCommit(ctx, func(ctx context.Context) {
-		if err := s.Cache.Set(ctx, "system:"+SystemKeyProviderQuotaCollectionSettings, ent.System{
-			Key:   SystemKeyProviderQuotaCollectionSettings,
-			Value: string(jsonBytes),
-		}); err != nil {
-			log.Warn(ctx, "failed to cache provider quota collection settings", log.Cause(err))
-		}
-	})
-
-	return nil
+	return s.setSystemValue(ctx, SystemKeyProviderQuotaCollectionSettings, string(jsonBytes))
 }
 
 func (s *SystemService) IsProviderQuotaCollectionEnabled(ctx context.Context, providerType string) (bool, error) {

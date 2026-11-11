@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 
-	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -74,8 +73,8 @@ func tryGetTraceIDFromBody(c *gin.Context, config tracing.Config) (string, error
 	return "", nil
 }
 
-// WithTrace is a middleware that extracts the X-Trace-ID header and
-// gets or creates the corresponding trace entity in the database.
+// WithTrace extracts the configured trace ID and stores its identity in the
+// request context. The stored trace has only ID, ProjectID, TraceID, and ThreadID.
 func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		traceID := getTraceIDFromHeader(c, config)
@@ -148,11 +147,8 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 			threadID = &thread.ID
 		}
 
-		// Bypass privacy policy so tokens without write_requests scope can still trigger tracing.
-		bypassCtx := authz.WithSystemBypass(c.Request.Context(), "trace-middleware")
-
 		// Get or create trace (errors are logged but don't block the request)
-		trace, err := traceService.GetOrCreateTrace(bypassCtx, projectID, traceID, threadID)
+		trace, err := traceService.ResolveTraceForRequest(c.Request.Context(), projectID, traceID, threadID)
 		if err != nil {
 			log.Warn(c.Request.Context(), "Failed to get or create trace", log.Cause(err))
 			c.Next()
@@ -160,11 +156,11 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 			return
 		}
 
-		// Store trace in context
 		if log.DebugEnabled(c.Request.Context()) {
 			log.Debug(c.Request.Context(), "Trace created", log.Any("trace", trace))
 		}
 
+		// Stored value has only ID, ProjectID, TraceID, and ThreadID.
 		ctx := contexts.WithTrace(c.Request.Context(), trace)
 
 		// Set session ID in context if available, to let the provider use it for cache if needed.

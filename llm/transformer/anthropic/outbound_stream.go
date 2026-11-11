@@ -322,25 +322,8 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 		}
 
 		if streamEvent.Delta != nil && streamEvent.Delta.StopReason != nil {
-			// Determine finish reason
-			var finishReason *string
-
-			switch *streamEvent.Delta.StopReason {
-			case "end_turn":
-				reason := "stop"
-				finishReason = &reason
-			case "max_tokens":
-				reason := "length"
-				finishReason = &reason
-			case "stop_sequence":
-				reason := "stop"
-				finishReason = &reason
-			case "tool_use":
-				reason := "tool_calls"
-				finishReason = &reason
-			default:
-				finishReason = streamEvent.Delta.StopReason
-			}
+			// Determine finish reason (shared with the non-streaming path).
+			finishReason := convertToLlmFinishReason(streamEvent.Delta.StopReason)
 
 			// CRITICAL: Always include Delta field (even if empty) when finish_reason is present.
 			//

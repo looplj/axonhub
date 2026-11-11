@@ -93,7 +93,7 @@ func (svc *ProviderQuotaService) channelCostSince(
 	// Manual checks run from a GraphQL mutation, whose context carries a user
 	// principal that cannot read usage logs across projects; the scheduled path
 	// already runs under a system bypass.
-	metadata, err := authz.RunWithSystemBypass(ctx, "provider-quota-period-cost", func(ctx context.Context) (*UsageMetadata, error) {
+	metadata, err := authz.RunAsHost(ctx, svc.db, "provider-quota-period-cost", func(ctx context.Context) (*UsageMetadata, error) {
 		return aggregateUsageMetadata(ctx, svc.db.UsageLog.Query().Where(
 			usagelog.ChannelIDEQ(channelID),
 			usagelog.CreatedAtGTE(since),

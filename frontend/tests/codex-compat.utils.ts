@@ -146,7 +146,7 @@ export async function expectNoLeak(page: Page, watched: ReturnType<typeof watch>
 
 // Signs in first and attaches the watchers afterwards so sign-in noise is not recorded.
 export async function openCodexTab(page: Page) {
-  await gotoAndEnsureAuth(page, '/system?tab=codex')
+  await gotoAndEnsureAuth(page, '/system/integrations?tab=codex')
   const watched = watch(page)
   await page.reload()
   await expect(page.getByTestId('codex-compat-card')).toBeVisible()
@@ -157,7 +157,7 @@ export async function openCodexTabAs(page: Page, email: string) {
   await page.goto('/sign-in')
   await signInAsAdmin(page, { email, password: 'pwd123456' })
   const watched = watch(page)
-  await page.goto('/system?tab=codex')
+  await page.goto('/system/integrations?tab=codex')
   await expect(page.getByTestId('codex-compat-card')).toBeVisible()
   return watched
 }

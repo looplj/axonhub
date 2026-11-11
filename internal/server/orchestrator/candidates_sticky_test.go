@@ -41,8 +41,7 @@ func stickyTestCandidate(channelID, priority int) *ChannelModelsCandidate {
 
 func TestLoadBalancedSelector_TracksOnlyFinalTopCandidateAcrossPriorityGroups(t *testing.T) {
 	tracker := &mockSelectionTracker{}
-	policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 2}}
-	lb := NewLoadBalancer(policy, tracker)
+	lb := NewLoadBalancer(nil, tracker)
 	selector := &LoadBalancedSelector{}
 	candidates := []*ChannelModelsCandidate{
 		stickyTestCandidate(1, 0),
@@ -50,7 +49,7 @@ func TestLoadBalancedSelector_TracksOnlyFinalTopCandidateAcrossPriorityGroups(t 
 		stickyTestCandidate(3, 1),
 	}
 
-	result := selector.sortCandidates(context.Background(), lb, candidates, &llm.Request{Model: "gpt-4"}, 3, true)
+	result := selector.sortCandidates(context.Background(), lb, candidates, &llm.Request{Model: "gpt-4"}, 3, 3, true)
 	require.Len(t, result, 3)
 	require.Equal(t, 1, tracker.selections[1])
 	require.Zero(t, tracker.selections[2])
@@ -59,14 +58,65 @@ func TestLoadBalancedSelector_TracksOnlyFinalTopCandidateAcrossPriorityGroups(t 
 
 func TestLoadBalancedSelector_TracksSingleCandidate(t *testing.T) {
 	tracker := &mockSelectionTracker{}
-	policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: false}}
-	lb := NewLoadBalancer(policy, tracker)
+	lb := NewLoadBalancer(nil, tracker)
 	selector := &LoadBalancedSelector{}
 	candidate := stickyTestCandidate(1, 0)
 
-	result := selector.sortCandidates(context.Background(), lb, []*ChannelModelsCandidate{candidate}, &llm.Request{Model: "gpt-4"}, 1, true)
+	result := selector.sortCandidates(context.Background(), lb, []*ChannelModelsCandidate{candidate}, &llm.Request{Model: "gpt-4"}, 1, 1, true)
 	require.Len(t, result, 1)
 	require.Equal(t, 1, tracker.selections[1])
+}
+
+func TestLoadBalancedSelector_RetryPolicyLimitsCandidateCount(t *testing.T) {
+	strategy := &channelBasedStrategy{
+		name:   "score",
+		scores: map[int]float64{1: 10, 2: 30, 3: 20, 4: 40},
+	}
+
+	tests := []struct {
+		name   string
+		policy biz.RetryPolicy
+		want   []int
+	}{
+		{
+			name:   "retry disabled keeps only the best candidate",
+			policy: biz.RetryPolicy{Enabled: false, MaxChannelRetries: 3},
+			want:   []int{2},
+		},
+		{
+			name:   "retries fill from the next priority group",
+			policy: biz.RetryPolicy{Enabled: true, MaxChannelRetries: 2},
+			want:   []int{2, 1, 4},
+		},
+		{
+			name:   "retries beyond the candidate count keep every candidate",
+			policy: biz.RetryPolicy{Enabled: true, MaxChannelRetries: 10},
+			want:   []int{2, 1, 4, 3},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			candidates := []*ChannelModelsCandidate{
+				stickyTestCandidate(1, 0),
+				stickyTestCandidate(2, 0),
+				stickyTestCandidate(3, 1),
+				stickyTestCandidate(4, 1),
+			}
+			policy := tt.policy
+			selector := WithLoadBalancedSelector(
+				&staticChannelSelector{candidates: candidates},
+				NewLoadBalancer(nil, nil, strategy),
+				&policy,
+			)
+
+			result, err := selector.Select(context.Background(), &llm.Request{Model: "gpt-4"})
+			require.NoError(t, err)
+			require.Equal(t, tt.want, lo.Map(result, func(candidate *ChannelModelsCandidate, _ int) int {
+				return candidate.Channel.ID
+			}))
+		})
+	}
 }
 
 func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
@@ -81,16 +131,16 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 			stickyTestCandidate(3, 1),
 			stickyTestCandidate(2, 4),
 		}
-		policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		policy := &biz.RetryPolicy{
 			Enabled:                 true,
 			MaxChannelRetries:       2,
 			MaxSingleChannelRetries: 2,
 			TraceStickyMode:         biz.TraceStickyPreferPreviousChannel,
-		}}
+		}
 		tracker := &mockSelectionTracker{}
 		selector := WithTraceStickyLoadBalancedSelector(
 			&staticChannelSelector{candidates: candidates},
-			NewLoadBalancer(policy, tracker),
+			NewLoadBalancer(nil, tracker),
 			policy,
 			&fakePreviousChannelProvider{
 				traceChannelIDs:  map[int]int{trace.ID: 2},
@@ -115,14 +165,14 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 			stickyTestCandidate(2, 1),
 			stickyTestCandidate(3, 2),
 		}
-		policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		policy := &biz.RetryPolicy{
 			Enabled:           true,
 			MaxChannelRetries: 2,
 			TraceStickyMode:   biz.TraceStickyPreferPreviousChannel,
-		}}
+		}
 		selector := WithTraceStickyLoadBalancedSelector(
 			&staticChannelSelector{candidates: candidates},
-			NewLoadBalancer(policy, nil),
+			NewLoadBalancer(nil, nil),
 			policy,
 			&fakePreviousChannelProvider{
 				threadChannelIDs: map[int]int{thread.ID: 3},
@@ -141,14 +191,14 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 			stickyTestCandidate(2, 2),
 			stickyTestCandidate(3, 1),
 		}
-		policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		policy := &biz.RetryPolicy{
 			Enabled:           true,
 			MaxChannelRetries: 2,
 			TraceStickyMode:   biz.TraceStickyDisabled,
-		}}
+		}
 		selector := WithTraceStickyLoadBalancedSelector(
 			&staticChannelSelector{candidates: candidates},
-			NewLoadBalancer(policy, nil),
+			NewLoadBalancer(nil, nil),
 			policy,
 			&fakePreviousChannelProvider{
 				traceChannelIDs: map[int]int{trace.ID: 2},
@@ -166,13 +216,13 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 			stickyTestCandidate(1, 0),
 			stickyTestCandidate(2, 1),
 		}
-		policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		policy := &biz.RetryPolicy{
 			Enabled:         false,
 			TraceStickyMode: biz.TraceStickyPreferPreviousChannel,
-		}}
+		}
 		selector := WithTraceStickyLoadBalancedSelector(
 			&staticChannelSelector{candidates: candidates},
-			NewLoadBalancer(policy, nil),
+			NewLoadBalancer(nil, nil),
 			policy,
 			&fakePreviousChannelProvider{
 				traceChannelIDs: map[int]int{trace.ID: 2},
@@ -216,17 +266,17 @@ func TestLoadBalancedSelector_FallbackUpdatesEffectiveStrategy(t *testing.T) {
 		}
 	}
 
-	systemPolicy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+	systemPolicy := &biz.RetryPolicy{
 		Enabled:              true,
 		MaxChannelRetries:    1,
 		LoadBalancerStrategy: biz.LoadBalancerStrategyAdaptive,
 		TraceStickyMode:      biz.TraceStickyDisabled,
-	}}
+	}
 	effectivePolicy := EffectiveRoutingPolicy{}
 	selector := WithRoutingPolicyLoadBalancedSelector(
 		&staticChannelSelector{candidates: candidates},
 		map[string]*LoadBalancer{
-			biz.LoadBalancerStrategyAdaptive: NewLoadBalancer(systemPolicy, nil),
+			biz.LoadBalancerStrategyAdaptive: NewLoadBalancer(nil, nil),
 			// circuit-breaker intentionally missing to force fallback
 		},
 		systemPolicy,
@@ -256,12 +306,12 @@ func TestLoadBalancedSelector_ModelDisablesStickyWhenProfileDefaults(t *testing.
 		candidate.ModelRoutingPolicy = modelPolicy
 	}
 
-	systemPolicy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+	systemPolicy := &biz.RetryPolicy{
 		Enabled:              true,
 		MaxChannelRetries:    1,
 		LoadBalancerStrategy: biz.LoadBalancerStrategyAdaptive,
 		TraceStickyMode:      biz.TraceStickyPreferPreviousChannel,
-	}}
+	}
 	apiKey := &ent.APIKey{Profiles: &objects.APIKeyProfiles{
 		ActiveProfile: "default",
 		Profiles: []objects.APIKeyProfile{{
@@ -274,7 +324,7 @@ func TestLoadBalancedSelector_ModelDisablesStickyWhenProfileDefaults(t *testing.
 	selector := WithRoutingPolicyLoadBalancedSelector(
 		&staticChannelSelector{candidates: candidates},
 		map[string]*LoadBalancer{
-			biz.LoadBalancerStrategyAdaptive: NewLoadBalancer(systemPolicy, nil),
+			biz.LoadBalancerStrategyAdaptive: NewLoadBalancer(nil, nil),
 		},
 		systemPolicy,
 		&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
@@ -305,12 +355,12 @@ func TestLoadBalancedSelector_EffectiveRoutingPolicyPriority(t *testing.T) {
 		candidate.ModelRoutingPolicy = modelPolicy
 	}
 
-	systemPolicy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+	systemPolicy := &biz.RetryPolicy{
 		Enabled:              true,
 		MaxChannelRetries:    1,
 		LoadBalancerStrategy: biz.LoadBalancerStrategyAdaptive,
 		TraceStickyMode:      biz.TraceStickyPreferPreviousChannel,
-	}}
+	}
 	adaptiveTracker := &mockSelectionTracker{}
 	failoverTracker := &mockSelectionTracker{}
 	roundRobinTracker := &mockSelectionTracker{}
@@ -328,9 +378,9 @@ func TestLoadBalancedSelector_EffectiveRoutingPolicyPriority(t *testing.T) {
 	selector := WithRoutingPolicyLoadBalancedSelector(
 		&staticChannelSelector{candidates: candidates},
 		map[string]*LoadBalancer{
-			biz.LoadBalancerStrategyAdaptive:   NewLoadBalancer(systemPolicy, adaptiveTracker),
-			biz.LoadBalancerStrategyFailover:   NewLoadBalancer(systemPolicy, failoverTracker),
-			biz.LoadBalancerStrategyRoundRobin: NewLoadBalancer(systemPolicy, roundRobinTracker),
+			biz.LoadBalancerStrategyAdaptive:   NewLoadBalancer(nil, adaptiveTracker),
+			biz.LoadBalancerStrategyFailover:   NewLoadBalancer(nil, failoverTracker),
+			biz.LoadBalancerStrategyRoundRobin: NewLoadBalancer(nil, roundRobinTracker),
 		},
 		systemPolicy,
 		&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},

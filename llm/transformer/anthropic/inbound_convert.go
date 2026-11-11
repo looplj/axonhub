@@ -712,6 +712,9 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			case "tool_calls":
 				stopReason := "tool_use"
 				resp.StopReason = &stopReason
+			case "content_filter":
+				stopReason := "refusal"
+				resp.StopReason = &stopReason
 			default:
 				resp.StopReason = choice.FinishReason
 			}
@@ -728,6 +731,12 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 
 	searchBlocks := responsesSearchBlocks(chatResp.TransformerMetadata, make(map[string]responsesSearchState), true, searchCitations)
 	resp.Content = append(searchBlocks, resp.Content...)
+
+	// Normalize the final blocks: restoring provider content from metadata can
+	// replace the tool blocks reconstructed from the unified response.
+	for i := range resp.Content {
+		resp.Content[i].ID = anthropicToolBlockID(resp.Content[i].Type, resp.Content[i].ID)
+	}
 
 	// Convert usage
 	if chatResp.Usage != nil {

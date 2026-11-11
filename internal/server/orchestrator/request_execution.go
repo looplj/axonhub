@@ -62,19 +62,34 @@ type persistRequestExecutionMiddleware struct {
 	headerObserver *executionHeaderObserver
 }
 
+// executionHeaderObserver keeps the upstream response headers of one execution in
+// memory. The execution's terminal update writes them, so reading the response body
+// does not wait for a database write when the headers arrive.
 type executionHeaderObserver struct {
-	service     *biz.RequestService
 	executionID int
 	observed    atomic.Bool
+	headers     atomic.Pointer[http.Header]
 }
 
-func (o *executionHeaderObserver) observe(ctx context.Context, headers http.Header) {
+func (o *executionHeaderObserver) observe(_ context.Context, headers http.Header) {
 	o.observed.Store(true)
-	persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	if err := o.service.UpdateRequestExecutionResponseHeaders(persistCtx, o.executionID, headers); err != nil {
-		log.Warn(persistCtx, "Failed to save execution response headers", log.Cause(err))
+	cloned := headers.Clone()
+	o.headers.Store(&cloned)
+}
+
+func (o *executionHeaderObserver) load() http.Header {
+	if headers := o.headers.Load(); headers != nil {
+		return *headers
 	}
+	return nil
+}
+
+// executionResponseHeaders returns the upstream response headers observed for executionID.
+func (s *PersistenceState) executionResponseHeaders(executionID int) http.Header {
+	if s == nil || s.ExecutionHeaders == nil || s.ExecutionHeaders.executionID != executionID {
+		return nil
+	}
+	return s.ExecutionHeaders.load()
 }
 
 func persistRequestExecution(outbound *PersistentOutboundTransformer) pipeline.Middleware {
@@ -134,18 +149,14 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 		return nil, err
 	}
 
-	// Update request with channel ID after channel selection
+	// The request's terminal update persists the selected channel.
 	if state.Request != nil && state.Request.ChannelID != channel.ID {
-		err := state.RequestService.UpdateRequestChannelID(ctx, state.Request.ID, channel.ID)
-		if err != nil {
-			return nil, err
-		}
-		// Update the in-memory state to prevent duplicate updates and ensure consistency
-		state.Request.ChannelID = channel.ID
+		state.RequestService.AssignRequestChannel(ctx, state.Request, channel.ID)
 	}
 
 	state.RequestExec = requestExec
-	m.headerObserver = &executionHeaderObserver{service: state.RequestService, executionID: requestExec.ID}
+	m.headerObserver = &executionHeaderObserver{executionID: requestExec.ID}
+	state.ExecutionHeaders = m.headerObserver
 	request.OnResponseHeaders = m.headerObserver.observe
 
 	return request, nil
@@ -211,13 +222,14 @@ func (m *persistRequestExecutionMiddleware) OnOutboundLlmResponse(ctx context.Co
 
 	err := state.RequestService.UpdateRequestExecutionFinalized(
 		persistCtx,
-		state.RequestExec.ID,
+		state.RequestExec,
 		requestexecution.StatusCompleted,
 		"",
 		llmResp.ID,
 		respBody,
 		metrics,
 		modelname.FromResponse(m.rawResponse, llm.APIFormat(state.RequestExec.Format)),
+		state.executionResponseHeaders(state.RequestExec.ID),
 	)
 	if err != nil {
 		log.Warn(persistCtx, "Failed to update request execution status to completed", log.Cause(err))
@@ -227,9 +239,15 @@ func (m *persistRequestExecutionMiddleware) OnOutboundLlmResponse(ctx context.Co
 }
 
 func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Context, err error) {
+	// Unlike queue/RPM rejection, plugin overload precedes this middleware's
+	// request callback, so this attempt has no execution to update.
+	if isPluginOverloaded(err) {
+		return
+	}
 	// Update request execution with the real error message when request fails
 	state := m.outbound.state
 	if state == nil || state.RequestExec == nil {
+		publishRequestAttemptFailed(ctx, state, err)
 		return
 	}
 
@@ -261,16 +279,19 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 
 	updateErr := state.RequestService.UpdateRequestExecutionStatusWithMetrics(
 		persistCtx,
-		state.RequestExec.ID,
+		state.RequestExec,
 		requestexecution.StatusFailed,
 		ExtractErrorMessage(failure),
 		ExtractErrorInfo(failure),
 		nil,
 		modelname.FromResponse(m.rawResponse, llm.APIFormat(state.RequestExec.Format)),
+		state.executionResponseHeaders(state.RequestExec.ID),
 	)
 	if updateErr != nil {
 		log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(updateErr))
 	}
+
+	publishRequestAttemptFailed(ctx, state, err)
 }
 
 // ExtractErrorInfo extracts HTTP status code and sanitized response body from error.

@@ -12,7 +12,7 @@
 [![Test Status](https://github.com/looplj/axonhub/actions/workflows/test.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/test.yml)
 [![Lint Status](https://github.com/looplj/axonhub/actions/workflows/lint.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/lint.yml)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/looplj/axonhub?logo=go&logoColor=white)](https://golang.org/)
-[![Docker Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
+[![Docker Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/looplj/axonhub)
 [![Greptile: The War on Bugs](https://www.greptile.com/badge.svg)](https://www.greptile.com/?utm_source=oss_badge&utm_medium=readme&utm_campaign=greptile_for_open_source)
 
 [English](README.en-US.md) | [中文](README.md) | [日本語](README.ja-JP.md)
@@ -146,9 +146,9 @@ OpenAI SDK、Anthropic SDK、またはその他のAI SDKを使用している場
 
 ## 🎯 デモ
 
-[デモインスタンス](https://axonhub.onrender.com)でAxonHubをお試しください！
+[デモインスタンス](https://axonhub.reveric.app)でAxonHubをお試しください！
 
-**注意**：デモインスタンスでは現在、ZhipuとOpenRouterの無料モデルが設定されています。
+**注意**：デモインスタンスには OpenRouter の無料モデルが設定されています。
 
 ### デモアカウント
 
@@ -328,8 +328,6 @@ print(response.choices[0].message.content)
 - 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTPフレームワーク
 - 🗄️ [ent/ent](https://github.com/ent/ent) - ORMフレームワーク
 - 🔧 [air-verse/air](https://github.com/air-verse/air) - Goサービスの自動リロード
-- ☁️ [Render](https://render.com) - デモをホスティングする無料クラウドデプロイプラットフォーム
-- 🗃️ [TiDB Cloud](https://www.pingcap.com/tidb-cloud/) - デモデプロイ用のサーバーレスデータベースプラットフォーム
 
 ---
 

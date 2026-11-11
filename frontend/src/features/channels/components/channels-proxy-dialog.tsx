@@ -348,7 +348,7 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
           )}
         </div>
 
-        <DialogFooter className='flex justify-between'>
+        <DialogFooter>
           <Button type='button' variant='outline' onClick={handleTest} disabled={isTesting || testChannel.isPending}>
             <IconPlayerPlay className='mr-2 h-4 w-4' />
             {isTesting ? t('channels.dialogs.proxy.testing') : t('channels.dialogs.proxy.test')}

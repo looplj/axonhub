@@ -195,7 +195,7 @@ func (f *streamDeliveryE2EFixture) handler(t *testing.T) *ChatCompletionHandlers
 	channelService.SetEnabledChannelsForTest([]*biz.Channel{built})
 	selector := &streamDeliveryE2ESelector{candidates: []*orchestrator.ChannelModelsCandidate{{Channel: built, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-test", ActualModel: "gpt-test", Source: "direct"}}}}}
 	inbound := openai.NewInboundTransformer()
-	orch := orchestrator.NewChatCompletionOrchestrator(channelService, nil, requestService, httpclient.NewHttpClient(), inbound, systemService, usageService, promptService, nil, promptProtection, biz.NewLiveStreamRegistry(), orchestrator.NewChannelLimiterManager(), nil).WithChannelSelector(selector)
+	orch := orchestrator.NewChatCompletionOrchestrator(channelService, nil, requestService, httpclient.NewHttpClient(), inbound, systemService, usageService, promptService, nil, promptProtection, biz.NewLiveStreamRegistry(), orchestrator.NewChannelLimiterManager(), nil, orchestrator.PluginIntegration{}).WithChannelSelector(selector)
 	h := NewChatCompletionHandlers(orch)
 	if f.format == llm.APIFormatOpenAIResponse {
 		h.streamAdapterFactory = newResponsesStreamAdapter

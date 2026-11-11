@@ -481,8 +481,8 @@ func (s *OIDCService) IsUserRestrictedToOIDC(ctx context.Context, u *ent.User) b
 		// The edge was not loaded. This runs during pre-auth sign-in, where there is
 		// no viewer in the context yet, so the privacy policy on OIDCIdentity would
 		// deny a normal query ("no user in context"). Read the user's own OIDC links
-		// under a system bypass, mirroring the user lookup in AuthService.AuthenticateUser.
-		identities, err = authz.RunWithSystemBypass(ctx, "oidc-restriction-check",
+		// as a fixed host read; only the restriction decision is returned to the caller.
+		identities, err = authz.RunAsHost(ctx, s.entFromContext(ctx), "oidc-restriction-check",
 			func(bypassCtx context.Context) ([]*ent.OIDCIdentity, error) {
 				return s.entFromContext(bypassCtx).OIDCIdentity.Query().
 					Where(oidcidentity.UserID(u.ID)).
@@ -694,16 +694,20 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 
 			log.Warn(ctx, "Failed to fetch UserInfo", log.String("provider", providerIdentifier), zap.Error(err))
 		} else {
-			if subject == "" {
+			// UserInfo claims must belong to the authenticated ID-token subject.
+			if rawIDToken != "" && (subject == "" || userInfoClaims.Sub != subject) {
+				return "", "", fmt.Errorf("UserInfo subject does not match ID token subject")
+			}
+
+			if rawIDToken == "" {
 				subject = userInfoClaims.Sub
 			}
 
 			// Merge claims (UserInfo usually has more up-to-date data)
 			if userInfoClaims.Email != "" {
 				claims.Email = userInfoClaims.Email
-			}
-
-			if userInfoClaims.EmailVerified {
+				// Verification applies only to the email from the same response.
+				// Missing or false verification must clear any ID-token value.
 				claims.EmailVerified = userInfoClaims.EmailVerified
 			}
 

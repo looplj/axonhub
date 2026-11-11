@@ -52,7 +52,7 @@ export function AutoDisableChannelOnboardingFlow({ onComplete }: AutoDisableChan
   const startOnboarding = useCallback(() => {
     setShowPrompt(false);
 
-    navigate({ to: '/system', search: { tab: 'retry' } }).then(() => {
+    navigate({ to: '/system/$section', params: { section: 'requests' }, search: { tab: 'retry' } }).then(() => {
       setTimeout(() => {
         const driverObj = driver({
           showProgress: true,

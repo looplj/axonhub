@@ -104,7 +104,7 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
             {!globalEnabled && <p className='text-muted-foreground text-sm'>{t('channels.dialogs.availability.inherit.globalDisabled')}</p>}
             <ApiKeyAutoDisableRulesPreview rules={globalRules} emptyLabel={t('channels.dialogs.availability.inherit.emptyGlobal')} />
             <Button variant='link' className='h-auto px-0' asChild>
-              <Link to='/system' search={{ tab: 'retry' }}>
+              <Link to='/system/$section' params={{ section: 'requests' }} search={{ tab: 'retry' }}>
                 {t('channels.dialogs.availability.inherit.goToSettings')}
               </Link>
             </Button>

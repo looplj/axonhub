@@ -64,11 +64,21 @@ export type ProviderQuotaResetList = {
   error?: string;
 };
 
+/** A normalized non-window account amount, such as a prepaid credit balance. */
+export type ProviderQuotaBalance = {
+  account?: string;
+  currency?: string;
+  total: number;
+  granted?: number;
+  topped_up?: number;
+};
+
 type ProviderQuotaDataCommon = {
   plan_type?: string;
   error?: string;
   error_code?: string;
   _resets?: ProviderQuotaResetList;
+  _balances?: ProviderQuotaBalance[];
 };
 
 type ProviderClaudeQuotaWindow = {
@@ -218,6 +228,18 @@ export type ProviderNeuralWattQuotaData = ProviderQuotaDataCommon & {
 
 export type ProviderCharmHyperQuotaData = ProviderQuotaDataCommon & {
   balance?: number | null;
+};
+
+export type ProviderDeepseekBalanceInfo = {
+  currency?: string | null;
+  total_balance?: number | string | null;
+  granted_balance?: number | string | null;
+  topped_up_balance?: number | string | null;
+};
+
+export type ProviderDeepseekQuotaData = ProviderQuotaDataCommon & {
+  is_available?: boolean | null;
+  balance_infos?: ProviderDeepseekBalanceInfo[] | null;
 };
 
 export type ProviderApertisQuotaData = ProviderQuotaDataCommon & {
@@ -585,6 +607,42 @@ export function parseQuotaLimits(quotaData: unknown): ProviderQuotaLimit[] {
   });
 }
 
+/**
+ * Non-window account amounts normalized by the backend and stashed under
+ * `quotaData._balances` (for example DeepSeek's prepaid balance). The table
+ * renders these as money rows instead of percentage bars.
+ */
+export function parseQuotaBalances(quotaData: unknown): ProviderQuotaBalance[] {
+  if (typeof quotaData !== 'object' || quotaData === null) return [];
+
+  const raw = (quotaData as { _balances?: unknown })._balances;
+  if (!Array.isArray(raw)) return [];
+
+  return raw.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return [];
+
+    const balance = entry as Record<string, unknown>;
+    const total = optionalNumber(balance.total);
+    if (total === undefined) return [];
+
+    return [
+      {
+        account: optionalString(balance.account),
+        currency: optionalString(balance.currency),
+        total,
+        granted: optionalNumber(balance.granted),
+        topped_up: optionalNumber(balance.topped_up),
+      },
+    ];
+  });
+}
+
+/** Formats a normalized balance amount for display. */
+export function formatQuotaBalance(value?: number | null): string | undefined {
+  if (value == null || !Number.isFinite(value)) return undefined;
+  return value.toFixed(2);
+}
+
 const CLAUDE_WINDOW_KEYS = {
   '5h': '5h',
   '7d': '7d',
@@ -705,6 +763,12 @@ export type ProviderQuotaChannel = {
       };
     }
   | {
+      type: 'deepseek' | 'deepseek_anthropic';
+      quotaStatus: {
+        quotaData: ProviderDeepseekQuotaData;
+      };
+    }
+  | {
       type: 'nanogpt';
       quotaStatus: {
         quotaData: ProviderNanoGPTQuotaData;
@@ -782,6 +846,13 @@ export type ProviderQuotaChannel = {
     }
   | {
       type: 'openai' | 'openai_responses';
+      providerType: 'deepseek';
+      quotaStatus: {
+        quotaData: ProviderDeepseekQuotaData;
+      };
+    }
+  | {
+      type: 'openai' | 'openai_responses';
       providerType?: undefined;
       quotaStatus: {
         quotaData: ProviderQuotaDataCommon;
@@ -835,6 +906,8 @@ function hasProviderQuotaStatus(node: QueryChannelNode | null | undefined): node
   return node?.providerQuotaStatus != null;
 }
 
+// parseChannelNode converts a channel with quota status into the discriminated
+// provider quota view used by the quota popover.
 function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel {
   const quotaStatus = node.providerQuotaStatus;
   const providerType = quotaStatus.providerType;
@@ -896,6 +969,13 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
       ...base,
       type: 'github_copilot' as const,
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderGitHubCopilotQuotaData },
+    };
+  }
+  if (node.type === 'deepseek' || node.type === 'deepseek_anthropic') {
+    return {
+      ...base,
+      type: node.type as 'deepseek' | 'deepseek_anthropic',
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderDeepseekQuotaData },
     };
   }
   if (node.type === 'nanogpt') {
@@ -979,6 +1059,14 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
         type: typeVal,
         providerType: 'charm_hyper' as const,
         quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderCharmHyperQuotaData },
+      };
+    }
+    if (providerType === 'deepseek') {
+      return {
+        ...base,
+        type: typeVal,
+        providerType: 'deepseek' as const,
+        quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderDeepseekQuotaData },
       };
     }
     return {

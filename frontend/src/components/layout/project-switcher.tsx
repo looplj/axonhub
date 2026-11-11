@@ -12,9 +12,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useMyProjects } from '@/features/projects/data/projects';
 
-export function ProjectSwitcher() {
-  const { data: myProjects, isLoading: isLoadingProjects } = useMyProjects();
-  const { t } = useTranslation();
+// Keeps the selected project valid against the user's project list. Called from
+// the layout so it runs even while the switcher is hidden outside the project module.
+export function useEnsureSelectedProject() {
+  const { data: myProjects } = useMyProjects();
   const { selectedProjectId, setSelectedProjectId } = useProjectStore();
 
   // 当项目列表加载完成后，验证并设置选中的项目
@@ -46,6 +47,13 @@ export function ProjectSwitcher() {
     const firstProject = myProjects[0];
     setSelectedProjectId(firstProject.id);
   }, [myProjects, selectedProjectId, setSelectedProjectId]);
+
+}
+
+export function ProjectSwitcher() {
+  const { data: myProjects, isLoading: isLoadingProjects } = useMyProjects();
+  const { t } = useTranslation();
+  const { selectedProjectId, setSelectedProjectId } = useProjectStore();
 
   // 处理项目切换
   const handleProjectChange = (projectId: string) => {

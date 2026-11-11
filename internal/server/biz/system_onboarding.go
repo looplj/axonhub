@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 )
 
@@ -29,8 +28,6 @@ type OnboardingRecord struct {
 // OnboardingInfo retrieves the onboarding information from system settings.
 // Returns nil if not set.
 func (s *SystemService) OnboardingInfo(ctx context.Context) (*OnboardingRecord, error) {
-	ctx = authz.WithSystemBypass(ctx, "read-onboarding-info")
-
 	value, err := s.getSystemValue(ctx, SystemKeyOnboarded)
 	if err != nil {
 		if ent.IsNotFound(err) {

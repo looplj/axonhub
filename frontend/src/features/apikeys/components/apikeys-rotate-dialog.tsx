@@ -81,7 +81,7 @@ export function ApiKeysRotateDialog() {
           </div>
         ) : null}
 
-        <DialogFooter className="gap-2">
+        <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
             {newKey ? t('common.buttons.close') : t('common.buttons.cancel')}
           </Button>

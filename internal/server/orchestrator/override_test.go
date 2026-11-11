@@ -2767,3 +2767,55 @@ func TestOverrideDeleteWildcardAllocationBudget(t *testing.T) {
 	require.Less(t, result.AllocedBytesPerOp(), int64(8*len(body)))
 	t.Logf("request bytes: %d; allocated bytes/op: %d", len(body), result.AllocedBytesPerOp())
 }
+
+func TestOverrideConditionTemplateFunctions(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name      string
+		model     string
+		condition string
+		want      bool
+	}{
+		{name: "contains matches substring", model: "anthropic/claude-sonnet-4.5", condition: `{{contains "claude" .Model}}`, want: true},
+		{name: "contains misses substring", model: "openai/gpt-4", condition: `{{contains "claude" .Model}}`, want: false},
+		{name: "contains works as a pipeline", model: "anthropic/claude-sonnet-4.5", condition: `{{.Model | contains "claude"}}`, want: true},
+		{name: "regexMatch matches", model: "anthropic/claude-sonnet-4.5", condition: `{{regexMatch "^anthropic/claude-" .Model}}`, want: true},
+		{name: "regexMatch misses", model: "openai/gpt-4", condition: `{{regexMatch "^anthropic/claude-" .Model}}`, want: false},
+		{name: "regexMatch is unanchored", model: "proxy/claude-sonnet", condition: `{{regexMatch "claude" .Model}}`, want: true},
+		{name: "regexMatch ignores an invalid pattern", model: "anthropic/claude-sonnet-4.5", condition: `{{regexMatch "[" .Model}}`, want: false},
+		{name: "globMatch matches", model: "anthropic/claude-sonnet-4.5", condition: `{{globMatch "**/claude-*" .Model}}`, want: true},
+		{name: "globMatch keeps star within a segment", model: "anthropic/openai/claude", condition: `{{globMatch "anthropic/*" .Model}}`, want: false},
+		{name: "globMatch ignores an invalid pattern", model: "model-a", condition: `{{globMatch "model-[" .Model}}`, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			channel := &biz.Channel{
+				Channel: &ent.Channel{
+					ID:   1,
+					Name: "condition-func-test",
+					Settings: &objects.ChannelSettings{
+						BodyOverrideOperations: []objects.OverrideOperation{
+							{Op: objects.OverrideOpSet, Path: "matched", Value: "yes", Condition: tt.condition},
+						},
+					},
+				},
+				Outbound: &mockTransformer{},
+			}
+			outbound := &PersistentOutboundTransformer{
+				wrapped: &mockTransformer{},
+				state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					LlmRequest:       &llm.Request{Model: tt.model},
+					OriginalModel:    tt.model,
+				},
+			}
+
+			middleware := applyOverrideRequestBody(outbound)
+			result, err := middleware.OnOutboundRawRequest(ctx, &httpclient.Request{Body: []byte(`{"model":"test"}`)})
+			require.NoError(t, err)
+			require.Equal(t, tt.want, gjson.GetBytes(result.Body, "matched").Exists())
+		})
+	}
+}

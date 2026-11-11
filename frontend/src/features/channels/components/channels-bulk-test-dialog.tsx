@@ -348,7 +348,7 @@ export function ChannelsBulkTestDialog() {
           </div>
         </div>
 
-        <DialogFooter className='shrink-0 !flex-col gap-2 border-t pt-4 sm:!flex-row sm:items-center sm:justify-between'>
+        <DialogFooter pinned divided layout='content' align='between' className='sm:items-center'>
           <div className='text-muted-foreground min-w-0 text-sm'>
             {recoverableChannels.length > 0
               ? t('channels.dialogs.bulkTest.recoverButton', { count: recoverableChannels.length })
