@@ -16,10 +16,11 @@ const (
 	panelBlank    = "—"
 )
 
-// requestAdminPath is the admin page for one request. The id is escaped
-// as a single path segment, so a gid's slashes stay inside it.
+// requestAdminPath opens the global detail page because the desktop lists
+// requests across projects, including projects outside the owner's memberships.
+// The id is escaped as a single path segment, keeping a gid's slashes inside it.
 func requestAdminPath(id string) string {
-	return "/project/requests/" + url.PathEscape(id)
+	return "/requests/" + url.PathEscape(id)
 }
 
 // nextSelectedID keeps the current row when it is still in the snapshot

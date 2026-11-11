@@ -204,11 +204,11 @@ func (msgs Messages) StepBaseUrl() string {
 	return Catalog.Format(msgs.locale, "step_base_url", nil)
 }
 
-// StepApiKey says "Copy the Desktop key and paste it as the API key."
+// StepApiKey says "Copy a key from the Keys tab and paste it as the API key."
 // in the language the app shows.
 func StepApiKey() string { return In(i18n.Locale()).StepApiKey() }
 
-// StepApiKey says "Copy the Desktop key and paste it as the API key."
+// StepApiKey says "Copy a key from the Keys tab and paste it as the API key."
 // in the language of msgs.
 func (msgs Messages) StepApiKey() string {
 	return Catalog.Format(msgs.locale, "step_api_key", nil)
@@ -524,11 +524,11 @@ func (msgs Messages) Port() string {
 	return Catalog.Format(msgs.locale, "port", nil)
 }
 
-// PortHint says "Listens on 127.0.0.1. Empty uses 18090. Saving restarts AxonHub."
+// PortHint says "Empty uses 18090. Saving restarts AxonHub."
 // in the language the app shows.
 func PortHint() string { return In(i18n.Locale()).PortHint() }
 
-// PortHint says "Listens on 127.0.0.1. Empty uses 18090. Saving restarts AxonHub."
+// PortHint says "Empty uses 18090. Saving restarts AxonHub."
 // in the language of msgs.
 func (msgs Messages) PortHint() string {
 	return Catalog.Format(msgs.locale, "port_hint", nil)
@@ -822,4 +822,464 @@ func UpdateTo(version string) string { return In(i18n.Locale()).UpdateTo(version
 // in the language of msgs.
 func (msgs Messages) UpdateTo(version string) string {
 	return Catalog.Format(msgs.locale, "update_to", map[string]any{"version": version})
+}
+
+// TabTraffic says "Traffic"
+// in the language the app shows.
+func TabTraffic() string { return In(i18n.Locale()).TabTraffic() }
+
+// TabTraffic says "Traffic"
+// in the language of msgs.
+func (msgs Messages) TabTraffic() string {
+	return Catalog.Format(msgs.locale, "tab_traffic", nil)
+}
+
+// TabKeys says "Keys"
+// in the language the app shows.
+func TabKeys() string { return In(i18n.Locale()).TabKeys() }
+
+// TabKeys says "Keys"
+// in the language of msgs.
+func (msgs Messages) TabKeys() string {
+	return Catalog.Format(msgs.locale, "tab_keys", nil)
+}
+
+// SearchKeys says "Search keys"
+// in the language the app shows.
+func SearchKeys() string { return In(i18n.Locale()).SearchKeys() }
+
+// SearchKeys says "Search keys"
+// in the language of msgs.
+func (msgs Messages) SearchKeys() string {
+	return Catalog.Format(msgs.locale, "search_keys", nil)
+}
+
+// NewKey says "New key"
+// in the language the app shows.
+func NewKey() string { return In(i18n.Locale()).NewKey() }
+
+// NewKey says "New key"
+// in the language of msgs.
+func (msgs Messages) NewKey() string {
+	return Catalog.Format(msgs.locale, "new_key", nil)
+}
+
+// KeyName says "Key name"
+// in the language the app shows.
+func KeyName() string { return In(i18n.Locale()).KeyName() }
+
+// KeyName says "Key name"
+// in the language of msgs.
+func (msgs Messages) KeyName() string {
+	return Catalog.Format(msgs.locale, "key_name", nil)
+}
+
+// Create says "Create"
+// in the language the app shows.
+func Create() string { return In(i18n.Locale()).Create() }
+
+// Create says "Create"
+// in the language of msgs.
+func (msgs Messages) Create() string {
+	return Catalog.Format(msgs.locale, "create", nil)
+}
+
+// ShowKey says "Show key"
+// in the language the app shows.
+func ShowKey() string { return In(i18n.Locale()).ShowKey() }
+
+// ShowKey says "Show key"
+// in the language of msgs.
+func (msgs Messages) ShowKey() string {
+	return Catalog.Format(msgs.locale, "show_key", nil)
+}
+
+// HideKey says "Hide key"
+// in the language the app shows.
+func HideKey() string { return In(i18n.Locale()).HideKey() }
+
+// HideKey says "Hide key"
+// in the language of msgs.
+func (msgs Messages) HideKey() string {
+	return Catalog.Format(msgs.locale, "hide_key", nil)
+}
+
+// NoKeys says "No API keys yet"
+// in the language the app shows.
+func NoKeys() string { return In(i18n.Locale()).NoKeys() }
+
+// NoKeys says "No API keys yet"
+// in the language of msgs.
+func (msgs Messages) NoKeys() string {
+	return Catalog.Format(msgs.locale, "no_keys", nil)
+}
+
+// NoKeysMatch says "No keys match"
+// in the language the app shows.
+func NoKeysMatch() string { return In(i18n.Locale()).NoKeysMatch() }
+
+// NoKeysMatch says "No keys match"
+// in the language of msgs.
+func (msgs Messages) NoKeysMatch() string {
+	return Catalog.Format(msgs.locale, "no_keys_match", nil)
+}
+
+// KeyEnabled says "Enabled"
+// in the language the app shows.
+func KeyEnabled() string { return In(i18n.Locale()).KeyEnabled() }
+
+// KeyEnabled says "Enabled"
+// in the language of msgs.
+func (msgs Messages) KeyEnabled() string {
+	return Catalog.Format(msgs.locale, "key_enabled", nil)
+}
+
+// CouldntUpdateKey says "Couldn't update the key"
+// in the language the app shows.
+func CouldntUpdateKey() string { return In(i18n.Locale()).CouldntUpdateKey() }
+
+// CouldntUpdateKey says "Couldn't update the key"
+// in the language of msgs.
+func (msgs Messages) CouldntUpdateKey() string {
+	return Catalog.Format(msgs.locale, "couldnt_update_key", nil)
+}
+
+// CouldntCreateKey says "Couldn't create the key"
+// in the language the app shows.
+func CouldntCreateKey() string { return In(i18n.Locale()).CouldntCreateKey() }
+
+// CouldntCreateKey says "Couldn't create the key"
+// in the language of msgs.
+func (msgs Messages) CouldntCreateKey() string {
+	return Catalog.Format(msgs.locale, "couldnt_create_key", nil)
+}
+
+// NewKeyNote says "Created in the {project} project."
+// in the language the app shows.
+func NewKeyNote(project string) string { return In(i18n.Locale()).NewKeyNote(project) }
+
+// NewKeyNote says "Created in the {project} project."
+// in the language of msgs.
+func (msgs Messages) NewKeyNote(project string) string {
+	return Catalog.Format(msgs.locale, "new_key_note", map[string]any{"project": project})
+}
+
+// TabChannels says "Channels"
+// in the language the app shows.
+func TabChannels() string { return In(i18n.Locale()).TabChannels() }
+
+// TabChannels says "Channels"
+// in the language of msgs.
+func (msgs Messages) TabChannels() string {
+	return Catalog.Format(msgs.locale, "tab_channels", nil)
+}
+
+// TabModels says "Models"
+// in the language the app shows.
+func TabModels() string { return In(i18n.Locale()).TabModels() }
+
+// TabModels says "Models"
+// in the language of msgs.
+func (msgs Messages) TabModels() string {
+	return Catalog.Format(msgs.locale, "tab_models", nil)
+}
+
+// SearchChannels says "Search channels"
+// in the language the app shows.
+func SearchChannels() string { return In(i18n.Locale()).SearchChannels() }
+
+// SearchChannels says "Search channels"
+// in the language of msgs.
+func (msgs Messages) SearchChannels() string {
+	return Catalog.Format(msgs.locale, "search_channels", nil)
+}
+
+// SearchModels says "Search models"
+// in the language the app shows.
+func SearchModels() string { return In(i18n.Locale()).SearchModels() }
+
+// SearchModels says "Search models"
+// in the language of msgs.
+func (msgs Messages) SearchModels() string {
+	return Catalog.Format(msgs.locale, "search_models", nil)
+}
+
+// NoChannels says "No channels yet. Add one in admin."
+// in the language the app shows.
+func NoChannels() string { return In(i18n.Locale()).NoChannels() }
+
+// NoChannels says "No channels yet. Add one in admin."
+// in the language of msgs.
+func (msgs Messages) NoChannels() string {
+	return Catalog.Format(msgs.locale, "no_channels", nil)
+}
+
+// NoModels says "No models yet. Add one in admin."
+// in the language the app shows.
+func NoModels() string { return In(i18n.Locale()).NoModels() }
+
+// NoModels says "No models yet. Add one in admin."
+// in the language of msgs.
+func (msgs Messages) NoModels() string {
+	return Catalog.Format(msgs.locale, "no_models", nil)
+}
+
+// NoMatch says "Nothing matches"
+// in the language the app shows.
+func NoMatch() string { return In(i18n.Locale()).NoMatch() }
+
+// NoMatch says "Nothing matches"
+// in the language of msgs.
+func (msgs Messages) NoMatch() string {
+	return Catalog.Format(msgs.locale, "no_match", nil)
+}
+
+// Test says "Test"
+// in the language the app shows.
+func Test() string { return In(i18n.Locale()).Test() }
+
+// Test says "Test"
+// in the language of msgs.
+func (msgs Messages) Test() string {
+	return Catalog.Format(msgs.locale, "test", nil)
+}
+
+// Testing says "Testing…"
+// in the language the app shows.
+func Testing() string { return In(i18n.Locale()).Testing() }
+
+// Testing says "Testing…"
+// in the language of msgs.
+func (msgs Messages) Testing() string {
+	return Catalog.Format(msgs.locale, "testing", nil)
+}
+
+// TestFailed says "Test failed"
+// in the language the app shows.
+func TestFailed() string { return In(i18n.Locale()).TestFailed() }
+
+// TestFailed says "Test failed"
+// in the language of msgs.
+func (msgs Messages) TestFailed() string {
+	return Catalog.Format(msgs.locale, "test_failed", nil)
+}
+
+// TestNote says "A test sends one real request to the provider."
+// in the language the app shows.
+func TestNote() string { return In(i18n.Locale()).TestNote() }
+
+// TestNote says "A test sends one real request to the provider."
+// in the language of msgs.
+func (msgs Messages) TestNote() string {
+	return Catalog.Format(msgs.locale, "test_note", nil)
+}
+
+// AutoDisabled says "Auto-disabled"
+// in the language the app shows.
+func AutoDisabled() string { return In(i18n.Locale()).AutoDisabled() }
+
+// AutoDisabled says "Auto-disabled"
+// in the language of msgs.
+func (msgs Messages) AutoDisabled() string {
+	return Catalog.Format(msgs.locale, "auto_disabled", nil)
+}
+
+// QuotaWarning says "Quota low"
+// in the language the app shows.
+func QuotaWarning() string { return In(i18n.Locale()).QuotaWarning() }
+
+// QuotaWarning says "Quota low"
+// in the language of msgs.
+func (msgs Messages) QuotaWarning() string {
+	return Catalog.Format(msgs.locale, "quota_warning", nil)
+}
+
+// QuotaExhausted says "Quota exhausted"
+// in the language the app shows.
+func QuotaExhausted() string { return In(i18n.Locale()).QuotaExhausted() }
+
+// QuotaExhausted says "Quota exhausted"
+// in the language of msgs.
+func (msgs Messages) QuotaExhausted() string {
+	return Catalog.Format(msgs.locale, "quota_exhausted", nil)
+}
+
+// ModelCount says "{n} models"
+// in the language the app shows.
+func ModelCount(n string) string { return In(i18n.Locale()).ModelCount(n) }
+
+// ModelCount says "{n} models"
+// in the language of msgs.
+func (msgs Messages) ModelCount(n string) string {
+	return Catalog.Format(msgs.locale, "model_count", map[string]any{"n": n})
+}
+
+// ChannelEnabled says "Enabled"
+// in the language the app shows.
+func ChannelEnabled() string { return In(i18n.Locale()).ChannelEnabled() }
+
+// ChannelEnabled says "Enabled"
+// in the language of msgs.
+func (msgs Messages) ChannelEnabled() string {
+	return Catalog.Format(msgs.locale, "channel_enabled", nil)
+}
+
+// CouldntUpdateChannel says "Couldn't update the channel"
+// in the language the app shows.
+func CouldntUpdateChannel() string { return In(i18n.Locale()).CouldntUpdateChannel() }
+
+// CouldntUpdateChannel says "Couldn't update the channel"
+// in the language of msgs.
+func (msgs Messages) CouldntUpdateChannel() string {
+	return Catalog.Format(msgs.locale, "couldnt_update_channel", nil)
+}
+
+// Disabled says "Disabled"
+// in the language the app shows.
+func Disabled() string { return In(i18n.Locale()).Disabled() }
+
+// Disabled says "Disabled"
+// in the language of msgs.
+func (msgs Messages) Disabled() string {
+	return Catalog.Format(msgs.locale, "disabled", nil)
+}
+
+// OpenInAdmin says "Open in admin"
+// in the language the app shows.
+func OpenInAdmin() string { return In(i18n.Locale()).OpenInAdmin() }
+
+// OpenInAdmin says "Open in admin"
+// in the language of msgs.
+func (msgs Messages) OpenInAdmin() string {
+	return Catalog.Format(msgs.locale, "open_in_admin", nil)
+}
+
+// CopyError says "Copy error"
+// in the language the app shows.
+func CopyError() string { return In(i18n.Locale()).CopyError() }
+
+// CopyError says "Copy error"
+// in the language of msgs.
+func (msgs Messages) CopyError() string {
+	return Catalog.Format(msgs.locale, "copy_error", nil)
+}
+
+// FirstToken says "first token {n}"
+// in the language the app shows.
+func FirstToken(n string) string { return In(i18n.Locale()).FirstToken(n) }
+
+// FirstToken says "first token {n}"
+// in the language of msgs.
+func (msgs Messages) FirstToken(n string) string {
+	return Catalog.Format(msgs.locale, "first_token", map[string]any{"n": n})
+}
+
+// NoAttempts says "No upstream attempt yet"
+// in the language the app shows.
+func NoAttempts() string { return In(i18n.Locale()).NoAttempts() }
+
+// NoAttempts says "No upstream attempt yet"
+// in the language of msgs.
+func (msgs Messages) NoAttempts() string {
+	return Catalog.Format(msgs.locale, "no_attempts", nil)
+}
+
+// Notifications says "Notifications"
+// in the language the app shows.
+func Notifications() string { return In(i18n.Locale()).Notifications() }
+
+// Notifications says "Notifications"
+// in the language of msgs.
+func (msgs Messages) Notifications() string {
+	return Catalog.Format(msgs.locale, "notifications", nil)
+}
+
+// NotifyAlerts says "Channel and quota alerts"
+// in the language the app shows.
+func NotifyAlerts() string { return In(i18n.Locale()).NotifyAlerts() }
+
+// NotifyAlerts says "Channel and quota alerts"
+// in the language of msgs.
+func (msgs Messages) NotifyAlerts() string {
+	return Catalog.Format(msgs.locale, "notify_alerts", nil)
+}
+
+// NotifyNote says "Checks once a minute in the background for auto-disabled channels and exhausted quota. Reads the local database only."
+// in the language the app shows.
+func NotifyNote() string { return In(i18n.Locale()).NotifyNote() }
+
+// NotifyNote says "Checks once a minute in the background for auto-disabled channels and exhausted quota. Reads the local database only."
+// in the language of msgs.
+func (msgs Messages) NotifyNote() string {
+	return Catalog.Format(msgs.locale, "notify_note", nil)
+}
+
+// AlertChannelDown says "Channel auto-disabled"
+// in the language the app shows.
+func AlertChannelDown() string { return In(i18n.Locale()).AlertChannelDown() }
+
+// AlertChannelDown says "Channel auto-disabled"
+// in the language of msgs.
+func (msgs Messages) AlertChannelDown() string {
+	return Catalog.Format(msgs.locale, "alert_channel_down", nil)
+}
+
+// AlertQuota says "Quota exhausted"
+// in the language the app shows.
+func AlertQuota() string { return In(i18n.Locale()).AlertQuota() }
+
+// AlertQuota says "Quota exhausted"
+// in the language of msgs.
+func (msgs Messages) AlertQuota() string {
+	return Catalog.Format(msgs.locale, "alert_quota", nil)
+}
+
+// LanAccess says "Allow LAN access"
+// in the language the app shows.
+func LanAccess() string { return In(i18n.Locale()).LanAccess() }
+
+// LanAccess says "Allow LAN access"
+// in the language of msgs.
+func (msgs Messages) LanAccess() string {
+	return Catalog.Format(msgs.locale, "lan_access", nil)
+}
+
+// LanNote says "Other devices on your network can reach AxonHub with an API key. The admin sign-in page becomes reachable too. Saving…"
+// in the language the app shows.
+func LanNote() string { return In(i18n.Locale()).LanNote() }
+
+// LanNote says "Other devices on your network can reach AxonHub with an API key. The admin sign-in page becomes reachable too. Saving…"
+// in the language of msgs.
+func (msgs Messages) LanNote() string {
+	return Catalog.Format(msgs.locale, "lan_note", nil)
+}
+
+// LanUrl says "LAN URL"
+// in the language the app shows.
+func LanUrl() string { return In(i18n.Locale()).LanUrl() }
+
+// LanUrl says "LAN URL"
+// in the language of msgs.
+func (msgs Messages) LanUrl() string {
+	return Catalog.Format(msgs.locale, "lan_url", nil)
+}
+
+// Server says "Server"
+// in the language the app shows.
+func Server() string { return In(i18n.Locale()).Server() }
+
+// Server says "Server"
+// in the language of msgs.
+func (msgs Messages) Server() string {
+	return Catalog.Format(msgs.locale, "server", nil)
+}
+
+// ChannelCount says "{n} channels"
+// in the language the app shows.
+func ChannelCount(n string) string { return In(i18n.Locale()).ChannelCount(n) }
+
+// ChannelCount says "{n} channels"
+// in the language of msgs.
+func (msgs Messages) ChannelCount(n string) string {
+	return Catalog.Format(msgs.locale, "channel_count", map[string]any{"n": n})
 }

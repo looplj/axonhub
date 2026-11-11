@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -54,6 +55,11 @@ const panelQuery = `query DesktopPanel($first: Int!, $orderBy: RequestOrder!) {
           edges {
             node {
               createdAt
+              status
+              errorMessage
+              responseStatusCode
+              metricsLatencyMs
+              metricsFirstTokenLatencyMs
               channel {
                 name
               }
@@ -88,8 +94,8 @@ const panelFailuresQuery = `query DesktopPanelFailures($where: RequestWhereInput
 // RequestsToday, InputTokens, OutputTokens, and CachedTokens come from the
 // dashboard aggregates. Failures is the today-scoped count of failed and
 // canceled requests. Absent aggregate fields stay zero.
-// DesktopKey is the stored secret for the project's Desktop API key. The
-// panel copies it and does not draw it. Empty means it is not ready.
+// DesktopKey is the stored secret for the project's Desktop API key. Each
+// load ensures it exists, so the Keys page always has one to copy.
 type panelSnapshot struct {
 	RequestsToday int
 	InputTokens   int
@@ -121,6 +127,18 @@ type panelRequest struct {
 	TotalTokens      *int
 	LatencyMs        *int
 	TokensPerSecond  *int
+	Attempts         []panelAttempt
+}
+
+// panelAttempt is one upstream try of a request. A request that failed
+// over has several, oldest first.
+type panelAttempt struct {
+	Channel      string
+	Status       string
+	StatusCode   *int
+	LatencyMs    *int
+	FirstTokenMs *int
+	Error        string
 }
 
 type panelQueryData struct {
@@ -146,8 +164,14 @@ type panelFailureData struct {
 	} `json:"requests"`
 }
 
+type panelPageInfo struct {
+	HasNextPage bool    `json:"hasNextPage"`
+	EndCursor   *string `json:"endCursor"`
+}
+
 type panelConnection[T any] struct {
-	Edges []panelEdge[T] `json:"edges"`
+	Edges    []panelEdge[T] `json:"edges"`
+	PageInfo panelPageInfo  `json:"pageInfo"`
 }
 
 type panelEdge[T any] struct {
@@ -171,8 +195,13 @@ type panelRequestNode struct {
 }
 
 type panelExecutionNode struct {
-	CreatedAt time.Time  `json:"createdAt"`
-	Channel   *panelName `json:"channel"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	Status       string     `json:"status"`
+	ErrorMessage *string    `json:"errorMessage"`
+	StatusCode   *int       `json:"responseStatusCode"`
+	LatencyMs    *int       `json:"metricsLatencyMs"`
+	FirstTokenMs *int       `json:"metricsFirstTokenLatencyMs"`
+	Channel      *panelName `json:"channel"`
 }
 
 type panelUsageNode struct {
@@ -304,7 +333,28 @@ func mapPanelRequest(node panelRequestNode) panelRequest {
 		TotalTokens:      total,
 		LatencyMs:        node.MetricsLatencyMs,
 		TokensPerSecond:  completionRate(node.Status, completion, node.MetricsLatencyMs),
+		Attempts:         requestAttempts(node.Executions),
 	}
+}
+
+// requestAttempts orders a request's executions oldest first, whatever
+// order the server returned them in.
+func requestAttempts(conn panelConnection[panelExecutionNode]) []panelAttempt {
+	nodes := connectionNodes(conn)
+	sort.SliceStable(nodes, func(i, j int) bool { return nodes[i].CreatedAt.Before(nodes[j].CreatedAt) })
+	return lo.Map(nodes, func(node panelExecutionNode, _ int) panelAttempt {
+		attempt := panelAttempt{
+			Status:       node.Status,
+			StatusCode:   node.StatusCode,
+			LatencyMs:    node.LatencyMs,
+			FirstTokenMs: node.FirstTokenMs,
+			Error:        strings.TrimSpace(lo.FromPtr(node.ErrorMessage)),
+		}
+		if node.Channel != nil {
+			attempt.Channel = node.Channel.Name
+		}
+		return attempt
+	})
 }
 
 func requestCaller(apiKey *panelName, userAgent string) string {
@@ -348,6 +398,30 @@ func connectionNodes[T any](conn panelConnection[T]) []T {
 		}
 		return *edge.Node, true
 	})
+}
+
+// panelPageVariables is one page of a panel list. An empty cursor asks
+// for the first page and is omitted, so the server does not parse it.
+func panelPageVariables(first int, after string, where, orderBy any) map[string]any {
+	variables := map[string]any{
+		"first":   first,
+		"where":   where,
+		"orderBy": orderBy,
+	}
+	if after != "" {
+		variables["after"] = after
+	}
+	return variables
+}
+
+// nextPageCursor is the cursor of the following page. A missing cursor,
+// the last page, or a cursor that did not advance ends the walk.
+func nextPageCursor[T any](conn panelConnection[T], current string) string {
+	cursor := strings.TrimSpace(lo.FromPtr(conn.PageInfo.EndCursor))
+	if !conn.PageInfo.HasNextPage || cursor == "" || cursor == current {
+		return ""
+	}
+	return cursor
 }
 
 func postGraphQL[T any](ctx context.Context, client *http.Client, origin string, session desktopSession, operation, query string, variables any) (T, error) {

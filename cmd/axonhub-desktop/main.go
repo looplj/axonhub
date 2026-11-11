@@ -105,6 +105,9 @@ func openDesktop(shell *shell, dir, configPath string) error {
 		return err
 	}
 	shell.origin = strings.TrimRight(started.baseURL, "/")
+	if settings, err := readDesktopSettings(configPath); err == nil && settings.LAN {
+		shell.lanPort = settings.Port
+	}
 	shell.session = session
 	return nil
 }
@@ -155,8 +158,8 @@ func startServer() (desktopServer, *serverStop, error) {
 						// Returning an error from OnStart makes fx exit the
 						// process. Report it on started instead, so the panel
 						// can open settings and the port can be changed.
-						if !loopbackHost(srv.Config.Host) {
-							started <- desktopStart{err: fmt.Errorf("desktop server must listen on a loopback address, not %q", srv.Config.Host)}
+						if !listenHostAllowed(srv.Config.Host) {
+							started <- desktopStart{err: fmt.Errorf("desktop server must listen on a loopback address or %s, not %q", desktopLANHost, srv.Config.Host)}
 							return nil
 						}
 						if srv.Config.Port <= 0 || srv.Config.Port > 65535 {
@@ -188,7 +191,9 @@ func startServer() (desktopServer, *serverStop, error) {
 							defer recoverLog("antigravity version")
 							antigravity.InitVersion(context.Background())
 						}()
-						addr := net.JoinHostPort(srv.Config.Host, strconv.Itoa(srv.Config.Port))
+						// The panel always talks to the server over loopback,
+						// also when it listens on every interface.
+						addr := net.JoinHostPort(panelHost(srv.Config.Host), strconv.Itoa(srv.Config.Port))
 						if err := waitUntilListening(ctx, addr, listenErr); err != nil {
 							started <- desktopStart{err: fmt.Errorf("listen on %s: %w", addr, err)}
 							return nil
@@ -331,6 +336,43 @@ func waitUntilListening(ctx context.Context, addr string, listenErr <-chan error
 			last = err
 		}
 	}
+}
+
+// lanHost reports whether host is the every-interface address the LAN
+// setting writes.
+func lanHost(host string) bool {
+	return host == desktopLANHost
+}
+
+// listenHostAllowed accepts loopback, and every interface once the user
+// turned LAN access on in settings. Any other host in config.yml is
+// refused, so an edited file cannot expose the server by accident.
+func listenHostAllowed(host string) bool {
+	return loopbackHost(host) || lanHost(host)
+}
+
+// panelHost is the host the panel dials: loopback when the server
+// listens on every interface, the configured loopback host otherwise.
+func panelHost(host string) string {
+	if lanHost(host) {
+		return desktopHost
+	}
+	return host
+}
+
+// lanAddress is this machine's first private IPv4 address, or "" when it
+// has none.
+func lanAddress(addrs []net.Addr) string {
+	for _, addr := range addrs {
+		ipNet, ok := addr.(*net.IPNet)
+		if !ok {
+			continue
+		}
+		if ip := ipNet.IP.To4(); ip != nil && ip.IsPrivate() {
+			return ip.String()
+		}
+	}
+	return ""
 }
 
 func loopbackHost(host string) bool {

@@ -72,17 +72,6 @@ type restoredDesktopKey struct {
 	UpdateAPIKeyStatus desktopKeyNode `json:"updateAPIKeyStatus"`
 }
 
-// desktopKeyAction is what the Desktop row shows and what Copy writes.
-// Label is the name. Copy is the stored secret and is not drawn.
-type desktopKeyAction struct {
-	Label string
-	Copy  string
-}
-
-func presentDesktopKey(secret string) desktopKeyAction {
-	return desktopKeyAction{Label: desktopKeyName, Copy: secret}
-}
-
 func desktopKeyVariables(projectID string) map[string]any {
 	return map[string]any{
 		"first": desktopKeyLimit,
