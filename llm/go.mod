@@ -1,6 +1,6 @@
 module github.com/looplj/axonhub/llm
 
-go 1.26.11
+go 1.27.4
 
 require (
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.26

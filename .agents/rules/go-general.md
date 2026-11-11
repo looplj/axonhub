@@ -10,6 +10,7 @@ globs: "**/*.go"
 1. The development server is managed by `air`; do not restart it manually.
 2. Do not run `go build`, `make build-backend`, `make build`, or `golangci-lint run` unless the user explicitly asks.
 3. Use the owning Go module for commands. In particular, run Go commands for `llm/` from the `llm/` directory, and for `cmd/axonhub-desktop/` from that directory. `make build-desktop` packages the desktop app.
+4. When changing the Go version, run `scripts/bump-go-version.sh` as described in [go-version.md](go-version.md). Do not edit the pins by hand.
 
 ## Coding Conventions
 

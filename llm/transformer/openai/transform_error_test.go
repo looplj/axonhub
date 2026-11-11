@@ -28,7 +28,8 @@ func TestInboundTransformer_TransformError_WrappedTypedNilReturnsInternalServerE
 func TestInboundTransformer_TransformError_WrappedTypedNilResponseErrorReturnsInternalServerError(t *testing.T) {
 	transformer := NewInboundTransformer()
 	var typedNil *llm.ResponseError
-	wrapped := fmt.Errorf("wrap: %w", typedNil)
+	// ResponseError implements error by value. Go 1.27 rejects %w on the pointer type.
+	wrapped := fmt.Errorf("wrap: %w", error(typedNil))
 
 	result := transformer.TransformError(context.Background(), wrapped)
 

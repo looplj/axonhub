@@ -55,7 +55,7 @@ AxonHub is an all-in-one AI development platform that serves as a unified API ga
 
 ## Technology Stack
 
-- **Backend**: Go 1.26.0+ with Gin, Ent ORM, gqlgen, FX
+- **Backend**: Go 1.27.4 with Gin, Ent ORM, gqlgen, FX
 - **Frontend**: React 19 + TypeScript, TanStack Router/Query, Zustand, Tailwind CSS
 
 ## Backend Structure
@@ -112,6 +112,7 @@ All detailed rules are in `.agents/rules/`:
 | File | Scope | Description |
 |------|-------|-------------|
 | [go-general.md](.agents/rules/go-general.md) | `**/*.go` | Go 通用约定、错误处理、依赖注入、开发命令约束 |
+| [go-version.md](.agents/rules/go-version.md) | `**/go.mod`, `Dockerfile`, `.github/workflows/*.yml`, `docs/**/development.md`, `scripts/bump-go-version.sh` | 用 `scripts/bump-go-version.sh` 一次升级模块、镜像、文档和 workflow 里的 Go 版本 |
 | [ent-graphql.md](.agents/rules/ent-graphql.md) | `internal/ent/schema/**/*.go`, `internal/server/gql/**/*.go`, `internal/server/gql/**/*.graphql`, `gqlgen.yml` | Ent、GraphQL、代码生成、schema 变更规则 |
 | [database-indexes.md](.agents/rules/database-indexes.md) | `internal/ent/schema/**/*.go` | 数据库索引设计、命名、跨方言兼容与迁移验证规则 |
 | [biz-services.md](.agents/rules/biz-services.md) | `internal/server/biz/**/*.go` | Biz service、上下文取值、事务与级联删除规则 |

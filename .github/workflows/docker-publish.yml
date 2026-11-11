@@ -10,6 +10,17 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish, for example v1.0.0-rc.3
+        required: true
+        type: string
+      branch:
+        description: Branch or commit to build
+        required: true
+        type: string
+        default: unstable
 
 jobs:
   build_single_arch:
@@ -17,8 +28,8 @@ jobs:
     uses: ./.github/workflows/docker-build.yml
     with:
       mode: release
-      ref: ${{ github.sha }}
-      tag: ${{ github.ref_name }}
+      ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.sha }}
+      tag: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     permissions:
       contents: read
       packages: write
@@ -30,10 +41,26 @@ jobs:
     name: Create multi-arch manifests (Docker Hub)
     needs: [build_single_arch]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Extract tag
-        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            TAG=$INPUT_TAG
+          else
+            TAG=${GITHUB_REF#refs/tags/}
+          fi
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *)
+              echo "Release tag must look like v1.2.3, got: $TAG" >&2
+              exit 1
+              ;;
+          esac
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0

@@ -31,7 +31,7 @@ This architecture ensures:
 
 ### Backend Technology Stack
 
-- **Go 1.26+**
+- **Go 1.27.4**
 - **Gin**
 - **Ent ORM**
 - **gqlgen**
@@ -49,7 +49,7 @@ This architecture ensures:
 
 ### Prerequisites
 
-- Go 1.26 or higher
+- Go 1.27.4 or higher
 - Node.js 18+ and pnpm
 - Git
 
