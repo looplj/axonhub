@@ -458,7 +458,7 @@ func convertToLLMUsage(geminiUsage *UsageMetadata) *llm.Usage {
 	}
 
 	usage := &llm.Usage{
-		PromptTokens:     geminiUsage.PromptTokenCount,
+		PromptTokens:     geminiUsage.PromptTokenCount + geminiUsage.ToolUsePromptTokenCount,
 		CompletionTokens: geminiUsage.CandidatesTokenCount + geminiUsage.ThoughtsTokenCount,
 		TotalTokens:      geminiUsage.TotalTokenCount,
 	}
