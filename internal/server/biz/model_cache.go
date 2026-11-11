@@ -10,6 +10,7 @@
 //
 //	缓存实体只读；事务读取绕过缓存，提交后才失效并广播新旧键。
 //	增量读取包含软删除记录；列表不能用可能过期或尚未加载完整的 GetAll 代替数据库查询。
+
 package biz
 
 import (
@@ -34,6 +35,7 @@ import (
 
 type ModelCacheServiceParams struct {
 	fx.In
+
 	Ent         *ent.Client
 	CacheConfig xcache.Config
 }
@@ -77,7 +79,10 @@ func NewModelCacheService(params ModelCacheServiceParams) *ModelCacheService {
 			if svc.stopped.Load() {
 				return next.Mutate(ctx, mutation)
 			}
-			m := mutation.(*ent.ModelMutation)
+			m, ok := mutation.(*ent.ModelMutation)
+			if !ok {
+				return next.Mutate(ctx, mutation)
+			}
 			// Client hooks precede schema privacy hooks. Authorize before host reads
 			// used to collect the old cache keys; keep normal mutation policies too.
 			if err := model.Policy.EvalMutation(ctx, m); err != nil {

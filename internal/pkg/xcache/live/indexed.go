@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -58,6 +59,11 @@ func (i *cacheItem[V]) IsExpired() bool {
 type IndexedCache[K comparable, V any] struct {
 	mu    sync.RWMutex
 	index map[K]*cacheItem[V]
+	// epochs counts invalidations per key so an in-flight load can tell that the
+	// key was invalidated after it started. Entries are never removed, and every
+	// refresh copies the map: this assumes the set of keys ever invalidated stays
+	// small (e.g. models, API keys), not unbounded or caller-controlled keys.
+	epochs map[K]uint64
 
 	sf singleflight.Group
 
@@ -132,11 +138,13 @@ func NewIndexedCache[K comparable, V any](opts IndexedOptions[K, V]) *IndexedCac
 
 	ic := &IndexedCache[K, V]{
 		index:  make(map[K]*cacheItem[V]),
+		epochs: make(map[K]uint64),
 		opts:   opts,
 		stopCh: make(chan struct{}),
 	}
 
 	refreshFunc := func(ctx context.Context, _ struct{}, lastUpdate time.Time) (struct{}, time.Time, bool, error) {
+		epochs := ic.snapshotEpochs()
 		items, newUpdateTime, err := opts.LoadSinceFunc(ctx, lastUpdate)
 		if err != nil {
 			return struct{}{}, lastUpdate, false, err
@@ -147,22 +155,7 @@ func NewIndexedCache[K comparable, V any](opts IndexedOptions[K, V]) *IndexedCac
 			return struct{}{}, newUpdateTime, false, nil
 		}
 
-		ic.mu.Lock()
-
-		for _, item := range items {
-			key := opts.KeyFunc(item)
-			if opts.DeletedFunc != nil && opts.DeletedFunc(item) {
-				delete(ic.index, key)
-			} else {
-				ic.index[key] = &cacheItem[V]{
-					value:    item,
-					expireAt: ic.calcExpireAt(),
-				}
-			}
-		}
-
-		ic.mu.Unlock()
-
+		ic.applyRefresh(items, epochs)
 		ic.CleanupExpired()
 
 		log.Info(ctx, "indexed cache incremental refresh completed",
@@ -200,6 +193,41 @@ func (c *IndexedCache[K, V]) calcExpireAt() time.Time {
 
 func (c *IndexedCache[K, V]) calcNegativeExpireAt() time.Time {
 	return time.Now().Add(5 * time.Second)
+}
+
+func (c *IndexedCache[K, V]) snapshotEpochs() map[K]uint64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	epochs := make(map[K]uint64, len(c.epochs))
+	maps.Copy(epochs, c.epochs)
+
+	return epochs
+}
+
+// applyRefresh publishes rows from a load that observed epochs.
+// A key invalidated after the snapshot is left untouched, so an older read cannot
+// overwrite a newer invalidation or a load that started after it.
+func (c *IndexedCache[K, V]) applyRefresh(items []V, epochs map[K]uint64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, item := range items {
+		key := c.opts.KeyFunc(item)
+		if c.epochs[key] != epochs[key] {
+			continue
+		}
+
+		if c.opts.DeletedFunc != nil && c.opts.DeletedFunc(item) {
+			delete(c.index, key)
+			continue
+		}
+
+		c.index[key] = &cacheItem[V]{
+			value:    item,
+			expireAt: c.calcExpireAt(),
+		}
+	}
 }
 
 // Get retrieves a value by key.
@@ -271,15 +299,18 @@ func (c *IndexedCache[K, V]) GetCached(key K) (V, bool) {
 	return item.value, true
 }
 
+// sfKey converts key to the string form singleflight requires.
+func (c *IndexedCache[K, V]) sfKey(key K) string {
+	return fmt.Sprintf("%T:%v", key, key)
+}
+
 // loadOne loads a single item with singleflight deduplication.
 func (c *IndexedCache[K, V]) loadOne(ctx context.Context, key K) (V, error) {
 	// Use singleflight to prevent concurrent loads of the same key
-	// Convert key to string for singleflight (it requires string keys)
-	sfKey := fmt.Sprintf("%T:%v", key, key)
-
-	result, err, _ := c.sf.Do(sfKey, func() (any, error) {
+	result, err, _ := c.sf.Do(c.sfKey(key), func() (any, error) {
 		// Double-check cache after acquiring singleflight
 		c.mu.RLock()
+		epoch := c.epochs[key]
 
 		if item, ok := c.index[key]; ok && !item.IsExpired() {
 			c.mu.RUnlock()
@@ -296,18 +327,24 @@ func (c *IndexedCache[K, V]) loadOne(ctx context.Context, key K) (V, error) {
 		// Load from source
 		v, err := c.opts.LoadOneFunc(ctx, key)
 		if err != nil {
-			// Cache negative result for ErrKeyNotFound to prevent cache penetration
+			// Cache negative result for ErrKeyNotFound to prevent cache penetration.
+			// Skip when the key was invalidated while this load was in flight.
 			if errors.Is(err, ErrKeyNotFound) {
 				c.mu.Lock()
-				c.index[key] = &cacheItem[V]{
-					expireAt: c.calcNegativeExpireAt(),
-					isEmpty:  true,
+				stored := c.epochs[key] == epoch
+				if stored {
+					c.index[key] = &cacheItem[V]{
+						expireAt: c.calcNegativeExpireAt(),
+						isEmpty:  true,
+					}
 				}
 				c.mu.Unlock()
 
-				log.Debug(ctx, "indexed cache cached negative result",
-					log.String("name", c.opts.Name),
-					log.Any("key", key))
+				if stored {
+					log.Debug(ctx, "indexed cache cached negative result",
+						log.String("name", c.opts.Name),
+						log.Any("key", key))
+				}
 			}
 
 			return nil, err
@@ -322,17 +359,22 @@ func (c *IndexedCache[K, V]) loadOne(ctx context.Context, key K) (V, error) {
 			return nil, ErrKeyNotFound
 		}
 
-		// Store in cache
+		// Store in cache unless Invalidate won the race.
 		c.mu.Lock()
-		c.index[key] = &cacheItem[V]{
-			value:    v,
-			expireAt: c.calcExpireAt(),
+		stored := c.epochs[key] == epoch
+		if stored {
+			c.index[key] = &cacheItem[V]{
+				value:    v,
+				expireAt: c.calcExpireAt(),
+			}
 		}
 		c.mu.Unlock()
 
-		log.Debug(ctx, "indexed cache loaded item",
-			log.String("name", c.opts.Name),
-			log.Any("key", key))
+		if stored {
+			log.Debug(ctx, "indexed cache loaded item",
+				log.String("name", c.opts.Name),
+				log.Any("key", key))
+		}
 
 		return v, nil
 	})
@@ -353,9 +395,15 @@ func (c *IndexedCache[K, V]) loadOne(ctx context.Context, key K) (V, error) {
 
 // Invalidate removes a single item from cache.
 // The item will be reloaded on next Get call.
+// Loads and refreshes that started before this call do not publish the key afterward,
+// and a Get that starts after it does not join such a load.
 func (c *IndexedCache[K, V]) Invalidate(key K) {
 	c.mu.Lock()
+	c.epochs[key]++
 	delete(c.index, key)
+	// Detach the in-flight load: its result predates this invalidation, so later
+	// callers must start their own load instead of sharing it.
+	c.sf.Forget(c.sfKey(key))
 	c.mu.Unlock()
 
 	log.Debug(context.Background(), "indexed cache invalidated",
@@ -417,26 +465,13 @@ func (c *IndexedCache[K, V]) Len() int {
 // Load performs a full synchronous load using LoadSinceFunc with zero time.
 // This is typically called during initialization.
 func (c *IndexedCache[K, V]) Load(ctx context.Context) error {
+	epochs := c.snapshotEpochs()
 	items, updateTime, err := c.opts.LoadSinceFunc(ctx, time.Time{})
 	if err != nil {
 		return err
 	}
 
-	c.mu.Lock()
-
-	for _, item := range items {
-		key := c.opts.KeyFunc(item)
-		if c.opts.DeletedFunc != nil && c.opts.DeletedFunc(item) {
-			delete(c.index, key)
-		} else {
-			c.index[key] = &cacheItem[V]{
-				value:    item,
-				expireAt: c.calcExpireAt(),
-			}
-		}
-	}
-
-	c.mu.Unlock()
+	c.applyRefresh(items, epochs)
 
 	// Update inner cache's lastUpdate time if exists
 	if c.inner != nil {

@@ -690,3 +690,143 @@ func TestIndexedCache_NegativeCacheWithTTL(t *testing.T) {
 	assert.ErrorIs(t, err, ErrKeyNotFound)
 	assert.Equal(t, int32(2), atomic.LoadInt32(&loadCount))
 }
+
+func TestIndexedCache_InvalidateDuringLoadDoesNotRepublish(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var loads atomic.Int32
+
+	cache := NewIndexedCache(IndexedOptions[string, *testItem]{
+		Name:            "test_invalidate_during_load",
+		KeyFunc:         func(v *testItem) string { return v.Key },
+		RefreshInterval: time.Hour,
+		LoadOneFunc: func(context.Context, string) (*testItem, error) {
+			if loads.Add(1) == 1 {
+				close(started)
+				<-release
+
+				return nil, ErrKeyNotFound
+			}
+
+			return &testItem{Key: "k", Value: "created"}, nil
+		},
+		LoadSinceFunc: func(context.Context, time.Time) ([]*testItem, time.Time, error) {
+			return nil, time.Now(), nil
+		},
+	})
+	defer cache.Stop()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, err := cache.Get(context.Background(), "k")
+		assert.ErrorIs(t, err, ErrKeyNotFound)
+	}()
+
+	<-started
+	cache.Invalidate("k")
+	close(release)
+	<-done
+
+	_, found := cache.GetCached("k")
+	require.False(t, found, "in-flight miss must not become a negative cache entry after invalidation")
+
+	item, err := cache.Get(context.Background(), "k")
+	require.NoError(t, err)
+	require.Equal(t, "created", item.Value)
+	require.Equal(t, int32(2), loads.Load())
+}
+
+func TestIndexedCache_InvalidateDuringRefreshDoesNotRepublish(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var refreshes atomic.Int32
+
+	cache := NewIndexedCache(IndexedOptions[string, *testItem]{
+		Name:            "test_invalidate_during_refresh",
+		KeyFunc:         func(v *testItem) string { return v.Key },
+		RefreshInterval: time.Hour,
+		LoadOneFunc: func(context.Context, string) (*testItem, error) {
+			return nil, ErrKeyNotFound
+		},
+		LoadSinceFunc: func(context.Context, time.Time) ([]*testItem, time.Time, error) {
+			if refreshes.Add(1) == 1 {
+				return []*testItem{{Key: "k", Value: "current"}}, time.Now(), nil
+			}
+
+			close(started)
+			<-release
+
+			return []*testItem{{Key: "k", Value: "stale"}}, time.Now(), nil
+		},
+	})
+	defer cache.Stop()
+
+	require.NoError(t, cache.Load(context.Background()))
+	item, found := cache.GetCached("k")
+	require.True(t, found)
+	require.Equal(t, "current", item.Value)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cache.inner.Load(context.Background(), true)
+	}()
+
+	<-started
+	cache.Invalidate("k")
+	close(release)
+	require.NoError(t, <-done)
+
+	_, found = cache.GetCached("k")
+	require.False(t, found, "refresh that started before invalidation must not restore the key")
+}
+
+func TestIndexedCache_GetAfterInvalidateDoesNotJoinInFlightLoad(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+
+	var loads atomic.Int32
+
+	cache := NewIndexedCache(IndexedOptions[string, *testItem]{
+		Name:            "test_get_after_invalidate",
+		KeyFunc:         func(v *testItem) string { return v.Key },
+		RefreshInterval: time.Hour,
+		LoadOneFunc: func(context.Context, string) (*testItem, error) {
+			if loads.Add(1) == 1 {
+				close(started)
+				<-release
+
+				return &testItem{Key: "k", Value: "stale"}, nil
+			}
+
+			return &testItem{Key: "k", Value: "fresh"}, nil
+		},
+		LoadSinceFunc: func(context.Context, time.Time) ([]*testItem, time.Time, error) {
+			return nil, time.Now(), nil
+		},
+	})
+	defer cache.Stop()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		_, _ = cache.Get(context.Background(), "k")
+	}()
+
+	<-started
+	cache.Invalidate("k")
+
+	// The first load is still blocked; a reader arriving now must not share it.
+	item, err := cache.Get(context.Background(), "k")
+	require.NoError(t, err)
+	require.Equal(t, "fresh", item.Value)
+
+	close(release)
+	<-done
+
+	item, found := cache.GetCached("k")
+	require.True(t, found)
+	require.Equal(t, "fresh", item.Value, "the stale in-flight load must not overwrite the fresh value")
+	require.Equal(t, int32(2), loads.Load())
+}
