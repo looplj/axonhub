@@ -57,6 +57,43 @@ export function calculateTokensPerSecond(request: Request): string {
 }
 
 /**
+ * Calculate tokens-per-second over the FULL request duration (including TTFT).
+ * This reflects the end-to-end average generation speed, in contrast to the
+ * first-token-based rate which excludes time to first token for streams.
+ */
+export function getTotalTimeTokensPerSecondValue(request: Request): number | null {
+  const usageLogs = request.usageLogs?.edges ?? [];
+  if (usageLogs.length === 0 || request.metricsLatencyMs == null || request.metricsLatencyMs <= 0) {
+    return null;
+  }
+
+  // Sum every usage log carried by the request: latency covers the whole request,
+  // and one request can log more than once. The list query currently asks for
+  // `usageLogs(first: 1)`, so this is a single entry in practice — summing keeps
+  // the rate correct if that query or a request-level aggregate widens later.
+  //
+  // A missing token count and a measured zero are different: the former means we
+  // know nothing (renders "-"), the latter is a real 0 tok/s we can colour red.
+  const counts = usageLogs
+    .map((edge) => edge?.node?.completionTokens)
+    .filter((count): count is number => count !== null && count !== undefined);
+
+  if (counts.length === 0) {
+    return null;
+  }
+
+  const completionTokens = counts.reduce((sum, count) => sum + count, 0);
+  const latencySeconds = request.metricsLatencyMs / 1000;
+
+  return completionTokens / latencySeconds;
+}
+
+export function calculateTotalTimeTokensPerSecond(request: Request): string {
+  const tokensPerSecond = getTotalTimeTokensPerSecondValue(request);
+  return tokensPerSecond == null ? '-' : `${Math.round(tokensPerSecond)} tok/s`;
+}
+
+/**
  * Hook to manage display mode state with localStorage persistence.
  * SSR-safe: defaults to 'latency' during server-side rendering.
  * Uses two-phase initialization to avoid hydration mismatches.
