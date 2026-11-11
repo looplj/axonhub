@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -78,6 +79,79 @@ func TestWriteDesktopSettingsUpdatesPort(t *testing.T) {
 	}
 	if err := writeDesktopSettings(path, desktopSettings{Port: 0, DB: want.DB}); err == nil {
 		t.Fatal("port 0 was written")
+	}
+}
+
+func TestWriteDesktopSettingsTurnsLANOnAndOff(t *testing.T) {
+	path, err := ensureConfig(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings, err := readDesktopSettings(path)
+	if err != nil || settings.LAN {
+		t.Fatalf("a fresh config has LAN on: %+v, %v", settings, err)
+	}
+	settings.LAN = true
+	if err := writeDesktopSettings(path, settings); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), "host: "+desktopLANHost) {
+		t.Fatalf("LAN host not written:\n%s", data)
+	}
+	if got, err := readDesktopSettings(path); err != nil || !got.LAN {
+		t.Fatalf("LAN not read back: %+v, %v", got, err)
+	}
+	settings.LAN = false
+	if err := writeDesktopSettings(path, settings); err != nil {
+		t.Fatal(err)
+	}
+	data, _ = os.ReadFile(path)
+	if !strings.Contains(string(data), "host: "+desktopHost) {
+		t.Fatalf("loopback host not restored:\n%s", data)
+	}
+	// Changing only the database keeps the host the user chose.
+	settings.LAN = true
+	if err := writeDesktopSettings(path, settings); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeDBConfig(path, settings.DB); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := readDesktopSettings(path); !got.LAN {
+		t.Fatal("writing the database reset LAN access")
+	}
+}
+
+func TestListenHostAllowsLoopbackAndTheLANHostOnly(t *testing.T) {
+	for _, host := range []string{"127.0.0.1", "::1", "localhost", desktopLANHost} {
+		if !listenHostAllowed(host) {
+			t.Errorf("%q refused", host)
+		}
+	}
+	for _, host := range []string{"", "192.168.1.5", "::", "example.com"} {
+		if listenHostAllowed(host) {
+			t.Errorf("%q allowed", host)
+		}
+	}
+	if panelHost(desktopLANHost) != desktopHost || panelHost("localhost") != "localhost" {
+		t.Fatal("the panel does not dial loopback")
+	}
+}
+
+func TestLANAddressPicksAPrivateIPv4(t *testing.T) {
+	addrs := []net.Addr{
+		&net.IPNet{IP: net.ParseIP("127.0.0.1")},
+		&net.IPNet{IP: net.ParseIP("fe80::1")},
+		&net.IPNet{IP: net.ParseIP("8.8.8.8")},
+		&net.IPNet{IP: net.ParseIP("192.168.1.20")},
+		&net.IPNet{IP: net.ParseIP("10.0.0.2")},
+	}
+	if got := lanAddress(addrs); got != "192.168.1.20" {
+		t.Fatalf("lanAddress = %q", got)
+	}
+	if got := lanAddress(addrs[:3]); got != "" {
+		t.Fatalf("no private address, got %q", got)
 	}
 }
 

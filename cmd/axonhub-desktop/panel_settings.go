@@ -30,6 +30,7 @@ type settingsForm struct {
 	kind    int
 	dsn     string
 	port    string
+	lan     bool
 	showDSN bool
 	busy    bool
 	status  string
@@ -62,6 +63,7 @@ func (s *shell) openSettings() {
 		s.form.kind = dbKindIndex(cfg.DB.Dialect)
 		s.form.dsn = cfg.DB.DSN
 		s.form.port = strconv.Itoa(cfg.Port)
+		s.form.lan = cfg.LAN
 	} else {
 		s.form.status, s.form.tone = err.Error(), toneDanger
 	}
@@ -99,6 +101,7 @@ func (s *shell) testDatabase(save bool) {
 		return
 	}
 	cfg := s.formConfig()
+	lan := s.form.lan
 	s.form.seq++
 	seq := s.form.seq
 	s.form.busy = true
@@ -119,7 +122,7 @@ func (s *shell) testDatabase(save bool) {
 				s.form.status, s.form.tone = formConnected, toneSuccess
 				return
 			}
-			if err := writeDesktopSettings(s.configPath, desktopSettings{Port: port, DB: cfg}); err != nil {
+			if err := writeDesktopSettings(s.configPath, desktopSettings{Port: port, LAN: lan, DB: cfg}); err != nil {
 				log.Warn(context.Background(), "desktop config not saved", log.Cause(err))
 				s.form.status, s.form.tone = err.Error(), toneDanger
 				return
@@ -177,6 +180,9 @@ func (s *shell) settingsView(c *ui.Context, p panelPalette) {
 		}
 		s.languageCard(c, p)
 		s.appearanceCard(c, p)
+		if !s.offline {
+			s.notifyCard(c, p)
+		}
 		s.serverCard(c, p)
 		s.databaseCard(c, p)
 		s.updatesCard(c, p)
@@ -275,13 +281,25 @@ func (s *shell) databaseCard(c *ui.Context, p panelPalette) {
 
 func (s *shell) serverCard(c *ui.Context, p panelPalette) {
 	card(c, p).Padding(12).Gap(10).Children(func() {
-		sectionLabel(c, p, locales.Port())
-		input := ui.TextInput(c, &s.form.port).Font("monospace").FontSize(12.5).
-			Placeholder(strconv.Itoa(desktopPort)).Label(locales.Port())
-		if input.Changed() {
-			s.formEdited()
-		}
-		ui.Text(c, locales.PortHint()).FontSize(11).TextColor(p.muted).MaxLines(3)
+		sectionLabel(c, p, locales.Server())
+		ui.Column(c).Gap(6).Children(func() {
+			ui.Text(c, locales.Port()).FontSize(12).TextColor(p.muted)
+			input := ui.TextInput(c, &s.form.port).Font("monospace").FontSize(12.5).
+				Placeholder(strconv.Itoa(desktopPort)).Label(locales.Port())
+			if input.Changed() {
+				s.formEdited()
+			}
+			ui.Text(c, locales.PortHint()).FontSize(11).TextColor(p.muted).MaxLines(3)
+		})
+		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+				ui.Text(c, locales.LanAccess()).FontSize(12.5).FontWeight(500)
+				ui.Text(c, locales.LanNote()).FontSize(11).TextColor(p.muted)
+			})
+			if ui.Switch(c.Key("lan"), &s.form.lan).Label(locales.LanAccess()).Changed() {
+				s.formEdited()
+			}
+		})
 	})
 }
 
@@ -292,6 +310,22 @@ func (s *shell) appearanceCard(c *ui.Context, p panelPalette) {
 		if segmented(c, p, &mode, locales.System(), locales.Light(), locales.Dark()) {
 			s.setTheme(themeMode(mode))
 		}
+	})
+}
+
+func (s *shell) notifyCard(c *ui.Context, p panelPalette) {
+	card(c, p).Padding(12).Gap(10).Children(func() {
+		sectionLabel(c, p, locales.Notifications())
+		on := s.prefs.Notify
+		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+				ui.Text(c, locales.NotifyAlerts()).FontSize(12.5).FontWeight(500)
+				ui.Text(c, locales.NotifyNote()).FontSize(11).TextColor(p.muted)
+			})
+			if ui.Switch(c.Key("notify"), &on).Label(locales.NotifyAlerts()).Changed() {
+				s.setNotify(on)
+			}
+		})
 	})
 }
 

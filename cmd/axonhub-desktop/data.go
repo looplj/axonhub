@@ -14,6 +14,7 @@ import (
 
 const (
 	desktopHost     = "127.0.0.1"
+	desktopLANHost  = "0.0.0.0"
 	desktopPort     = 18090
 	sqliteDSNParams = "?cache=shared&_fk=1&_pragma=journal_mode(WAL)"
 	ownerSecretName = "owner.secret"

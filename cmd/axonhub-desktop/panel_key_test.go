@@ -140,24 +140,6 @@ func TestLoadPanelRestoresArchivedDesktopKey(t *testing.T) {
 	}
 }
 
-func TestPresentDesktopKeyCopiesStoredKey(t *testing.T) {
-	const secret = "sk-stored-desktop-key"
-	action := presentDesktopKey(secret)
-	if action.Copy != secret {
-		t.Fatal("copy text is not the stored key")
-	}
-	if action.Label == secret || strings.Contains(action.Label, secret) {
-		t.Fatal("row label is the stored key")
-	}
-	if action.Label != desktopKeyName {
-		t.Fatalf("label = %q", action.Label)
-	}
-	empty := presentDesktopKey("")
-	if empty.Copy != "" || empty.Label != desktopKeyName {
-		t.Fatal("an empty key changed the row label")
-	}
-}
-
 func TestDesktopKeyErrorOmitsSecret(t *testing.T) {
 	const secret = "sk-super-secret-desktop-key"
 	session := desktopSession{Token: "desktop-token", ProjectID: "gid://axonhub/Project/1"}

@@ -11,14 +11,14 @@ import (
 	"github.com/looplj/axonhub/cmd/axonhub-desktop/locales"
 )
 
-func TestRequestAdminPathEscapesGID(t *testing.T) {
+func TestRequestAdminPathUsesGlobalDetailAndEscapesGID(t *testing.T) {
 	const id = "gid://axonhub/Request/1"
 	got := requestAdminPath(id)
-	want := "/project/requests/" + url.PathEscape(id)
+	want := "/requests/" + url.PathEscape(id)
 	if got != want {
 		t.Fatalf("requestAdminPath() = %q, want %q", got, want)
 	}
-	if got != "/project/requests/gid:%2F%2Faxonhub%2FRequest%2F1" {
+	if got != "/requests/gid:%2F%2Faxonhub%2FRequest%2F1" {
 		t.Fatalf("requestAdminPath() = %q", got)
 	}
 	if strings.Contains(got, "://") {

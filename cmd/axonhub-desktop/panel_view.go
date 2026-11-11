@@ -14,13 +14,8 @@ import (
 )
 
 const (
-	wireDash       float32 = 5
-	wireGap        float32 = 4
-	wireDashPeriod float32 = wireDash + wireGap
-	wireDashTime           = 900 * time.Millisecond
-	haloTime               = 1800 * time.Millisecond
-	barsTime               = 900 * time.Millisecond
-	skeletonTime           = 1600 * time.Millisecond
+	barsTime     = 900 * time.Millisecond
+	skeletonTime = 1600 * time.Millisecond
 )
 
 // Icons on a 16-point grid, stroked in the color of the text.
@@ -55,19 +50,32 @@ func (s *shell) view(c *ui.Context) {
 			return
 		}
 		s.header(c, p)
-		if s.loadErr == panelRefreshError {
-			s.refreshBanner(c, p)
+		s.tabBar(c, p)
+		switch s.tab {
+		case tabKeys:
+			s.keysPage(c, p)
+		case tabChannels:
+			s.channelsPage(c, p)
+		case tabModels:
+			s.modelsPage(c, p)
+		default:
+			s.trafficPage(c, p)
 		}
-		s.statsCard(c, p)
-		s.routingCard(c, p)
-		s.listHeader(c, p)
-		s.requestList(c, p)
 		if s.loadErr != "" && s.loadErr != panelRefreshError {
-			s.notice(c, p, s.loadErr)
+			s.notice(c, p, loadErrText(s.loadErr))
 		}
-		s.connectCard(c, p)
 		s.footer(c, p)
 	})
+}
+
+func (s *shell) trafficPage(c *ui.Context, p panelPalette) {
+	if s.loadErr == panelRefreshError {
+		s.refreshBanner(c, p)
+	}
+	s.statsCard(c, p)
+	s.flowCard(c, p)
+	s.listHeader(c, p)
+	s.requestList(c, p)
 }
 
 func (s *shell) header(c *ui.Context, p panelPalette) {
@@ -84,7 +92,7 @@ func (s *shell) header(c *ui.Context, p panelPalette) {
 		}
 		ui.Spacer(c)
 		if iconButton(c, p, iconRefresh, locales.Refresh()).Clicked() {
-			s.loadPanelAsync()
+			s.reloadTab()
 		}
 		if iconButton(c, p, iconSettings, locales.Settings()).Clicked() {
 			s.openSettings()
@@ -137,75 +145,6 @@ func (s *shell) statsCard(c *ui.Context, p panelPalette) {
 	})
 }
 
-func (s *shell) routingCard(c *ui.Context, p panelPalette) {
-	request, selected := findRequest(s.snapshot.Requests, s.selectedID)
-	animate := cardAnimates(s.snapshot.Requests, s.selectedID)
-	label, tone := routingStatus(request, selected)
-	fg, _ := p.tone(tone)
-	card(c.Key("routing"), p).Padding(12).Gap(10).Children(func() {
-		ui.Row(c).AlignItems(ui.Center).Children(func() {
-			sectionLabel(c, p, locales.Routing())
-			ui.Spacer(c)
-			chip(c, p, label, tone)
-		})
-		ui.Row(c).Height(40).Gap(6).AlignItems(ui.Center).Children(func() {
-			if selected {
-				endpointPill(c, p, panelLabel(request.Caller), ui.Color{}, false)
-			} else {
-				endpointPill(c, p, locales.YourClient(), ui.Color{}, true)
-			}
-			routingWire(c.Key("to-hub"), p, selected, animate)
-			hubMark(c, p, animate)
-			routingWire(c.Key("from-hub"), p, selected, animate)
-			if selected {
-				endpointPill(c, p, panelLabel(request.Channel), fg, false)
-			} else {
-				endpointPill(c, p, locales.Channel(), ui.Color{}, true)
-			}
-		})
-		ui.Row(c).Gap(8).AlignItems(ui.Baseline).Children(func() {
-			if !selected {
-				ui.Text(c, locales.RoutingIdle()).FontSize(11.5).TextColor(p.muted).SingleLine()
-				return
-			}
-			if request.ModelID != "" {
-				ui.Text(c, request.ModelID).Font("monospace").FontSize(11.5).TextColor(p.soft).SingleLine().Shrink(1)
-			}
-			ui.Spacer(c)
-			ui.Text(c, routingSummary(request)).FontSize(11.5).FontFeatures("tnum").TextColor(p.muted).SingleLine().Shrink(0)
-		})
-	})
-}
-
-// routingWire is the dashed line between an endpoint and the hub. Its
-// dashes flow toward the channel while the selected request is in
-// progress; with nothing selected it is a faint dotted line.
-func routingWire(c *ui.Context, p panelPalette, selected, animate bool) {
-	wire := ui.Box(c).Grow(1).Basis(0).Height(10).MinWidth(10)
-	offset := float32(0)
-	if animate {
-		offset = wire.Keyframes("dash", []ui.Keyframe{
-			{At: 0, Value: 0},
-			{At: wireDashTime, Value: wireDashPeriod, Ease: ui.Linear},
-		}, ui.KeyframeOptions{Repeat: ui.RepeatForever})
-	}
-	ink := p.wire
-	if !selected {
-		ink = ink.Alpha(0.6)
-	}
-	wire.Draw(func(pt *ui.Painter, r ui.Rect) {
-		var path ui.Path
-		y := r.Y + r.H/2
-		path.MoveTo(r.X, y).LineTo(r.X+r.W, y)
-		if selected {
-			path.Dash(offset, wireDash, wireGap).Cap(ui.ButtCap)
-		} else {
-			path.Dash(0, 0.01, 7).Cap(ui.RoundCap)
-		}
-		pt.StrokePath(&path, 1.25, ink)
-	})
-}
-
 func (s *shell) listHeader(c *ui.Context, p panelPalette) {
 	ui.Row(c).Shrink(0).Padding(4, 6, 0, 6).Gap(6).AlignItems(ui.Center).Children(func() {
 		sectionLabel(c, p, locales.RecentRequests())
@@ -227,6 +166,9 @@ func (s *shell) requestList(c *ui.Context, p panelPalette) {
 					key = index
 				}
 				s.requestRow(c.Key(key), p, request)
+				if s.expandedID != "" && request.ID == s.expandedID {
+					s.requestDetail(c.Key("detail"), p, request)
+				}
 			})
 		case s.hasSnapshot:
 			s.firstRun(c, p)
@@ -238,7 +180,7 @@ func (s *shell) requestList(c *ui.Context, p panelPalette) {
 
 // requestRow is the status glyph, caller and channel over the model, then
 // the result on the right. The snapshot has no created time, so the row
-// does not show one.
+// does not show one. A click opens the request's attempts under it.
 func (s *shell) requestRow(c *ui.Context, p panelPalette, request panelRequest) {
 	selected := s.selectedID != "" && request.ID == s.selectedID
 	result := presentRequest(request)
@@ -328,34 +270,7 @@ func skeletonRows(c *ui.Context, p panelPalette) {
 func (s *shell) notice(c *ui.Context, p panelPalette, message string) {
 	ui.Row(c.Key("notice")).Shrink(0).PaddingX(6).Gap(8).AlignItems(ui.Center).Transition(rowEnter).Children(func() {
 		ui.Icon(c, iconWarning).Size(13, 13).TextColor(p.warning).Shrink(0)
-		ui.Text(c, loadErrText(message)).FontSize(11.5).TextColor(p.warning).SingleLine().Shrink(1)
-	})
-}
-
-// connectCard is what a client needs: the OpenAI base URL and the
-// project's Desktop key. The key's label is its name; Copy writes the
-// stored secret and does not draw it. An empty secret leaves Copy
-// disabled. Before the first request the two Copy buttons are the
-// panel's call to action.
-func (s *shell) connectCard(c *ui.Context, p panelPalette) {
-	key := presentDesktopKey(s.snapshot.DesktopKey)
-	callToAction := s.hasSnapshot && len(s.snapshot.Requests) == 0
-	card(c, p).Children(func() {
-		connectRow(c, p, locales.BaseUrl(), false, func() {
-			ui.Text(c, openAIBaseURL(s.origin)).Font("monospace").FontSize(11.5).SingleLine().Grow(1).MinWidth(0)
-			if s.copyButton(c, p, "url", callToAction).Clicked() {
-				s.copyBaseURL()
-			}
-		})
-		connectRow(c, p, locales.ApiKey(), true, func() {
-			ui.Row(c).Grow(1).MinWidth(0).Gap(6).AlignItems(ui.Center).Children(func() {
-				ui.Icon(c, iconKey).Size(13, 13).TextColor(p.soft)
-				ui.Text(c, key.Label).FontSize(12.5).FontWeight(500).SingleLine()
-			})
-			if s.copyButton(c, p, "key", callToAction).Disabled(key.Copy == "").Clicked() {
-				s.copyDesktopKey(key.Copy)
-			}
-		})
+		ui.Text(c, message).FontSize(11.5).TextColor(p.warning).SingleLine().Shrink(1)
 	})
 }
 
@@ -389,7 +304,9 @@ func (s *shell) footer(c *ui.Context, p panelPalette) {
 		if textButton(c, p, locales.OpenAdmin(), p.primary, p.onPrimary).FontWeight(600).Clicked() {
 			s.openAdmin()
 		}
-		ui.Text(c, locales.RefreshesEvery("5")).FontSize(11).TextColor(p.muted).SingleLine().Shrink(1)
+		if s.tab == tabTraffic {
+			ui.Text(c, locales.RefreshesEvery("5")).FontSize(11).TextColor(p.muted).SingleLine().Shrink(1)
+		}
 		ui.Spacer(c)
 		if textButton(c, p, locales.Quit(), ui.Transparent, p.soft).Clicked() {
 			mygo.App.Quit()
@@ -430,15 +347,19 @@ func chip(c *ui.Context, p panelPalette, label string, tone statusTone) {
 	})
 }
 
-// endpointPill is the caller or the channel on the routing card. A zero
-// dot color leaves the dot out. A placeholder is outlined, with no fill.
-func endpointPill(c *ui.Context, p panelPalette, label string, dotColor ui.Color, placeholder bool) {
-	pill := ui.Row(c).Shrink(0).MaxWidth(132).Height(28).PaddingX(10).Gap(6).Radius(999).AlignItems(ui.Center)
+// endpointPill is a caller or a channel on the flow. A zero dot color
+// leaves the dot out. A selected pill is edged in gold. A placeholder is
+// outlined, with no fill.
+func endpointPill(c *ui.Context, p panelPalette, label string, dotColor ui.Color, selected, placeholder bool) {
+	pill := ui.Row(c).Shrink(1).MinWidth(0).MaxWidth(132).Height(26).PaddingX(10).Gap(6).Radius(999).AlignItems(ui.Center)
 	text := p.text
-	if placeholder {
+	switch {
+	case placeholder:
 		pill.InsetShadow(0, 0, 0, 1, p.muted.Alpha(0.35))
 		text = p.muted
-	} else {
+	case selected:
+		pill.Background(p.gold.Alpha(0.14)).InsetShadow(0, 0, 0, 1, p.gold.Alpha(0.6))
+	default:
 		pill.Background(p.bg).InsetShadow(0, 0, 0, 1, p.edge)
 	}
 	pill.Children(func() {
@@ -446,24 +367,6 @@ func endpointPill(c *ui.Context, p panelPalette, label string, dotColor ui.Color
 			dot(c, dotColor, 7)
 		}
 		ui.Text(c, label).FontSize(12).FontWeight(500).TextColor(text).SingleLine().Shrink(1)
-	})
-}
-
-// hubMark is the logo between the wires. While a request is in progress a
-// gold ring ripples out of it.
-func hubMark(c *ui.Context, p panelPalette, animate bool) {
-	mark := ui.Box(c).Size(30, 30).Shrink(0)
-	ripple := float32(-1)
-	if animate {
-		ripple = mark.Loop("halo", haloTime, ui.CubicBezier(0.2, 0.8, 0.2, 1))
-	}
-	mark.Draw(func(pt *ui.Painter, r ui.Rect) {
-		if ripple >= 0 {
-			var ring ui.Path
-			ring.Circle(r.X+r.W/2, r.Y+r.H/2, r.W/2*(0.7+0.8*ripple))
-			pt.StrokePath(&ring, 1.5, p.gold.Alpha(0.55*(1-ripple)))
-		}
-		paintLogo(pt, r, p.logo, p.gold)
 	})
 }
 

@@ -4,7 +4,9 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"net"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -61,8 +63,12 @@ func loadErrText(err string) string {
 // did not start (startErr says why): the panel stays on settings and loads
 // nothing.
 //
-// copied names the Copy button that reads Copied ("url" or "key") until
-// copySeq moves on.
+// copied names the Copy button that reads Copied ("url", or "key:" and a
+// key id) until copySeq moves on.
+//
+// tab is the page under the header. keys is the Keys page; it loads when
+// the page opens and on Refresh, not on the timer. channels and
+// models are the Channels and Models pages, loaded the same way.
 //
 // refreshCancel stops the reload timer while the panel is hidden.
 // loadSeq drops a finished load when a newer one has already started.
@@ -79,16 +85,26 @@ type shell struct {
 	tray       *mygo.Tray
 	quitting   bool
 
-	snapshot      panelSnapshot
-	selectedID    string
-	loadErr       string
-	hasSnapshot   bool
-	copied        string
-	copySeq       uint64
-	prefs         panelPrefs
-	prefsPath     string
-	configPath    string
-	page          panelPage
+	snapshot    panelSnapshot
+	selectedID  string
+	expandedID  string
+	loadErr     string
+	hasSnapshot bool
+	copied      string
+	copySeq     uint64
+	prefs       panelPrefs
+	prefsPath   string
+	configPath  string
+	page        panelPage
+	tab         panelTab
+	keys        keysState
+	channels    channelsState
+	models      modelsState
+	watch       watchState
+	// lanPort is the listen port while LAN access is on, else 0. lanIP is
+	// this machine's LAN address as of the last time the panel opened.
+	lanPort       int
+	lanIP         string
 	form          settingsForm
 	offline       bool
 	startErr      string
@@ -181,10 +197,11 @@ func (s *shell) show() {
 	} else {
 		s.win.SetPosition(x, y)
 	}
+	s.refreshLAN()
 	s.win.Show()
 	s.win.Focus()
 	s.startRefresh()
-	s.loadPanelAsync()
+	s.reloadTab()
 }
 
 func (s *shell) hide() {
@@ -195,7 +212,8 @@ func (s *shell) hide() {
 	useMenuBarPolicy(false)
 }
 
-// startRefresh reloads the panel about every 5 seconds while it is visible.
+// startRefresh reloads Traffic about every 5 seconds while the panel is
+// visible and that page is on screen.
 func (s *shell) startRefresh() {
 	if s.refreshCancel != nil {
 		return
@@ -211,7 +229,11 @@ func (s *shell) startRefresh() {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				s.win.Update(func() { s.loadPanelAsync() })
+				s.win.Update(func() {
+					if s.tab == tabTraffic {
+						s.loadPanelAsync()
+					}
+				})
 			}
 		}
 	}()
@@ -262,18 +284,55 @@ func (s *shell) applySnapshot(seq uint64, snapshot panelSnapshot, err error) {
 }
 
 func (s *shell) copyBaseURL() {
-	mygo.Clipboard.WriteText(openAIBaseURL(s.origin))
-	s.flashCopied("url")
+	s.copyText(openAIBaseURL(s.origin), "url")
 }
 
-// copyDesktopKey writes the stored Desktop secret. An empty value means
-// the key is not ready, so the click does nothing.
-func (s *shell) copyDesktopKey(secret string) {
-	if secret == "" {
+// copyText writes text and marks the Copy button named what.
+func (s *shell) copyText(text, what string) {
+	mygo.Clipboard.WriteText(text)
+	s.flashCopied(what)
+}
+
+// refreshLAN reads this machine's LAN address again, since the network
+// can change between two openings of the panel.
+func (s *shell) refreshLAN() {
+	s.lanIP = ""
+	if s.lanPort == 0 {
 		return
 	}
-	mygo.Clipboard.WriteText(secret)
-	s.flashCopied("key")
+	if addrs, err := net.InterfaceAddrs(); err == nil {
+		s.lanIP = lanAddress(addrs)
+	}
+}
+
+// lanBaseURL is the base URL another device uses, or "" while LAN access
+// is off or the machine has no LAN address.
+func (s *shell) lanBaseURL() string {
+	if s.lanPort == 0 || s.lanIP == "" {
+		return ""
+	}
+	return openAIBaseURL("http://" + net.JoinHostPort(s.lanIP, strconv.Itoa(s.lanPort)))
+}
+
+// openTab shows a page and loads it.
+func (s *shell) openTab(tab panelTab) {
+	s.tab = tab
+	s.reloadTab()
+}
+
+// reloadTab loads the page on screen. The timer calls it too, and then
+// only Traffic reloads: the other pages read once per visit.
+func (s *shell) reloadTab() {
+	switch s.tab {
+	case tabKeys:
+		s.loadKeysAsync()
+	case tabChannels:
+		s.loadChannelsAsync()
+	case tabModels:
+		s.loadModelsAsync()
+	default:
+		s.loadPanelAsync()
+	}
 }
 
 // flashCopied makes one Copy button read Copied for a moment. A later
@@ -373,9 +432,19 @@ func (s *shell) openAdmin() {
 	s.openNextFor(func(session desktopSession) string { return session.ProjectID }, adminNextPath)
 }
 
+// chooseRequest highlights a request on the flow and opens its attempts
+// under the row. A second click closes them.
 func (s *shell) chooseRequest(request panelRequest) {
 	s.selectedID = request.ID
-	s.openNext(request.ProjectID, requestAdminPath(request.ID))
+	if s.expandedID == request.ID {
+		s.expandedID = ""
+		return
+	}
+	s.expandedID = request.ID
+}
+
+func (s *shell) openRequest(request panelRequest) {
+	s.openNextFor(func(session desktopSession) string { return session.ProjectID }, requestAdminPath(request.ID))
 }
 
 func (s *shell) toggle() {
@@ -441,7 +510,11 @@ func (s *shell) ready() {
 		})
 	}
 	s.watchChrome()
+	if s.prefs.Notify {
+		s.startWatch()
+	}
 	mygo.App.OnWillQuit(func(*mygo.QuitEvent) {
+		s.stopWatch()
 		if s.tray != nil {
 			s.tray.Destroy()
 		}

@@ -13,12 +13,32 @@ import (
 	"github.com/samber/lo"
 )
 
+func TestNextPageCursorStopsWhenThePageEnds(t *testing.T) {
+	cursor := "c1"
+	conn := panelConnection[string]{PageInfo: panelPageInfo{HasNextPage: true, EndCursor: &cursor}}
+	if got := nextPageCursor(conn, ""); got != "c1" {
+		t.Fatalf("cursor = %q", got)
+	}
+	if got := nextPageCursor(conn, "c1"); got != "" {
+		t.Fatalf("repeated cursor = %q", got)
+	}
+	conn.PageInfo.HasNextPage = false
+	if got := nextPageCursor(conn, ""); got != "" {
+		t.Fatalf("last page cursor = %q", got)
+	}
+	blank := "  "
+	conn.PageInfo = panelPageInfo{HasNextPage: true, EndCursor: &blank}
+	if got := nextPageCursor(conn, ""); got != "" {
+		t.Fatalf("blank cursor = %q", got)
+	}
+}
+
 func TestMapPanelSnapshot(t *testing.T) {
 	var data panelQueryData
 	if err := json.Unmarshal([]byte(panelSnapshotFixture), &data); err != nil {
 		t.Fatal(err)
 	}
-	got := mapPanelSnapshot(data, 3)
+	got := withoutAttempts(mapPanelSnapshot(data, 3))
 	want := panelSnapshot{
 		RequestsToday: 12,
 		InputTokens:   1000,
@@ -186,6 +206,7 @@ func TestLoadPanelReadsProjectGraphQL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	got = withoutAttempts(got)
 	want := panelSnapshot{
 		RequestsToday: 6,
 		InputTokens:   10,
@@ -775,3 +796,34 @@ const panelSnapshotFixture = `{
     ]
   }
 }`
+
+// withoutAttempts drops the attempts, which TestRequestAttemptsReadOldestFirst
+// covers, so a snapshot comparison reads only the row fields.
+func withoutAttempts(snapshot panelSnapshot) panelSnapshot {
+	for i := range snapshot.Requests {
+		snapshot.Requests[i].Attempts = nil
+	}
+	return snapshot
+}
+
+func TestRequestAttemptsReadOldestFirst(t *testing.T) {
+	var node panelRequestNode
+	if err := json.Unmarshal([]byte(`{
+	  "id": "r", "status": "completed",
+	  "executions": { "edges": [
+	    { "node": { "createdAt": "2026-11-10T00:00:02Z", "status": "completed", "responseStatusCode": 200, "metricsLatencyMs": 1200, "metricsFirstTokenLatencyMs": 300, "channel": { "name": "backup" } } },
+	    { "node": null },
+	    { "node": { "createdAt": "2026-11-10T00:00:01Z", "status": "failed", "responseStatusCode": 429, "errorMessage": " rate limited ", "channel": null } }
+	  ] }
+	}`), &node); err != nil {
+		t.Fatal(err)
+	}
+	got := mapPanelRequest(node).Attempts
+	want := []panelAttempt{
+		{Status: statusFailed, StatusCode: lo.ToPtr(429), Error: "rate limited"},
+		{Channel: "backup", Status: statusCompleted, StatusCode: lo.ToPtr(200), LatencyMs: lo.ToPtr(1200), FirstTokenMs: lo.ToPtr(300)},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("attempts = %#v", got)
+	}
+}

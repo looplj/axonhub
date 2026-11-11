@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 
 	"github.com/looplj/axonhub/internal/server/db"
@@ -24,9 +25,11 @@ type dbConfig struct {
 	DSN     string `yaml:"dsn"`
 }
 
-// desktopSettings is the server port and database the settings page edits.
+// desktopSettings is the server port, the database, and whether the
+// server listens beyond this machine, as the settings page edits them.
 type desktopSettings struct {
 	Port int
+	LAN  bool
 	DB   dbConfig
 }
 
@@ -74,6 +77,7 @@ func readDesktopSettings(path string) (desktopSettings, error) {
 		Server struct {
 			// A string, so a quoted port reads as the server reads it.
 			Port string `yaml:"port"`
+			Host string `yaml:"host"`
 		} `yaml:"server"`
 		DB dbConfig `yaml:"db"`
 	}
@@ -89,26 +93,27 @@ func readDesktopSettings(path string) (desktopSettings, error) {
 	if file.DB.Dialect == "" {
 		file.DB.Dialect = "sqlite3"
 	}
-	return desktopSettings{Port: port, DB: file.DB}, nil
+	return desktopSettings{Port: port, LAN: lanHost(strings.TrimSpace(file.Server.Host)), DB: file.DB}, nil
 }
 
 // writeDBConfig sets db.dialect and db.dsn in config.yml. Other keys and
 // comments stay as they are. The file is replaced in one rename, so a
 // failed write leaves the old config.
 func writeDBConfig(path string, cfg dbConfig) error {
-	return writeDesktopFile(path, 0, cfg)
+	return writeDesktopFile(path, 0, "", cfg)
 }
 
-// writeDesktopSettings sets the listen port and the database. Other keys
-// and comments stay as they are.
+// writeDesktopSettings sets the listen port, the listen host and the
+// database. The host is every interface with LAN on and loopback with it
+// off. Other keys and comments stay as they are.
 func writeDesktopSettings(path string, settings desktopSettings) error {
 	if settings.Port < 1 || settings.Port > 65535 {
 		return errors.New(formPortInvalid)
 	}
-	return writeDesktopFile(path, settings.Port, settings.DB)
+	return writeDesktopFile(path, settings.Port, lo.Ternary(settings.LAN, desktopLANHost, desktopHost), settings.DB)
 }
 
-func writeDesktopFile(path string, port int, cfg dbConfig) error {
+func writeDesktopFile(path string, port int, host string, cfg dbConfig) error {
 	data, err := os.ReadFile(path)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("read desktop config: %w", err)
@@ -127,6 +132,10 @@ func writeDesktopFile(path string, port int, cfg dbConfig) error {
 	if port > 0 {
 		serverNode := mappingValue(root, "server", yaml.MappingNode)
 		setInt(mappingValue(serverNode, "port", yaml.ScalarNode), port)
+	}
+	if host != "" {
+		serverNode := mappingValue(root, "server", yaml.MappingNode)
+		mappingValue(serverNode, "host", yaml.ScalarNode).SetString(host)
 	}
 	section := mappingValue(root, "db", yaml.MappingNode)
 	mappingValue(section, "dialect", yaml.ScalarNode).SetString(cfg.Dialect)

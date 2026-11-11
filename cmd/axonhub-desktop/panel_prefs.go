@@ -11,15 +11,19 @@ import (
 const panelPrefsName = "panel-settings.json"
 
 // panelPrefs is what settings saves for the panel. Language is "", to
-// follow the system, or en or zh-Hans.
+// follow the system, or en or zh-Hans. Notify turns on background alerts
+// for auto-disabled channels and exhausted quota; it is off unless the
+// user chose it.
 type panelPrefs struct {
 	Theme    themeMode
 	Language string
+	Notify   bool
 }
 
 type panelPrefsFile struct {
 	Theme    string `json:"theme,omitempty"`
 	Language string `json:"language,omitempty"`
+	Notify   bool   `json:"notify,omitempty"`
 }
 
 func panelPrefsPath(dir string) string {
@@ -66,7 +70,7 @@ func readPanelPrefs(path string) panelPrefs {
 	if err := json.Unmarshal(data, &file); err != nil {
 		return panelPrefs{}
 	}
-	return panelPrefs{Theme: parseThemeMode(file.Theme), Language: parseLanguage(file.Language)}
+	return panelPrefs{Theme: parseThemeMode(file.Theme), Language: parseLanguage(file.Language), Notify: file.Notify}
 }
 
 // writePanelPrefs saves prefs. An empty path keeps them in memory only.
@@ -77,6 +81,7 @@ func writePanelPrefs(path string, prefs panelPrefs) error {
 	data, err := json.MarshalIndent(panelPrefsFile{
 		Theme:    prefs.Theme.String(),
 		Language: parseLanguage(prefs.Language),
+		Notify:   prefs.Notify,
 	}, "", "  ")
 	if err != nil {
 		return errors.New("encode panel settings")
