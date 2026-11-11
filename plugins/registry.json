@@ -2,6 +2,19 @@
   "schemaVersion": 1,
   "plugins": [
     {
+      "id": "local.day-card",
+      "name": "每日用量卡",
+      "description": "移植自 magpie 的每日用量卡。把一天的用量画成小票：费用、连续天数、每把 API Key 及其模型。数字用服务端聚合，不拉取用量明细。",
+      "versions": [
+        {
+          "version": "0.1.0",
+          "url": "https://github.com/looplj/axonhub-day-card/releases/download/v0.1.0/day-card-0.1.0.axplugin",
+          "sha256": "5c7cd366581168bdab831eab7c524b123ac3eed7bae8c0e0f2f2732dcbc3ea55",
+          "axonhubVersion": "^1.0.0"
+        }
+      ]
+    },
+    {
       "id": "local.jev-guard",
       "name": "Jev 请求审查",
       "description": "在请求进入上游模型之前，用 Jev 判断一组可配置的分类。任一分类达到拦截阈值时返回 403，并写入拦截记录。低于阈值的请求继续，不落库。",
