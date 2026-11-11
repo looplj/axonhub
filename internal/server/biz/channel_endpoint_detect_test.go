@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -190,6 +191,120 @@ func TestDetectChannelEndpoints_ReusesConfiguredOutboundAuth(t *testing.T) {
 	messages := byFormat["anthropic/messages"]
 	require.True(t, messages.Supported)
 	require.Equal(t, http.StatusBadRequest, messages.StatusCode)
+}
+
+// Antigravity stores a refresh token in the legacy API key field and a real
+// OAuth credential beside it. Enabled API keys are therefore empty.
+// Detecting chat, responses, and messages must report those formats as invalid.
+// getAPIKeyProvider returns an error when no API key can be selected, and
+// detection records that error instead of exiting the process.
+func TestDetectChannelEndpoints_OAuthOnlyAntigravityDoesNotPanic(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+
+	transport := &endpointDetectTransport{
+		responder: func(req *http.Request) (*http.Response, error) {
+			t.Errorf("oauth-only channel must not probe %s", req.URL.Path)
+			return nil, io.ErrUnexpectedEOF
+		},
+	}
+	svc.httpClient = httpclient.NewHttpClientWithClient(&http.Client{Transport: transport})
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeAntigravity).
+		SetName("Google").
+		SetBaseURL("https://upstream.example").
+		SetCredentials(objects.ChannelCredentials{
+			APIKey: "refresh-token|project-id",
+			OAuth: &objects.OAuthCredentials{
+				AccessToken:  "access-token",
+				RefreshToken: "refresh-token",
+				ExpiresAt:    time.Now().Add(time.Hour),
+			},
+		}).
+		SetSupportedModels([]string{"gemini-2.5-pro"}).
+		SetDefaultTestModel("gemini-2.5-pro").
+		Save(ctx)
+	require.NoError(t, err)
+
+	payload, err := svc.DetectChannelEndpoints(ctx, DetectChannelEndpointsInput{
+		ChannelID: objects.GUID{Type: "Channel", ID: ch.ID},
+	})
+	require.NoError(t, err)
+	require.Len(t, payload.Endpoints, 3)
+
+	for _, ep := range payload.Endpoints {
+		require.False(t, ep.Supported)
+		require.Equal(t, endpointDetectReasonInvalid, ep.Reason)
+		require.Zero(t, ep.StatusCode)
+	}
+
+	require.Empty(t, transport.requests)
+}
+
+// A format the OAuth channel already exposes keeps its real outbound.
+// Formats that would need an API key are invalid and are not probed.
+func TestDetectChannelEndpoints_ReusesOAuthOutbound(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+
+	transport := &endpointDetectTransport{
+		responder: func(req *http.Request) (*http.Response, error) {
+			status := http.StatusBadRequest
+			if req.Header.Get("Authorization") != "Bearer oauth-access-token" {
+				status = http.StatusUnauthorized
+			}
+
+			return &http.Response{
+				StatusCode: status,
+				Header:     http.Header{},
+				Body:       io.NopCloser(strings.NewReader(`{}`)),
+			}, nil
+		},
+	}
+	svc.httpClient = httpclient.NewHttpClientWithClient(&http.Client{Transport: transport})
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeClaudecode).
+		SetName("claude-code").
+		SetBaseURL("https://upstream.example").
+		SetCredentials(objects.ChannelCredentials{
+			OAuth: &objects.OAuthCredentials{
+				AccessToken:  "oauth-access-token",
+				RefreshToken: "oauth-refresh-token",
+				ExpiresAt:    time.Now().Add(time.Hour),
+			},
+		}).
+		SetSupportedModels([]string{"claude-sonnet"}).
+		SetDefaultTestModel("claude-sonnet").
+		Save(ctx)
+	require.NoError(t, err)
+
+	payload, err := svc.DetectChannelEndpoints(ctx, DetectChannelEndpointsInput{
+		ChannelID: objects.GUID{Type: "Channel", ID: ch.ID},
+	})
+	require.NoError(t, err)
+
+	byFormat := map[string]DetectedChannelEndpoint{}
+	for _, ep := range payload.Endpoints {
+		byFormat[ep.APIFormat] = ep
+	}
+
+	messages := byFormat["anthropic/messages"]
+	require.True(t, messages.Supported)
+	require.Equal(t, http.StatusBadRequest, messages.StatusCode)
+
+	require.False(t, byFormat["openai/chat_completions"].Supported)
+	require.Equal(t, endpointDetectReasonInvalid, byFormat["openai/chat_completions"].Reason)
+	require.False(t, byFormat["openai/responses"].Supported)
+	require.Equal(t, endpointDetectReasonInvalid, byFormat["openai/responses"].Reason)
+
+	require.Len(t, transport.requests, 1)
+	require.True(t, strings.HasSuffix(transport.requests[0], "/messages"))
 }
 
 func TestResolveEndpointDetectModel_PrefersRequestThenDefaults(t *testing.T) {
