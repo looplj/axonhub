@@ -50,9 +50,9 @@ func TestOllamaAnthropicChannel_WithAPIKey(t *testing.T) {
 }
 
 // TestOllamaAnthropicChannel_BuildsWithoutAPIKey verifies that an ollama_anthropic
-// channel with no API key builds without panicking. This guards the conditional
-// apiKeyProvider guard in channel_llm.go — without it, getAPIKeyProvider panics
-// when there are zero enabled keys, which is the common local Ollama deployment.
+// channel with no API key builds successfully. The conditional guard leaves a nil
+// APIKeyProvider, which the Anthropic transformer treats as no credentials.
+// Calling getAPIKeyProvider instead would return an error and reject the channel.
 func TestOllamaAnthropicChannel_BuildsWithoutAPIKey(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()

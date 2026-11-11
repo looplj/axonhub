@@ -13,7 +13,10 @@ import (
 func innerProvider(t *testing.T, ch *Channel) any {
 	t.Helper()
 
-	wrapped, ok := getAPIKeyProvider(ch).(*channelAPIKeyContextProvider)
+	provider, err := getAPIKeyProvider(ch)
+	require.NoError(t, err)
+
+	wrapped, ok := provider.(*channelAPIKeyContextProvider)
 	require.True(t, ok, "getAPIKeyProvider must wrap the selected provider")
 
 	return wrapped.inner

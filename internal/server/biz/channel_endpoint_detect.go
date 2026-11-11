@@ -104,6 +104,18 @@ func (svc *ChannelService) DetectChannelEndpoints(
 
 		go func(index int, format string) {
 			defer wg.Done()
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					log.Error(ctx, "endpoint detection panicked",
+						log.String("channel", entity.Name),
+						log.String("api_format", format),
+						log.Any("panic", recovered))
+					results[index] = DetectedChannelEndpoint{
+						APIFormat: format,
+						Reason:    endpointDetectReasonInvalid,
+					}
+				}
+			}()
 
 			results[index] = svc.detectChannelEndpoint(ctx, entity, ch, format, model)
 		}(i, apiFormat)
