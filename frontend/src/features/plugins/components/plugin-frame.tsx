@@ -501,7 +501,8 @@ function PluginFrameAttempt({
       data-testid='plugin-frame'
       title={title ?? pageKey ?? actionKey}
       src={pluginFrameSrc(sessionQuery.data.token, entry)}
-      sandbox='allow-scripts allow-forms'
+      sandbox='allow-scripts allow-forms allow-downloads'
+      allow='clipboard-write'
       referrerPolicy='no-referrer'
       className='h-full min-h-0 w-full flex-1 border-0'
       onLoad={beginSession}

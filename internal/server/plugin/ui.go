@@ -27,8 +27,11 @@ const (
 	pluginUIBridge   = "_axonhub/bridge.js"
 	// allow-forms is required for the submit event to fire in a sandboxed
 	// frame; form-action 'none' keeps forms from navigating anywhere, so pages
-	// still have no network path besides the bridge.
-	pluginUICSP = "sandbox allow-scripts allow-forms; default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none'; frame-ancestors 'self'"
+	// still have no network path besides the bridge. allow-downloads lets a
+	// page save a file the user already has on screen. The iframe's allow
+	// attribute grants clipboard-write separately. This CSP is the intersection
+	// with that sandbox, so a download token missing here still blocks the save.
+	pluginUICSP = "sandbox allow-scripts allow-forms allow-downloads; default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none'; frame-ancestors 'self'"
 )
 
 //go:embed uisdk/bridge.js
