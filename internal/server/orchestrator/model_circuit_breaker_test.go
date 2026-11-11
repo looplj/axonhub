@@ -77,6 +77,50 @@ func TestModelCircuitBreakerTracker_StreamSuccessUsesCurrentChannel(t *testing.T
 	require.Zero(t, stats.ConsecutiveFailures)
 }
 
+// TestModelCircuitBreakerTracker_StreamEndWithoutUsageClosesCircuit covers the
+// provider that streams to completion without ever reporting token usage, which
+// is common. The circuit must still close: with TTL recovery removed, requiring
+// a usage block would leave a successful stream unable to recover the model.
+func TestModelCircuitBreakerTracker_StreamEndWithoutUsageClosesCircuit(t *testing.T) {
+	cb := biz.NewModelCircuitBreaker()
+	ctx := context.Background()
+	policy := biz.DefaultModelCircuitBreakerPolicy()
+	for i := 0; i < policy.OpenThreshold; i++ {
+		cb.RecordError(ctx, 43, "gpt-4", false)
+	}
+	require.Equal(t, biz.StateOpen, cb.GetModelCircuitBreakerStats(ctx, 43, "gpt-4").State)
+
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			OriginalModel: "gpt-4",
+			RoutingPolicy: EffectiveRoutingPolicy{
+				LoadBalancerStrategy: biz.LoadBalancerStrategyCircuitBreaker,
+			},
+			CurrentCandidate: &ChannelModelsCandidate{
+				Channel: &biz.Channel{
+					Channel: &ent.Channel{ID: 43, Name: "primary"},
+				},
+			},
+		},
+	}
+	tracker := withModelCircuitBreaker(outbound, cb).(*modelCircuitBreakerTracker)
+
+	stream, err := tracker.OnOutboundLlmStream(ctx, &stubResponseStream{
+		events: []*llm.Response{{}},
+	})
+	require.NoError(t, err)
+
+	for stream.Next() {
+		_ = stream.Current()
+	}
+	require.NoError(t, stream.Err())
+	require.NoError(t, stream.Close())
+
+	stats := cb.GetModelCircuitBreakerStats(ctx, 43, "gpt-4")
+	require.Equal(t, biz.StateClosed, stats.State)
+	require.Zero(t, stats.ConsecutiveFailures)
+}
+
 func TestModelCircuitBreakerTracker_SkipCandidateDoesNotRecordError(t *testing.T) {
 	cb := biz.NewModelCircuitBreaker()
 	ctx := context.Background()
