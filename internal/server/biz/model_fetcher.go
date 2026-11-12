@@ -562,10 +562,10 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		httpClient = httpClient.WithRejectRedirects()
 		catalogBaseURL := httpModelsBaseURL(input.BaseURL)
 		parsedCatalogURL, err := url.Parse(strings.TrimRight(catalogBaseURL, "/#"))
-		if err != nil || !strings.EqualFold(parsedCatalogURL.Scheme, "https") || parsedCatalogURL.Host == "" {
+		if err != nil || (parsedCatalogURL.Scheme != "http" && parsedCatalogURL.Scheme != "https") || parsedCatalogURL.Host == "" {
 			return &FetchModelsResult{
 				Models: []ModelIdentify{},
-				Error:  lo.ToPtr("failed to prepare Codex models request: Codex catalog URL must use HTTPS"),
+				Error:  lo.ToPtr("failed to prepare Codex models request: Codex catalog URL must use HTTP or HTTPS"),
 			}, nil
 		}
 		req, err = codex.ModelsRequest(ctx, oauth.NewAPIKeyTokenProvider(func(context.Context) string {
