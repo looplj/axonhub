@@ -19,3 +19,4 @@ globs: "frontend/**/*.ts, frontend/**/*.tsx"
 10. The app is client-side only; SSR compatibility is not required unless the code already depends on it.
 11. For any field used by a create/edit form, update both write operations and read operations in the same change:
     mutations must send the field, and the queries used for edit echo, backfill, list refresh, or detail refresh must also return it when the UI depends on that value.
+12. 非必需情况下不要使用 `crypto.randomUUID()`；普通随机标识（组件实例、会话、记录键等）优先使用已有的 `nanoid`。前端需要支持 HTTP 局域网访问，不能假定处于 HTTPS 或 localhost 安全上下文。确需 UUID 格式时，使用支持非安全上下文的实现，不要直接依赖 `crypto.randomUUID()`。
