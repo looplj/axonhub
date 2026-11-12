@@ -897,6 +897,31 @@ func isQuotaPollableChannel(ch *ent.Channel) bool {
 		hasActiveQuotaOwnedRecord(ch.DisabledAPIKeys)
 }
 
+// failureAccountsFor returns the failed keys' rows only when the stored channel
+// still has the identity those rows were produced for. Credentials edited while
+// the request was in flight would otherwise park the previous keys' rows on the
+// channel until the next poll. The error and its backoff are recorded either
+// way: they describe the poll, not the credentials.
+func (svc *ProviderQuotaService) failureAccountsFor(
+	ctx context.Context,
+	member *ent.Channel,
+	accounts []provider_quota.APIKeyQuota,
+) []provider_quota.APIKeyQuota {
+	if len(accounts) == 0 {
+		return nil
+	}
+
+	current, err := svc.db.Channel.Get(ctx, member.ID)
+	if err != nil {
+		return nil
+	}
+	if !quotaKeyIdentityUnchanged(member, current) {
+		return nil
+	}
+
+	return accounts
+}
+
 // releaseQuotaKeyDisables drops quota-owned key disables whose collection,
 // routing mode or provider identity no longer justifies them. It never makes a
 // provider request.
@@ -1019,7 +1044,8 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 		// stored for display, and every existing quota-owned disable survives.
 		failures := nextQuotaGroupErrorCount(group.channels, providerType)
 		for _, member := range group.channels {
-			svc.saveQuotaError(ctx, member, providerType, group.accountKey, err, failures, now, quotaData.APIKeyQuotas)
+			svc.saveQuotaError(ctx, member, providerType, group.accountKey, err, failures, now,
+				svc.failureAccountsFor(ctx, member, quotaData.APIKeyQuotas))
 		}
 		return
 	}

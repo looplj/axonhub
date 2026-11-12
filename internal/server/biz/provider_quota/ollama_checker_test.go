@@ -623,3 +623,18 @@ func TestOllama_CheckQuota_BalanceRejectsHTTPSDowngrade(t *testing.T) {
 	require.ErrorContains(t, err, "refusing HTTPS to HTTP redirect")
 	require.Empty(t, cleartext)
 }
+
+// TestOllamaAPIKey_HonorsDisableRecordsStoredWithConfiguredWhitespace pins the
+// lookup: disable records are keyed by the configured string while the request
+// needs the trimmed form, so both identities must be consulted.
+func TestOllamaAPIKey_HonorsDisableRecordsStoredWithConfiguredWhitespace(t *testing.T) {
+	ch := &ent.Channel{
+		Credentials: objects.ChannelCredentials{APIKeys: []string{"  padded-key  ", "next-key"}},
+		DisabledAPIKeys: []objects.DisabledAPIKey{{
+			Key:        "  padded-key  ",
+			DisabledAt: time.Now(),
+		}},
+	}
+
+	require.Equal(t, "next-key", ollamaAPIKey(ch))
+}

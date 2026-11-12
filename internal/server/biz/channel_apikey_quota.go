@@ -167,11 +167,10 @@ func (svc *ChannelService) ReconcileQuotaKeys(
 		return nil, fmt.Errorf("failed to reconcile quota key disables: %w", err)
 	}
 	if affected == 0 {
-		log.Debug(ctx, "Discarded quota key reconciliation after a concurrent channel change",
-			log.Int("channel_id", ch.ID),
-		)
-
-		return ch, nil
+		// A concurrent edit won the row: this observation no longer describes
+		// the stored channel, so the caller must not persist it either. The
+		// next poll reconciles from the current state.
+		return ch, fmt.Errorf("%w (channel %d): the channel changed during reconciliation", errQuotaKeySnapshotStale, ch.ID)
 	}
 
 	eventStatus := ch.Status
@@ -339,8 +338,12 @@ func reconcileQuotaKeyDisables(
 	for _, record := range ch.DisabledAPIKeys {
 		if !record.QuotaDisabled {
 			// A manual, plugin or HTTP-rule disable owns this record for good.
+			// An expired record owns nothing (the expiry cleanup removes it), so
+			// it must not stop quota from parking the same key.
 			result.keys = append(result.keys, record)
-			kept[record.Key] = struct{}{}
+			if !record.IsExpired() {
+				kept[record.Key] = struct{}{}
+			}
 
 			continue
 		}

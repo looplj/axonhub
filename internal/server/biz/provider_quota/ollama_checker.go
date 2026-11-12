@@ -58,7 +58,14 @@ func ollamaAPIKey(ch *ent.Channel) string {
 
 	for _, candidate := range ch.Credentials.GetAllAPIKeys() {
 		trimmed := strings.TrimSpace(candidate)
-		if _, isDisabled := disabled[trimmed]; trimmed != "" && !isDisabled {
+		if trimmed == "" {
+			continue
+		}
+		// Disable records are keyed by the configured string, while the request
+		// needs the trimmed form, so both identities are consulted.
+		_, disabledAsConfigured := disabled[candidate]
+		_, disabledAsTrimmed := disabled[trimmed]
+		if !disabledAsConfigured && !disabledAsTrimmed {
 			return trimmed
 		}
 	}

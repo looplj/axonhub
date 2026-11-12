@@ -114,7 +114,9 @@ func fetchDeepSeekBalance(
 		return DeepSeekBalanceResponse{}, fmt.Errorf("DeepSeek balance request failed: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return DeepSeekBalanceResponse{}, fmt.Errorf("DeepSeek balance API returned status %d: %s", resp.StatusCode, string(resp.Body))
+		// The status code is enough to classify the failure; the upstream body
+		// stays out of the error because the quota service logs it.
+		return DeepSeekBalanceResponse{}, fmt.Errorf("DeepSeek balance API returned status %d", resp.StatusCode)
 	}
 
 	var response DeepSeekBalanceResponse

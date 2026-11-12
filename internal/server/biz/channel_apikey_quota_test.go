@@ -597,3 +597,59 @@ func TestQuotaKey_CompareAndSetDiscardsAConcurrentEdit(t *testing.T) {
 	require.False(t, final.DisabledAPIKeys[0].QuotaDisabled)
 	require.Equal(t, channel.StatusEnabled, final.Status)
 }
+
+// TestQuotaKey_ExpiredManualRecordDoesNotBlockQuotaOwnership pins the ownership
+// rule: an expired manual disable disables nothing, so it must not stop quota
+// from parking the same exhausted key. The expired record itself survives until
+// the expiry cleanup removes it.
+func TestQuotaKey_ExpiredManualRecordDoesNotBlockQuotaOwnership(t *testing.T) {
+	env := setupQuotaKeyTestEnv(t)
+	ch := env.createOpenCodeChannel(t, quotaTestKeyA, quotaTestKeyB)
+
+	expiredAt := time.Now().Add(-time.Hour)
+	_, err := env.client.Channel.UpdateOneID(ch.ID).
+		SetDisabledAPIKeys([]objects.DisabledAPIKey{{
+			Key:        quotaTestKeyA,
+			DisabledAt: time.Now().Add(-2 * time.Hour),
+			ErrorCode:  429,
+			Reason:     "temporary",
+			ExpiresAt:  &expiredAt,
+		}}).
+		Save(env.ctx)
+	require.NoError(t, err)
+
+	env.server.usage(quotaTestKeyA, 100, 10, 10)
+	env.server.usage(quotaTestKeyB, 10, 10, 10)
+	env.poll(t)
+
+	reloaded := env.reload(t, ch.ID)
+	require.Equal(t, []string{quotaTestKeyA}, quotaOwnedKeys(reloaded), "the exhausted key is parked despite the expired record")
+	require.Len(t, reloaded.DisabledAPIKeys, 2, "the expired record is preserved for the expiry cleanup")
+	require.Equal(t, []string{quotaTestKeyB}, enabledKeysOf(reloaded))
+}
+
+// TestQuotaKey_FailureRowsRequireTheSameChannelIdentity pins the error-path
+// guard: failed key rows are only persisted for the identity they describe.
+func TestQuotaKey_FailureRowsRequireTheSameChannelIdentity(t *testing.T) {
+	env := setupQuotaKeyTestEnv(t)
+	ch := env.createOpenCodeChannel(t, quotaTestKeyA, quotaTestKeyB)
+
+	accounts := []provider_quota.APIKeyQuota{{
+		Key:       quotaTestKeyA,
+		Ref:       "ref-a",
+		Index:     1,
+		ErrorCode: provider_quota.APIKeyQuotaErrorCheckFailed,
+		Data:      provider_quota.QuotaData{Status: "unknown", ProviderType: "opencode_go"},
+	}}
+
+	require.Len(t, env.quota.failureAccountsFor(env.ctx, ch, accounts), 1, "an unchanged channel keeps its failure rows")
+
+	// The credentials change while the request is in flight.
+	_, err := env.client.Channel.UpdateOneID(ch.ID).
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{quotaTestKeyB}}).
+		Save(env.ctx)
+	require.NoError(t, err)
+
+	require.Empty(t, env.quota.failureAccountsFor(env.ctx, ch, accounts), "a changed identity drops the stale rows")
+	require.Empty(t, env.quota.failureAccountsFor(env.ctx, ch, nil))
+}

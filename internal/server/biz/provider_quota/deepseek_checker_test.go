@@ -232,3 +232,29 @@ func TestDeepSeek_SupportsChannel(t *testing.T) {
 	require.True(t, checker.SupportsChannel(&ent.Channel{Type: channel.TypeOpenaiResponses, BaseURL: "https://api.deepseek.com"}))
 	require.False(t, checker.SupportsChannel(&ent.Channel{Type: channel.TypeOpenai, BaseURL: "https://api.openai.com"}))
 }
+
+// TestDeepSeek_CheckQuota_ErrorKeepsTheUpstreamBodyOut pins the error shape the
+// quota service logs: the status code classifies the failure, the body never
+// travels with it.
+func TestDeepSeek_CheckQuota_ErrorKeepsTheUpstreamBodyOut(t *testing.T) {
+	const upstreamBody = "upstream-says-no-and-leaks-detail"
+
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusUnauthorized,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(upstreamBody)),
+			}, nil
+		}),
+	})
+
+	_, err := NewDeepSeekQuotaChecker(httpClient).CheckQuota(context.Background(), &ent.Channel{
+		Type:        channel.TypeDeepseek,
+		Credentials: objects.ChannelCredentials{APIKey: "secret-key"},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "DeepSeek balance request failed")
+	require.NotContains(t, err.Error(), upstreamBody, "the upstream body never travels with the error")
+	require.NotContains(t, err.Error(), "secret-key")
+}
