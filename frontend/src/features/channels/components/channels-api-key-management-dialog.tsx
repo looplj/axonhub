@@ -550,53 +550,55 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
                               </Tooltip>
 
                               {isDisabled ? (
-                                <Popover open={confirmEnableKey === key} onOpenChange={(o) => setConfirmEnableKey(o ? key : null)}>
-                                  <PopoverTrigger asChild>
-                                    <Button size='sm' variant='ghost' className='h-7 w-7 p-0' disabled={isPending}>
-                                      <IconRefresh className='h-4 w-4' />
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className='w-64'>
-                                    <div className='flex flex-col gap-3'>
-                                      <p className='text-sm'>{t('channels.dialogs.keyManagement.confirmEnable')}</p>
-                                      <div className='flex justify-end gap-2'>
-                                        <Button size='sm' variant='outline' onClick={() => setConfirmEnableKey(null)}>
-                                          {t('common.buttons.cancel')}
-                                        </Button>
-                                        <Button size='sm' onClick={() => handleToggleEnable(key)} disabled={isPending}>
-                                          {t('common.buttons.confirm')}
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-                                {isQuotaDisabled && (
-                                  <Popover
-                                    open={confirmKeepDisabledKey === key}
-                                    onOpenChange={(o) => setConfirmKeepDisabledKey(o ? key : null)}
-                                  >
+                                <>
+                                  <Popover open={confirmEnableKey === key} onOpenChange={(o) => setConfirmEnableKey(o ? key : null)}>
                                     <PopoverTrigger asChild>
-                                      <Button size='sm' variant='outline' className='h-7 px-2' disabled={isPending}>
-                                        {t('channels.dialogs.keyManagement.keepDisabled')}
+                                      <Button size='sm' variant='ghost' className='h-7 w-7 p-0' disabled={isPending}>
+                                        <IconRefresh className='h-4 w-4' />
                                       </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className='w-72'>
+                                    <PopoverContent className='w-64'>
                                       <div className='flex flex-col gap-3'>
-                                        <p className='text-sm'>
-                                          {t('channels.dialogs.keyManagement.confirmKeepDisabled')}
-                                        </p>
+                                        <p className='text-sm'>{t('channels.dialogs.keyManagement.confirmEnable')}</p>
                                         <div className='flex justify-end gap-2'>
-                                          <Button size='sm' variant='outline' onClick={() => setConfirmKeepDisabledKey(null)}>
+                                          <Button size='sm' variant='outline' onClick={() => setConfirmEnableKey(null)}>
                                             {t('common.buttons.cancel')}
                                           </Button>
-                                          <Button size='sm' onClick={() => handleToggleDisable(key)} disabled={isPending}>
+                                          <Button size='sm' onClick={() => handleToggleEnable(key)} disabled={isPending}>
                                             {t('common.buttons.confirm')}
                                           </Button>
                                         </div>
                                       </div>
                                     </PopoverContent>
                                   </Popover>
-                                )}
+                                  {isQuotaDisabled && (
+                                    <Popover
+                                      open={confirmKeepDisabledKey === key}
+                                      onOpenChange={(o) => setConfirmKeepDisabledKey(o ? key : null)}
+                                    >
+                                      <PopoverTrigger asChild>
+                                        <Button size='sm' variant='outline' className='h-7 px-2' disabled={isPending}>
+                                          {t('channels.dialogs.keyManagement.keepDisabled')}
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className='w-72'>
+                                        <div className='flex flex-col gap-3'>
+                                          <p className='text-sm'>
+                                            {t('channels.dialogs.keyManagement.confirmKeepDisabled')}
+                                          </p>
+                                          <div className='flex justify-end gap-2'>
+                                            <Button size='sm' variant='outline' onClick={() => setConfirmKeepDisabledKey(null)}>
+                                              {t('common.buttons.cancel')}
+                                            </Button>
+                                            <Button size='sm' onClick={() => handleToggleDisable(key)} disabled={isPending}>
+                                              {t('common.buttons.confirm')}
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </PopoverContent>
+                                    </Popover>
+                                  )}
+                                </>
                               ) : (
                                 <Popover open={confirmDisableKey === key} onOpenChange={(o) => setConfirmDisableKey(o ? key : null)}>
                                   <PopoverTrigger asChild>
