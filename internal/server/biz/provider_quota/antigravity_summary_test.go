@@ -128,7 +128,7 @@ func TestAntigravityPoolsCarryIndependentAvailabilityGroups(t *testing.T) {
 			pool := antigravityModelPool(strings.ReplaceAll(limit.Window, "_", " "))
 			require.NotEmpty(t, pool, "window %q", limit.Window)
 			require.Equal(t, antigravityPoolAvailabilityGroup(pool), limit.AvailabilityGroup, "window %q", limit.Window)
-			require.NotEqual(t, zhipuAccountsAvailabilityGroup, limit.AvailabilityGroup)
+			require.NotEqual(t, apiKeyAccountsAvailabilityGroup, limit.AvailabilityGroup)
 			require.NotEqual(t, apertisAvailabilityGroup, limit.AvailabilityGroup)
 		}
 	}

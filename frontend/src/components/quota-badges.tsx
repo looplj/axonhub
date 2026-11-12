@@ -1,9 +1,9 @@
-// 职责: 展示渠道额度窗口、路由状态及可用的手动重置操作。
+// 职责: 展示渠道额度窗口、逐 API key 额度账户、路由状态及可用的手动重置操作。
 // 关联文件:
 //   frontend/src/features/system/data/quotas.ts
 //   frontend/src/components/claude-reset-credits.tsx
-//   frontend/src/locales/en.json
-//   frontend/src/locales/zh.json
+//   frontend/src/locales/en/system.json
+//   frontend/src/locales/zh-CN/system.json
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
@@ -40,7 +40,7 @@ import {
   ProviderKimiCodeQuotaData,
   ProviderMinimaxQuotaData,
   ProviderZhipuQuotaData,
-  ZhipuAccountQuota,
+  ProviderAPIKeyQuota,
   ZhipuWindowRow,
   ProviderZenmuxQuotaData,
   ClineQuotaWindow,
@@ -214,6 +214,19 @@ function getClineUsagePercent(window?: ClineQuotaWindow): number {
 // getChannelPercentage maps provider quota data onto the 0-100 used percentage
 // shown by the quota badge.
 function getChannelPercentage(channel: ProviderQuotaChannel): number {
+  if (channel.quotaStatus.apiKeyQuotas.length > 0) {
+    if (channel.quotaStatus.status === 'exhausted') return 100;
+
+    const accountPercentages = channel.quotaStatus.apiKeyQuotas.flatMap((account) => {
+      if (account.disabled || account.status === 'unknown' || account.errorCode) return [];
+      const windows = account.limits.filter(
+        (limit) => limit.type === 'token' && limit.window !== 'pay_as_you_go' && limit.window !== 'credits'
+      );
+      return windows.length > 0 ? [Math.max(...windows.map((limit) => limit.usageRatio * 100))] : [];
+    });
+    if (accountPercentages.length > 0) return Math.min(...accountPercentages);
+  }
+
   let percentage = 0;
   if (channel.type === 'claudecode') {
     const qd = channel.quotaStatus.quotaData;
@@ -404,6 +417,196 @@ const WINDOW_LABEL_KEYS: Record<string, string> = {
   kwh: 'quota.label.kwh_remaining',
 };
 
+function APIKeyQuotaList({
+  accounts,
+  channelId,
+  formatTimeToReset,
+}: {
+  accounts: ProviderAPIKeyQuota[];
+  channelId: string;
+  formatTimeToReset: (resetAt?: string) => string;
+}) {
+  const { t } = useTranslation();
+  const [showDisabledAccounts, setShowDisabledAccounts] = useState(false);
+  const [expandedAccountIndex, setExpandedAccountIndex] = useState<number | null>(0);
+  const hiddenCount = accounts.filter((account) => account.disabled && !account.quotaDisabled).length;
+  const windowLabel = (window?: string) => (window && WINDOW_LABEL_KEYS[window] ? t(WINDOW_LABEL_KEYS[window]) : window);
+
+  return (
+    <div className='mt-3 space-y-2'>
+      <div className='max-h-44 space-y-0.5 overflow-y-auto pr-1'>
+        {accounts.map((account, accountIndex) => {
+          if (account.disabled && !account.quotaDisabled && !showDisabledAccounts) return null;
+
+          const failed = Boolean(account.errorCode);
+          const unavailable = failed || account.status === 'unknown';
+          const statusLabel = failed
+            ? t('quota.label.account_error')
+            : account.status === 'unknown'
+              ? t('quota.label.unavailable')
+              : t(STATUS_LABELS[account.status]);
+          const limits = account.limits.filter((limit) => limit.type === 'token');
+          const expanded = expandedAccountIndex === accountIndex;
+          const panelId = `${channelId}-api-key-quota-${accountIndex}`;
+          const label = `${t('quota.label.key_index', { index: account.index })}${account.suffix ? ` · ****${account.suffix}` : ''}`;
+          const creditRows = expanded && Array.isArray(account.quotaData.rows)
+            ? account.quotaData.rows.flatMap((row: unknown) => {
+                if (typeof row !== 'object' || row === null) return [];
+                const credit = row as Partial<ZhipuWindowRow>;
+                if (
+                  typeof credit.window !== 'string' ||
+                  typeof credit.remaining !== 'number' ||
+                  !Number.isFinite(credit.remaining) ||
+                  typeof credit.usage !== 'number' ||
+                  !Number.isFinite(credit.usage)
+                ) return [];
+                const window = credit.window === 'five_hour' ? '5h' : credit.window === 'weekly_limit' ? 'weekly' : credit.window;
+                return [{ window, remaining: credit.remaining.toLocaleString(), total: credit.usage.toLocaleString() }];
+              })
+            : [];
+
+          return (
+            <div key={account.ref}>
+              <button
+                type='button'
+                id={`${panelId}-trigger`}
+                aria-expanded={expanded}
+                aria-controls={panelId}
+                onClick={() => setExpandedAccountIndex((current) => (current === accountIndex ? null : accountIndex))}
+                className='hover:bg-muted/50 focus-visible:ring-ring/50 w-full space-y-0.5 rounded px-1 py-1 text-left text-[11px] focus-visible:ring-2 focus-visible:outline-none'
+              >
+                <span className='flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5'>
+                  <span className='text-foreground font-medium'>{label}</span>
+                  <span className={failed ? 'text-red-500' : 'text-muted-foreground'}>{statusLabel}</span>
+                </span>
+                {account.disabled && (
+                  <span className='block text-amber-500'>
+                    {t(account.quotaDisabled ? 'quota.label.quota_disabled' : 'quota.label.account_disabled')}
+                  </span>
+                )}
+                {!unavailable && (
+                  <span className='flex flex-wrap gap-x-2 gap-y-0.5 tabular-nums'>
+                    {limits.map((limit, index) => (
+                      <span key={`${limit.window}-${index}`} className='text-muted-foreground'>
+                        {windowLabel(limit.window)}{' '}
+                        {limit.status === 'unknown' ? t('quota.label.unavailable') : `${Math.round(limit.usageRatio * 100)}%`}
+                      </span>
+                    ))}
+                    {account.balances.map((balance, index) => (
+                      <span key={`${balance.currency}-${index}`} className='text-muted-foreground'>
+                        {balance.currency?.trim().toUpperCase()} {formatQuotaBalance(balance.total)}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </button>
+              <div id={panelId} role='region' aria-labelledby={`${panelId}-trigger`} hidden={!expanded}>
+                {expanded && (
+                  <div className='space-y-3 px-1 py-2'>
+                    {unavailable ? (
+                      <div className='text-muted-foreground text-[11px]'>{statusLabel}</div>
+                    ) : (
+                      <>
+                        {limits.map((limit, index) => {
+                          const usedPercent = limit.usageRatio * 100;
+                          const durationPercent = getLimitDurationPercent(limit);
+                          const resetText = formatTimeToReset(limit.nextResetAt);
+                          const credit = creditRows.find((row) => row.window === limit.window);
+                          return (
+                            <div key={`${limit.window}-${index}`} className='space-y-1.5'>
+                              <div className='flex items-center justify-between gap-2 text-xs'>
+                                <span className='text-muted-foreground font-medium'>{windowLabel(limit.window)}</span>
+                                <span className='text-foreground font-medium'>
+                                  {limit.status === 'unknown'
+                                    ? t('quota.label.unavailable')
+                                    : t('quota.label.percent_used', { percent: Math.round(usedPercent) })}
+                                </span>
+                              </div>
+                              {limit.status !== 'unknown' && (
+                                <UsageTimeBar
+                                  usagePercent={usedPercent}
+                                  durationPercent={durationPercent}
+                                  tooltip={
+                                    <div className='space-y-0.5'>
+                                      <div className='font-medium'>{windowLabel(limit.window)}</div>
+                                      <div>{t('quota.label.percent_used', { percent: Math.round(usedPercent) })}</div>
+                                      {durationPercent !== undefined && (
+                                        <div>
+                                          {t('quota.label.time_elapsed')}: {Math.round(durationPercent)}%
+                                        </div>
+                                      )}
+                                      {credit && <div>{t('quota.label.credits_amount', credit)}</div>}
+                                      {resetText && <div>{resetText}</div>}
+                                    </div>
+                                  }
+                                />
+                              )}
+                              {resetText && <div className='text-muted-foreground text-[11px]'>{resetText}</div>}
+                            </div>
+                          );
+                        })}
+                        {creditRows.map((credit, index) => (
+                          <div key={`${credit.window}-${index}`} className='text-muted-foreground text-[11px]'>
+                            {windowLabel(credit.window)} · {t('quota.label.credits_amount', credit)}
+                          </div>
+                        ))}
+                        {account.balances.map((balance, index) => {
+                          const currency = balance.currency?.trim().toUpperCase();
+                          const total = formatQuotaBalance(balance.total);
+                          const granted = formatQuotaBalance(balance.granted);
+                          const toppedUp = formatQuotaBalance(balance.topped_up);
+                          return (
+                            <div key={`${currency}-${index}`} className='space-y-1 text-xs'>
+                              <div className='flex items-center justify-between gap-2'>
+                                <span className='text-muted-foreground font-medium'>
+                                  {t('quota.label.account_balance')}{currency ? ` (${currency})` : ''}
+                                </span>
+                                <span className='text-foreground font-medium'>
+                                  {total !== undefined ? (currency ? `${currency} ${total}` : total) : t('quota.label.unavailable')}
+                                </span>
+                              </div>
+                              {granted !== undefined && (
+                                <div className='flex items-center justify-between gap-2 text-[11px]'>
+                                  <span className='text-muted-foreground'>{t('quota.label.granted_balance')}</span>
+                                  <span>{granted}</span>
+                                </div>
+                              )}
+                              {toppedUp !== undefined && (
+                                <div className='flex items-center justify-between gap-2 text-[11px]'>
+                                  <span className='text-muted-foreground'>{t('quota.label.topped_up_balance')}</span>
+                                  <span>{toppedUp}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {limits.length === 0 && account.balances.length === 0 && creditRows.length === 0 && (
+                          <div className='text-muted-foreground text-[11px]'>{t('quota.label.unavailable')}</div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {hiddenCount > 0 && (
+        <button
+          type='button'
+          className='text-primary hover:text-primary/80 text-[11px] font-medium hover:underline'
+          onClick={() => setShowDisabledAccounts((shown) => !shown)}
+        >
+          {showDisabledAccounts
+            ? t('quota.label.hide_disabled_accounts', { count: hiddenCount })
+            : t('quota.label.show_disabled_accounts', { count: hiddenCount })}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // periodStart only exists because the backend priced the window from usage
 // logs: only limits with a pinned period start take part in the cost
 // aggregation, and that pricing runs for no provider that reports the window's
@@ -512,8 +715,6 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [isResetting, setIsResetting] = useState(false);
-  // Channels can carry dozens of keys; the disabled ones stay collapsed.
-  const [showDisabledAccounts, setShowDisabledAccounts] = useState(false);
   const quota = channel.quotaStatus;
 
   const status = quota.status;
@@ -1364,7 +1565,11 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
         </div>
       )}
 
-      {(channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') && (
+      {quota.apiKeyQuotas.length > 0 && (
+        <APIKeyQuotaList accounts={quota.apiKeyQuotas} channelId={channel.id} formatTimeToReset={formatTimeToReset} />
+      )}
+
+      {quota.apiKeyQuotas.length === 0 && (channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') && (
         <div className='mt-3 space-y-3'>
           {(() => {
             // OpenCode Go renders from the normalized limits: its checker maps
@@ -1829,7 +2034,8 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
         </div>
       )}
 
-      {(channel.type === 'zhipu' || channel.type === 'zhipu_anthropic' || channel.type === 'zai' || channel.type === 'zai_anthropic') && (
+      {quota.apiKeyQuotas.length === 0 &&
+        (channel.type === 'zhipu' || channel.type === 'zhipu_anthropic' || channel.type === 'zai' || channel.type === 'zai_anthropic') && (
         <div className='mt-3 space-y-3'>
           {(() => {
             const qd = channel.quotaStatus.quotaData as ProviderZhipuQuotaData | undefined;
@@ -1840,8 +2046,6 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
               weekly_limit: t('quota.window.weekly'),
             };
 
-            // One bar per window; reused for the aggregated fallback and for
-            // every account of a multi-key channel.
             const renderWindowRows = (rows: ZhipuWindowRow[]) =>
               rows.map((row, index) => {
                 const percentage = Math.min(100, row.usedPercent);
@@ -1886,99 +2090,6 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                 );
               });
 
-            const accounts = qd.accounts ?? [];
-            if (accounts.length > 1) {
-              // A channel can carry dozens of keys, so the detail stays a
-              // compact list: the aggregate windows on top, then one line per
-              // account with its two figures. Disabled and failing keys are
-              // collapsed behind a toggle.
-              const usableAccounts = accounts.filter((account) => !account.disabled && !account.error);
-              const readyAccountCount = usableAccounts.filter((account) => account.ready === true).length;
-              const unavailableAccounts = accounts.filter((account) => account.disabled || account.error);
-              const visibleAccounts = showDisabledAccounts ? [...usableAccounts, ...unavailableAccounts] : usableAccounts;
-              const hiddenCount = unavailableAccounts.length;
-
-              const windowPercent = (account: ZhipuAccountQuota, window: string) =>
-                account.rows?.find((row) => row.window === window)?.usedPercent;
-              const percentClass = (percent?: number) => {
-                if (percent === undefined) return 'text-muted-foreground';
-                if (percent >= 100) return 'text-red-500';
-                if (percent >= 80) return 'text-amber-500';
-                return 'text-green-600 dark:text-green-500';
-              };
-              const formatPercent = (percent?: number) => (percent === undefined ? '-' : `${Math.round(Math.min(100, percent))}%`);
-
-              return (
-                <>
-                  <div className='flex items-center justify-between text-xs'>
-                    <span className='text-muted-foreground font-medium'>
-                      {t('quota.label.accounts_summary', { usable: readyAccountCount, total: accounts.length })}
-                    </span>
-                    <span className='text-muted-foreground text-[11px]'>{t('quota.label.worst_window')}</span>
-                  </div>
-                  {renderWindowRows(qd.rows ?? [])}
-                  <div className='max-h-44 space-y-0.5 overflow-y-auto pr-1'>
-                    {visibleAccounts.map((account, accountIndex) => {
-                      const fiveHour = windowPercent(account, 'five_hour');
-                      const weekly = windowPercent(account, 'weekly_limit');
-                      const failed = Boolean(account.error);
-                      return (
-                        <Tooltip key={account.ref ?? `account-${accountIndex}`}>
-                          <TooltipTrigger asChild>
-                            <div
-                              tabIndex={0}
-                              className='hover:bg-muted/50 focus-visible:ring-ring/50 flex cursor-default items-center justify-between gap-2 rounded px-1 py-0.5 text-[11px] focus-visible:ring-2 focus-visible:outline-none'
-                            >
-                              <span className={`font-mono ${account.disabled || failed ? 'text-muted-foreground' : 'text-foreground'}`}>
-                                {`****${account.suffix ?? ''}`}
-                              </span>
-                              {failed ? (
-                                <span className='text-red-500'>{t('quota.label.account_error')}</span>
-                              ) : (
-                                <span className='flex items-center gap-2 tabular-nums'>
-                                  <span
-                                    className={percentClass(fiveHour)}
-                                  >{`${t('quota.label.short_5h')} ${formatPercent(fiveHour)}`}</span>
-                                  <span
-                                    className={percentClass(weekly)}
-                                  >{`${t('quota.label.short_weekly')} ${formatPercent(weekly)}`}</span>
-                                  {account.disabled && <span className='text-amber-500'>{t('quota.label.account_disabled')}</span>}
-                                </span>
-                              )}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent className='space-y-0.5'>
-                            <div className='font-medium'>{`****${account.suffix ?? ''}`}</div>
-                            {(account.rows ?? []).map((row, rowIndex) => (
-                              <div key={`${row.window}-${rowIndex}`}>
-                                {`${windowLabels[row.window] ?? row.window}: ${t('quota.label.percent_used', { percent: Math.round(Math.min(100, row.usedPercent)) })}`}
-                                {row.remaining != null && row.usage != null
-                                  ? ` · ${t('quota.label.credits_amount', { remaining: row.remaining.toLocaleString(), total: row.usage.toLocaleString() })}`
-                                  : ''}
-                                {row.resetAt ? ` · ${formatTimeToReset(row.resetAt)}` : ''}
-                              </div>
-                            ))}
-                            {account.error && <div className='text-red-500'>{account.error}</div>}
-                            {account.disabled && <div className='text-amber-500'>{t('quota.label.account_disabled')}</div>}
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    })}
-                  </div>
-                  {hiddenCount > 0 && (
-                    <button
-                      type='button'
-                      className='text-primary hover:text-primary/80 self-start text-[11px] font-medium hover:underline'
-                      onClick={() => setShowDisabledAccounts((shown) => !shown)}
-                    >
-                      {showDisabledAccounts
-                        ? t('quota.label.hide_disabled_accounts', { count: hiddenCount })
-                        : t('quota.label.show_disabled_accounts', { count: hiddenCount })}
-                    </button>
-                  )}
-                </>
-              );
-            }
             return <>{renderWindowRows(qd.rows ?? [])}</>;
           })()}
         </div>
@@ -2474,9 +2585,10 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
         </div>
       )}
 
-      {(channel.type === 'deepseek' ||
-        channel.type === 'deepseek_anthropic' ||
-        (isOpenaiType(channel.type) && channel.providerType === 'deepseek')) && (
+      {quota.apiKeyQuotas.length === 0 &&
+        (channel.type === 'deepseek' ||
+          channel.type === 'deepseek_anthropic' ||
+          (isOpenaiType(channel.type) && channel.providerType === 'deepseek')) && (
         <div className='mt-3 space-y-3'>
           {(() => {
             const balances = parseQuotaBalances(channel.quotaStatus.quotaData);

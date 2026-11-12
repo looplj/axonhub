@@ -51,6 +51,17 @@ func (svc *ProviderQuotaService) fillPeriodQuotas(
 		limit := &quotaData.Limits[i]
 		limit.PeriodCost = nil
 
+		// An account label marks the binding limit of one API key of a
+		// multi-key channel. The usage-log spend behind these periods is
+		// recorded per channel, so pricing a binding limit would attribute the
+		// whole channel's spend to one key; the per-key details keep the
+		// provider-reported amounts instead.
+		if limit.Account != "" {
+			limit.PeriodQuota = nil
+
+			continue
+		}
+
 		start := limit.PeriodStart
 		if start == nil || !start.Before(now) || limit.UsageRatio <= 0 || math.IsNaN(limit.UsageRatio) || math.IsInf(limit.UsageRatio, 0) {
 			continue

@@ -54,10 +54,11 @@ func NewOllamaQuotaChecker(httpClient *httpclient.HttpClient) *OllamaQuotaChecke
 }
 
 func ollamaAPIKey(ch *ent.Channel) string {
-	disabled := zhipuDisabledKeySet(ch)
+	disabled := activeDisabledKeys(ch)
 
 	for _, candidate := range ch.Credentials.GetAllAPIKeys() {
-		if trimmed := strings.TrimSpace(candidate); trimmed != "" && !disabled[trimmed] {
+		trimmed := strings.TrimSpace(candidate)
+		if _, isDisabled := disabled[trimmed]; trimmed != "" && !isDisabled {
 			return trimmed
 		}
 	}

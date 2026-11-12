@@ -35,7 +35,7 @@ const { pageInfoSchema } = await import(
 );
 globalThis.__importStubs = { z, pageInfoSchema };
 
-const { parseQuotaBalances, parseQuotaLimits } = await loadModule('features/system/data/quotas.ts', (s) =>
+const { parseAPIKeyQuotas, parseQuotaBalances, parseQuotaLimits } = await loadModule('features/system/data/quotas.ts', (s) =>
   s.replace(/export function useProviderQuotaStatuses[\s\S]*$/m, '')
 );
 
@@ -177,6 +177,124 @@ test('normalized balances: malformed entries fail closed', () => {
     _balances: [null, 42, { currency: 'CNY' }, { total: '110' }, { total: 10, granted: 'x', topped_up: 5 }],
   });
   assert.deepEqual(balances, [{ account: undefined, currency: undefined, total: 10, granted: undefined, topped_up: 5 }]);
+});
+
+function apiKeyQuotaFixture(overrides = {}) {
+  return {
+    ref: 'opaque-key-one',
+    index: 1,
+    suffix: 'same',
+    disabled: false,
+    quotaDisabled: false,
+    status: 'available',
+    ready: true,
+    quotaData: {},
+    ...overrides,
+  };
+}
+
+test('per-key quotas: every key retains all normalized windows and its provider payload', () => {
+  const resetAt = '2026-11-13T00:00:00Z';
+  const windows = (ratios) => ['5h', 'weekly', 'monthly'].map((window, index) => ({
+    type: 'token', window, usageRatio: ratios[index], status: ratios[index] === 1 ? 'exhausted' : 'available',
+    ready: ratios[index] !== 1, periodStart: '2026-11-12T00:00:00Z', nextResetAt: resetAt,
+  }));
+  const firstPayload = { level: 'PRO', rows: [{ window: 'five_hour', remaining: 50, usage: 100 }], _limits: windows([1, 0.2, 0.3]) };
+  const secondPayload = { _limits: windows([0.12, 0.3, 0.35]) };
+  const accounts = parseAPIKeyQuotas({
+    _api_key_quotas: [
+      apiKeyQuotaFixture({ disabled: true, quotaDisabled: true, status: 'exhausted', ready: false, nextResetAt: resetAt, quotaData: firstPayload }),
+      apiKeyQuotaFixture({ ref: 'opaque-key-two', index: 2, quotaData: secondPayload }),
+    ],
+  });
+
+  assert.equal(accounts.length, 2);
+  assert.deepEqual(accounts.map((account) => account.index), [1, 2]);
+  assert.deepEqual(accounts.map((account) => account.limits.map((limit) => limit.window)), [
+    ['5h', 'weekly', 'monthly'], ['5h', 'weekly', 'monthly'],
+  ]);
+  assert.deepEqual(accounts.map((account) => account.limits.map((limit) => limit.usageRatio)), [[1, 0.2, 0.3], [0.12, 0.3, 0.35]]);
+  assert.equal(accounts[0].disabled, true);
+  assert.equal(accounts[0].quotaDisabled, true);
+  assert.equal(accounts[0].nextResetAt, resetAt);
+  assert.equal(accounts[0].limits[0].periodStart, '2026-11-12T00:00:00Z');
+  assert.deepEqual(accounts[0].quotaData, firstPayload);
+  assert.deepEqual(accounts[1].quotaData, secondPayload);
+});
+
+test('per-key quotas: malformed rows are omitted without dropping valid neighbors', () => {
+  const accounts = parseAPIKeyQuotas({
+    _api_key_quotas: [
+      apiKeyQuotaFixture(), null, 42, [],
+      apiKeyQuotaFixture({ ref: ' ' }),
+      apiKeyQuotaFixture({ index: 0 }),
+      apiKeyQuotaFixture({ index: 1.5 }),
+      apiKeyQuotaFixture({ status: 'invalid' }),
+      apiKeyQuotaFixture({ ready: 'true' }),
+      apiKeyQuotaFixture({ disabled: 'false' }),
+      apiKeyQuotaFixture({ quotaDisabled: undefined }),
+      apiKeyQuotaFixture({ nextResetAt: 'not-a-date' }),
+      apiKeyQuotaFixture({ ref: 'opaque-key-last', index: 7 }),
+    ],
+  });
+
+  assert.deepEqual(accounts.map((account) => account.ref), ['opaque-key-one', 'opaque-key-last']);
+  assert.deepEqual(accounts.map((account) => account.index), [1, 7]);
+});
+
+test('per-key quotas: unknown and failed accounts stay unknown without invented usage', () => {
+  const accounts = parseAPIKeyQuotas({
+    _api_key_quotas: [
+      apiKeyQuotaFixture({ status: 'unknown', ready: false }),
+      apiKeyQuotaFixture({ ref: 'opaque-failed-key', index: 2, status: 'unknown', ready: false, errorCode: 'check_failed' }),
+    ],
+  });
+
+  assert.deepEqual(accounts.map((account) => account.status), ['unknown', 'unknown']);
+  assert.deepEqual(accounts.map((account) => account.ready), [false, false]);
+  assert.deepEqual(accounts.map((account) => account.errorCode), [undefined, 'check_failed']);
+  for (const account of accounts) {
+    assert.deepEqual(account.limits, []);
+    assert.deepEqual(account.balances, []);
+  }
+});
+
+test('per-key quotas: balances retain their own key and currency instead of being summed', () => {
+  const accounts = parseAPIKeyQuotas({
+    _api_key_quotas: [
+      apiKeyQuotaFixture({ quotaData: { _balances: [{ currency: 'CNY', total: 110, granted: 10, topped_up: 100 }, { currency: 'USD', total: 5 }] } }),
+      apiKeyQuotaFixture({ ref: 'opaque-key-two', index: 2, quotaData: { _balances: [{ currency: 'CNY', total: 2 }] } }),
+    ],
+  });
+
+  assert.deepEqual(accounts.map((account) => account.balances.map(({ currency, total }) => ({ currency, total }))), [
+    [{ currency: 'CNY', total: 110 }, { currency: 'USD', total: 5 }], [{ currency: 'CNY', total: 2 }],
+  ]);
+  assert.equal(accounts[0].balances[0].granted, 10);
+  assert.equal(accounts[0].balances[0].topped_up, 100);
+  assert.deepEqual(accounts.map((account) => account.limits), [[], []]);
+});
+
+test('per-key quotas: duplicate suffixes remain distinct and short keys have no visible suffix', () => {
+  const accounts = parseAPIKeyQuotas({
+    _api_key_quotas: [
+      apiKeyQuotaFixture(),
+      apiKeyQuotaFixture({ ref: 'opaque-key-two', index: 2 }),
+      apiKeyQuotaFixture({ ref: 'opaque-short-key', index: 3, suffix: '' }),
+    ],
+  });
+
+  assert.deepEqual(accounts.map(({ ref, index, suffix }) => ({ ref, index, suffix })), [
+    { ref: 'opaque-key-one', index: 1, suffix: 'same' },
+    { ref: 'opaque-key-two', index: 2, suffix: 'same' },
+    { ref: 'opaque-short-key', index: 3, suffix: '' },
+  ]);
+});
+
+test('per-key quotas: absent or malformed account containers preserve the legacy empty list', () => {
+  for (const quotaData of [undefined, null, 42, 'invalid', {}, { _api_key_quotas: null }, { _api_key_quotas: {} }]) {
+    assert.deepEqual(parseAPIKeyQuotas(quotaData), []);
+  }
 });
 
 test('no provider fallback: channels table renders quota for any channel type with normalized limits', () => {

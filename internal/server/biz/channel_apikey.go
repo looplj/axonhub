@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/samber/lo"
@@ -55,11 +54,26 @@ func (svc *ChannelService) DisableAPIKey(
 		return !dk.IsExpired()
 	})
 
-	disabled := lo.ContainsBy(activeDisabledKeys, func(dk objects.DisabledAPIKey) bool {
-		return dk.Key == key
-	})
+	// An explicit disable request owns the record from now on. An existing
+	// quota-owned record is replaced with the requested reason/error/expiry so
+	// a manual, plugin or HTTP-error-rule action transfers ownership away from
+	// the quota reconciler; any other existing record keeps this call
+	// idempotent.
+	var existing *objects.DisabledAPIKey
 
-	if disabled {
+	remainingDisabledKeys := make([]objects.DisabledAPIKey, 0, len(activeDisabledKeys))
+	for _, dk := range activeDisabledKeys {
+		if dk.Key == key {
+			candidate := dk
+			existing = &candidate
+
+			continue
+		}
+
+		remainingDisabledKeys = append(remainingDisabledKeys, dk)
+	}
+
+	if existing != nil && !existing.QuotaDisabled {
 		// 已禁用，忽略
 		return nil
 	}
@@ -75,7 +89,7 @@ func (svc *ChannelService) DisableAPIKey(
 		disabledKey.ExpiresAt = expiresAt[0]
 	}
 
-	newDisabledKeys := append(activeDisabledKeys, disabledKey)
+	newDisabledKeys := append(remainingDisabledKeys, disabledKey)
 
 	// 计算 enabled 凭证
 	enabledKeys := ch.Credentials.GetEnabledCredentialRefs(newDisabledKeys)
@@ -410,8 +424,9 @@ func applyRecoveredChannelStatus(
 	credentials objects.ChannelCredentials,
 	disabledKeys []objects.DisabledAPIKey,
 ) *ent.ChannelUpdateOne {
-	if ch.Status != channel.StatusDisabled || ch.ErrorMessage == nil ||
-		!strings.HasPrefix(*ch.ErrorMessage, allKeysDisabledErrorPrefix) ||
+	// AutoDisabledAt is the marker of this package's own all-keys auto-disable;
+	// a manual channel disable clears it and must survive a credential recovery.
+	if !channelIsAllKeysDisabled(ch) ||
 		len(credentials.GetEnabledCredentialRefs(disabledKeys)) == 0 {
 		return update
 	}

@@ -344,24 +344,9 @@ export type ZhipuWindowRow = {
   remaining?: number;
 };
 
-// One API key of a channel that draws from several accounts. The backend keeps
-// every account of a multi-key channel in this shape so the UI can render them
-// side by side.
-export type ZhipuAccountQuota = {
-  ref?: string;
-  suffix?: string;
-  disabled?: boolean;
-  status?: string;
-  ready?: boolean;
-  level?: string;
-  error?: string;
-  rows?: ZhipuWindowRow[];
-};
-
 export type ProviderZhipuQuotaData = ProviderQuotaDataCommon & {
   rows?: ZhipuWindowRow[];
   level?: string;
-  accounts?: ZhipuAccountQuota[];
 };
 
 export type ProviderZenmuxQuotaPlan = {
@@ -546,6 +531,30 @@ export type ProviderQuotaLimit = {
   periodQuota?: number;
 };
 
+/**
+ * One API key of a channel whose keys are independent quota accounts, as
+ * serialized by the backend under `quotaData._api_key_quotas`. `ref` is an
+ * opaque digest; `index` and `suffix` are display-only. None of them identifies
+ * a key for a mutation.
+ */
+export type ProviderAPIKeyQuota = {
+  ref: string;
+  index: number;
+  suffix: string;
+  disabled: boolean;
+  /** True when a provider quota observation owns the disable. */
+  quotaDisabled: boolean;
+  /** `check_failed` when this key could not be read. */
+  errorCode?: string;
+  status: 'available' | 'warning' | 'exhausted' | 'unknown';
+  ready: boolean;
+  nextResetAt?: string;
+  /** This account's provider payload, including its own `_limits`/`_balances`. */
+  quotaData: Record<string, unknown>;
+  limits: ProviderQuotaLimit[];
+  balances: ProviderQuotaBalance[];
+};
+
 function optionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined;
 }
@@ -648,6 +657,58 @@ export function parseQuotaBalances(quotaData: unknown): ProviderQuotaBalance[] {
   });
 }
 
+/**
+ * Parses the channel's per-key quota rows. Malformed entries are omitted, and an
+ * absent `_api_key_quotas` yields an empty list so a stored snapshot taken
+ * before per-key collection still renders through the legacy provider branch.
+ */
+export function parseAPIKeyQuotas(quotaData: unknown): ProviderAPIKeyQuota[] {
+  if (typeof quotaData !== 'object' || quotaData === null) return [];
+
+  const raw = (quotaData as { _api_key_quotas?: unknown })._api_key_quotas;
+  if (!Array.isArray(raw)) return [];
+
+  return raw.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return [];
+
+    const row = entry as Record<string, unknown>;
+    const ref = requiredString(row.ref);
+    if (!ref) return [];
+
+    const index = optionalNumber(row.index);
+    if (index === undefined || !Number.isInteger(index) || index < 1) return [];
+
+    if (!isNormalizedQuotaStatus(row.status)) return [];
+    if (typeof row.ready !== 'boolean') return [];
+    if (typeof row.disabled !== 'boolean' || typeof row.quotaDisabled !== 'boolean') return [];
+
+    const nextResetAt = optionalString(row.nextResetAt);
+    if (row.nextResetAt !== undefined && nextResetAt === undefined) return [];
+    if (nextResetAt !== undefined && Number.isNaN(Date.parse(nextResetAt))) return [];
+
+    const nested = typeof row.quotaData === 'object' && row.quotaData !== null && !Array.isArray(row.quotaData)
+      ? (row.quotaData as Record<string, unknown>)
+      : {};
+
+    return [
+      {
+        ref,
+        index,
+        suffix: typeof row.suffix === 'string' ? row.suffix : '',
+        disabled: row.disabled,
+        quotaDisabled: row.quotaDisabled,
+        errorCode: optionalString(row.errorCode),
+        status: row.status,
+        ready: row.ready,
+        nextResetAt,
+        quotaData: nested,
+        limits: parseQuotaLimits(nested),
+        balances: parseQuotaBalances(nested),
+      },
+    ];
+  });
+}
+
 /** Formats a normalized balance amount for display. */
 export function formatQuotaBalance(value?: number | null): string | undefined {
   if (value == null || !Number.isFinite(value)) return undefined;
@@ -741,6 +802,8 @@ export type ProviderQuotaChannel = {
     nextResetAt: string | null;
     ready: boolean;
     limits: ProviderQuotaLimit[];
+    /** Per-key results of a channel whose keys are independent quota accounts. */
+    apiKeyQuotas: ProviderAPIKeyQuota[];
   };
 } & (
   | {
@@ -934,6 +997,7 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
       nextResetAt: quotaStatus.nextResetAt,
       ready: quotaStatus.ready,
       limits: parseQuotaLimits(quotaStatus.quotaData),
+      apiKeyQuotas: parseAPIKeyQuotas(quotaStatus.quotaData),
     },
   };
 
@@ -1115,7 +1179,17 @@ export function useProviderQuotaStatuses() {
     queryFn: async () => {
       const input = {
         where: {
-          statusIn: ['enabled'],
+          // A channel whose last key this service disabled on quota grounds
+          // stays visible (and pollable) until a key recovers; a later manual
+          // channel disable clears autoDisabledAt and drops out here.
+          or: [
+            { statusIn: ['enabled'] },
+            {
+              statusIn: ['disabled'],
+              autoDisabledAtNotNil: true,
+              errorMessageHasPrefix: 'All API keys disabled',
+            },
+          ],
         },
       };
       return graphqlRequest<QueryChannelsResponse>(PROVIDER_QUOTA_STATUSES_QUERY, { input });

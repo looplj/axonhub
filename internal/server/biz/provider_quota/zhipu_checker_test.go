@@ -587,35 +587,27 @@ func TestZhipu_CheckQuota_MultipleKeysReportEveryAccount(t *testing.T) {
 	require.Equal(t, "available", quota.Status)
 	require.True(t, quota.Ready)
 
-	accounts, ok := quota.RawData["accounts"].([]zhipuAccountQuota)
-	require.True(t, ok)
-	require.Len(t, accounts, 2)
-	require.Equal(t, "0001", accounts[0].Suffix)
-	require.Equal(t, "exhausted", accounts[0].Status)
-	require.Len(t, accounts[0].Rows, 2)
-	require.Equal(t, "0002", accounts[1].Suffix)
-	require.Equal(t, "available", accounts[1].Status)
-	require.NotEmpty(t, accounts[0].Ref)
-	require.NotEqual(t, accounts[0].Ref, accounts[1].Ref)
+	require.Len(t, quota.APIKeyQuotas, 2)
+	first, second := quota.APIKeyQuotas[0], quota.APIKeyQuotas[1]
+	require.Equal(t, "0001", first.Suffix)
+	require.Equal(t, "exhausted", first.Data.Status)
+	require.Len(t, first.Data.Limits, 2)
+	require.Equal(t, "0002", second.Suffix)
+	require.Equal(t, "available", second.Data.Status)
+	require.NotEmpty(t, first.Ref)
+	require.NotEqual(t, first.Ref, second.Ref)
 
 	// The channel keeps one binding limit per account inside one availability
 	// group so the routing evaluator ORs the accounts.
 	require.Len(t, quota.Limits, 2)
-	require.Equal(t, zhipuAccountsAvailabilityGroup, quota.Limits[0].AvailabilityGroup)
-	require.Equal(t, zhipuAccountsAvailabilityGroup, quota.Limits[1].AvailabilityGroup)
+	require.Equal(t, apiKeyAccountsAvailabilityGroup, quota.Limits[0].AvailabilityGroup)
+	require.Equal(t, apiKeyAccountsAvailabilityGroup, quota.Limits[1].AvailabilityGroup)
 	require.Equal(t, QuotaWindowWeekly, quota.Limits[0].Window)
 	require.Equal(t, "exhausted", quota.Limits[0].Status)
-	require.Equal(t, "0001", quota.Limits[0].Account)
+	require.Equal(t, "#1 ****0001", quota.Limits[0].Account)
 	require.Equal(t, "available", quota.Limits[1].Status)
-	require.Equal(t, "0002", quota.Limits[1].Account)
+	require.Equal(t, "#2 ****0002", quota.Limits[1].Account)
 	require.InDelta(t, 0.31, quota.Limits[1].UsageRatio, 0.001)
-
-	// The fallback rows stay available for the badge and the channel list.
-	rows, ok := quota.RawData["rows"].([]zhipuWindowRow)
-	require.True(t, ok)
-	require.Len(t, rows, 2)
-	require.InDelta(t, 16.0, rows[0].UsedPercent, 0.001)
-	require.InDelta(t, 100.0, rows[1].UsedPercent, 0.001)
 
 	state, reason := EvaluateQuotaRouting(quota.Limits, quota.Status, QuotaLimitTypeToken, time.Now())
 	require.Equal(t, RoutingOpen, state, reason)
@@ -660,34 +652,29 @@ func TestZhipu_CheckQuota_DisabledAccountKeepsRowsWithoutCapacity(t *testing.T) 
 	})
 	require.NoError(t, err)
 
-	accounts, ok := quota.RawData["accounts"].([]zhipuAccountQuota)
-	require.True(t, ok)
-	require.Len(t, accounts, 2)
-
-	// Serving keys are checked first, so parked keys can never hide them.
-	require.Equal(t, "0002", accounts[0].Suffix)
-	require.False(t, accounts[0].Disabled)
-	require.Equal(t, "0001", accounts[1].Suffix)
-	require.True(t, accounts[1].Disabled)
-	require.Len(t, accounts[1].Rows, 2, "a disabled key still reports what the provider says")
+	require.Len(t, quota.APIKeyQuotas, 2)
+	require.True(t, quota.APIKeyQuotas[0].Disabled)
+	require.False(t, quota.APIKeyQuotas[0].QuotaDisabled)
+	require.Len(t, quota.APIKeyQuotas[0].Data.Limits, 2, "a disabled key still reports what the provider says")
+	require.False(t, quota.APIKeyQuotas[1].Disabled)
 
 	// Only the serving account contributes a limit.
 	require.Len(t, quota.Limits, 1)
-	require.Equal(t, "0002", quota.Limits[0].Account)
+	require.Equal(t, "#2 ****0002", quota.Limits[0].Account)
 	require.Equal(t, "available", quota.Status)
 }
 
-func TestZhipu_CheckQuota_EnabledFailuresWithDisabledSuccessIsError(t *testing.T) {
+func TestZhipu_CheckQuota_EnabledFailureIsUnknownNotError(t *testing.T) {
 	expiresAt := time.Now().Add(time.Hour)
 
-	// The only serving key is unreachable while the parked key answers fine, so
-	// the channel status cannot be trusted: the check must fail instead of
-	// reporting a bogus exhausted verdict.
+	// The only serving key is unreachable while the parked key answers fine: the
+	// unreadable key is reported as unknown capacity, never as an exhausted
+	// channel or a channel-wide failure.
 	checker := NewZhipuQuotaChecker(zhipuKeyedHTTPClient(map[string]string{
 		"bbbb-account-0002": zhipuCreditLimitPayload("max", 16, 31),
 	}))
 
-	_, err := checker.CheckQuota(context.Background(), &ent.Channel{
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
 		Type:        channel.TypeZhipu,
 		Credentials: objects.ChannelCredentials{APIKeys: []string{"aaaa-account-0001", "bbbb-account-0002"}},
 		DisabledAPIKeys: []objects.DisabledAPIKey{{
@@ -698,14 +685,21 @@ func TestZhipu_CheckQuota_EnabledFailuresWithDisabledSuccessIsError(t *testing.T
 			ExpiresAt:  &expiresAt,
 		}},
 	})
-	require.ErrorContains(t, err, "failed for all 1 enabled keys")
+	require.NoError(t, err, "a partial failure is not a channel-wide failure")
+	require.Equal(t, "unknown", quota.Status)
+
+	require.Len(t, quota.Limits, 1)
+	require.Equal(t, "unknown", quota.Limits[0].Status)
+	require.Equal(t, "#1 ****0001", quota.Limits[0].Account)
+	require.Equal(t, QuotaWindowPrimary, quota.Limits[0].Window)
 }
 
-func TestZhipu_CheckQuota_DisabledOnlySingleKeyHasNoLimits(t *testing.T) {
+func TestZhipu_CheckQuota_DisabledOnlySingleKeyKeepsWindowShape(t *testing.T) {
 	expiresAt := time.Now().Add(time.Hour)
 
-	// A channel whose sole key is parked can serve nothing, so it must not
-	// publish window limits for that key.
+	// A channel whose sole key is parked can serve nothing. Its windows stay
+	// visible for the operator, while the account derived status keeps the
+	// channel unroutable.
 	checker := NewZhipuQuotaChecker(zhipuKeyedHTTPClient(map[string]string{
 		"aaaa-account-0001": zhipuCreditLimitPayload("max", 10, 20),
 	}))
@@ -724,7 +718,10 @@ func TestZhipu_CheckQuota_DisabledOnlySingleKeyHasNoLimits(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "exhausted", quota.Status)
 	require.False(t, quota.Ready)
-	require.Empty(t, quota.Limits)
+	require.Len(t, quota.Limits, 2)
+
+	state, _ := EvaluateQuotaRouting(quota.Limits, quota.Status, QuotaLimitTypeToken, time.Now())
+	require.Equal(t, RoutingExhausted, state, "the channel status keeps the parked key unroutable")
 }
 
 func TestZhipu_CheckQuota_OneAccountFailureKeepsTheRest(t *testing.T) {
@@ -738,13 +735,12 @@ func TestZhipu_CheckQuota_OneAccountFailureKeepsTheRest(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	accounts, ok := quota.RawData["accounts"].([]zhipuAccountQuota)
-	require.True(t, ok)
-	require.Len(t, accounts, 2)
-	require.NotEmpty(t, accounts[0].Error)
-	require.Empty(t, accounts[1].Error)
+	require.Len(t, quota.APIKeyQuotas, 2)
+	require.Equal(t, APIKeyQuotaErrorCheckFailed, quota.APIKeyQuotas[0].ErrorCode)
+	require.Empty(t, quota.APIKeyQuotas[1].ErrorCode)
 
 	require.Equal(t, "available", quota.Status)
-	require.Len(t, quota.Limits, 1)
-	require.Equal(t, "0002", quota.Limits[0].Account)
+	require.Len(t, quota.Limits, 2)
+	require.Equal(t, "unknown", quota.Limits[0].Status)
+	require.Equal(t, "#2 ****0002", quota.Limits[1].Account)
 }

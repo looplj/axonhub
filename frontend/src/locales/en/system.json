@@ -388,6 +388,8 @@
   "quota.label.no_usage_yet": "No usage yet",
   "quota.label.unavailable": "N/A",
   "quota.label.account_disabled": "Disabled",
+  "quota.label.key_index": "Key #{{index}}",
+  "quota.label.quota_disabled": "Quota exhausted",
   "quota.label.account_error": "Check failed",
   "quota.label.credits_amount": "{{remaining}} / {{total}} left",
   "quota.label.accounts_summary": "{{usable}} of {{total}} accounts usable",

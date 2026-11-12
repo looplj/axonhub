@@ -135,6 +135,31 @@ type QuotaData struct {
 	Limits       []QuotaLimitStatus `json:"limits"`
 	Balances     []QuotaBalance     `json:"balances,omitempty"`
 	Resets       *ResetList         `json:"resets,omitempty"`
+
+	// APIKeyQuotas is the per-credential view of a channel that draws from
+	// several independent quota accounts (one API key per account). It is an
+	// in-process result serialized explicitly by the quota service under
+	// provider-agnostic keys; JSON marshaling never emits it directly, so a
+	// checker payload cannot leak a credential.
+	APIKeyQuotas []APIKeyQuota `json:"-"`
+}
+
+// APIKeyQuota is one provider-reported quota result for a single configured
+// API key of a channel.
+//
+// It exists because a channel may carry several keys that belong to different
+// quota accounts: the channel status has to OR them for routing, and each
+// individual disable has to be attributable to the provider observation that
+// produced it.
+type APIKeyQuota struct {
+	Key           string    `json:"-"` // exact configured key; never persisted/exported
+	Ref           string    `json:"-"` // full SHA-256 hex digest of Key
+	Index         int       `json:"-"` // one-based position in GetAllAPIKeys()
+	Suffix        string    `json:"-"` // last four runes only if length > 4
+	Disabled      bool      `json:"-"`
+	QuotaDisabled bool      `json:"-"`
+	ErrorCode     string    `json:"-"` // "check_failed" when fetch fails; empty otherwise
+	Data          QuotaData `json:"-"` // one key's normalized result; no nested APIKeyQuotas
 }
 
 // QuotaBalance is a provider-reported account amount that is not a usage

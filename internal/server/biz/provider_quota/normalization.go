@@ -15,6 +15,12 @@ func normalizeQuotaDataAt(data QuotaData, now time.Time) QuotaData {
 	data.Limits = normalizeQuotaLimits(data.Limits, now)
 
 	status := normalizeOverallQuotaStatus(data.Status, data.Limits)
+	// A per-key pool knows which of its accounts can still serve; deriving the
+	// status from them keeps an exhausted-plus-unknown pool unknown instead of
+	// folding it into exhausted by the routable limits alone.
+	if len(data.APIKeyQuotas) > 0 {
+		status = aggregateAPIKeyQuotaStatus(data.APIKeyQuotas)
+	}
 
 	var nextResetAt *time.Time
 	if data.NextResetAt != nil && data.NextResetAt.After(now) {

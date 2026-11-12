@@ -152,38 +152,6 @@ test('NeuralWatt kWh bar shares the elapsed-window marker and label', () => {
   assert.match(quotaBadges, /kwh:\s*'quota\.label\.kwh_remaining'/);
 });
 
-// Regression: the quota-display refactor dropped the OpenCode Go popover
-// without adding the shared-limits replacement, so the channels showed a
-// battery percentage in the trigger but an empty detail popover.
-test('OpenCode Go renders its normalized limit windows', () => {
-  const quotaBadges = read('components/quota-badges.tsx');
-  const start = quotaBadges.indexOf("{(channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') &&");
-  const end = quotaBadges.indexOf('{isOllamaType(channel.type) &&', start);
-
-  assert.ok(start !== -1, 'OpenCode Go popover branch should exist in quota-badges source');
-  assert.ok(end !== -1 && end > start, 'the Ollama branch should follow the OpenCode Go branch');
-
-  const opencodeBlock = quotaBadges.slice(start, end);
-
-  // Rendering must be driven by the normalized limits the backend still sends,
-  // not by the removed provider-specific quotaData shape.
-  assert.match(opencodeBlock, /quota\.limits/, 'OpenCode Go should render normalized limits');
-  assert.match(
-    opencodeBlock,
-    /limit\.window === '5h'|preferredWindows = \['5h', 'weekly', 'monthly'\]/,
-    'OpenCode Go should map its windows onto the shared labels'
-  );
-  assert.match(opencodeBlock, /WINDOW_LABEL_KEYS\[limit\.window\]/, 'OpenCode Go labels should resolve through the shared map');
-  assert.match(opencodeBlock, /getLimitDurationPercent\(limit\)/, 'OpenCode Go bars should share the elapsed-window marker');
-  assert.match(opencodeBlock, /formatTimeToReset\(limit\.nextResetAt\)/, 'OpenCode Go should show a reset countdown');
-  assert.match(opencodeBlock, /quota\.label\.unavailable/, 'OpenCode Go should degrade gracefully when no limits are usable');
-  assert.doesNotMatch(
-    opencodeBlock,
-    /ProviderOpenCodeGoQuotaData|qd\.windows/,
-    'OpenCode Go should not depend on the removed provider-specific quota data'
-  );
-});
-
 // --- Mode-aware quota badges (quota routing) ---
 
 // Extract the pure mode helpers from quota-badges.tsx without loading React.
@@ -951,7 +919,7 @@ const { outputText: syntheticRenderJs } = ts.transpileModule(syntheticRenderModu
 globalThis.React = React;
 const { default: SyntheticBadge } = await import(`data:text/javascript;base64,${Buffer.from(syntheticRenderJs).toString('base64')}`);
 
-const syntheticChannel = (quotaData) => ({ type: 'openai', providerType: 'synthetic', quotaStatus: { quotaData, limits: [] } });
+const syntheticChannel = (quotaData) => ({ type: 'openai', providerType: 'synthetic', quotaStatus: { quotaData, limits: [], apiKeyQuotas: [] } });
 const REFERENCE_NOW = Date.now();
 const DAY = 24 * 3600 * 1000;
 const WEEK_AHEAD = new Date(REFERENCE_NOW + 6 * DAY).toISOString();
@@ -1232,4 +1200,224 @@ test('period quota hint keys are aligned between en and zh-CN locales', () => {
   assert.match(enSystem['quota.label.period_quota_hint'], /Estimated from the cost AxonHub logged/);
   assert.doesNotMatch(enSystem['quota.label.period_quota_hint'], /reports the window's money/);
   assert.match(zhSystem['quota.label.period_quota_hint'], /AxonHub 记录/);
+});
+
+// Compile the production account list, bars and the affected QuotaRow branches.
+// Only translations and tooltip portals are replaced, as in the render harnesses
+// above; percentages, ownership filtering, reset markers and JSX are production code.
+const apiKeyFunctionNames = ['APIKeyQuotaList', 'UsageTimeBar', 'getDurationPercent', 'getLimitDurationPercent'];
+const apiKeyFunctionNodes = badgesAst.statements.filter(
+  (node) => ts.isFunctionDeclaration(node) && apiKeyFunctionNames.includes(node.name?.text)
+);
+assert.equal(apiKeyFunctionNodes.length, apiKeyFunctionNames.length);
+const statusLabelsNode = badgesAst.statements.find(
+  (node) => ts.isVariableStatement(node) && node.declarationList.declarations.some((decl) => decl.name.getText(badgesAst) === 'STATUS_LABELS')
+);
+const quotaDataAst = ts.createSourceFile('quotas.ts', read('features/system/data/quotas.ts'), ts.ScriptTarget.Latest, true);
+const quotaParserNodes = quotaDataAst.statements.filter(
+  (node) => ts.isFunctionDeclaration(node) && ['formatQuotaBalance', 'parseQuotaBalances', 'optionalNumber', 'optionalString'].includes(node.name?.text)
+);
+assert.equal(quotaParserNodes.length, 4);
+const quotaRowNode = badgesAst.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === 'QuotaRow');
+const quotaReturn = quotaRowNode.body.statements.find(ts.isReturnStatement).expression;
+const quotaJsx = ts.isParenthesizedExpression(quotaReturn) ? quotaReturn.expression : quotaReturn;
+const affectedQuotaBranches = quotaJsx.children.filter((node) => {
+  if (!ts.isJsxExpression(node) || !node.expression || !ts.isBinaryExpression(node.expression)) return false;
+  const condition = node.expression.left.getText(badgesAst);
+  return condition.includes('quota.apiKeyQuotas.length > 0') ||
+    ["channel.type === 'opencode_go'", "channel.type === 'zhipu'", "channel.type === 'deepseek'"].some((provider) => condition.includes(provider));
+});
+assert.equal(affectedQuotaBranches.length, 4);
+const apiKeyRenderModule = [
+  'const table = ' + JSON.stringify(enSystem) + ';',
+  'function t(key, params) {',
+  '  let out = table[key] ?? key;',
+  '  for (const [name, value] of Object.entries(params || {})) out = out.split(`{{${name}}}`).join(String(value));',
+  '  return out;',
+  '}',
+  'const useState = React.useState;',
+  'function useTranslation() { return { t }; }',
+  'function Tooltip({ children }) { return children; }',
+  'function TooltipTrigger({ children }) { return children; }',
+  'function TooltipContent({ children }) { return <div data-tooltip="true">{children}</div>; }',
+  statusLabelsNode.getText(badgesAst),
+  windowLabelKeysDecl.getText(badgesAst),
+  syntheticFuncNodes.find((node) => node.name.text === 'isOpenaiType').getText(badgesAst),
+  ...syntheticConstNodes.filter((node) => node.declarationList.declarations.some((decl) => ['calcDurationPercent', 'formatTimeToReset'].includes(decl.name.getText(badgesAst))))
+    .map((node) => node.getText(badgesAst)),
+  ...quotaParserNodes.map((node) => node.getText(quotaDataAst)),
+  ...apiKeyFunctionNodes.map((node) => node.getText(badgesAst)),
+  'export default function QuotaDetails({ channel }) {',
+  '  const quota = channel.quotaStatus;',
+  '  return <>' + affectedQuotaBranches.map((node) => node.getText(badgesAst)).join('\n') + '</>;',
+  '}',
+].join('\n');
+const { outputText: apiKeyRenderJs } = ts.transpileModule(apiKeyRenderModule, {
+  compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 },
+});
+const { default: QuotaDetails } = await import(`data:text/javascript;base64,${Buffer.from(apiKeyRenderJs).toString('base64')}`);
+const API_KEY_NOW = Date.UTC(2026, 10, 12, 12);
+const API_KEY_RESET = new Date(API_KEY_NOW + 2 * 3600 * 1000).toISOString();
+const API_KEY_START = new Date(API_KEY_NOW - 2 * 3600 * 1000).toISOString();
+
+function keyAccount(index, overrides = {}) {
+  return {
+    ref: `opaque-key-ref-${index}`, index, suffix: 'same', disabled: false, quotaDisabled: false,
+    status: 'available', ready: true, limits: [], balances: [], quotaData: {}, ...overrides,
+  };
+}
+
+function keyWindow(window, usageRatio) {
+  return {
+    type: 'token', window, usageRatio, status: usageRatio === 1 ? 'exhausted' : 'available', ready: usageRatio !== 1,
+    periodStart: API_KEY_START, nextResetAt: API_KEY_RESET,
+  };
+}
+
+function perKeyChannel(accounts, { type = 'opencode_go', providerType = 'opencode_go', status = 'available', limits = [], quotaData = {} } = {}) {
+  return { id: 'fixture-channel', type, providerType, quotaStatus: { status, quotaData, limits, apiKeyQuotas: accounts } };
+}
+
+function renderKeyDetails(channel) {
+  const realNow = Date.now;
+  Date.now = () => API_KEY_NOW;
+  try {
+    return renderToStaticMarkup(React.createElement(QuotaDetails, { channel }));
+  } finally {
+    Date.now = realNow;
+  }
+}
+
+test('OpenCode Go per-key rows show both distinct labels and all three compact window percentages', () => {
+  const accounts = [
+    keyAccount(1, { status: 'exhausted', ready: false, disabled: true, quotaDisabled: true, limits: [keyWindow('5h', 1), keyWindow('weekly', 0.21), keyWindow('monthly', 0.31)] }),
+    keyAccount(2, { limits: [keyWindow('5h', 0.12), keyWindow('weekly', 0.3), keyWindow('monthly', 0.35)] }),
+  ];
+  const html = renderKeyDetails(perKeyChannel(accounts));
+  const rows = [...html.matchAll(/<button\b[^>]*aria-controls="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g)];
+
+  assert.equal(rows.length, 2, 'one native button per configured key');
+  assert.match(rows[0][2], /Key #1 · \*\*\*\*same/);
+  assert.match(rows[1][2], /Key #2 · \*\*\*\*same/);
+  for (const [index, percents] of [[0, [100, 21, 31]], [1, [12, 30, 35]]]) {
+    for (const [windowIndex, window] of ['5h window', 'Weekly window', 'Monthly window'].entries()) {
+      assert.ok(rows[index][2].includes(`${window} ${percents[windowIndex]}%`), `key ${index + 1} must show ${window} in its compact row`);
+    }
+  }
+  assert.match(rows[0][0], /type="button"[^>]*aria-expanded="true"/);
+  assert.match(rows[1][0], /aria-expanded="false"/);
+  assert.match(html, /id="fixture-channel-api-key-quota-0" role="region"/);
+  assert.match(html, /id="fixture-channel-api-key-quota-1"[^>]*hidden=""/);
+  assert.equal((html.match(/cursor-default pb-1\.5/g) || []).length, 3, 'only the first key is expanded, with exactly its three bars');
+  assert.match(html, /style="left:50%"/, 'the real bars retain elapsed-window markers');
+  assert.match(html, /Time elapsed: 50%/);
+  assert.equal((html.match(/class="text-muted-foreground text-\[11px\]">Resets in 2h 0m<\/div>/g) || []).length, 3, 'each bar has a reset line outside its tooltip');
+  assert.doesNotMatch(html, /opaque-key-ref-/, 'opaque references are React keys, not visible identifiers');
+});
+
+test('quota-disabled keys stay visible while only manually disabled keys start collapsed', () => {
+  const html = renderKeyDetails(perKeyChannel([
+    keyAccount(1, { disabled: true, quotaDisabled: true, status: 'exhausted', ready: false, limits: [keyWindow('5h', 1)] }),
+    keyAccount(2, { disabled: true, limits: [keyWindow('5h', 0.1)] }),
+    keyAccount(3, { status: 'warning', limits: [keyWindow('5h', 0.85)] }),
+  ]));
+
+  assert.match(html, /Key #1 · \*\*\*\*same/);
+  assert.match(html, /Quota exhausted/);
+  assert.doesNotMatch(html, /Key #2/);
+  assert.match(html, /Key #3 · \*\*\*\*same/);
+  assert.match(html, /Show disabled \(1\)/);
+  assert.ok(html.indexOf('Key #1') < html.indexOf('Key #3'), 'visible rows retain configured order');
+
+  const firstHidden = renderKeyDetails(perKeyChannel([keyAccount(1, { disabled: true }), keyAccount(2)]));
+  assert.doesNotMatch(firstHidden, /aria-expanded="true"/, 'hiding the first configured key must not auto-expand another key');
+});
+
+test('unknown and failed per-key accounts show unavailable and error text without a fabricated zero percent', () => {
+  const html = renderKeyDetails(perKeyChannel([
+    keyAccount(1, { status: 'unknown', ready: false, limits: [keyWindow('5h', 0)] }),
+    keyAccount(2, { status: 'unknown', ready: false, errorCode: 'check_failed' }),
+  ], { status: 'unknown' }));
+
+  assert.match(html, /Key #1/);
+  assert.match(html, />N\/A</);
+  assert.match(html, /Key #2/);
+  assert.match(html, /Check failed/);
+  assert.doesNotMatch(html, /(?:^|[^\d])0%/);
+  assert.doesNotMatch(html, /cursor-default pb-1\.5/, 'unavailable observations never get usage bars');
+});
+
+test('shared account details retain Zhipu credits and DeepSeek per-currency money without fake bars', () => {
+  const zhipu = renderKeyDetails(perKeyChannel([
+    keyAccount(1, {
+      limits: [keyWindow('5h', 0.25), keyWindow('weekly', 0.4)],
+      quotaData: { rows: [{ window: 'five_hour', usedPercent: 25, status: 'available', remaining: 75, usage: 100 }, { window: 'weekly_limit', usedPercent: 40, status: 'available', remaining: 120, usage: 200 }] },
+    }),
+  ], { type: 'zhipu', providerType: 'zhipu', quotaData: { rows: [{ window: 'five_hour', usedPercent: 99 }] } }));
+  assert.match(zhipu, /75 \/ 100 left/);
+  assert.match(zhipu, /120 \/ 200 left/);
+  assert.equal((zhipu.match(/cursor-default pb-1\.5/g) || []).length, 2, 'legacy Zhipu rows must not duplicate per-key bars');
+  assert.doesNotMatch(zhipu, /99%/);
+
+  const deepseek = renderKeyDetails(perKeyChannel([
+    keyAccount(1, { balances: [{ currency: 'CNY', total: 110, granted: 10, topped_up: 100 }, { currency: 'USD', total: 5 }] }),
+  ], { type: 'deepseek', providerType: 'deepseek', quotaData: { _balances: [{ currency: 'USD', total: 999 }] } }));
+  assert.match(deepseek, /CNY 110\.00/);
+  assert.match(deepseek, /USD 5\.00/);
+  assert.match(deepseek, /Granted balance/);
+  assert.match(deepseek, /Topped-up balance/);
+  assert.doesNotMatch(deepseek, /999\.00|cursor-default pb-1\.5|\d+%/);
+});
+
+test('all supported channel variants use the same per-key details and short keys expose no suffix', () => {
+  for (const type of ['opencode_go', 'opencode_go_anthropic', 'zhipu', 'zhipu_anthropic', 'zai', 'zai_anthropic', 'deepseek', 'deepseek_anthropic', 'openai', 'openai_responses']) {
+    const providerType = type.startsWith('openai') ? 'deepseek' : type.replace('_anthropic', '');
+    const html = renderKeyDetails(perKeyChannel([keyAccount(1, { suffix: '' }), keyAccount(2)], { type, providerType }));
+    assert.match(html, />Key #1<\/span>/, type);
+    assert.match(html, /Key #2 · \*\*\*\*same/, type);
+    assert.doesNotMatch(html, /Key #1 ·/, 'a short key has no suffix to display');
+  }
+});
+
+test('legacy provider snapshots without per-key quotas still render their original details', () => {
+  const opencode = renderKeyDetails(perKeyChannel([], { limits: [keyWindow('5h', 0.12), keyWindow('weekly', 0.3), keyWindow('monthly', 0.35)] }));
+  assert.match(opencode, /5h window/);
+  assert.match(opencode, /Monthly window/);
+  assert.match(opencode, /35% used/);
+  assert.equal((opencode.match(/cursor-default pb-1\.5/g) || []).length, 3);
+  assert.doesNotMatch(opencode, /Key #/);
+
+  const zhipu = renderKeyDetails(perKeyChannel([], { type: 'zai', providerType: 'zai', quotaData: { rows: [{ window: 'five_hour', usedPercent: 26, status: 'available', remaining: 74, usage: 100, resetAt: API_KEY_RESET }] } }));
+  assert.match(zhipu, /26% used/);
+  assert.match(zhipu, /74 \/ 100 left/);
+  assert.match(zhipu, /Resets in 2h 0m/);
+
+  const deepseek = renderKeyDetails(perKeyChannel([], { type: 'openai_responses', providerType: 'deepseek', quotaData: { _balances: [{ currency: 'USD', total: 8.25 }] } }));
+  assert.match(deepseek, /USD 8\.25/);
+});
+
+test('per-key battery usage ORs enabled accounts and preserves exhaustion and provider fallbacks', () => {
+  const exhausted = keyAccount(1, { status: 'exhausted', ready: false, limits: [keyWindow('5h', 1), keyWindow('weekly', 0.2)] });
+  const healthy = keyAccount(2, { limits: [keyWindow('5h', 0.12), keyWindow('weekly', 0.3), keyWindow('monthly', 0.35)] });
+  assert.equal(badgePercent(perKeyChannel([exhausted, healthy])), 35, 'one exhausted key cannot empty an available channel battery');
+  assert.equal(badgePercent(perKeyChannel([exhausted, healthy], { status: 'exhausted' })), 100);
+  assert.equal(badgePercent(perKeyChannel([keyAccount(3, { disabled: true, limits: [keyWindow('5h', 0.01)] }), healthy])), 35);
+  assert.equal(badgePercent(perKeyChannel([keyAccount(3, { status: 'unknown', ready: false, limits: [keyWindow('5h', 0)] }), healthy])), 35);
+  assert.equal(badgePercent(perKeyChannel([keyAccount(3, { errorCode: 'check_failed', limits: [keyWindow('5h', 0)] }), healthy])), 35);
+  assert.equal(badgePercent(perKeyChannel([keyAccount(1, { limits: [keyWindow('pay_as_you_go', 1), keyWindow('credits', 1), keyWindow('5h', 0.2), { ...keyWindow('search_hourly', 1), type: 'search' }] })])), 20);
+  assert.equal(badgePercent(perKeyChannel([keyAccount(1, { balances: [{ currency: 'USD', total: 5 }] })], { type: 'openai', providerType: 'synthetic', quotaData: { planWeeklyLimit: { percentRemaining: 30 } } })), 70, 'accounts without token windows retain the provider fallback');
+});
+
+test('recovered or ignore-quota snapshots show available keys without stale ownership labels', () => {
+  const channel = perKeyChannel([
+    keyAccount(1, { limits: [keyWindow('5h', 0.1)] }),
+    keyAccount(2, { limits: [keyWindow('5h', 0.2)] }),
+  ]);
+  channel.quotaRoutingMode = 'IGNORE_QUOTA';
+  const html = renderKeyDetails(channel);
+  assert.match(html, /Key #1/);
+  assert.match(html, /Key #2/);
+  assert.match(html, /Available/);
+  assert.doesNotMatch(html, /Quota exhausted|Show disabled|>Disabled</);
+  assert.equal(badgePercent(channel), 10);
 });

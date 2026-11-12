@@ -302,6 +302,12 @@ export function ChannelsDisabledAPIKeysDialog({ open, onOpenChange }: ChannelsDi
                           </div>
                           <div className='text-muted-foreground flex items-center gap-2 text-xs'>
                             <span>{format(new Date(dk.disabledAt), 'yyyy-MM-dd HH:mm:ss')}</span>
+                            {dk.quotaDisabled && (
+                              <>
+                                <span>•</span>
+                                <span>{t('channels.dialogs.keyManagement.quotaDisabled')}</span>
+                              </>
+                            )}
                             {dk.reason && (
                               <>
                                 <span>•</span>

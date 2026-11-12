@@ -159,11 +159,11 @@ func TestDeepSeek_CheckQuota_AnyFundedKeyKeepsChannelAvailable(t *testing.T) {
 	for _, balance := range quota.Balances {
 		byAccount[balance.Account] = balance
 	}
-	require.Equal(t, 0.0, byAccount["0001"].Total)
-	require.Equal(t, 88.0, byAccount["0002"].Total)
+	require.Equal(t, 0.0, byAccount["#1 ****0001"].Total)
+	require.Equal(t, 88.0, byAccount["#2 ****0002"].Total)
 }
 
-func TestDeepSeek_CheckQuota_SkipsDisabledKeys(t *testing.T) {
+func TestDeepSeek_CheckQuota_DisabledKeyIsDisplayOnly(t *testing.T) {
 	var requested []string
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
@@ -187,9 +187,16 @@ func TestDeepSeek_CheckQuota_SkipsDisabledKeys(t *testing.T) {
 		DisabledAPIKeys: []objects.DisabledAPIKey{{Key: "disabled-0001"}},
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"serving-0002"}, requested)
+	// Every configured key is read, so the per-key view stays complete; the
+	// parked key simply stops counting as serving capacity.
+	require.ElementsMatch(t, []string{"disabled-0001", "serving-0002"}, requested)
 	require.Equal(t, "available", quota.Status)
-	require.Len(t, quota.Balances, 1)
+	require.Len(t, quota.APIKeyQuotas, 2)
+	require.True(t, quota.APIKeyQuotas[0].Disabled)
+	require.Len(t, quota.Balances, 2, "both balances stay visible per key")
+	for _, balance := range quota.Balances {
+		require.NotEmpty(t, balance.Account)
+	}
 }
 
 func TestBuildDeepSeekBalanceURL(t *testing.T) {
