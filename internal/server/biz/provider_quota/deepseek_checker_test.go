@@ -239,10 +239,12 @@ func TestDeepSeek_SupportsChannel(t *testing.T) {
 func TestDeepSeek_CheckQuota_ErrorKeepsTheUpstreamBodyOut(t *testing.T) {
 	const upstreamBody = "upstream-says-no-and-leaks-detail"
 
+	// The shared HTTP client only fails on >= 400, so a redirect without a
+	// Location reaches the checker's own non-200 branch.
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			return &http.Response{
-				StatusCode: http.StatusUnauthorized,
+				StatusCode: http.StatusFound,
 				Header:     make(http.Header),
 				Body:       io.NopCloser(strings.NewReader(upstreamBody)),
 			}, nil
@@ -254,7 +256,7 @@ func TestDeepSeek_CheckQuota_ErrorKeepsTheUpstreamBodyOut(t *testing.T) {
 		Credentials: objects.ChannelCredentials{APIKey: "secret-key"},
 	})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "DeepSeek balance request failed")
+	require.Contains(t, err.Error(), "302")
 	require.NotContains(t, err.Error(), upstreamBody, "the upstream body never travels with the error")
 	require.NotContains(t, err.Error(), "secret-key")
 }

@@ -18,6 +18,7 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -32,6 +33,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -629,10 +631,40 @@ func TestQuotaKey_ExpiredManualRecordDoesNotBlockQuotaOwnership(t *testing.T) {
 }
 
 // TestQuotaKey_FailureRowsRequireTheSameChannelIdentity pins the error-path
-// guard: failed key rows are only persisted for the identity they describe.
+// guard: failed key rows are only persisted for the identity they describe, and
+// a rejected identity clears the previous keys' rows instead of leaving them
+// visible under the new credentials.
 func TestQuotaKey_FailureRowsRequireTheSameChannelIdentity(t *testing.T) {
 	env := setupQuotaKeyTestEnv(t)
 	ch := env.createOpenCodeChannel(t, quotaTestKeyA, quotaTestKeyB)
+
+	_, err := env.client.ProviderQuotaStatus.Create().
+		SetChannelID(ch.ID).
+		SetProviderType(providerquotastatus.ProviderTypeOpencodeGo).
+		SetStatus(providerquotastatus.StatusAvailable).
+		SetReady(true).
+		SetQuotaData(map[string]any{
+			"_api_key_quotas": []map[string]any{{
+				"ref":           "previous-identity-ref",
+				"index":         1,
+				"suffix":        "1001",
+				"disabled":      false,
+				"quotaDisabled": false,
+				"status":        "available",
+				"ready":         true,
+				"quotaData":     map[string]any{},
+			}},
+		}).
+		SetNextCheckAt(time.Now()).
+		Save(env.ctx)
+	require.NoError(t, err)
+
+	// The snapshot the poll is working from.
+	snapshot, err := env.client.Channel.Query().
+		Where(channel.IDEQ(ch.ID)).
+		WithProviderQuotaStatus().
+		Only(env.ctx)
+	require.NoError(t, err)
 
 	accounts := []provider_quota.APIKeyQuota{{
 		Key:       quotaTestKeyA,
@@ -642,14 +674,26 @@ func TestQuotaKey_FailureRowsRequireTheSameChannelIdentity(t *testing.T) {
 		Data:      provider_quota.QuotaData{Status: "unknown", ProviderType: "opencode_go"},
 	}}
 
-	require.Len(t, env.quota.failureAccountsFor(env.ctx, ch, accounts), 1, "an unchanged channel keeps its failure rows")
+	require.Len(t, env.quota.failureAccountsFor(env.ctx, snapshot, accounts), 1, "an unchanged channel keeps its failure rows")
+	require.Empty(t, env.quota.failureAccountsFor(env.ctx, snapshot, nil))
 
 	// The credentials change while the request is in flight.
-	_, err := env.client.Channel.UpdateOneID(ch.ID).
+	_, err = env.client.Channel.UpdateOneID(ch.ID).
 		SetCredentials(objects.ChannelCredentials{APIKeys: []string{quotaTestKeyB}}).
 		Save(env.ctx)
 	require.NoError(t, err)
 
-	require.Empty(t, env.quota.failureAccountsFor(env.ctx, ch, accounts), "a changed identity drops the stale rows")
-	require.Empty(t, env.quota.failureAccountsFor(env.ctx, ch, nil))
+	rejected := env.quota.failureAccountsFor(env.ctx, snapshot, accounts)
+	require.NotNil(t, rejected, "a changed identity asks for the stale rows to be cleared, not left alone")
+	require.Empty(t, rejected)
+
+	env.quota.saveQuotaError(env.ctx, snapshot, "opencode_go", "", errors.New("boom"), 1, time.Now(), rejected)
+
+	persisted, err := env.client.ProviderQuotaStatus.Query().
+		Where(providerquotastatus.ChannelIDEQ(ch.ID)).
+		Only(env.ctx)
+	require.NoError(t, err)
+	require.Equal(t, "check_failed", persisted.QuotaData["error_code"])
+	require.NotContains(t, persisted.QuotaData, "_api_key_quotas", "the previous identity's rows are cleared")
+	require.NotContains(t, fmt.Sprint(persisted.QuotaData), "previous-identity-ref")
 }

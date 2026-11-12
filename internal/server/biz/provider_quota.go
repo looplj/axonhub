@@ -913,10 +913,13 @@ func (svc *ProviderQuotaService) failureAccountsFor(
 
 	current, err := svc.db.Channel.Get(ctx, member.ID)
 	if err != nil {
+		// The identity is unknown, not changed: leave whatever is stored.
 		return nil
 	}
 	if !quotaKeyIdentityUnchanged(member, current) {
-		return nil
+		// An empty (non-nil) slice tells the caller to drop the previous keys'
+		// rows instead of leaving them visible for the new identity.
+		return []provider_quota.APIKeyQuota{}
 	}
 
 	return accounts
@@ -1482,11 +1485,16 @@ func (svc *ProviderQuotaService) saveQuotaError(
 			"error_count": failures,
 		})
 		delete(merged, "error")
-		if len(accounts) > 0 {
+		if accounts != nil {
 			// Replace the account detail rows with the fresh failure rows; the
 			// channel status, its limits and the carried _previous_status stay
-			// exactly as they were.
-			merged["_api_key_quotas"] = encodeAPIKeyQuotas(accounts)
+			// exactly as they were. An empty set drops the rows of a channel
+			// identity that no longer exists.
+			if rows := encodeAPIKeyQuotas(accounts); len(rows) > 0 {
+				merged["_api_key_quotas"] = rows
+			} else {
+				delete(merged, "_api_key_quotas")
+			}
 		}
 
 		err := svc.db.ProviderQuotaStatus.UpdateOne(existing).
@@ -1511,10 +1519,10 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		"error_code":  errorCode,
 		"error_count": failures,
 	}
-	if len(accounts) > 0 {
+	if rows := encodeAPIKeyQuotas(accounts); len(rows) > 0 {
 		// A first-ever failure keeps the account rows, so the UI can show which
 		// keys it could not read.
-		errorData["_api_key_quotas"] = encodeAPIKeyQuotas(accounts)
+		errorData["_api_key_quotas"] = rows
 	}
 
 	err := svc.db.ProviderQuotaStatus.Create().
