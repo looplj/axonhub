@@ -73,23 +73,20 @@ func TestRequestWritersAvoidReadback(t *testing.T) {
 		name  string
 		write func(*ent.Request, *ent.RequestExecution) error
 	}{
-		{"headers", func(r *ent.Request, _ *ent.RequestExecution) error {
-			return svc.UpdateRequestResponseHeaders(ctx, r.ID, http.Header{"Content-Type": {"application/json"}})
-		}},
 		{"request_final", func(r *ent.Request, _ *ent.RequestExecution) error {
-			return svc.UpdateRequestFinalized(ctx, r, request.StatusCompleted, "response", map[string]any{"ok": true}, nil)
+			return svc.UpdateRequestFinalized(ctx, r, request.StatusCompleted, "response", map[string]any{"ok": true}, nil, http.Header{"Content-Type": {"application/json"}})
 		}},
 		{"audio", func(r *ent.Request, _ *ent.RequestExecution) error {
-			return svc.UpdateRequestCompletedWithAudio(ctx, r, "audio", map[string]any{"ok": true}, nil, "audio.mp3", nil)
+			return svc.UpdateRequestCompletedWithAudio(ctx, r, "audio", map[string]any{"ok": true}, nil, "audio.mp3", nil, nil)
 		}},
 		{"async", func(r *ent.Request, _ *ent.RequestExecution) error {
-			return svc.UpdateRequestStatusExternalIDAndResponseBody(ctx, r, request.StatusCompleted, "task", map[string]any{"ok": true}, nil)
+			return svc.UpdateRequestStatusExternalIDAndResponseBody(ctx, r, request.StatusCompleted, "task", map[string]any{"ok": true}, nil, nil)
 		}},
 		{"request_status", func(r *ent.Request, _ *ent.RequestExecution) error {
 			return svc.UpdateRequestStatus(ctx, r.ID, request.StatusFailed)
 		}},
 		{"request_error", func(r *ent.Request, _ *ent.RequestExecution) error {
-			return svc.UpdateRequestStatusFromError(ctx, r, context.Canceled)
+			return svc.UpdateRequestStatusFromError(ctx, r, context.Canceled, nil)
 		}},
 		{"execution_final", func(_ *ent.Request, e *ent.RequestExecution) error {
 			return svc.UpdateRequestExecutionFinalized(ctx, e, requestexecution.StatusCompleted, "", "response", map[string]any{"ok": true}, nil, "model", nil)

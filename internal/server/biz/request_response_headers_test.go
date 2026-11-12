@@ -34,7 +34,7 @@ func TestUpdateResponseHeadersMasksSensitiveValues(t *testing.T) {
 		"X-Request-ID":  {"request-id"},
 	}
 
-	require.NoError(t, svc.UpdateRequestResponseHeaders(ctx, req.ID, headers))
+	require.NoError(t, svc.UpdateRequestFinalized(ctx, req, request.StatusCompleted, "external-id", nil, nil, headers))
 	require.NoError(t, svc.UpdateRequestExecutionFinalized(
 		ctx, execution, requestexecution.StatusCompleted, "", "", nil, nil, "", headers,
 	))

@@ -79,11 +79,11 @@ func TestTerminalUpdatesIncludeChunks(t *testing.T) {
 				var err error
 				switch writer {
 				case "request_final":
-					err = svc.UpdateRequestFinalized(ctx, req, request.StatusCompleted, "response", nil, nil, chunks...)
+					err = svc.UpdateRequestFinalized(ctx, req, request.StatusCompleted, "response", nil, nil, nil, chunks...)
 				case "execution_final":
 					err = svc.UpdateRequestExecutionFinalized(ctx, execution, requestexecution.StatusCompleted, "", "response", nil, nil, "", nil, chunks...)
 				case "request_error":
-					err = svc.UpdateRequestStatusFromError(ctx, req, context.Canceled, chunks...)
+					err = svc.UpdateRequestStatusFromError(ctx, req, context.Canceled, nil, chunks...)
 				case "execution_error":
 					err = svc.UpdateRequestExecutionStatusWithMetrics(ctx, execution, requestexecution.StatusCanceled, "canceled", nil, nil, "", nil, chunks...)
 				}

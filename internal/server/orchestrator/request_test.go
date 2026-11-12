@@ -3,11 +3,13 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
@@ -32,6 +34,27 @@ func TestPersistedRequestAPIFormat(t *testing.T) {
 		llm.APIFormatOpenAIResponseCompact,
 		persistedRequestAPIFormat(shared.WithResponsesWebSocket(context.Background()), llm.APIFormatOpenAIResponseCompact),
 	)
+}
+
+func TestFinalRequestResponseHeaders(t *testing.T) {
+	ctx := contexts.WithRequestID(context.Background(), "ar-gateway")
+	ctx = contexts.WithTrace(ctx, &ent.Trace{TraceID: "at-trace"})
+	observer := &executionHeaderObserver{executionID: 42}
+	observer.observe(ctx, http.Header{
+		"Content-Type":  {"application/json"},
+		"Ah-Request-Id": {"upstream-request"},
+		"X-Upstream-Id": {"upstream-id"},
+	})
+	state := &PersistenceState{
+		RequestExec:      &ent.RequestExecution{ID: 42},
+		ExecutionHeaders: observer,
+	}
+
+	headers := finalRequestResponseHeaders(ctx, state)
+	require.Equal(t, "application/json", headers.Get("Content-Type"))
+	require.Equal(t, "upstream-id", headers.Get("X-Upstream-Id"))
+	require.Equal(t, "ar-gateway", headers.Get("Ah-Request-Id"))
+	require.Equal(t, "at-trace", headers.Get("Ah-Trace-Id"))
 }
 
 func TestPersistRequestMiddleware_OnOutboundLlmResponse_NilRequest(t *testing.T) {

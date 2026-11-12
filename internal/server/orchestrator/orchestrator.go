@@ -424,6 +424,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 				persistCtx,
 				request,
 				err,
+				finalRequestResponseHeaders(persistCtx, state),
 			); updateErr != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(updateErr))
 			}
