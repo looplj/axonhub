@@ -69,6 +69,7 @@ func TestRequestService_UpdateRequestCompletedWithAudio_ExternalStorage(t *testi
 		audio,
 		"audio.mp3",
 		nil,
+		nil,
 	)
 	require.NoError(t, err)
 

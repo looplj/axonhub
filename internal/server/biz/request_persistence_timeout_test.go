@@ -104,13 +104,13 @@ func TestTerminalWriteSurvivesChunkUploadDeadline(t *testing.T) {
 				chunks := []*httpclient.StreamEvent{{Type: "message", Data: []byte(`{"delta":"hello"}`)}}
 				switch writer {
 				case "request_final":
-					err = svc.UpdateRequestFinalized(uploadCtx, req, request.StatusCompleted, "response", nil, nil, chunks...)
+					err = svc.UpdateRequestFinalized(uploadCtx, req, request.StatusCompleted, "response", nil, nil, nil, chunks...)
 				case "execution_final":
 					err = svc.UpdateRequestExecutionFinalized(uploadCtx, execution, requestexecution.StatusCompleted, "", "response", nil, nil, "", nil, chunks...)
 				case "request_failed":
-					err = svc.UpdateRequestStatusFromError(uploadCtx, req, errors.New("upstream failed"), chunks...)
+					err = svc.UpdateRequestStatusFromError(uploadCtx, req, errors.New("upstream failed"), nil, chunks...)
 				case "request_canceled":
-					err = svc.UpdateRequestStatusFromError(uploadCtx, req, context.Canceled, chunks...)
+					err = svc.UpdateRequestStatusFromError(uploadCtx, req, context.Canceled, nil, chunks...)
 				case "execution_failed":
 					err = svc.UpdateRequestExecutionStatusWithMetrics(uploadCtx, execution, requestexecution.StatusFailed, "failed", nil, nil, "", nil, chunks...)
 				case "execution_canceled":

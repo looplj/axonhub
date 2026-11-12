@@ -509,6 +509,7 @@ func TestChatCompletionOrchestrator_Process_Streaming(t *testing.T) {
 	assert.Equal(t, "gpt-4", dbRequest.ModelID)
 	assert.Equal(t, project.ID, dbRequest.ProjectID)
 	assert.Equal(t, ch.ID, dbRequest.ChannelID)
+	assert.JSONEq(t, `{"X-Upstream-Id":["up-1"],"Authorization":["******"]}`, string(dbRequest.ResponseHeaders))
 
 	// Verify request execution was created
 	executions, err := client.RequestExecution.Query().All(ctx)

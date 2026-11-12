@@ -10,7 +10,7 @@ require (
 	entgo.io/ent v0.14.6
 	github.com/99designs/gqlgen v0.17.86
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/MoeForge/moejs v0.1.0-alpha.11
+	github.com/MoeForge/moejs v0.1.0
 	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/andreazorzetto/yh v0.4.0
 	github.com/aptible/supercronic v0.2.51
@@ -94,6 +94,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.35.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.57.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.57.0 // indirect
+	github.com/MoeForge/moego v0.1.0-alpha.2 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.2 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect

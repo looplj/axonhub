@@ -580,12 +580,16 @@ type LatencyMetrics struct {
 	ReasoningDurationMs *int64
 }
 
-func (s *RequestService) UpdateRequestResponseHeaders(ctx context.Context, requestID int, headers http.Header) error {
-	data, err := s.responseHeadersForStorage(ctx, headers)
-	if err != nil || data == nil {
-		return err
+func (s *RequestService) withRequestResponseHeaders(ctx context.Context, upd *ent.RequestUpdate, responseHeaders http.Header) *ent.RequestUpdate {
+	headers, err := s.responseHeadersForStorage(ctx, responseHeaders)
+	if err != nil {
+		log.Warn(ctx, "Failed to serialize request response headers", log.Cause(err))
+		return upd
 	}
-	return s.saveRequestUpdate(ctx, requestID, s.entFromContext(ctx).Request.Update().SetResponseHeaders(data))
+	if headers != nil {
+		return upd.SetResponseHeaders(headers)
+	}
+	return upd
 }
 
 func (s *RequestService) responseHeadersForStorage(ctx context.Context, headers http.Header) (objects.JSONRawMessage, error) {
@@ -677,6 +681,7 @@ func (s *RequestService) UpdateRequestFinalized(
 	externalId string,
 	responseBody any,
 	metrics *LatencyMetrics,
+	responseHeaders http.Header,
 	chunks ...*httpclient.StreamEvent,
 ) error {
 	// Decide whether to store the final response body
@@ -693,6 +698,7 @@ func (s *RequestService) UpdateRequestFinalized(
 	upd := setRequestChannel(client.Request.Update(), req).
 		SetStatus(status).
 		SetExternalID(externalId)
+	upd = s.withRequestResponseHeaders(ctx, upd, responseHeaders)
 
 	// Set latency metrics if provided
 	if metrics != nil {
@@ -872,6 +878,7 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 	audio []byte,
 	filename string,
 	metrics *LatencyMetrics,
+	responseHeaders http.Header,
 ) error {
 	// Decide whether to store the final response body metadata.
 	storeResponseBody := true
@@ -887,6 +894,7 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 	upd := setRequestChannel(client.Request.Update(), req).
 		SetStatus(request.StatusCompleted).
 		SetExternalID(externalId)
+	upd = s.withRequestResponseHeaders(ctx, upd, responseHeaders)
 
 	if metrics != nil {
 		if metrics.LatencyMs != nil {
@@ -959,6 +967,7 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 	externalId string,
 	responseBody any,
 	metrics *LatencyMetrics,
+	responseHeaders http.Header,
 ) error {
 	// Decide whether to store the final response body
 	storeResponseBody := true
@@ -974,6 +983,7 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 	upd := setRequestChannel(client.Request.Update(), req).
 		SetStatus(status).
 		SetExternalID(externalId)
+	upd = s.withRequestResponseHeaders(ctx, upd, responseHeaders)
 
 	// Set latency metrics if provided
 	if metrics != nil {
@@ -1388,7 +1398,7 @@ func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int,
 }
 
 // UpdateRequestStatusFromError updates request status based on error type: canceled if context canceled, otherwise failed.
-func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, req *ent.Request, rawErr error, chunks ...*httpclient.StreamEvent) error {
+func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, req *ent.Request, rawErr error, responseHeaders http.Header, chunks ...*httpclient.StreamEvent) error {
 	status := request.StatusFailed
 	if errors.Is(rawErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
 		status = request.StatusCanceled
@@ -1396,6 +1406,7 @@ func (s *RequestService) UpdateRequestStatusFromError(ctx context.Context, req *
 
 	upd := setRequestChannel(s.entFromContext(ctx).Request.Update(), req).
 		SetStatus(status)
+	upd = s.withRequestResponseHeaders(ctx, upd, responseHeaders)
 	var dataStorage *ent.DataStorage
 	if len(chunks) > 0 {
 		dataStorage = s.recordDataStorage(ctx, req.DataStorageID)

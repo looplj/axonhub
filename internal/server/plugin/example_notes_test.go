@@ -80,6 +80,10 @@ func assertExampleNotesPackage(t *testing.T, raw []byte) {
 	require.Equal(t, []string{
 		"manifest.json",
 		"ui/assets/mark.svg",
+		"ui/assets/nanoid/LICENSE",
+		"ui/assets/nanoid/README.md",
+		"ui/assets/nanoid/index.js",
+		"ui/assets/nanoid/url-alphabet/index.js",
 		"ui/notes/app.js",
 		"ui/notes/format.js",
 		"ui/notes/index.html",
