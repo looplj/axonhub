@@ -1,3 +1,5 @@
+import { nanoid } from "../assets/nanoid/index.js";
+
 const copy = {
   en: {
     notes: "Notes",
@@ -66,7 +68,7 @@ export function copyFor(locale) {
 }
 
 export function noteKey() {
-  return `note.${crypto.randomUUID()}`;
+  return `note.${nanoid()}`;
 }
 
 export function parseNote(value) {
