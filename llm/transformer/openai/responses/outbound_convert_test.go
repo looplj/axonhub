@@ -1008,7 +1008,7 @@ func TestEnsureJSONObjectKeyword(t *testing.T) {
 			name:     "text input gains the keyword",
 			input:    Input{Text: lo.ToPtr("Hello")},
 			format:   jsonFormat,
-			expected: Input{Text: lo.ToPtr("Hello\n\nRespond with a json object.")},
+			expected: Input{Text: lo.ToPtr("Respond with a json object.\n\nHello")},
 		},
 		{
 			name:     "case-insensitive keyword is accepted in text",
@@ -1031,16 +1031,16 @@ func TestEnsureJSONObjectKeyword(t *testing.T) {
 			expected: Input{Items: []Item{
 				{
 					Type: "message",
-					Role: "user",
+					Role: "developer",
 					Content: &Input{Items: []Item{
-						{Type: "input_text", Text: lo.ToPtr("Hello")},
+						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
 					}},
 				},
 				{
 					Type: "message",
-					Role: "developer",
+					Role: "user",
 					Content: &Input{Items: []Item{
-						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
+						{Type: "input_text", Text: lo.ToPtr("Hello")},
 					}},
 				},
 			}},
@@ -1080,17 +1080,17 @@ func TestEnsureJSONObjectKeyword(t *testing.T) {
 			format: jsonFormat,
 			expected: Input{Items: []Item{
 				{
-					Type:      "function_call",
-					CallID:    "call_1",
-					Name:      "lookup",
-					Arguments: `{"format":"json"}`,
-				},
-				{
 					Type: "message",
 					Role: "developer",
 					Content: &Input{Items: []Item{
 						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
 					}},
+				},
+				{
+					Type:      "function_call",
+					CallID:    "call_1",
+					Name:      "lookup",
+					Arguments: `{"format":"json"}`,
 				},
 			}},
 		},
@@ -1106,16 +1106,16 @@ func TestEnsureJSONObjectKeyword(t *testing.T) {
 			format: jsonFormat,
 			expected: Input{Items: []Item{
 				{
-					Type:   "function_call_output",
-					CallID: "call_1",
-					Output: &Input{Text: lo.ToPtr(`{"status":"JSON"}`)},
-				},
-				{
 					Type: "message",
 					Role: "developer",
 					Content: &Input{Items: []Item{
 						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
 					}},
+				},
+				{
+					Type:   "function_call_output",
+					CallID: "call_1",
+					Output: &Input{Text: lo.ToPtr(`{"status":"JSON"}`)},
 				},
 			}},
 		},

@@ -164,18 +164,19 @@ func ensureJSONObjectKeyword(input Input, responseFormat *llm.ResponseFormat) In
 	}
 
 	if input.Text != nil {
-		text := *input.Text
-		if text != "" {
-			text += "\n\n"
+		text := jsonObjectKeywordPrompt
+		if *input.Text != "" {
+			text += "\n\n" + *input.Text
 		}
-
-		text += jsonObjectKeywordPrompt
 
 		return Input{Text: &text}
 	}
 
+	// Keep the reminder first so it stays at the same position on every turn.
+	// WebSocket connection reuse matches the previous turn's input as a prefix
+	// of the new one, and a trailing reminder breaks that prefix after the
+	// first turn.
 	items := make([]Item, 0, len(input.Items)+1)
-	items = append(items, input.Items...)
 	items = append(items, Item{
 		Type: "message",
 		Role: "developer",
@@ -184,6 +185,7 @@ func ensureJSONObjectKeyword(input Input, responseFormat *llm.ResponseFormat) In
 			Text: lo.ToPtr(jsonObjectKeywordPrompt),
 		}}},
 	})
+	items = append(items, input.Items...)
 
 	return Input{Items: items}
 }

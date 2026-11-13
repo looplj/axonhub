@@ -1341,7 +1341,8 @@ func TestOutboundTransformer_TransformRequest_JSONObjectKeywordAfterInstructions
 		require.NotContains(t, string(inputJSON), "Return a json object describing the person.")
 
 		require.Len(t, payload.Input.Items, 2)
-		require.Equal(t, "developer", payload.Input.Items[1].Role)
+		require.Equal(t, "developer", payload.Input.Items[0].Role)
+		require.Equal(t, "user", payload.Input.Items[1].Role)
 	})
 
 	t.Run("keyword already in the user message", func(t *testing.T) {
