@@ -782,7 +782,7 @@ func (r *requestExecutionResolver) ChannelAPIKeySuffix(ctx context.Context, obj 
 // RequestBody is the resolver for the requestBody field.
 func (r *requestExecutionResolver) RequestBody(ctx context.Context, obj *ent.RequestExecution) (objects.JSONRawMessage, error) {
 	metadata, err := r.client.RequestExecution.Query().Where(requestexecution.IDEQ(obj.ID)).
-		Select(requestexecution.FieldProjectID, requestexecution.FieldDataStorageID, requestexecution.FieldRequestBodyChunked, requestexecution.FieldRequestBody).Only(ctx)
+		Select(requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldDataStorageID, requestexecution.FieldRequestBodyChunked, requestexecution.FieldRequestBody).Only(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load execution request body metadata: %w", err)
 	}

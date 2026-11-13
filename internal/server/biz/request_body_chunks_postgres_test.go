@@ -5,12 +5,12 @@
 //	internal/ent/schema/request_body_chunk_ref.go
 //
 // 注意事项: 仅接受显式配置的本机 axonhub_payload_test 数据库，不连接生产。
+
 package biz
 
 import (
 	"bytes"
 	"context"
-	dbsql "database/sql"
 	"fmt"
 	"net/url"
 	"os"
@@ -19,9 +19,12 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/require"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+
+	dbsql "database/sql"
+	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -174,10 +177,10 @@ func TestChunkedRequestBodyPostgresConcurrentGC(t *testing.T) {
 			}
 		}
 	}()
-	for worker := 0; worker < 4; worker++ {
+	for range 4 {
 		writers.Go(func() {
 			defer reportPanic()
-			for iteration := 0; iteration < 3; iteration++ {
+			for iteration := range 3 {
 				want := body
 				if iteration%2 != 0 {
 					want = edited

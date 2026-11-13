@@ -5,11 +5,11 @@
 //	internal/ent/schema/request_body_chunk.go
 //
 // 注意事项: 仅接受显式配置的本机 axonhub_payload_test 数据库；每次使用独立数据库。
+
 package biz
 
 import (
 	"context"
-	dbsql "database/sql"
 	"fmt"
 	"net"
 	"os"
@@ -19,9 +19,11 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
+
+	dbsql "database/sql"
+	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -119,6 +121,7 @@ func TestChunkedRequestBodyMySQLConcurrentSnapshot(t *testing.T) {
 
 type chunkSnapshotTx struct {
 	dialect.Driver
+
 	transaction   dialect.Tx
 	beforeInsert  chan struct{}
 	releaseInsert chan struct{}

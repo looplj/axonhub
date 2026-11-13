@@ -161,6 +161,8 @@ New JSON request bodies of at least 32 KiB saved in the database share identical
 
 Small bodies, channel tests without a project, existing rows, and external storage keep their current format. Response bodies and streamed response chunks are unchanged. Cleanup releases each owner's references and removes a shared chunk only after its final reference is gone; retained traces and threads remain protected.
 
+Externally stored execution request bodies remain readable in request details, including existing records, whether or not the GraphQL query selects `requestID`.
+
 Upgrades add the chunk tables and storage markers without rewriting old request bodies. Backups that include request logs expand chunked bodies into the existing portable JSON format, and restore deduplicates them again in the destination project. A backup containing only usage statistics does not read request bodies.
 
 **Downgrade:** Older binaries cannot read newly chunked request bodies. Before downgrading, export a backup that includes request logs, restore it into a separate database using the older version, and verify the restored data before switching. Do not point an older binary directly at a database that contains chunked bodies. Request executions remain outside the existing backup format.

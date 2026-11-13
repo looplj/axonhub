@@ -6,6 +6,7 @@
 //	internal/ent/schema/request_body_chunk_ref.go
 //
 // 注意事项: 默认不建外键，回收逻辑不能依赖级联；另外验证启用外键的附加保护。
+
 package biz
 
 import (
@@ -19,8 +20,9 @@ import (
 	"testing"
 
 	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 	"github.com/stretchr/testify/require"
+
+	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -244,6 +246,7 @@ func TestChunkedRequestBodyForeignKeysAddDeletionProtection(t *testing.T) {
 
 type chunkCleanupZeroAffectedDriver struct {
 	dialect.Driver
+
 	lockUpdates int
 }
 
@@ -257,6 +260,7 @@ func (d *chunkCleanupZeroAffectedDriver) Tx(ctx context.Context) (dialect.Tx, er
 
 type chunkCleanupZeroAffectedTx struct {
 	dialect.Tx
+
 	driver *chunkCleanupZeroAffectedDriver
 }
 
@@ -304,7 +308,7 @@ func TestChunkedRequestBodyConcurrentSaveAndCleanupPreservesLiveOwner(t *testing
 			errors <- fmt.Errorf("chunk operation panic: %v", recovered)
 		}
 	}
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		wg.Go(func() {
 			defer reportPanic()
 			_, err := DeleteUnreferencedRequestBodyChunks(ctx, client, 100)
