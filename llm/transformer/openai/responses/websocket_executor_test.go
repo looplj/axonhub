@@ -383,6 +383,17 @@ func TestTopLevelWebSocketErrorReportsProviderFailure(t *testing.T) {
 			}`,
 		},
 		{
+			name:       "fractional status is not a usable status",
+			data:       `{"type":"error","status":400.9,"message":"fractional status"}`,
+			wantStatus: http.StatusBadGateway,
+			wantBody: `{
+				"error":{
+					"type":"upstream_error",
+					"message":"fractional status"
+				}
+			}`,
+		},
+		{
 			name:       "status-less frame keeps code and message",
 			data:       `{"type":"error","code":"server_error","message":"upstream failed"}`,
 			wantStatus: http.StatusBadGateway,

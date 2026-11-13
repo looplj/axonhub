@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"slices"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -176,6 +178,34 @@ func newWebSocketErrorEvent(raw []byte) *httpclient.Error {
 	}
 }
 
+// newErrorEventResponseError converts a top-level Responses error frame into
+// the unified streaming error. eventType is the transport-declared event name,
+// which still identifies the frame when the payload cannot be decoded. A frame
+// without a usable 4xx/5xx status becomes 502, the same retryable
+// classification the non-streaming path uses.
+func newErrorEventResponseError(raw []byte, eventType string) *llm.ResponseError {
+	if eventType != string(StreamEventTypeError) {
+		var frame struct {
+			Type string `json:"type"`
+		}
+		if err := json.Unmarshal(raw, &frame); err != nil || frame.Type != string(StreamEventTypeError) {
+			return nil
+		}
+	}
+
+	status, detail := webSocketErrorEventDetail(raw)
+
+	return &llm.ResponseError{
+		StatusCode: status,
+		Detail: llm.ErrorDetail{
+			Message: detail["message"],
+			Type:    detail["type"],
+			Code:    detail["code"],
+			Param:   detail["param"],
+		},
+	}
+}
+
 // webSocketErrorEventDetail extracts what the provider reported. Providers
 // disagree on the frame shape: `status` may be a number or a string, and
 // `code`/`message`/`param` may sit on the frame or inside `error`. Values are
@@ -273,6 +303,10 @@ func webSocketErrorText(value any) string {
 func webSocketErrorStatus(value any) (int, bool) {
 	switch v := value.(type) {
 	case float64:
+		if v != math.Trunc(v) {
+			return 0, false
+		}
+
 		status := int(v)
 		if status >= http.StatusBadRequest && status <= 599 {
 			return status, true
