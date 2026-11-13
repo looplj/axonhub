@@ -698,3 +698,96 @@ func TestQuotaKey_FailureRowsRequireTheSameChannelIdentity(t *testing.T) {
 	require.NotContains(t, persisted.QuotaData, "_api_key_quotas", "the previous identity's rows are cleared")
 	require.NotContains(t, fmt.Sprint(persisted.QuotaData), "previous-identity-ref")
 }
+
+func TestQuotaKey_ManualChannelDisableSurvivesKeepDisabledTakeover(t *testing.T) {
+	env := setupQuotaKeyTestEnv(t)
+	ch := env.createOpenCodeChannel(t, quotaTestKeyA, quotaTestKeyB)
+
+	env.server.usage(quotaTestKeyA, 100, 10, 10)
+	env.server.usage(quotaTestKeyB, 12, 30, 35)
+	env.poll(t)
+	require.Equal(t, []string{quotaTestKeyA}, quotaOwnedKeys(env.reload(t, ch.ID)))
+
+	require.NoError(t, env.channels.DisableAPIKey(env.ctx, ch.ID, quotaTestKeyB, 0, "operator disabled the serving key"))
+	require.NotNil(t, env.reload(t, ch.ID).AutoDisabledAt, "disabling the last serving key auto-disables the channel")
+
+	// The operator turns the channel off explicitly; a manual status change
+	// clears the auto-disable markers.
+	_, err := env.client.Channel.UpdateOneID(ch.ID).
+		SetStatus(channel.StatusDisabled).
+		SetErrorMessage("operator took the channel offline").
+		ClearAutoDisabledAt().
+		ClearAutoDisableExpiresAt().
+		Save(env.ctx)
+	require.NoError(t, err)
+
+	// Taking ownership of the parked key must not restamp the auto-disable
+	// markers on a channel the operator disabled.
+	require.NoError(t, env.channels.DisableAPIKey(env.ctx, ch.ID, quotaTestKeyA, 0, "keep disabled"))
+
+	kept := env.reload(t, ch.ID)
+	require.Nil(t, kept.AutoDisabledAt, "a manual channel disable must not become an auto-disable")
+	require.Equal(t, channel.StatusDisabled, kept.Status)
+	require.NotNil(t, kept.ErrorMessage)
+	require.Equal(t, "operator took the channel offline", *kept.ErrorMessage)
+	require.Empty(t, quotaOwnedKeys(kept))
+
+	// Re-enabling the key cannot resurrect the channel either.
+	require.NoError(t, env.channels.EnableAPIKey(env.ctx, ch.ID, quotaTestKeyA))
+
+	recovered := env.reload(t, ch.ID)
+	require.Equal(t, channel.StatusDisabled, recovered.Status, "the manual channel disable outlives the key takeover")
+	require.Nil(t, recovered.AutoDisabledAt)
+}
+
+func TestQuotaKey_BlankOnlyCredentialsClearStaleRows(t *testing.T) {
+	env := setupQuotaKeyTestEnv(t)
+	ch := env.createOpenCodeChannel(t, quotaTestKeyA, quotaTestKeyB)
+
+	env.server.usage(quotaTestKeyA, 10, 10, 10)
+	env.server.usage(quotaTestKeyB, 20, 20, 20)
+	env.poll(t)
+
+	stored, err := env.client.ProviderQuotaStatus.Query().All(env.ctx)
+	require.NoError(t, err)
+	require.Len(t, stored, 1)
+	require.Len(t, apiKeyQuotaRows(t, stored[0].QuotaData), 2)
+
+	// The credentials now hold only a blank key: nothing is collectable, and the
+	// rows that describe the removed keys must not stay on the channel.
+	_, err = env.client.Channel.UpdateOneID(ch.ID).
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"   "}}).
+		Save(env.ctx)
+	require.NoError(t, err)
+
+	env.poll(t)
+
+	after, err := env.client.ProviderQuotaStatus.Query().All(env.ctx)
+	require.NoError(t, err)
+	require.Len(t, after, 1)
+	require.NotContains(t, after[0].QuotaData, "_api_key_quotas", "stale per-key rows are dropped")
+}
+
+func TestQuotaKey_ProviderSwitchClearsPreviousQuotaDisables(t *testing.T) {
+	env := setupQuotaKeyTestEnv(t)
+	ch := env.createOpenCodeChannel(t, quotaTestKeyA)
+
+	env.server.usage(quotaTestKeyA, 100, 10, 10)
+	env.poll(t)
+
+	parked := env.reload(t, ch.ID)
+	require.Equal(t, []string{quotaTestKeyA}, quotaOwnedKeys(parked))
+	require.NotNil(t, parked.AutoDisabledAt)
+
+	// The same key now belongs to a different provider. The previous provider's
+	// observation cannot justify keeping it parked.
+	_, err := env.client.Channel.UpdateOneID(ch.ID).SetType(channel.TypeZhipu).Save(env.ctx)
+	require.NoError(t, err)
+
+	env.poll(t)
+
+	switched := env.reload(t, ch.ID)
+	require.Empty(t, quotaOwnedKeys(switched), "the previous provider's quota disable is released")
+	require.Equal(t, channel.StatusEnabled, switched.Status)
+	require.Nil(t, switched.AutoDisabledAt)
+}

@@ -111,7 +111,10 @@ func (svc *ChannelService) ReconcileQuotaKeys(
 
 	entClient := svc.entFromContext(ctx)
 
-	ch, err := entClient.Channel.Get(ctx, snapshot.ID)
+	ch, err := entClient.Channel.Query().
+		Where(channel.IDEQ(snapshot.ID)).
+		WithProviderQuotaStatus().
+		Only(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reload channel for quota key reconciliation: %w", err)
 	}
@@ -123,6 +126,17 @@ func (svc *ChannelService) ReconcileQuotaKeys(
 	collecting, err := svc.quotaKeyCollectionEnabled(ctx, ch)
 	if err != nil {
 		return ch, err
+	}
+
+	// A cleanup-only pass after a provider switch cannot justify the previous
+	// provider's observations, so release those records instead of keeping a key
+	// parked on a quota window that no longer describes it. The next poll parks
+	// whatever the current provider reports.
+	if accounts == nil && ch.Edges.ProviderQuotaStatus != nil {
+		if currentProvider, ok := quotaKeyProviderType(ch); ok &&
+			ch.Edges.ProviderQuotaStatus.ProviderType.String() != currentProvider {
+			collecting = false
+		}
 	}
 
 	now := time.Now()

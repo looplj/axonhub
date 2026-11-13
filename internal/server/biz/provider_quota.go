@@ -907,10 +907,6 @@ func (svc *ProviderQuotaService) failureAccountsFor(
 	member *ent.Channel,
 	accounts []provider_quota.APIKeyQuota,
 ) []provider_quota.APIKeyQuota {
-	if len(accounts) == 0 {
-		return nil
-	}
-
 	current, err := svc.db.Channel.Get(ctx, member.ID)
 	if err != nil {
 		// The identity is unknown, not changed: leave whatever is stored.
@@ -919,6 +915,12 @@ func (svc *ProviderQuotaService) failureAccountsFor(
 	if !quotaKeyIdentityUnchanged(member, current) {
 		// An empty (non-nil) slice tells the caller to drop the previous keys'
 		// rows instead of leaving them visible for the new identity.
+		return []provider_quota.APIKeyQuota{}
+	}
+	if len(accounts) == 0 {
+		// The poll produced no per-key rows at all, for example when the
+		// credentials now hold only blank keys. The identity is unchanged, so
+		// the stored rows belong to keys that no longer exist: drop them.
 		return []provider_quota.APIKeyQuota{}
 	}
 

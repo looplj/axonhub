@@ -100,11 +100,15 @@ func (svc *ChannelService) DisableAPIKey(
 
 	// 如果没有可用 key 了，禁用整个 channel
 	channelDisabled := len(enabledKeys) == 0
+	// Taking over the last key of a channel an operator already disabled must not
+	// restamp the auto-disable markers: they are what allows a later recovery to
+	// enable the channel and report it as enabled.
+	autoDisable := channelDisabled && (ch.Status == channel.StatusEnabled || ch.AutoDisabledAt != nil)
 	var (
 		autoDisabledAt     time.Time
 		autoDisabledReason string
 	)
-	if channelDisabled {
+	if autoDisable {
 		autoDisabledAt = time.Now()
 		autoDisabledReason = fmt.Sprintf("%s (last error: %d)", allKeysDisabledErrorPrefix, errorCode)
 		update.SetStatus(channel.StatusDisabled)
@@ -132,7 +136,7 @@ func (svc *ChannelService) DisableAPIKey(
 	}
 	svc.publishCredentialDisabled(ctx, ch, key, errorCode, reason, disabledKey.ExpiresAt, status)
 
-	if channelDisabled {
+	if autoDisable {
 		svc.asyncNotifyChannelAutoDisabled(ctx, ChannelAutoDisabledEvent{
 			ChannelID:       ch.ID,
 			ChannelName:     ch.Name,
