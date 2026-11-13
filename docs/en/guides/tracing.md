@@ -155,6 +155,16 @@ func sendTracedMessage(ctx context.Context, apiKey string) (*anthropic.Message, 
 - Configure a default storage location in the admin console; AxonHub will fall back to the primary storage if the preferred option is unavailable.
 - Large payloads can live in external storage (local disk, S3, or GCS) so traces stay responsive even when responses are big.
 
+#### Database Request Body Deduplication
+
+New JSON request bodies of at least 32 KiB saved in the database share identical content chunks within the same project. This reduces repeated conversation history across requests and execution attempts while retaining the complete original JSON, including unknown fields and numeric precision. Request details and Responses continuation load the full body automatically.
+
+Small bodies, channel tests without a project, existing rows, and external storage keep their current format. Response bodies and streamed response chunks are unchanged. Cleanup releases each owner's references and removes a shared chunk only after its final reference is gone; retained traces and threads remain protected.
+
+Upgrades add the chunk tables and storage markers without rewriting old request bodies. Backups that include request logs expand chunked bodies into the existing portable JSON format, and restore deduplicates them again in the destination project. A backup containing only usage statistics does not read request bodies.
+
+**Downgrade:** Older binaries cannot read newly chunked request bodies. Before downgrading, export a backup that includes request logs, restore it into a separate database using the older version, and verify the restored data before switching. Do not point an older binary directly at a database that contains chunked bodies. Request executions remain outside the existing backup format.
+
 ### Claude Code Trace Support
 - Turn on Claude Code extraction with `server.trace.claude_code_trace_enabled: true` so AxonHub can pick up trace IDs automatically.
 - The `/anthropic/v1/messages` (and `/v1/messages`) endpoint will reuse the Claude Code `metadata.user_id` as the trace ID while keeping your payload untouched for downstream usage.

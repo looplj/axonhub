@@ -105,6 +105,11 @@ func Format(v string) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldFormat, v))
 }
 
+// RequestBodyChunked applies equality check predicate on the "request_body_chunked" field. It's identical to RequestBodyChunkedEQ.
+func RequestBodyChunked(v bool) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldRequestBodyChunked, v))
+}
+
 // ChannelID applies equality check predicate on the "channel_id" field. It's identical to ChannelIDEQ.
 func ChannelID(v int) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldChannelID, v))
@@ -638,6 +643,16 @@ func RequestHeadersIsNil() predicate.Request {
 // RequestHeadersNotNil applies the NotNil predicate on the "request_headers" field.
 func RequestHeadersNotNil() predicate.Request {
 	return predicate.Request(sql.FieldNotNull(FieldRequestHeaders))
+}
+
+// RequestBodyChunkedEQ applies the EQ predicate on the "request_body_chunked" field.
+func RequestBodyChunkedEQ(v bool) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldRequestBodyChunked, v))
+}
+
+// RequestBodyChunkedNEQ applies the NEQ predicate on the "request_body_chunked" field.
+func RequestBodyChunkedNEQ(v bool) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldRequestBodyChunked, v))
 }
 
 // ResponseHeadersIsNil applies the IsNil predicate on the "response_headers" field.
@@ -1268,6 +1283,29 @@ func ContentSavedAtIsNil() predicate.Request {
 // ContentSavedAtNotNil applies the NotNil predicate on the "content_saved_at" field.
 func ContentSavedAtNotNil() predicate.Request {
 	return predicate.Request(sql.FieldNotNull(FieldContentSavedAt))
+}
+
+// HasRequestBodyChunks applies the HasEdge predicate on the "request_body_chunks" edge.
+func HasRequestBodyChunks() predicate.Request {
+	return predicate.Request(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, RequestBodyChunksTable, RequestBodyChunksColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRequestBodyChunksWith applies the HasEdge predicate on the "request_body_chunks" edge with a given conditions (other predicates).
+func HasRequestBodyChunksWith(preds ...predicate.RequestBodyChunkRef) predicate.Request {
+	return predicate.Request(func(s *sql.Selector) {
+		step := newRequestBodyChunksStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // HasAPIKey applies the HasEdge predicate on the "api_key" edge.

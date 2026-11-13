@@ -60,6 +60,12 @@ type ProviderQuotaStatus func(*sql.Selector)
 // Request is the predicate function for request builders.
 type Request func(*sql.Selector)
 
+// RequestBodyChunk is the predicate function for requestbodychunk builders.
+type RequestBodyChunk func(*sql.Selector)
+
+// RequestBodyChunkRef is the predicate function for requestbodychunkref builders.
+type RequestBodyChunkRef func(*sql.Selector)
+
 // RequestExecution is the predicate function for requestexecution builders.
 type RequestExecution func(*sql.Selector)
 

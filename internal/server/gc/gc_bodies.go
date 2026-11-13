@@ -9,8 +9,10 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestbodychunkref"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/log"
@@ -253,47 +255,74 @@ func (w *Worker) stripExecutionPayloads(ctx context.Context, kind bodyPayloadKin
 }
 
 func (w *Worker) clearRequestPayloadColumns(ctx context.Context, kind bodyPayloadKind, ids []int) error {
-	upd := w.Ent.Request.Update().Where(request.IDIn(ids...))
+	return w.SystemService.RunInTransaction(ent.NewContext(ctx, w.Ent), func(txCtx context.Context) error {
+		client := ent.FromContext(txCtx)
+		upd := client.Request.Update().Where(
+			request.IDIn(ids...),
+			request.Not(request.HasTraceWith(trace.StatusEQ(trace.StatusRetained))),
+		)
 
-	switch kind {
-	case bodyPayloadRequest:
-		// request_body 是 Ent Immutable JSON，只能走 Modify。
-		// 必须写方言 JSON 字面量：[]byte 会被 pgx 绑成 bytea，Postgres jsonb 列会失败。
-		upd = upd.ClearRequestHeaders().Modify(func(u *sql.UpdateBuilder) {
-			setImmutableJSONObject(u, request.FieldRequestBody)
+		switch kind {
+		case bodyPayloadRequest:
+			// request_body 是 Immutable JSON；同时解除标记和引用，不能留下半个载荷。
+			upd = upd.SetRequestBodyChunked(false).ClearRequestHeaders().Modify(func(u *sql.UpdateBuilder) {
+				setImmutableJSONObject(u, request.FieldRequestBody)
+			})
+		case bodyPayloadResponse:
+			upd = upd.SetResponseBody(emptyJSONObject).ClearResponseHeaders()
+		case bodyPayloadChunks:
+			upd = upd.SetResponseChunks(emptyJSONArray)
+		}
+
+		if _, err := upd.Save(txCtx); err != nil {
+			return fmt.Errorf("failed to clear request %s: %w", kind, err)
+		}
+		if kind != bodyPayloadRequest {
+			return nil
+		}
+
+		_, err := authz.RunAsHost(txCtx, client, "request-body-gc", func(hostCtx context.Context) (int, error) {
+			return client.RequestBodyChunkRef.Delete().Where(
+				requestbodychunkref.HasRequestWith(request.IDIn(ids...), request.RequestBodyChunkedEQ(false)),
+			).Exec(hostCtx)
 		})
-	case bodyPayloadResponse:
-		upd = upd.SetResponseBody(emptyJSONObject).ClearResponseHeaders()
-	case bodyPayloadChunks:
-		upd = upd.SetResponseChunks(emptyJSONArray)
-	}
-
-	if _, err := upd.Save(ctx); err != nil {
-		return fmt.Errorf("failed to clear request %s: %w", kind, err)
-	}
-
-	return nil
+		return err
+	})
 }
 
 func (w *Worker) clearExecutionPayloadColumns(ctx context.Context, kind bodyPayloadKind, ids []int) error {
-	upd := w.Ent.RequestExecution.Update().Where(requestexecution.IDIn(ids...))
+	return w.SystemService.RunInTransaction(ent.NewContext(ctx, w.Ent), func(txCtx context.Context) error {
+		client := ent.FromContext(txCtx)
+		upd := client.RequestExecution.Update().Where(
+			requestexecution.IDIn(ids...),
+			requestexecution.Not(requestexecution.HasRequestWith(request.HasTraceWith(trace.StatusEQ(trace.StatusRetained)))),
+		)
 
-	switch kind {
-	case bodyPayloadRequest:
-		upd = upd.ClearRequestHeaders().Modify(func(u *sql.UpdateBuilder) {
-			setImmutableJSONObject(u, requestexecution.FieldRequestBody)
+		switch kind {
+		case bodyPayloadRequest:
+			upd = upd.SetRequestBodyChunked(false).ClearRequestHeaders().Modify(func(u *sql.UpdateBuilder) {
+				setImmutableJSONObject(u, requestexecution.FieldRequestBody)
+			})
+		case bodyPayloadResponse:
+			upd = upd.SetResponseBody(emptyJSONObject).ClearResponseHeaders()
+		case bodyPayloadChunks:
+			upd = upd.SetResponseChunks(emptyJSONArray)
+		}
+
+		if _, err := upd.Save(txCtx); err != nil {
+			return fmt.Errorf("failed to clear execution %s: %w", kind, err)
+		}
+		if kind != bodyPayloadRequest {
+			return nil
+		}
+
+		_, err := authz.RunAsHost(txCtx, client, "request-body-gc", func(hostCtx context.Context) (int, error) {
+			return client.RequestBodyChunkRef.Delete().Where(
+				requestbodychunkref.HasExecutionWith(requestexecution.IDIn(ids...), requestexecution.RequestBodyChunkedEQ(false)),
+			).Exec(hostCtx)
 		})
-	case bodyPayloadResponse:
-		upd = upd.SetResponseBody(emptyJSONObject).ClearResponseHeaders()
-	case bodyPayloadChunks:
-		upd = upd.SetResponseChunks(emptyJSONArray)
-	}
-
-	if _, err := upd.Save(ctx); err != nil {
-		return fmt.Errorf("failed to clear execution %s: %w", kind, err)
-	}
-
-	return nil
+		return err
+	})
 }
 
 func (w *Worker) deleteRequestExternalPayload(ctx context.Context, req *ent.Request, kind bodyPayloadKind, cache map[int]*ent.DataStorage) error {

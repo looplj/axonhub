@@ -21,7 +21,7 @@
 | [权限管理](guides/permissions.md) | 企业级 RBAC 访问控制配置 |
 | [负载均衡](guides/load-balance.md) | 智能路由和故障转移设置 |
 | [成本追踪](guides/cost-tracking.md) | 实时监控和用量分析 |
-| [请求追踪](guides/tracing.md) | 完整的请求链路追踪 |
+| [请求追踪](guides/tracing.md) | 完整的请求链路追踪与数据库请求正文去重 |
 | [请求覆盖](guides/request-override.md) | 动态修改请求参数 |
 | [安全功能](guides/security.md) | IP 访问控制、IP 黑名单和 API Key IP 限制 |
 | [提示词保护规则](guides/prompt-protection-rules.md) | 敏感信息过滤和保护 |

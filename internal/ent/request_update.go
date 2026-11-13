@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestbodychunkref"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
@@ -55,6 +56,20 @@ func (_u *RequestUpdate) AppendRequestHeaders(v objects.JSONRawMessage) *Request
 // ClearRequestHeaders clears the value of the "request_headers" field.
 func (_u *RequestUpdate) ClearRequestHeaders() *RequestUpdate {
 	_u.mutation.ClearRequestHeaders()
+	return _u
+}
+
+// SetRequestBodyChunked sets the "request_body_chunked" field.
+func (_u *RequestUpdate) SetRequestBodyChunked(v bool) *RequestUpdate {
+	_u.mutation.SetRequestBodyChunked(v)
+	return _u
+}
+
+// SetNillableRequestBodyChunked sets the "request_body_chunked" field if the given value is not nil.
+func (_u *RequestUpdate) SetNillableRequestBodyChunked(v *bool) *RequestUpdate {
+	if v != nil {
+		_u.SetRequestBodyChunked(*v)
+	}
 	return _u
 }
 
@@ -328,6 +343,21 @@ func (_u *RequestUpdate) ClearContentSavedAt() *RequestUpdate {
 	return _u
 }
 
+// AddRequestBodyChunkIDs adds the "request_body_chunks" edge to the RequestBodyChunkRef entity by IDs.
+func (_u *RequestUpdate) AddRequestBodyChunkIDs(ids ...int) *RequestUpdate {
+	_u.mutation.AddRequestBodyChunkIDs(ids...)
+	return _u
+}
+
+// AddRequestBodyChunks adds the "request_body_chunks" edges to the RequestBodyChunkRef entity.
+func (_u *RequestUpdate) AddRequestBodyChunks(v ...*RequestBodyChunkRef) *RequestUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddRequestBodyChunkIDs(ids...)
+}
+
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
 func (_u *RequestUpdate) AddExecutionIDs(ids ...int) *RequestUpdate {
 	_u.mutation.AddExecutionIDs(ids...)
@@ -366,6 +396,27 @@ func (_u *RequestUpdate) AddUsageLogs(v ...*UsageLog) *RequestUpdate {
 // Mutation returns the RequestMutation object of the builder.
 func (_u *RequestUpdate) Mutation() *RequestMutation {
 	return _u.mutation
+}
+
+// ClearRequestBodyChunks clears all "request_body_chunks" edges to the RequestBodyChunkRef entity.
+func (_u *RequestUpdate) ClearRequestBodyChunks() *RequestUpdate {
+	_u.mutation.ClearRequestBodyChunks()
+	return _u
+}
+
+// RemoveRequestBodyChunkIDs removes the "request_body_chunks" edge to RequestBodyChunkRef entities by IDs.
+func (_u *RequestUpdate) RemoveRequestBodyChunkIDs(ids ...int) *RequestUpdate {
+	_u.mutation.RemoveRequestBodyChunkIDs(ids...)
+	return _u
+}
+
+// RemoveRequestBodyChunks removes "request_body_chunks" edges to RequestBodyChunkRef entities.
+func (_u *RequestUpdate) RemoveRequestBodyChunks(v ...*RequestBodyChunkRef) *RequestUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveRequestBodyChunkIDs(ids...)
 }
 
 // ClearExecutions clears all "executions" edges to the RequestExecution entity.
@@ -514,6 +565,9 @@ func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.RequestHeadersCleared() {
 		_spec.ClearField(request.FieldRequestHeaders, field.TypeJSON)
 	}
+	if value, ok := _u.mutation.RequestBodyChunked(); ok {
+		_spec.SetField(request.FieldRequestBodyChunked, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.ResponseHeaders(); ok {
 		_spec.SetField(request.FieldResponseHeaders, field.TypeJSON, value)
 	}
@@ -606,6 +660,51 @@ func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ContentSavedAtCleared() {
 		_spec.ClearField(request.FieldContentSavedAt, field.TypeTime)
+	}
+	if _u.mutation.RequestBodyChunksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.RequestBodyChunksTable,
+			Columns: []string{request.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedRequestBodyChunksIDs(); len(nodes) > 0 && !_u.mutation.RequestBodyChunksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.RequestBodyChunksTable,
+			Columns: []string{request.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RequestBodyChunksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.RequestBodyChunksTable,
+			Columns: []string{request.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -769,6 +868,20 @@ func (_u *RequestUpdateOne) AppendRequestHeaders(v objects.JSONRawMessage) *Requ
 // ClearRequestHeaders clears the value of the "request_headers" field.
 func (_u *RequestUpdateOne) ClearRequestHeaders() *RequestUpdateOne {
 	_u.mutation.ClearRequestHeaders()
+	return _u
+}
+
+// SetRequestBodyChunked sets the "request_body_chunked" field.
+func (_u *RequestUpdateOne) SetRequestBodyChunked(v bool) *RequestUpdateOne {
+	_u.mutation.SetRequestBodyChunked(v)
+	return _u
+}
+
+// SetNillableRequestBodyChunked sets the "request_body_chunked" field if the given value is not nil.
+func (_u *RequestUpdateOne) SetNillableRequestBodyChunked(v *bool) *RequestUpdateOne {
+	if v != nil {
+		_u.SetRequestBodyChunked(*v)
+	}
 	return _u
 }
 
@@ -1042,6 +1155,21 @@ func (_u *RequestUpdateOne) ClearContentSavedAt() *RequestUpdateOne {
 	return _u
 }
 
+// AddRequestBodyChunkIDs adds the "request_body_chunks" edge to the RequestBodyChunkRef entity by IDs.
+func (_u *RequestUpdateOne) AddRequestBodyChunkIDs(ids ...int) *RequestUpdateOne {
+	_u.mutation.AddRequestBodyChunkIDs(ids...)
+	return _u
+}
+
+// AddRequestBodyChunks adds the "request_body_chunks" edges to the RequestBodyChunkRef entity.
+func (_u *RequestUpdateOne) AddRequestBodyChunks(v ...*RequestBodyChunkRef) *RequestUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddRequestBodyChunkIDs(ids...)
+}
+
 // AddExecutionIDs adds the "executions" edge to the RequestExecution entity by IDs.
 func (_u *RequestUpdateOne) AddExecutionIDs(ids ...int) *RequestUpdateOne {
 	_u.mutation.AddExecutionIDs(ids...)
@@ -1080,6 +1208,27 @@ func (_u *RequestUpdateOne) AddUsageLogs(v ...*UsageLog) *RequestUpdateOne {
 // Mutation returns the RequestMutation object of the builder.
 func (_u *RequestUpdateOne) Mutation() *RequestMutation {
 	return _u.mutation
+}
+
+// ClearRequestBodyChunks clears all "request_body_chunks" edges to the RequestBodyChunkRef entity.
+func (_u *RequestUpdateOne) ClearRequestBodyChunks() *RequestUpdateOne {
+	_u.mutation.ClearRequestBodyChunks()
+	return _u
+}
+
+// RemoveRequestBodyChunkIDs removes the "request_body_chunks" edge to RequestBodyChunkRef entities by IDs.
+func (_u *RequestUpdateOne) RemoveRequestBodyChunkIDs(ids ...int) *RequestUpdateOne {
+	_u.mutation.RemoveRequestBodyChunkIDs(ids...)
+	return _u
+}
+
+// RemoveRequestBodyChunks removes "request_body_chunks" edges to RequestBodyChunkRef entities.
+func (_u *RequestUpdateOne) RemoveRequestBodyChunks(v ...*RequestBodyChunkRef) *RequestUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveRequestBodyChunkIDs(ids...)
 }
 
 // ClearExecutions clears all "executions" edges to the RequestExecution entity.
@@ -1258,6 +1407,9 @@ func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err er
 	if _u.mutation.RequestHeadersCleared() {
 		_spec.ClearField(request.FieldRequestHeaders, field.TypeJSON)
 	}
+	if value, ok := _u.mutation.RequestBodyChunked(); ok {
+		_spec.SetField(request.FieldRequestBodyChunked, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.ResponseHeaders(); ok {
 		_spec.SetField(request.FieldResponseHeaders, field.TypeJSON, value)
 	}
@@ -1350,6 +1502,51 @@ func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err er
 	}
 	if _u.mutation.ContentSavedAtCleared() {
 		_spec.ClearField(request.FieldContentSavedAt, field.TypeTime)
+	}
+	if _u.mutation.RequestBodyChunksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.RequestBodyChunksTable,
+			Columns: []string{request.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedRequestBodyChunksIDs(); len(nodes) > 0 && !_u.mutation.RequestBodyChunksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.RequestBodyChunksTable,
+			Columns: []string{request.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RequestBodyChunksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.RequestBodyChunksTable,
+			Columns: []string{request.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.ExecutionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
