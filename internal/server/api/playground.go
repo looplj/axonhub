@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/internal/server/plugin"
 	"github.com/looplj/axonhub/llm"
@@ -213,6 +214,8 @@ func (handlers *PlaygroundHandlers) HandleError(rawErr error) *PlaygroundRespons
 }
 
 func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
+	cancel := middleware.SelectLLMTimeout(c, true)
+	defer cancel()
 	ctx := c.Request.Context()
 
 	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
