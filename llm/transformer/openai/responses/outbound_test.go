@@ -1301,6 +1301,61 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 	}
 }
 
+// TestOutboundTransformer_TransformRequest_JSONObjectKeywordAfterInstructions
+// pins issue #3004: the system message moves to instructions, so a Chat
+// Completions request whose only "json" mention lives there must still reach
+// the upstream with the keyword somewhere in input.
+func TestOutboundTransformer_TransformRequest_JSONObjectKeywordAfterInstructions(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	buildRequest := func(userContent string) *llm.Request {
+		return &llm.Request{
+			Model:          "gpt-5.4",
+			ResponseFormat: &llm.ResponseFormat{Type: "json_object"},
+			Messages: []llm.Message{
+				{
+					Role:    "system",
+					Content: llm.MessageContent{Content: lo.ToPtr("Return a json object describing the person.")},
+				},
+				{
+					Role:    "user",
+					Content: llm.MessageContent{Content: lo.ToPtr(userContent)},
+				},
+			},
+		}
+	}
+
+	t.Run("keyword only in the system message", func(t *testing.T) {
+		result, err := transformer.TransformRequest(context.Background(), buildRequest("Ada Lovelace, 36"))
+		require.NoError(t, err)
+
+		var payload Request
+
+		require.NoError(t, json.Unmarshal(result.Body, &payload))
+		require.Equal(t, "Return a json object describing the person.", payload.Instructions)
+
+		inputJSON, err := json.Marshal(payload.Input)
+		require.NoError(t, err)
+		require.Contains(t, strings.ToLower(string(inputJSON)), "json")
+		require.NotContains(t, string(inputJSON), "Return a json object describing the person.")
+
+		require.Len(t, payload.Input.Items, 2)
+		require.Equal(t, "developer", payload.Input.Items[1].Role)
+	})
+
+	t.Run("keyword already in the user message", func(t *testing.T) {
+		result, err := transformer.TransformRequest(context.Background(), buildRequest("Extract the json fields."))
+		require.NoError(t, err)
+
+		var payload Request
+
+		require.NoError(t, json.Unmarshal(result.Body, &payload))
+		require.Len(t, payload.Input.Items, 1)
+		require.Equal(t, "user", payload.Input.Items[0].Role)
+	})
+}
+
 func TestOutboundTransformer_TransformRequest_UsesSharedSessionIDAsPromptCacheKeyFallback(t *testing.T) {
 	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

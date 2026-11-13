@@ -3,7 +3,9 @@ package codex
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -102,4 +104,46 @@ func TestCodexOutbound_ScrubsClientFingerprintHeaders(t *testing.T) {
 
 	assert.Equal(t, "client-value", merged.Headers.Get("X-Custom"))
 	assert.Equal(t, "codex_cli_rs", merged.Headers.Get("Originator"))
+}
+
+// TestCodexOutbound_JSONObjectKeywordSurvivesChatConversion pins issue #3004
+// on the Codex channel: the upstream checks the json_object keyword against
+// input items only, so it must not disappear when Chat Completions system
+// content becomes instructions.
+func TestCodexOutbound_JSONObjectKeywordSurvivesChatConversion(t *testing.T) {
+	ctx := context.Background()
+	outbound := newTestCodexOutbound(t)
+
+	body := []byte(`{
+		"model": "gpt-5-codex",
+		"response_format": {"type": "json_object"},
+		"messages": [
+			{"role": "system", "content": "Return a json object describing the person."},
+			{"role": "user", "content": "Ada Lovelace, 36"}
+		]
+	}`)
+	rawReq, err := http.NewRequest(http.MethodPost, "http://localhost:8090/v1/chat/completions", bytes.NewReader(body))
+	require.NoError(t, err)
+	rawReq.Header.Set("Content-Type", "application/json")
+
+	inboundRequest, err := httpclient.ReadHTTPRequest(rawReq)
+	require.NoError(t, err)
+
+	llmReq, err := openai.NewInboundTransformer().TransformRequest(ctx, inboundRequest)
+	require.NoError(t, err)
+	require.NotNil(t, llmReq.ResponseFormat)
+	require.Equal(t, "json_object", llmReq.ResponseFormat.Type)
+
+	req, err := outbound.TransformRequest(ctx, llmReq)
+	require.NoError(t, err)
+
+	decoded := decodeCodexRequestBody(t, req)
+
+	inputJSON, err := json.Marshal(decoded["input"])
+	require.NoError(t, err)
+
+	assert.Contains(t, strings.ToLower(string(inputJSON)), "json")
+
+	instructions, _ := decoded["instructions"].(string)
+	assert.Contains(t, instructions, "Return a json object describing the person.")
 }

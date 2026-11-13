@@ -148,6 +148,96 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 	}
 }
 
+// jsonObjectKeywordPrompt is the minimal reminder appended to input. It must
+// keep the word "json" in lower case so a case-sensitive upstream check passes.
+const jsonObjectKeywordPrompt = "Respond with a json object."
+
+// ensureJSONObjectKeyword satisfies the Responses API precondition for
+// text.format.type json_object: an input item has to mention "json", while
+// instructions are not inspected. Chat Completions clients often satisfy their
+// own precondition through a system message, which this conversion moves into
+// instructions, so the keyword can disappear from input even though the request
+// is valid as sent. Append the keyword instead of duplicating the system prompt.
+func ensureJSONObjectKeyword(input Input, responseFormat *llm.ResponseFormat) Input {
+	if responseFormat == nil || responseFormat.Type != "json_object" || inputMentionsJSON(input) {
+		return input
+	}
+
+	if input.Text != nil {
+		text := *input.Text
+		if text != "" {
+			text += "\n\n"
+		}
+
+		text += jsonObjectKeywordPrompt
+
+		return Input{Text: &text}
+	}
+
+	items := make([]Item, 0, len(input.Items)+1)
+	items = append(items, input.Items...)
+	items = append(items, Item{
+		Type: "message",
+		Role: "developer",
+		Content: &Input{Items: []Item{{
+			Type: "input_text",
+			Text: lo.ToPtr(jsonObjectKeywordPrompt),
+		}}},
+	})
+
+	return Input{Items: items}
+}
+
+func inputMentionsJSON(input Input) bool {
+	if input.Text != nil && containsJSONKeyword(*input.Text) {
+		return true
+	}
+
+	for _, item := range input.Items {
+		// Only message text counts. The upstream check reads input messages, so
+		// treating tool arguments or outputs as sufficient could leave the
+		// request failing; appending a reminder they would have suppressed is
+		// harmless by comparison.
+		if item.Type != "message" && item.Role == "" {
+			continue
+		}
+
+		if item.Content != nil && messageContentMentionsJSON(*item.Content) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func messageContentMentionsJSON(content Input) bool {
+	if content.Text != nil && containsJSONKeyword(*content.Text) {
+		return true
+	}
+
+	for _, part := range content.Items {
+		if part.Text != nil && containsJSONKeyword(*part.Text) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// containsJSONKeyword reports whether s mentions "json" in any letter case.
+// It scans instead of lowercasing so large prompts are not copied.
+func containsJSONKeyword(s string) bool {
+	const keyword = "json"
+
+	for i := 0; i+len(keyword) <= len(s); i++ {
+		if strings.EqualFold(s[i:i+len(keyword)], keyword) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // convertUserMessage converts a user message to Responses API Item format.
 func convertUserMessage(msg llm.Message) Item {
 	var contentItems []Item

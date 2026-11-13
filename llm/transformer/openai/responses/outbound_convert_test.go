@@ -984,6 +984,186 @@ func TestConvertInputFromMessages(t *testing.T) {
 	}
 }
 
+func TestEnsureJSONObjectKeyword(t *testing.T) {
+	jsonFormat := &llm.ResponseFormat{Type: "json_object"}
+
+	tests := []struct {
+		name     string
+		input    Input
+		format   *llm.ResponseFormat
+		expected Input
+	}{
+		{
+			name:     "no response format",
+			input:    Input{Text: lo.ToPtr("Hello")},
+			expected: Input{Text: lo.ToPtr("Hello")},
+		},
+		{
+			name:     "json_schema is left alone",
+			input:    Input{Text: lo.ToPtr("Hello")},
+			format:   &llm.ResponseFormat{Type: "json_schema"},
+			expected: Input{Text: lo.ToPtr("Hello")},
+		},
+		{
+			name:     "text input gains the keyword",
+			input:    Input{Text: lo.ToPtr("Hello")},
+			format:   jsonFormat,
+			expected: Input{Text: lo.ToPtr("Hello\n\nRespond with a json object.")},
+		},
+		{
+			name:     "case-insensitive keyword is accepted in text",
+			input:    Input{Text: lo.ToPtr("Return JSON please")},
+			format:   jsonFormat,
+			expected: Input{Text: lo.ToPtr("Return JSON please")},
+		},
+		{
+			name: "message items gain a developer reminder",
+			input: Input{Items: []Item{
+				{
+					Type: "message",
+					Role: "user",
+					Content: &Input{Items: []Item{
+						{Type: "input_text", Text: lo.ToPtr("Hello")},
+					}},
+				},
+			}},
+			format: jsonFormat,
+			expected: Input{Items: []Item{
+				{
+					Type: "message",
+					Role: "user",
+					Content: &Input{Items: []Item{
+						{Type: "input_text", Text: lo.ToPtr("Hello")},
+					}},
+				},
+				{
+					Type: "message",
+					Role: "developer",
+					Content: &Input{Items: []Item{
+						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
+					}},
+				},
+			}},
+		},
+		{
+			name: "message items mentioning the keyword are untouched",
+			input: Input{Items: []Item{
+				{
+					Type: "message",
+					Role: "user",
+					Content: &Input{Items: []Item{
+						{Type: "input_text", Text: lo.ToPtr("Reply in json")},
+					}},
+				},
+			}},
+			format: jsonFormat,
+			expected: Input{Items: []Item{
+				{
+					Type: "message",
+					Role: "user",
+					Content: &Input{Items: []Item{
+						{Type: "input_text", Text: lo.ToPtr("Reply in json")},
+					}},
+				},
+			}},
+		},
+		{
+			name: "tool arguments do not satisfy the keyword check",
+			input: Input{Items: []Item{
+				{
+					Type:      "function_call",
+					CallID:    "call_1",
+					Name:      "lookup",
+					Arguments: `{"format":"json"}`,
+				},
+			}},
+			format: jsonFormat,
+			expected: Input{Items: []Item{
+				{
+					Type:      "function_call",
+					CallID:    "call_1",
+					Name:      "lookup",
+					Arguments: `{"format":"json"}`,
+				},
+				{
+					Type: "message",
+					Role: "developer",
+					Content: &Input{Items: []Item{
+						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
+					}},
+				},
+			}},
+		},
+		{
+			name: "tool output does not satisfy the keyword check",
+			input: Input{Items: []Item{
+				{
+					Type:   "function_call_output",
+					CallID: "call_1",
+					Output: &Input{Text: lo.ToPtr(`{"status":"JSON"}`)},
+				},
+			}},
+			format: jsonFormat,
+			expected: Input{Items: []Item{
+				{
+					Type:   "function_call_output",
+					CallID: "call_1",
+					Output: &Input{Text: lo.ToPtr(`{"status":"JSON"}`)},
+				},
+				{
+					Type: "message",
+					Role: "developer",
+					Content: &Input{Items: []Item{
+						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
+					}},
+				},
+			}},
+		},
+		{
+			name: "assistant message mentioning the keyword is untouched",
+			input: Input{Items: []Item{
+				{
+					Type: "message",
+					Role: "assistant",
+					Content: &Input{Items: []Item{
+						{Type: "output_text", Text: lo.ToPtr("I will reply in JSON.")},
+					}},
+				},
+			}},
+			format: jsonFormat,
+			expected: Input{Items: []Item{
+				{
+					Type: "message",
+					Role: "assistant",
+					Content: &Input{Items: []Item{
+						{Type: "output_text", Text: lo.ToPtr("I will reply in JSON.")},
+					}},
+				},
+			}},
+		},
+		{
+			name:   "empty input still gains the reminder",
+			input:  Input{},
+			format: jsonFormat,
+			expected: Input{Items: []Item{
+				{
+					Type: "message",
+					Role: "developer",
+					Content: &Input{Items: []Item{
+						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
+					}},
+				},
+			}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, ensureJSONObjectKeyword(tt.input, tt.format))
+		})
+	}
+}
+
 func TestConvertReasoning(t *testing.T) {
 	tests := []struct {
 		name     string
