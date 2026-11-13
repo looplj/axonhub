@@ -180,8 +180,12 @@ func MessageFromLLM(m llm.Message) Message {
 }
 
 // IsCodexBootstrapToolName reports whether name is a standalone tool-output
-// notification emitted by Codex Desktop's turn/start toolOutput flow.
+// notification emitted by Codex Desktop's turn/start or companion-page flows.
 func IsCodexBootstrapToolName(name string) bool {
+	if strings.HasPrefix(name, "codex_apps_") {
+		return true
+	}
+
 	switch name {
 	case "create_thread", "send_message_to_thread", "automation_update":
 		return true

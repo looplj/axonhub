@@ -158,7 +158,13 @@ func TestPrepareHTTPTransportRequestPreservesCalllessOutputParts(t *testing.T) {
 }
 
 func TestPrepareHTTPTransportRequestDowngradesCodexBootstrapNames(t *testing.T) {
-	for _, toolName := range []string{"create_thread", "send_message_to_thread", "automation_update"} {
+	for _, toolName := range []string{
+		"create_thread",
+		"send_message_to_thread",
+		"automation_update",
+		"codex_apps_open_page",
+		"codex_apps_selected_page_part_1_of_1",
+	} {
 		t.Run(toolName, func(t *testing.T) {
 			request := &httpclient.Request{Body: []byte(`{"model":"gpt-5","input":[{"type":"function_call_output","name":"` + toolName + `","output":"delegate"}]}`)}
 			prepared := PrepareHTTPTransportRequest(request, false)
@@ -173,6 +179,7 @@ func TestPrepareHTTPTransportRequestOnlyHandlesCodexBootstrapOutputs(t *testing.
 	tests := map[string]string{
 		"ordinary tool output":    `{"model":"gpt-5","input":[{"type":"function_call_output","name":"exec_command","output":"ok"}]}`,
 		"valid Codex tool output": `{"model":"gpt-5","input":[{"type":"function_call_output","name":"create_thread","call_id":"call_1","output":"ok"}]}`,
+		"valid companion output":  `{"model":"gpt-5","input":[{"type":"function_call_output","name":"codex_apps_open_page","call_id":"call_1","output":"ok"}]}`,
 	}
 	for name, body := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -192,7 +199,9 @@ func TestWebSocketTransportKeepsCalllessFunctionOutputs(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request := &httpclient.Request{Body: []byte(`{"model":"gpt-5","input":[{"type":"function_call_output","name":"create_thread","output":"delegate"}]}`)}
-	require.Same(t, request, outbound.FinalizeTransportRequest(request))
-	require.Equal(t, "function_call_output", gjson.GetBytes(request.Body, "input.0.type").String())
+	for _, toolName := range []string{"create_thread", "codex_apps_open_page"} {
+		request := &httpclient.Request{Body: []byte(`{"model":"gpt-5","input":[{"type":"function_call_output","name":"` + toolName + `","output":"delegate"}]}`)}
+		require.Same(t, request, outbound.FinalizeTransportRequest(request))
+		require.Equal(t, "function_call_output", gjson.GetBytes(request.Body, "input.0.type").String())
+	}
 }
