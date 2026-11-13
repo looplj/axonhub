@@ -11,6 +11,7 @@ package biz
 import (
 	"bytes"
 	"context"
+	dbsql "database/sql"
 	"fmt"
 	"net/url"
 	"os"
@@ -23,7 +24,6 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	dbsql "database/sql"
 	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/authz"

@@ -10,6 +10,7 @@ package biz
 
 import (
 	"context"
+	dbsql "database/sql"
 	"fmt"
 	"net"
 	"os"
@@ -22,7 +23,6 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 
-	dbsql "database/sql"
 	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/authz"
