@@ -78,6 +78,12 @@ const (
 	// normalization.go keeps it out of the channel status and channel reset:
 	// it is listed for the operator, never enforced.
 	QuotaLimitTypeSearch QuotaLimitType = "search"
+	// QuotaLimitTypeFreeEnergy marks provider promo allowances (NeuralWatt's
+	// daily free energy). Like QuotaLimitTypeSearch, no request modality maps
+	// to it: it is listed for the operator, never enforced — routing/
+	// EffectiveStatus skip it and normalization.go keeps it out of the
+	// channel status and the overall NextResetAt via displayOnlyLimitTypes.
+	QuotaLimitTypeFreeEnergy QuotaLimitType = "free_energy"
 )
 
 // ApertisDefaultBaseURL is the default base URL for the Apertis API.

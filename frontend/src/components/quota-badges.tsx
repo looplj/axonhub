@@ -10,7 +10,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, RefreshCw, Zap, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning, ArrowUpDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ClaudeResetCredits } from '@/components/claude-reset-credits';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -23,6 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ClaudeResetCredits } from '@/components/claude-reset-credits';
 import type { ChannelQuotaRoutingMode } from '@/features/channels/data/schema';
 import { getChannelQuotaRoutingIndicator } from '@/features/channels/utils/quota-routing-status';
 import {
@@ -392,6 +392,7 @@ function formatTokenCount(n: number): string {
 
 const WINDOW_LABEL_KEYS: Record<string, string> = {
   '5h': 'quota.window.5h',
+  daily_free_energy: 'quota.label.daily_free_energy',
   '7d': 'quota.window.7d',
   '30d': 'quota.window.30d',
   daily: 'quota.window.daily',
@@ -704,7 +705,9 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                     <div className='space-y-1'>
                       <div className='flex items-center justify-between text-xs'>
                         <span className='text-muted-foreground font-medium'>{t('quota.window.5h')}</span>
-                        <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round((qd.windows['5h'].utilization || 0) * 100) })}</span>
+                        <span className='text-foreground font-medium'>
+                          {t('quota.label.percent_used', { percent: Math.round((qd.windows['5h'].utilization || 0) * 100) })}
+                        </span>
                       </div>
                       <UsageTimeBar
                         usagePercent={(qd.windows['5h'].utilization || 0) * 100}
@@ -734,7 +737,9 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                     <div className='space-y-1'>
                       <div className='flex items-center justify-between text-xs'>
                         <span className='text-muted-foreground font-medium'>{t('quota.window.7d')}</span>
-                        <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round((qd.windows['7d'].utilization || 0) * 100) })}</span>
+                        <span className='text-foreground font-medium'>
+                          {t('quota.label.percent_used', { percent: Math.round((qd.windows['7d'].utilization || 0) * 100) })}
+                        </span>
                       </div>
                       <UsageTimeBar
                         usagePercent={(qd.windows['7d'].utilization || 0) * 100}
@@ -769,7 +774,9 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                       <div className='space-y-1'>
                         <div className='flex items-center justify-between text-xs'>
                           <span className='text-muted-foreground font-medium'>{label}</span>
-                          <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(usedPercent) })}</span>
+                          <span className='text-foreground font-medium'>
+                            {t('quota.label.percent_used', { percent: Math.round(usedPercent) })}
+                          </span>
                         </div>
                         <UsageTimeBar
                           usagePercent={usedPercent}
@@ -800,7 +807,9 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                     <div className='space-y-1'>
                       <div className='flex items-center justify-between text-xs'>
                         <span className='text-muted-foreground font-medium'>{t('quota.label.overage_window')}</span>
-                        <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round((qd.windows['overage'].utilization || 0) * 100) })}</span>
+                        <span className='text-foreground font-medium'>
+                          {t('quota.label.percent_used', { percent: Math.round((qd.windows['overage'].utilization || 0) * 100) })}
+                        </span>
                       </div>
                       <UsageTimeBar
                         usagePercent={(qd.windows['overage'].utilization || 0) * 100}
@@ -2156,6 +2165,20 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             if (!qd) return null;
             const items: React.ReactNode[] = [];
 
+            // Current-month usage (cost, requests, kWh) is shown in the kWh
+            // tooltip; it is independent of the daily free energy promo.
+            let monthlySpendLine: string | null = null;
+            if (qd.usage_current_month) {
+              const cm = qd.usage_current_month;
+              const cmParts: string[] = [];
+              if (cm.cost_usd != null) cmParts.push(`$${cm.cost_usd.toFixed(2)}`);
+              if (cm.requests != null) cmParts.push(`${cm.requests.toLocaleString('en-US')} ${t('quota.label.requests')}`);
+              if (cm.energy_kwh != null) cmParts.push(`${cm.energy_kwh.toFixed(3)} kWh`);
+              if (cmParts.length > 0) {
+                monthlySpendLine = `${t('quota.label.monthly_spend')}: ${cmParts.join(', ')}`;
+              }
+            }
+
             if (qd.subscription) {
               const kwhIncluded = qd.subscription.kwh_included ?? 0;
               const kwhUsed = qd.subscription.kwh_used ?? 0;
@@ -2193,7 +2216,8 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                               {t('quota.label.time_elapsed')}: {Math.round(durationPercent)}%
                             </div>
                           )}
-                          {quota.nextResetAt && <div>{formatTimeToReset(quota.nextResetAt)}</div>}
+                          {monthlySpendLine && <div>{monthlySpendLine}</div>}
+                          {kwhLimit?.nextResetAt && <div>{formatTimeToReset(kwhLimit.nextResetAt)}</div>}
                         </div>
                       }
                     />
@@ -2207,6 +2231,71 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                     <Badge variant='destructive' className='h-4 px-1.5 py-0 text-[10px] font-semibold tracking-wider uppercase'>
                       {t('quota.label.in_overage')}
                     </Badge>
+                  </div>
+                );
+              }
+            }
+
+            if (qd.daily_free_energy) {
+              const dfe = qd.daily_free_energy;
+              const dfeIncluded = dfe.kwh_included ?? 0;
+              if (dfeIncluded > 0) {
+                // Mirrors the server's kwh_used -> kwh_remaining derivation so
+                // the label matches the bar when only the remaining amount is
+                // reported.
+                const dfeUsed = dfe.kwh_used ?? (dfe.kwh_remaining != null ? Math.max(0, dfeIncluded - dfe.kwh_remaining) : 0);
+                const dfeLimit = quota.limits.find((l) => l.window === 'daily_free_energy');
+                const usagePercent = dfeLimit ? dfeLimit.usageRatio * 100 : (dfeUsed / dfeIncluded) * 100;
+                // The limit carries no periodStart (deliberately display-only), so the
+                // elapsed marker comes from the known 24h cadence and the raw reset.
+                const dfeReset = dfe.reset_at;
+                const dfeResetMs = dfeReset ? Date.parse(dfeReset) : Number.NaN;
+                // Date.parse can yield NaN for provider garbage; isFinite keeps
+                // the popover renderable (toISOString throws on non-finite time).
+                const durationPercent = Number.isFinite(dfeResetMs)
+                  ? getDurationPercent(new Date(dfeResetMs - 24 * 3600 * 1000).toISOString(), dfeReset)
+                  : undefined;
+
+                items.push(
+                  <div key='daily_free_energy' className='space-y-2.5'>
+                    <div className='space-y-1'>
+                      <div className='flex items-center justify-between text-xs'>
+                        <span className='text-muted-foreground font-medium'>
+                          {t('quota.label.daily_free_energy')}
+                          <span className='font-normal opacity-70'>
+                            {' '}
+                            ({dfeUsed}/{dfeIncluded})
+                          </span>
+                        </span>
+                        <span className='text-foreground font-medium'>
+                          {t('quota.label.percent_used', { percent: Math.round(usagePercent) })}
+                        </span>
+                      </div>
+                      <UsageTimeBar
+                        usagePercent={usagePercent}
+                        durationPercent={durationPercent}
+                        tooltip={
+                          <div className='space-y-0.5'>
+                            <div className='font-medium'>{t('quota.label.daily_free_energy')}</div>
+                            <div>
+                              {dfeUsed}/{dfeIncluded}
+                            </div>
+                            <div>{t('quota.label.percent_used', { percent: Math.round(usagePercent) })}</div>
+                            {durationPercent !== undefined && (
+                              <div>
+                                {t('quota.label.time_elapsed')}: {Math.round(durationPercent)}%
+                              </div>
+                            )}
+                            {dfeReset && <div>{formatTimeToReset(dfeReset)}</div>}
+                            {dfe.model_labels?.length ? (
+                              <div>
+                                {t('quota.label.daily_free_energy_models')}: {dfe.model_labels.join(', ')}
+                              </div>
+                            ) : null}
+                          </div>
+                        }
+                      />
+                    </div>
                   </div>
                 );
               }

@@ -1193,13 +1193,16 @@ func (svc *ProviderQuotaService) notifyQuotaStatusChange(
 	// saveQuotaStatus before the upsert and cache update, so it is not the
 	// fresh status on the edge-less ResetChannelQuotaNow path.
 
+	// Display-only limits (e.g. NeuralWatt's daily free energy promo) are
+	// excluded from the max so a spent promo does not report usage_ratio: 1.0
+	// on later monthly-driven events.
 	usageRatio := -1.0
-	if len(quotaData.Limits) > 0 {
-		usageRatio = quotaData.Limits[0].UsageRatio
-		for _, limit := range quotaData.Limits[1:] {
-			if limit.UsageRatio > usageRatio {
-				usageRatio = limit.UsageRatio
-			}
+	for _, limit := range quotaData.Limits {
+		if provider_quota.IsDisplayOnlyLimit(limit) {
+			continue
+		}
+		if usageRatio < 0 || limit.UsageRatio > usageRatio {
+			usageRatio = limit.UsageRatio
 		}
 	}
 

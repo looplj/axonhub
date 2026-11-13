@@ -45,6 +45,14 @@ func normalizeQuotaDataAt(data QuotaData, now time.Time) QuotaData {
 // group guard below.
 var displayOnlyLimitTypes = map[QuotaLimitType]struct{}{
 	QuotaLimitTypeSearch: {},
+	QuotaLimitTypeFreeEnergy: {},
+}
+
+// IsDisplayOnlyLimit reports whether a limit is display-only: listed for the
+// operator but excluded from the channel status, the overall reset, and the
+// webhook usage-ratio max.
+func IsDisplayOnlyLimit(limit QuotaLimitStatus) bool {
+	return isDisplayOnlyLimit(limit)
 }
 
 func isDisplayOnlyLimit(limit QuotaLimitStatus) bool {
