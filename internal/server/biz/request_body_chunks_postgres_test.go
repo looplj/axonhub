@@ -11,7 +11,7 @@ package biz
 import (
 	"bytes"
 	"context"
-	dbsql "database/sql"
+	"database/sql"
 	"fmt"
 	"net/url"
 	"os"
@@ -42,7 +42,7 @@ func TestChunkedRequestBodyPostgresConcurrentGC(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, []string{"127.0.0.1", "localhost", "::1"}, endpoint.Hostname())
 	require.Equal(t, "/axonhub_payload_test", endpoint.Path, "this destructive fixture is restricted to its dedicated test database")
-	bootstrap, err := dbsql.Open("pgx", dsn)
+	bootstrap, err := sql.Open("pgx", dsn)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = bootstrap.Close() })
 	schemaName := fmt.Sprintf("payload_test_%d", time.Now().UnixNano())
@@ -57,7 +57,7 @@ func TestChunkedRequestBodyPostgresConcurrentGC(t *testing.T) {
 	query := endpoint.Query()
 	query.Set("search_path", schemaName)
 	endpoint.RawQuery = query.Encode()
-	db, err := dbsql.Open("pgx", endpoint.String())
+	db, err := sql.Open("pgx", endpoint.String())
 	require.NoError(t, err)
 	db.SetMaxOpenConns(16)
 	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))

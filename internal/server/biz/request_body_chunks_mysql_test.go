@@ -10,7 +10,7 @@ package biz
 
 import (
 	"context"
-	dbsql "database/sql"
+	"database/sql"
 	"fmt"
 	"net"
 	"os"
@@ -44,7 +44,7 @@ func TestChunkedRequestBodyMySQLConcurrentSnapshot(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, []string{"127.0.0.1", "localhost", "::1"}, host)
 	require.Equal(t, "axonhub_payload_test", config.DBName)
-	bootstrap, err := dbsql.Open("mysql", dsn)
+	bootstrap, err := sql.Open("mysql", dsn)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = bootstrap.Close() })
 	database := fmt.Sprintf("axonhub_payload_test_%d", time.Now().UnixNano())
@@ -58,7 +58,7 @@ func TestChunkedRequestBodyMySQLConcurrentSnapshot(t *testing.T) {
 	})
 	config.DBName = database
 	config.ParseTime = true
-	db, err := dbsql.Open("mysql", config.FormatDSN())
+	db, err := sql.Open("mysql", config.FormatDSN())
 	require.NoError(t, err)
 	db.SetMaxOpenConns(4)
 	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.MySQL, db)))
