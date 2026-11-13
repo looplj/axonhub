@@ -355,10 +355,18 @@ test('keeps HTTP-resolved and dual Responses model restrictions unchanged', () =
   assert.equal(translateLegacyCodexModelProtocols({ baseURL: 'wss://proxy.test/codex#', endpoints: [] }, undefined), undefined);
 });
 
-test('keeps the Codex Responses family out of the custom endpoint list, other channels unchanged', () => {
+test('excludes SystemOne from Codex and includes it on OpenAI Responses channels', () => {
   assert.deepEqual(getConfigurableApiFormatsForChannelType('codex', configurableFormats), ['openai/chat_completions']);
-  assert.deepEqual(getConfigurableApiFormatsForChannelType('openai_responses', configurableFormats), ['openai/chat_completions', 'openai/responses']);
-  assert.deepEqual(getConfigurableApiFormatsForChannelType('fenno', configurableFormats), ['openai/chat_completions', 'openai/responses']);
+  assert.deepEqual(getConfigurableApiFormatsForChannelType('openai_responses', configurableFormats), [
+    'openai/chat_completions',
+    'openai/responses',
+    'typesafe/systemone',
+  ]);
+  assert.deepEqual(getConfigurableApiFormatsForChannelType('fenno', configurableFormats), [
+    'openai/chat_completions',
+    'openai/responses',
+    'typesafe/systemone',
+  ]);
 });
 
 test('recognizes only the HTTP and WebSocket Responses formats as the Responses family', () => {

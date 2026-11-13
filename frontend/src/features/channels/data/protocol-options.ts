@@ -53,7 +53,7 @@ export function getApiFormatsForProvider(provider: string, configs: ProtocolConf
  * The OpenAI Decisions endpoint is opt-in for the OpenAI channel only; the
  * backend still accepts manual configuration for other channel types.
  * Codex Responses endpoints are managed by the WebSocket checkbox instead.
- * System One is offered on TypeSafe, OpenAI and Cloudflare Workers AI channels only.
+ * System One is offered on TypeSafe and channels with built-in OpenAI endpoints.
  * Other custom endpoint formats remain available everywhere.
  */
 export function getConfigurableApiFormatsForChannelType(
@@ -63,8 +63,18 @@ export function getConfigurableApiFormatsForChannelType(
   if (channelType === 'typesafe') {
     return ['typesafe/systemone'];
   }
+  const systemOneCompatibleChannelTypes: readonly ChannelType[] = [
+    'openai', 'openai_responses', 'atlascloud', 'zenmux', 'zenmux_responses',
+    'gemini_openai', 'deepseek', 'deepinfra', 'qiniu', 'cline', 'fenno', 'doubao',
+    'vercel', 'fireworks', 'moonshot', 'zhipu', 'zai', 'openai_fake', 'openrouter',
+    'xiaomi', 'xai', 'xai_responses', 'xai_subscription', 'ppio', 'siliconflow',
+    'volcengine', 'longcat', 'minimax', 'aihubmix', 'burncloud', 'modelscope',
+    'bailian', 'bailian_responses', 'github', 'github_copilot', 'cerebras', 'nanogpt',
+    'nanogpt_responses', 'opencode_go', 'evolink', 'groq', 'commandcode', 'cloudflare',
+  ];
+  const supportsSystemOne = systemOneCompatibleChannelTypes.includes(channelType);
   const filtered = configurableFormats
-    .filter((format) => channelType === 'openai' || channelType === 'cloudflare' || format !== 'typesafe/systemone')
+    .filter((format) => supportsSystemOne || format !== 'typesafe/systemone')
     .filter((format) => channelType === 'openai' || format !== 'openai/decisions')
     .filter((format) => channelType !== 'codex' || !isResponsesFamilyFormat(format));
   if (['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(channelType)) {
