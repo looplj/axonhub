@@ -51,6 +51,7 @@
 | 文档 | 描述 |
 |------|------|
 | [开发指南](development/development.md) | 本地开发环境搭建和贡献指南 |
+| [请求正文回放](development/request-body-replay.md) | 复现存储、字节复用和写入延迟测量 |
 | [Git 工作流](development/git-workflow.md) | 项目的 Git 分支和提交规范 |
 | [实体关系图](development/erd.md) | 数据库模型关系图 |
 | [转换流程](development/transformation-flow.md) | 请求/响应转换流程详解 |

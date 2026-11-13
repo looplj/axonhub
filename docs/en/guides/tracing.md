@@ -163,6 +163,8 @@ Small bodies, channel tests without a project, existing rows, and external stora
 
 Externally stored execution request bodies remain readable in request details, including existing records, whether or not the GraphQL query selects `requestID`.
 
+Responses `input` arrays keep coarse history blocks and split only the unfinished tail at message boundaries to limit repeated data during small appends. Bodies remain byte-exact. See [the replay method and measurements](../development/request-body-replay.md) for storage and latency tradeoffs.
+
 Upgrades add the chunk tables and storage markers without rewriting old request bodies. Backups that include request logs expand chunked bodies into the existing portable JSON format, and restore deduplicates them again in the destination project. A backup containing only usage statistics does not read request bodies.
 
 **Downgrade:** Older binaries cannot read newly chunked request bodies. Before downgrading, export a backup that includes request logs, restore it into a separate database using the older version, and verify the restored data before switching. Do not point an older binary directly at a database that contains chunked bodies. Request executions remain outside the existing backup format.

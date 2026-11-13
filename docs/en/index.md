@@ -52,6 +52,7 @@ Welcome to the AxonHub documentation center! This index will help you quickly fi
 | Document | Description |
 |----------|-------------|
 | [Development Guide](development/development.md) | Local development setup and contribution guidelines |
+| [Request Body Replay](development/request-body-replay.md) | Reproduce storage, byte reuse, and write latency measurements |
 | [Git Workflow](development/git-workflow.md) | Git branching and commit conventions |
 | [Entity Relationship Diagram](development/erd.md) | Database model relationship diagrams |
 | [Transformation Flow](development/transformation-flow.md) | Request/response transformation process |

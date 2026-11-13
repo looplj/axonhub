@@ -155,6 +155,92 @@ func TestChunkedRequestBodyRoundTripSharesAndIsolatesProjects(t *testing.T) {
 	require.Error(t, PrepareChunkedRequestBody(body).Save(ctx, client, projectID, first.ID, 0), "nontransactional writes must be rejected")
 }
 
+type chunkSaveQueryDriver struct {
+	dialect.Driver
+
+	queries []string
+}
+
+func (d *chunkSaveQueryDriver) Tx(ctx context.Context) (dialect.Tx, error) {
+	tx, err := d.Driver.Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &chunkSaveQueryTx{Tx: tx, driver: d}, nil
+}
+
+type chunkSaveQueryTx struct {
+	dialect.Tx
+
+	driver *chunkSaveQueryDriver
+}
+
+func (tx *chunkSaveQueryTx) Query(ctx context.Context, query string, args, result any) error {
+	tx.driver.queries = append(tx.driver.queries, query)
+	return tx.Tx.Query(ctx, query, args, result)
+}
+
+func TestChunkedRequestBodySaveAvoidsOwnerAndPayloadReadback(t *testing.T) {
+	client, ctx, projectID := newChunkTestClient(t)
+	driver := &chunkSaveQueryDriver{Driver: client.Driver()}
+	writer := ent.NewClient(ent.Driver(driver))
+	body := chunkTestBody()
+	plan := PrepareChunkedRequestBody(body)
+	var owner *ent.Request
+	var execution *ent.RequestExecution
+	service := AbstractService{db: writer}
+	require.NoError(t, service.RunInTransaction(ctx, func(txCtx context.Context) error {
+		tx := ent.FromContext(txCtx)
+		var err error
+		owner, err = tx.Request.Create().SetProjectID(projectID).SetModelID("model").SetRequestBody(plan.Manifest).
+			SetRequestBodyChunked(true).SetStatus(request.StatusProcessing).Save(txCtx)
+		if err != nil {
+			return err
+		}
+		if err := plan.Save(txCtx, tx, projectID, owner.ID, 0); err != nil {
+			return err
+		}
+		execution, err = tx.RequestExecution.Create().SetRequestID(owner.ID).SetProjectID(projectID).SetModelID("model").
+			SetRequestBody(plan.Manifest).SetRequestBodyChunked(true).SetStatus(requestexecution.StatusProcessing).Save(txCtx)
+		if err != nil {
+			return err
+		}
+		return plan.Save(txCtx, tx, projectID, 0, execution.ID)
+	}))
+	chunkReads := 0
+	for _, query := range driver.queries {
+		if !strings.HasPrefix(query, "SELECT ") {
+			continue
+		}
+		require.NotContains(t, query, request.Table, "new owners are already known in the transaction")
+		require.NotContains(t, query, requestexecution.Table, "new owners are already known in the transaction")
+		if strings.Contains(query, requestbodychunk.Table) {
+			chunkReads++
+			projection, _, found := strings.Cut(query, " FROM ")
+			require.True(t, found)
+			require.Contains(t, projection, requestbodychunk.FieldID)
+			require.Contains(t, projection, requestbodychunk.FieldHash)
+			require.NotContains(t, projection, requestbodychunk.FieldData)
+			require.NotContains(t, projection, "*")
+		}
+	}
+	require.Positive(t, chunkReads, "record the actual queries used to resolve inserted chunk IDs")
+	loaded, err := LoadChunkedRequestBody(ctx, client, projectID, owner.ID, 0, owner.RequestBody)
+	require.NoError(t, err)
+	require.Equal(t, body, []byte(loaded))
+	loaded, err = LoadChunkedRequestBody(ctx, client, projectID, 0, execution.ID, execution.RequestBody)
+	require.NoError(t, err)
+	require.Equal(t, body, []byte(loaded))
+	chunk := client.RequestBodyChunk.Query().FirstX(ctx)
+	_, err = client.RequestBodyChunk.UpdateOneID(chunk.ID).Modify(func(update *entsql.UpdateBuilder) {
+		update.Set(requestbodychunk.FieldData, []byte("corrupt"))
+	}).Save(ctx)
+	require.NoError(t, err)
+	loaded, err = LoadChunkedRequestBody(ctx, client, projectID, owner.ID, 0, owner.RequestBody)
+	require.ErrorContains(t, err, "missing or corrupt")
+	require.Nil(t, loaded)
+}
+
 func TestChunkedRequestBodyDetectsMissingAndCorruptBlocks(t *testing.T) {
 	t.Run("missing reference", func(t *testing.T) {
 		client, ctx, projectID := newChunkTestClient(t)

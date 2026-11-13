@@ -1,7 +1,8 @@
-// 职责: 在独立 PostgreSQL 测试库验证正文去重和清理的并发安全。
+// 职责: 在独立 PostgreSQL 测试库验证正文去重、ID 返回和清理的并发安全。
 // 关联文件:
 //
 //	internal/server/biz/request_body_chunks.go
+//	internal/server/biz/request_body_chunks_test.go
 //	internal/ent/schema/request_body_chunk_ref.go
 //
 // 注意事项: 仅接受显式配置的本机 axonhub_payload_test 数据库，不连接生产。
@@ -15,6 +16,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -31,6 +33,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/migrate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestbodychunk"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 )
 
 func TestChunkedRequestBodyPostgresConcurrentGC(t *testing.T) {
@@ -96,6 +99,48 @@ func TestChunkedRequestBodyPostgresConcurrentGC(t *testing.T) {
 		return err
 	}
 	service := AbstractService{db: client}
+	t.Run("upsert returns IDs without readback", func(t *testing.T) {
+		driver := &chunkSaveQueryDriver{Driver: client.Driver()}
+		writer := ent.NewClient(ent.Driver(driver))
+		service := AbstractService{db: writer}
+		var owner *ent.Request
+		var execution *ent.RequestExecution
+		require.NoError(t, service.RunInTransaction(ctx, func(txCtx context.Context) error {
+			tx := ent.FromContext(txCtx)
+			var err error
+			owner, err = create(txCtx, tx, body)
+			if err != nil {
+				return err
+			}
+			plan := PrepareChunkedRequestBody(body)
+			execution, err = tx.RequestExecution.Create().SetRequestID(owner.ID).SetProjectID(projectID).SetModelID("model").
+				SetRequestBody(plan.Manifest).SetRequestBodyChunked(true).SetStatus(requestexecution.StatusProcessing).Save(txCtx)
+			if err != nil {
+				return err
+			}
+			return plan.Save(txCtx, tx, projectID, 0, execution.ID)
+		}))
+		upserts := 0
+		for _, query := range driver.queries {
+			if strings.HasPrefix(query, "SELECT ") {
+				require.NotContains(t, query, request.Table)
+				require.NotContains(t, query, requestexecution.Table)
+				require.NotContains(t, query, requestbodychunk.Table, "RETURNING must supply the chunk IDs without another query")
+			}
+			if strings.HasPrefix(query, `INSERT INTO "`+requestbodychunk.Table+`"`) {
+				upserts++
+				require.Contains(t, query, "ON CONFLICT")
+				require.Contains(t, query, `RETURNING "id"`)
+			}
+		}
+		require.GreaterOrEqual(t, upserts, 2, "capture both a new chunk insert and existing-content conflict")
+		require.NoError(t, load(owner, body))
+		loaded, err := LoadChunkedRequestBody(ctx, client, projectID, 0, execution.ID, execution.RequestBody)
+		require.NoError(t, err)
+		require.Equal(t, body, []byte(loaded))
+		require.NoError(t, client.RequestExecution.DeleteOne(execution).Exec(ctx))
+		require.NoError(t, client.Request.DeleteOne(owner).Exec(ctx))
+	})
 
 	// Schema convergence must preserve inline rows and keep their new flag false.
 	legacy, err := client.Request.Create().SetProjectID(projectID).SetModelID("legacy").

@@ -6,7 +6,7 @@
 //	internal/server/biz/request.go
 //	internal/server/gc/gc.go
 //
-// 注意事项: 写块、引用和所有者必须在同一事务；只在同一项目内复用内容。
+// 注意事项: 调用方必须先在同一事务中新建所属项目的所有者；只在同一项目内复用内容。
 
 package biz
 
@@ -22,6 +22,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -62,22 +63,67 @@ func PrepareChunkedRequestBody(body []byte) *ChunkedRequestBody {
 
 	body = bytes.Clone(body)
 	var chunks [][]byte
-	start := 0
-	var fingerprint uint64
-	for i, b := range body {
-		fingerprint = fingerprint<<1 + requestBodyGear[b]
-		size := i + 1 - start
-		if size >= requestBodyChunkMax || size >= requestBodyChunkMin && fingerprint&requestBodyChunkMask == 0 {
-			chunks = append(chunks, body[start:i+1])
-			start = i + 1
-			fingerprint = 0
+	appendCDC := func(from, end int) int {
+		var fingerprint uint64
+		for i := from; i < end; i++ {
+			fingerprint = fingerprint<<1 + requestBodyGear[body[i]]
+			size := i + 1 - from
+			if size >= requestBodyChunkMax || size >= requestBodyChunkMin && fingerprint&requestBodyChunkMask == 0 {
+				chunks = append(chunks, body[from:i+1])
+				from = i + 1
+				fingerprint = 0
+			}
+		}
+		return from
+	}
+	appendRemainder := func(from, end int) {
+		if from < end {
+			chunks = append(chunks, body[from:end])
 		}
 	}
-	if start < len(body) {
-		chunks = append(chunks, body[start:])
+	input, ok := requestBodyInputArray(body)
+	if !ok {
+		appendRemainder(appendCDC(0, len(body)), len(body))
+	} else {
+		// Keep changing envelope fields and the closing bracket outside the growing history.
+		start, end := input.Index+1, input.Index+len(input.Raw)-1
+		appendRemainder(appendCDC(0, start), start)
+		from := appendCDC(start, end)
+		// Only the unfinished tail uses item boundaries; sealed history keeps coarse blocks.
+		input.ForEach(func(_, item gjson.Result) bool {
+			boundary := item.Index + len(item.Raw)
+			if boundary > from && boundary-from >= 1024 {
+				chunks = append(chunks, body[from:boundary])
+				from = boundary
+			}
+			return true
+		})
+		appendRemainder(from, end)
+		appendRemainder(appendCDC(end, len(body)), len(body))
 	}
 	manifest, _ := json.Marshal(requestBodyManifest{Version: 1, Size: len(body), SHA256: requestBodyHash(body), Chunks: len(chunks)})
 	return &ChunkedRequestBody{Manifest: manifest, chunks: chunks}
+}
+
+// requestBodyInputArray supplies offsets only; bodies are never decoded and re-encoded.
+func requestBodyInputArray(body []byte) (gjson.Result, bool) {
+	if !gjson.ValidBytes(body) {
+		return gjson.Result{}, false
+	}
+	root := gjson.ParseBytes(body)
+	if !root.IsObject() {
+		return gjson.Result{}, false
+	}
+	var input gjson.Result
+	count := 0
+	root.ForEach(func(key, value gjson.Result) bool {
+		if key.Str == "input" {
+			input = value
+			count++
+		}
+		return count < 2
+	})
+	return input, count == 1 && input.IsArray()
 }
 
 // Fixed SplitMix64 values make the Gear fingerprint deterministic across builds.
@@ -103,7 +149,8 @@ func validRequestBodyOwner(projectID, requestID, executionID int) bool {
 	return projectID > 0 && (requestID > 0 && executionID == 0 || executionID > 0 && requestID == 0)
 }
 
-// Save attaches a prepared body to an owner already created by the caller's transaction.
+// Save attaches a prepared body to an owner newly created in projectID by this transaction.
+// The caller supplies the saved owner's ID and project; they are not queried again.
 func (p *ChunkedRequestBody) Save(ctx context.Context, client *ent.Client, projectID, requestID, executionID int) error {
 	if p == nil || len(p.chunks) == 0 || !validRequestBodyOwner(projectID, requestID, executionID) {
 		return errors.New("invalid chunked request body owner or payload")
@@ -113,20 +160,6 @@ func (p *ChunkedRequestBody) Save(ctx context.Context, client *ent.Client, proje
 	}
 
 	_, err := authz.RunAsHost(ctx, client, "save request body chunks", func(hostCtx context.Context) (struct{}, error) {
-		var exists bool
-		var err error
-		if requestID > 0 {
-			exists, err = client.Request.Query().Where(request.IDEQ(requestID), request.ProjectIDEQ(projectID)).Exist(hostCtx)
-		} else {
-			exists, err = client.RequestExecution.Query().Where(requestexecution.IDEQ(executionID), requestexecution.ProjectIDEQ(projectID)).Exist(hostCtx)
-		}
-		if err != nil {
-			return struct{}{}, fmt.Errorf("query request body owner: %w", err)
-		}
-		if !exists {
-			return struct{}{}, errors.New("request body owner not found in project")
-		}
-
 		byHash := make(map[string][]byte, len(p.chunks))
 		hashes := make([]string, len(p.chunks))
 		for i, chunk := range p.chunks {
@@ -153,7 +186,19 @@ func (p *ChunkedRequestBody) Save(ctx context.Context, client *ent.Client, proje
 			if err != nil {
 				return struct{}{}, fmt.Errorf("save request body chunks: %w", err)
 			}
-			query := client.RequestBodyChunk.Query().Where(requestbodychunk.ProjectIDEQ(projectID), requestbodychunk.HashIn(keys...))
+			if client.Driver().Dialect() == dialect.Postgres {
+				// Ent bulk upsert already returns IDs in builder order on PostgreSQL.
+				for i, create := range creates {
+					id, ok := create.Mutation().ID()
+					if !ok || id <= 0 {
+						return struct{}{}, errors.New("saved request body chunk ID is missing")
+					}
+					chunkIDs[keys[i]] = id
+				}
+				continue
+			}
+			query := client.RequestBodyChunk.Query().Where(requestbodychunk.ProjectIDEQ(projectID), requestbodychunk.HashIn(keys...)).
+				Select(requestbodychunk.FieldID, requestbodychunk.FieldHash)
 			if client.Driver().Dialect() == dialect.MySQL {
 				// Read chunks committed after this transaction's repeatable-read snapshot.
 				query.Modify(func(selector *sql.Selector) { selector.ForUpdate() })
@@ -163,9 +208,6 @@ func (p *ChunkedRequestBody) Save(ctx context.Context, client *ent.Client, proje
 				return struct{}{}, fmt.Errorf("load saved request body chunks: %w", err)
 			}
 			for _, chunk := range stored {
-				if !bytes.Equal(chunk.Data, byHash[chunk.Hash]) {
-					return struct{}{}, errors.New("stored request body chunk does not match its content hash")
-				}
 				chunkIDs[chunk.Hash] = chunk.ID
 			}
 		}
