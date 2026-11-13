@@ -148,6 +148,109 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 	}
 }
 
+// jsonObjectKeywordPrompt is the minimal reminder prepended to input. It must
+// keep the word "json" in lower case so a case-sensitive upstream check passes.
+const jsonObjectKeywordPrompt = "Respond with a json object."
+
+// ensureJSONObjectKeyword satisfies the Responses API precondition for
+// text.format.type json_object: an input item has to mention "json", while
+// instructions are not inspected. Chat Completions clients often satisfy their
+// own precondition through a system message, which this conversion moves into
+// instructions, so the keyword can disappear from input even though the request
+// is valid as sent. Prepend the keyword instead of duplicating the system prompt.
+func ensureJSONObjectKeyword(input Input, responseFormat *llm.ResponseFormat) Input {
+	if responseFormat == nil || responseFormat.Type != "json_object" || inputMentionsJSON(input) {
+		return input
+	}
+
+	if input.Text != nil {
+		text := jsonObjectKeywordPrompt
+		if *input.Text != "" {
+			text += "\n\n" + *input.Text
+		}
+
+		return Input{Text: &text}
+	}
+
+	// The reminder must be the first input item on every turn: WebSocket
+	// connection reuse matches the previous turn's input as a prefix of the
+	// new one, and a trailing reminder breaks that prefix after the first
+	// turn. It is carried in Input.Reminder and prepended by
+	// marshalRequestPayload AFTER the raw-only items are merged back in,
+	// because a raw item's OriginalIndex addresses the input as it was
+	// received, before this reminder existed.
+	return Input{
+		Items: input.Items,
+		Reminder: &Item{
+			Type: "message",
+			Role: "developer",
+			Content: &Input{Items: []Item{{
+				Type: "input_text",
+				Text: lo.ToPtr(jsonObjectKeywordPrompt),
+			}}},
+		},
+	}
+}
+
+func inputMentionsJSON(input Input) bool {
+	if input.Text != nil && containsJSONKeyword(*input.Text) {
+		return true
+	}
+
+	for _, item := range input.Items {
+		// Only message text counts. The upstream check reads input messages, so
+		// treating tool arguments or outputs as sufficient could leave the
+		// request failing; adding a reminder they would have suppressed is
+		// harmless by comparison.
+		if item.Type != "message" && item.Role == "" {
+			continue
+		}
+
+		// Assistant items are the previous turn's response, not client input.
+		// They can mention "json" (for example explanatory prose alongside
+		// JSON output), and letting them suppress the reminder would flip the
+		// decision between turns, breaking the input prefix stability the
+		// pooled WebSocket executor relies on for connection reuse.
+		if item.Role == "assistant" {
+			continue
+		}
+
+		if item.Content != nil && messageContentMentionsJSON(*item.Content) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func messageContentMentionsJSON(content Input) bool {
+	if content.Text != nil && containsJSONKeyword(*content.Text) {
+		return true
+	}
+
+	for _, part := range content.Items {
+		if part.Text != nil && containsJSONKeyword(*part.Text) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// containsJSONKeyword reports whether s mentions "json" in any letter case.
+// It scans instead of lowercasing so large prompts are not copied.
+func containsJSONKeyword(s string) bool {
+	const keyword = "json"
+
+	for i := 0; i+len(keyword) <= len(s); i++ {
+		if strings.EqualFold(s[i:i+len(keyword)], keyword) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // convertUserMessage converts a user message to Responses API Item format.
 func convertUserMessage(msg llm.Message) Item {
 	var contentItems []Item

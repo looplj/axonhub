@@ -15,9 +15,11 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
@@ -771,6 +773,140 @@ func TestPrepareWebSocketPayloadChecksExplicitPreviousIDWithEmptyCachedInput(t *
 
 	err := prepareWebSocketPayloadForLease(payload, lease)
 	require.ErrorIs(t, err, shared.ErrResponsesContinuationUnavailable)
+}
+
+// TestPrepareWebSocketPayloadKeepsJSONObjectReminderStable pins the review
+// finding on #3004: the json_object reminder must keep the same position on
+// every turn, or the input prefix check rejects reuse and the next turn opens
+// a new WebSocket with the full history.
+func TestPrepareWebSocketPayloadKeepsJSONObjectReminderStable(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	systemMessage := llm.Message{
+		Role:    "system",
+		Content: llm.MessageContent{Content: lo.ToPtr("Return a json object.")},
+	}
+	userMessage := func(text string) llm.Message {
+		return llm.Message{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr(text)},
+		}
+	}
+	assistantMessage := llm.Message{
+		Role:    "assistant",
+		Content: llm.MessageContent{Content: lo.ToPtr(`{"name":"Ada"}`)},
+	}
+
+	payloadFor := func(msgs []llm.Message) map[string]any {
+		hreq, err := transformer.TransformRequest(context.Background(), &llm.Request{
+			Model:          "gpt-5",
+			ResponseFormat: &llm.ResponseFormat{Type: "json_object"},
+			Messages:       msgs,
+		})
+		require.NoError(t, err)
+
+		payload, err := buildWebSocketCreatePayload(hreq.Body)
+		require.NoError(t, err)
+
+		return payload
+	}
+
+	firstPayload := payloadFor([]llm.Message{systemMessage, userMessage("Ada Lovelace, 36")})
+
+	pooled := &pooledWebSocketConn{}
+	firstLease := &webSocketLease{pooled: pooled}
+	require.NoError(t, prepareWebSocketPayloadForLease(firstPayload, firstLease))
+
+	output := make([]json.RawMessage, 0)
+	for _, item := range convertAssistantMessage(assistantMessage) {
+		raw, err := json.Marshal(item)
+		require.NoError(t, err)
+
+		output = append(output, raw)
+	}
+
+	require.True(t, firstLease.rememberTurn("resp_1", output))
+
+	secondPayload := payloadFor([]llm.Message{
+		systemMessage, userMessage("Ada Lovelace, 36"), assistantMessage, userMessage("Lovelace, 36"),
+	})
+	secondLease := &webSocketLease{pooled: pooled, reused: true}
+	require.NoError(t, prepareWebSocketPayloadForLease(secondPayload, secondLease))
+
+	input, ok, err := payloadInputItems(secondPayload)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Len(t, input, 1)
+	require.Contains(t, string(input[0]), "Lovelace, 36")
+	require.Equal(t, "resp_1", secondPayload["previous_response_id"])
+}
+
+// regression for #3005: an assistant response that contains "json" (for
+// example explanatory prose alongside JSON output) must not suppress the
+// json_object reminder on the next turn, or the saved input stops being a
+// prefix of the new one and the pooled WebSocket executor rejects reuse.
+func TestPrepareWebSocketPayloadKeepsJSONObjectReminderStableAfterAssistantMentionsJSON(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	systemMessage := llm.Message{
+		Role:    "system",
+		Content: llm.MessageContent{Content: lo.ToPtr("Return a json object.")},
+	}
+	userMessage := func(text string) llm.Message {
+		return llm.Message{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr(text)},
+		}
+	}
+	assistantMessage := llm.Message{
+		Role:    "assistant",
+		Content: llm.MessageContent{Content: lo.ToPtr(`Here is the JSON: {"name":"Ada"}`)},
+	}
+
+	payloadFor := func(msgs []llm.Message) map[string]any {
+		hreq, err := transformer.TransformRequest(context.Background(), &llm.Request{
+			Model:          "gpt-5",
+			ResponseFormat: &llm.ResponseFormat{Type: "json_object"},
+			Messages:       msgs,
+		})
+		require.NoError(t, err)
+
+		payload, err := buildWebSocketCreatePayload(hreq.Body)
+		require.NoError(t, err)
+
+		return payload
+	}
+
+	firstPayload := payloadFor([]llm.Message{systemMessage, userMessage("Ada Lovelace, 36")})
+
+	pooled := &pooledWebSocketConn{}
+	firstLease := &webSocketLease{pooled: pooled}
+	require.NoError(t, prepareWebSocketPayloadForLease(firstPayload, firstLease))
+
+	output := make([]json.RawMessage, 0)
+	for _, item := range convertAssistantMessage(assistantMessage) {
+		raw, err := json.Marshal(item)
+		require.NoError(t, err)
+
+		output = append(output, raw)
+	}
+
+	require.True(t, firstLease.rememberTurn("resp_1", output))
+
+	secondPayload := payloadFor([]llm.Message{
+		systemMessage, userMessage("Ada Lovelace, 36"), assistantMessage, userMessage("Lovelace, 36"),
+	})
+	secondLease := &webSocketLease{pooled: pooled, reused: true}
+	require.NoError(t, prepareWebSocketPayloadForLease(secondPayload, secondLease))
+
+	input, ok, err := payloadInputItems(secondPayload)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Len(t, input, 1)
+	require.Contains(t, string(input[0]), "Lovelace, 36")
+	require.Equal(t, "resp_1", secondPayload["previous_response_id"])
 }
 
 func TestRestorePayloadMapRestoresMutatedPayload(t *testing.T) {
