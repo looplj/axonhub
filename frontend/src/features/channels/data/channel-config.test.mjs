@@ -397,8 +397,8 @@ test('Cloudflare Workers AI is available as a channel type in frontend schemas a
   );
   assert.match(
     protocolOptions,
-    /channelType === 'cloudflare' \|\| format !== 'typesafe\/systemone'/,
-    'System One should be configurable for Cloudflare channels only'
+    /systemOneCompatibleChannelTypes:[\s\S]*'cloudflare'/,
+    'Cloudflare should be included among channels with configurable System One endpoints'
   );
   assert.match(
     schema,

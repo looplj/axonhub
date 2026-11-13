@@ -69,7 +69,7 @@ export function getConfigurableApiFormatsForChannelType(
     'vercel', 'fireworks', 'moonshot', 'zhipu', 'zai', 'openai_fake', 'openrouter',
     'xiaomi', 'xai', 'xai_responses', 'xai_subscription', 'ppio', 'siliconflow',
     'volcengine', 'longcat', 'minimax', 'aihubmix', 'burncloud', 'modelscope',
-    'bailian', 'bailian_responses', 'github', 'github_copilot', 'cerebras', 'nanogpt',
+    'bailian', 'bailian_responses', 'github', 'cerebras', 'nanogpt',
     'nanogpt_responses', 'opencode_go', 'evolink', 'groq', 'commandcode', 'cloudflare',
   ];
   const supportsSystemOne = systemOneCompatibleChannelTypes.includes(channelType);

@@ -357,6 +357,7 @@ test('keeps HTTP-resolved and dual Responses model restrictions unchanged', () =
 
 test('excludes SystemOne from Codex and includes it on OpenAI Responses channels', () => {
   assert.deepEqual(getConfigurableApiFormatsForChannelType('codex', configurableFormats), ['openai/chat_completions']);
+  assert.ok(!getConfigurableApiFormatsForChannelType('github_copilot', configurableFormats).includes('typesafe/systemone'));
   assert.deepEqual(getConfigurableApiFormatsForChannelType('openai_responses', configurableFormats), [
     'openai/chat_completions',
     'openai/responses',

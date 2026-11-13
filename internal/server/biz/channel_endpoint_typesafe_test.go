@@ -46,7 +46,7 @@ func TestChannelEndpoint_TypesafeStrictness(t *testing.T) {
 	}
 	err = validateEndpointsForChannelType(channel.TypeAnthropic, anthropicWithSystemOne)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "only supported by TypeSafe and channel types with built-in OpenAI endpoints, except Codex")
+	require.Contains(t, err.Error(), "only supported by TypeSafe and channel types with built-in OpenAI endpoints")
 
 	// 6. Codex has OpenAI endpoints but must not expose SystemOne.
 	codexWithSystemOne := []objects.ChannelEndpoint{
@@ -57,7 +57,16 @@ func TestChannelEndpoint_TypesafeStrictness(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "except Codex")
 
-	// 7. Default endpoints for TypeSafe channel must only be typesafe/systemone
+	// 7. OAuth-only GitHub Copilot channels must not accept an API-key SystemOne endpoint.
+	copilotWithSystemOne := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatTypeSafeSystemOne.String()},
+	}
+	err = validateEndpointsForChannelType(channel.TypeGithubCopilot, copilotWithSystemOne)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "GitHub Copilot")
+
+	// 8. Default endpoints for TypeSafe channel must only be typesafe/systemone
 	defaults := DefaultEndpointsForChannelType(channel.TypeTypesafe)
 	require.Len(t, defaults, 1)
 	require.Equal(t, llm.APIFormatTypeSafeSystemOne.String(), defaults[0].APIFormat)

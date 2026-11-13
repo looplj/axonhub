@@ -369,7 +369,7 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 
 	for _, endpoint := range endpoints {
 		if endpoint.APIFormat == llm.APIFormatTypeSafeSystemOne.String() && !supportsSystemOneEndpoint(channelType) {
-			return fmt.Errorf("api_format %q is only supported by TypeSafe and channel types with built-in OpenAI endpoints, except Codex", endpoint.APIFormat)
+			return fmt.Errorf("api_format %q is only supported by TypeSafe and channel types with built-in OpenAI endpoints, except Codex and GitHub Copilot", endpoint.APIFormat)
 		}
 	}
 
@@ -388,12 +388,13 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 
 // supportsSystemOneEndpoint reports whether a channel type may serve the
 // typesafe/systemone api format. Channels with built-in OpenAI endpoints may
-// opt in through a manually configured endpoint.
+// opt in through a manually configured endpoint, except channels whose outbound
+// requires a different authentication flow such as Codex and GitHub Copilot.
 func supportsSystemOneEndpoint(channelType channel.Type) bool {
 	if channelType == channel.TypeTypesafe {
 		return true
 	}
-	if channelType == channel.TypeCodex {
+	if channelType == channel.TypeCodex || channelType == channel.TypeGithubCopilot {
 		return false
 	}
 
