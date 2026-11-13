@@ -1207,6 +1207,7 @@ const apiKeyFunctionNames = [
   'quotaWindowLabel',
   'quotaPercentClass',
   'quotaAccountState',
+  'quotaWindowCreditAmounts',
 ];
 const apiKeyFunctionNodes = badgesAst.statements.filter(
   (node) => ts.isFunctionDeclaration(node) && apiKeyFunctionNames.includes(node.name?.text)
@@ -1559,6 +1560,36 @@ test('a single key keeps the native window rows instead of an account summary', 
   assert.match(html, /5h window/);
   assert.match(html, /12% used/);
   assert.doesNotMatch(html, /accounts usable|Show per-key detail|aria-expanded|Key #/);
+});
+
+test('an exhausted key with a roomy window cannot set channel capacity', () => {
+  // ignore_quota releases the parked key, so it is enabled but exhausted: its
+  // low-usage weekly window must not become the channel's weekly capacity.
+  const exhausted = keyAccount(1, { status: 'exhausted', ready: false, limits: [keyWindow('5h', 1), keyWindow('weekly', 0.1)] });
+  const healthy = keyAccount(2, { limits: [keyWindow('5h', 0.4), keyWindow('weekly', 0.5)] });
+  const html = renderKeyDetails(perKeyChannel([exhausted, healthy]));
+
+  assert.match(html, /5h window<\/span><span class="shrink-0 font-normal tabular-nums [^"]*">40%/);
+  assert.match(html, /Weekly window<\/span><span class="shrink-0 font-normal tabular-nums [^"]*">50%/);
+  assert.doesNotMatch(html, /tabular-nums[^>]*">10%/, 'the exhausted key does not supply capacity');
+});
+
+test('a pool with no current observation reports an unknown battery instead of 0%', () => {
+  const unknown = keyAccount(1, { status: 'unknown', ready: false, limits: [keyWindow('5h', 0, 'unknown')] });
+  const failed = keyAccount(2, { status: 'unknown', ready: false, errorCode: 'check_failed' });
+
+  assert.equal(badgePercent(perKeyChannel([unknown, failed], { status: 'unknown' })), undefined);
+  assert.equal(badgePercent(perKeyChannel([keyAccount(3, { limits: [keyWindow('5h', 0.25)] })])), 25, 'a known key still reports usage');
+});
+
+test('per-key details keep the provider-reported credit amounts', () => {
+  const account = keyAccount(1, {
+    limits: [keyWindow('5h', 0.26), keyWindow('weekly', 0.4)],
+    quotaData: { rows: [{ window: 'five_hour', usedPercent: 26, remaining: 74, usage: 100, status: 'available' }] },
+  });
+  const html = renderKeyDetailsExpanded([account]);
+
+  assert.match(html, /74 \/ 100 left/, 'the credit figures the provider reports stay visible');
 });
 
 test('legacy provider snapshots without per-key quotas still render their original details', () => {

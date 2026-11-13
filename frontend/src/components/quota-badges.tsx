@@ -217,12 +217,18 @@ function getClineUsagePercent(window?: ClineQuotaWindow): number {
 
 // getChannelPercentage maps provider quota data onto the 0-100 used percentage
 // shown by the quota badge.
-function getChannelPercentage(channel: ProviderQuotaChannel): number {
+function getChannelPercentage(channel: ProviderQuotaChannel): number | undefined {
   if (channel.quotaStatus.apiKeyQuotas.length > 0) {
     if (channel.quotaStatus.status === 'exhausted') return 100;
 
-    const accountPercentages = channel.quotaStatus.apiKeyQuotas.flatMap((account) => {
-      if (account.disabled || account.status === 'unknown' || account.errorCode) return [];
+    const serviceable = channel.quotaStatus.apiKeyQuotas.filter(
+      (account) => !account.disabled && !account.errorCode && account.status !== 'unknown'
+    );
+    // No key has a current observation. Reporting 0% would draw a full battery,
+    // and the stored provider payload is the previous check's data, not this one.
+    if (serviceable.length === 0) return undefined;
+
+    const accountPercentages = serviceable.flatMap((account) => {
       const windows = account.limits.filter(
         (limit) => limit.type === 'token' && limit.window !== 'pay_as_you_go' && limit.window !== 'credits'
       );
@@ -493,6 +499,23 @@ function quotaAccountState(t: (key: string) => string, account: ProviderAPIKeyQu
   };
 }
 
+// quotaWindowCreditAmounts reads the provider's raw credit figures for one
+// window of one key. The shared details replaced the provider-specific tooltip,
+// so these amounts have to travel with the shared rows instead of being lost.
+function quotaWindowCreditAmounts(
+  account: ProviderAPIKeyQuota,
+  limit: ProviderQuotaLimit
+): { remaining: number; total: number } | undefined {
+  const rawWindow = limit.window === '5h' ? 'five_hour' : limit.window === 'weekly' ? 'weekly_limit' : undefined;
+  if (!rawWindow) return undefined;
+
+  const rows = (account.quotaData as ProviderZhipuQuotaData | undefined)?.rows;
+  const row = rows?.find((entry) => entry.window === rawWindow);
+  if (!row || row.remaining == null || row.usage == null) return undefined;
+
+  return { remaining: row.remaining, total: row.usage };
+}
+
 // APIKeyBalanceRows is the money-only rendering shared by balance accounts and
 // by detail rows whose key has no token windows.
 function APIKeyBalanceRows({ balances, compact }: { balances: ProviderQuotaBalance[]; compact?: boolean }) {
@@ -571,6 +594,7 @@ function APIKeyQuotaDetails({
                 {limits.map((limit, index) => {
                   const usedPercent = limit.usageRatio * 100;
                   const known = limit.status !== 'unknown';
+                  const creditAmounts = known ? quotaWindowCreditAmounts(account, limit) : undefined;
 
                   return (
                     <div key={`${limit.window}-${index}`} className='min-w-0 space-y-1'>
@@ -597,6 +621,14 @@ function APIKeyQuotaDetails({
                               </div>
                             }
                           />
+                          {creditAmounts && (
+                            <div className='text-muted-foreground text-[11px] tabular-nums'>
+                              {t('quota.label.credits_amount', {
+                                remaining: creditAmounts.remaining.toLocaleString(),
+                                total: creditAmounts.total.toLocaleString(),
+                              })}
+                            </div>
+                          )}
                           {limit.nextResetAt && (
                             <div className='text-muted-foreground text-[11px] tabular-nums'>{formatTimeToReset(limit.nextResetAt)}</div>
                           )}
@@ -663,7 +695,9 @@ function APIKeyQuotaList({
     const byWindow = new Map<string, { account: ProviderAPIKeyQuota; limit: ProviderQuotaLimit }[]>();
 
     for (const account of accounts) {
-      if (account.disabled || account.errorCode) continue;
+      // A key with an exhausted window cannot serve, even when another of its
+      // windows still has room; only a serviceable key sets channel capacity.
+      if (account.disabled || account.errorCode || account.status === 'exhausted') continue;
       for (const limit of account.limits) {
         if (limit.type !== 'token' || limit.status === 'unknown' || !limit.window) continue;
         if (!byWindow.has(limit.window)) {
@@ -2933,7 +2967,8 @@ function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: Provide
     return <BatteryWarning className='h-5 w-5 text-red-500 transition-colors' />;
   }
 
-  const highestUsed = Math.max(...channels.map(getChannelPercentage));
+  const percentages = channels.map(getChannelPercentage).filter((percentage): percentage is number => percentage !== undefined);
+  const highestUsed = percentages.length > 0 ? Math.max(...percentages) : 0;
 
   const hasExhausted = channels.some((c) => c.quotaStatus.status === 'exhausted');
   const hasWarning = channels.some((c) => c.quotaStatus.status === 'warning');
@@ -2941,6 +2976,7 @@ function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: Provide
   let level: BatteryLevel = 'full';
   if (hasExhausted) level = 'warning';
   else if (hasWarning) level = 'low';
+  else if (channels.length > 0 && percentages.length === 0) level = 'warning';
   else level = getBatteryLevel(highestUsed, 'available');
 
   const BatteryIcon = getBatteryIcon(level);
