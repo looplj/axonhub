@@ -148,7 +148,7 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 	}
 }
 
-// jsonObjectKeywordPrompt is the minimal reminder appended to input. It must
+// jsonObjectKeywordPrompt is the minimal reminder prepended to input. It must
 // keep the word "json" in lower case so a case-sensitive upstream check passes.
 const jsonObjectKeywordPrompt = "Respond with a json object."
 
@@ -157,7 +157,7 @@ const jsonObjectKeywordPrompt = "Respond with a json object."
 // instructions are not inspected. Chat Completions clients often satisfy their
 // own precondition through a system message, which this conversion moves into
 // instructions, so the keyword can disappear from input even though the request
-// is valid as sent. Append the keyword instead of duplicating the system prompt.
+// is valid as sent. Prepend the keyword instead of duplicating the system prompt.
 func ensureJSONObjectKeyword(input Input, responseFormat *llm.ResponseFormat) Input {
 	if responseFormat == nil || responseFormat.Type != "json_object" || inputMentionsJSON(input) {
 		return input
@@ -198,7 +198,7 @@ func inputMentionsJSON(input Input) bool {
 	for _, item := range input.Items {
 		// Only message text counts. The upstream check reads input messages, so
 		// treating tool arguments or outputs as sufficient could leave the
-		// request failing; appending a reminder they would have suppressed is
+		// request failing; adding a reminder they would have suppressed is
 		// harmless by comparison.
 		if item.Type != "message" && item.Role == "" {
 			continue
