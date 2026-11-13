@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/shared"
@@ -137,76 +139,163 @@ func (e *WebSocketExecutor) Do(ctx context.Context, request *httpclient.Request)
 }
 
 // TopLevelWebSocketError returns an error when collected WebSocket stream events contain a top-level protocol error.
+//
+// A top-level `error` frame means the upstream failed, not the request. Report
+// it as a *httpclient.Error so the orchestrator can retry the channel, and keep
+// the frame's own status, code and message: a frame that fails strict decoding
+// must still surface the provider's reason instead of a bare constant.
 func TopLevelWebSocketError(chunks []*httpclient.StreamEvent) error {
 	for _, chunk := range chunks {
 		if chunk == nil || chunk.Type != string(StreamEventTypeError) {
 			continue
 		}
 
-		var event struct {
-			Status  int             `json:"status"`
-			Code    string          `json:"code"`
-			Message string          `json:"message"`
-			Param   string          `json:"param"`
-			Error   json.RawMessage `json:"error"`
-		}
-		if err := json.Unmarshal(chunk.Data, &event); err != nil {
-			return fmt.Errorf("websocket error event")
-		}
-		if event.Status >= http.StatusBadRequest && event.Status <= 599 {
-			detail := map[string]any{}
-			if event.Message != "" {
-				detail["message"] = event.Message
-			}
-			if event.Code != "" {
-				detail["type"] = event.Code
-				detail["code"] = event.Code
-			}
-			if event.Param != "" {
-				detail["param"] = event.Param
-			}
-			if len(event.Error) > 0 && string(event.Error) != "null" {
-				var nested map[string]any
-				if err := json.Unmarshal(event.Error, &nested); err != nil {
-					return fmt.Errorf("failed to decode websocket error detail: %w", err)
-				}
-				for key, value := range nested {
-					if value == nil {
-						continue
-					}
-					if text, ok := value.(string); ok && text == "" {
-						continue
-					}
-					detail[key] = value
-				}
-			}
-			body, err := json.Marshal(struct {
-				Error map[string]any `json:"error"`
-			}{Error: detail})
-			if err != nil {
-				return fmt.Errorf("failed to encode websocket error response: %w", err)
-			}
-
-			return &httpclient.Error{
-				StatusCode: event.Status,
-				Status:     http.StatusText(event.Status),
-				Body:       body,
-			}
-		}
-		if event.Code != "" && event.Message != "" {
-			return fmt.Errorf("websocket error event: %s: %s", event.Code, event.Message)
-		}
-		if event.Message != "" {
-			return fmt.Errorf("websocket error event: %s", event.Message)
-		}
-		if event.Code != "" {
-			return fmt.Errorf("websocket error event: %s", event.Code)
-		}
-
-		return fmt.Errorf("websocket error event")
+		return newWebSocketErrorEvent(chunk.Data)
 	}
 
 	return nil
+}
+
+// webSocketErrorFrameMaxBytes bounds the raw frame copied into an error body;
+// a pathological provider must not inflate every retry response.
+const webSocketErrorFrameMaxBytes = 4 << 10
+
+// newWebSocketErrorEvent converts a top-level error frame into an upstream
+// error. A frame without a usable 4xx/5xx status becomes 502: the orchestrator
+// treats 502 as retryable, so one broken connection cannot fail every request
+// for the whole window.
+func newWebSocketErrorEvent(raw []byte) *httpclient.Error {
+	status, detail := webSocketErrorEventDetail(raw)
+
+	return &httpclient.Error{
+		StatusCode: status,
+		Status:     http.StatusText(status),
+		Body: xjson.MustMarshal(struct {
+			Error map[string]string `json:"error"`
+		}{Error: detail}),
+	}
+}
+
+// webSocketErrorEventDetail extracts what the provider reported. Providers
+// disagree on the frame shape: `status` may be a number or a string, and
+// `code`/`message`/`param` may sit on the frame or inside `error`. Values are
+// normalized to strings so inbound transformers can decode the body into their
+// error detail without a second failure.
+func webSocketErrorEventDetail(raw []byte) (int, map[string]string) {
+	detail := map[string]string{}
+
+	var frame map[string]any
+	if err := json.Unmarshal(raw, &frame); err != nil {
+		detail["message"] = fmt.Sprintf("websocket error event: failed to decode error frame: %s; body: %s", err, truncateWebSocketErrorFrame(raw))
+		detail["type"] = "upstream_error"
+
+		return http.StatusBadGateway, detail
+	}
+
+	status, ok := webSocketErrorStatus(frame["status"])
+	if !ok {
+		status = http.StatusBadGateway
+	}
+
+	setWebSocketErrorText(detail, "message", frame["message"])
+	setWebSocketErrorText(detail, "code", frame["code"])
+	setWebSocketErrorText(detail, "param", frame["param"])
+
+	if nested, ok := frame["error"].(map[string]any); ok {
+		for _, key := range []string{"message", "code", "type", "param"} {
+			setWebSocketErrorText(detail, key, nested[key])
+		}
+
+		for key, value := range nested {
+			if _, ok := detail[key]; ok {
+				continue
+			}
+			if text := webSocketErrorText(value); text != "" {
+				detail[key] = text
+			}
+		}
+	} else if text := webSocketErrorText(frame["error"]); text != "" {
+		detail["message"] = text
+	}
+
+	if detail["message"] == "" {
+		detail["message"] = detail["code"]
+	}
+	if detail["message"] == "" {
+		detail["message"] = "websocket error event: " + truncateWebSocketErrorFrame(raw)
+	}
+	if detail["type"] == "" {
+		detail["type"] = webSocketErrorTypeFromCode(detail["code"])
+	}
+	if detail["type"] == "" {
+		detail["type"] = "upstream_error"
+	}
+
+	return status, detail
+}
+
+func setWebSocketErrorText(detail map[string]string, key string, value any) {
+	if text := webSocketErrorText(value); text != "" {
+		detail[key] = text
+	}
+}
+
+// webSocketErrorTypeFromCode keeps the historical "code doubles as type" shape
+// for symbolic codes. A numeric code is an HTTP status, not an error type, so
+// it must not be copied into `error.type`.
+func webSocketErrorTypeFromCode(code string) string {
+	if code == "" {
+		return ""
+	}
+
+	for _, r := range code {
+		if r < '0' || r > '9' {
+			return code
+		}
+	}
+
+	return ""
+}
+
+func webSocketErrorText(value any) string {
+	switch v := value.(type) {
+	case string:
+		return strings.TrimSpace(v)
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	case bool:
+		return strconv.FormatBool(v)
+	default:
+		return ""
+	}
+}
+
+func webSocketErrorStatus(value any) (int, bool) {
+	switch v := value.(type) {
+	case float64:
+		status := int(v)
+		if status >= http.StatusBadRequest && status <= 599 {
+			return status, true
+		}
+	case string:
+		status, err := strconv.Atoi(strings.TrimSpace(v))
+		if err == nil && status >= http.StatusBadRequest && status <= 599 {
+			return status, true
+		}
+	}
+
+	return 0, false
+}
+
+func truncateWebSocketErrorFrame(raw []byte) string {
+	text := strings.TrimSpace(string(raw))
+	if len(text) <= webSocketErrorFrameMaxBytes {
+		return text
+	}
+
+	return fmt.Sprintf("%s... (%d bytes truncated)",
+		strings.ToValidUTF8(text[:webSocketErrorFrameMaxBytes], ""),
+		len(text)-webSocketErrorFrameMaxBytes)
 }
 
 func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {

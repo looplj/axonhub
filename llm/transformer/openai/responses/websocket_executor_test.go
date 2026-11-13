@@ -265,7 +265,18 @@ func TestWebSocketExecutorDoReturnsErrorForTopLevelErrorEvent(t *testing.T) {
 	})
 
 	require.Nil(t, resp)
-	require.ErrorContains(t, err, "bad_request: invalid websocket request")
+
+	var httpErr *httpclient.Error
+	require.ErrorAs(t, err, &httpErr)
+	require.Equal(t, http.StatusBadGateway, httpErr.StatusCode)
+	require.True(t, httpclient.IsHTTPStatusCodeRetryable(httpErr.StatusCode))
+	require.JSONEq(t, `{
+		"error":{
+			"type":"bad_request",
+			"code":"bad_request",
+			"message":"invalid websocket request"
+		}
+	}`, string(httpErr.Body))
 }
 
 func TestTopLevelWebSocketErrorPreservesOfficialErrorStatusAndBody(t *testing.T) {
@@ -345,7 +356,108 @@ func TestTopLevelWebSocketErrorPreservesOfficialErrorStatusAndBody(t *testing.T)
 			var httpErr *httpclient.Error
 			require.ErrorAs(t, err, &httpErr)
 			require.Equal(t, http.StatusBadRequest, httpErr.StatusCode)
+			require.False(t, httpclient.IsHTTPStatusCodeRetryable(httpErr.StatusCode))
 			require.JSONEq(t, tt.want, string(httpErr.Body))
+		})
+	}
+}
+
+func TestTopLevelWebSocketErrorReportsProviderFailure(t *testing.T) {
+	tests := []struct {
+		name        string
+		data        string
+		wantStatus  int
+		wantBody    string
+		wantContain []string
+	}{
+		{
+			name:       "string status and numeric code decode leniently",
+			data:       `{"type":"error","status":"503","code":503,"message":"upstream overloaded"}`,
+			wantStatus: http.StatusServiceUnavailable,
+			wantBody: `{
+				"error":{
+					"type":"upstream_error",
+					"code":"503",
+					"message":"upstream overloaded"
+				}
+			}`,
+		},
+		{
+			name:       "status-less frame keeps code and message",
+			data:       `{"type":"error","code":"server_error","message":"upstream failed"}`,
+			wantStatus: http.StatusBadGateway,
+			wantBody: `{
+				"error":{
+					"type":"server_error",
+					"code":"server_error",
+					"message":"upstream failed"
+				}
+			}`,
+		},
+		{
+			name:       "nested-only frame keeps nested detail",
+			data:       `{"type":"error","error":{"type":"server_error","code":"overloaded","message":"try later"}}`,
+			wantStatus: http.StatusBadGateway,
+			wantBody: `{
+				"error":{
+					"type":"server_error",
+					"code":"overloaded",
+					"message":"try later"
+				}
+			}`,
+		},
+		{
+			name:       "nested symbolic code supplies the type",
+			data:       `{"type":"error","error":{"code":"server_error","message":"try later"}}`,
+			wantStatus: http.StatusBadGateway,
+			wantBody: `{
+				"error":{
+					"type":"server_error",
+					"code":"server_error",
+					"message":"try later"
+				}
+			}`,
+		},
+		{
+			name:        "empty nested detail falls back to the raw frame",
+			data:        `{"type":"error","error":{"type":"server_error","code":"","message":""}}`,
+			wantStatus:  http.StatusBadGateway,
+			wantContain: []string{`"type":"server_error"`, `"message":"websocket error event: {\"type\":\"error\"`},
+		},
+		{
+			name:        "frame without detail falls back to the raw frame",
+			data:        `{"type":"error"}`,
+			wantStatus:  http.StatusBadGateway,
+			wantContain: []string{`"type":"upstream_error"`, `websocket error event: {\"type\":\"error\"}`},
+		},
+		{
+			name:        "malformed frame keeps the decode error and raw frame",
+			data:        `{"type":"error",`,
+			wantStatus:  http.StatusBadGateway,
+			wantContain: []string{`"type":"upstream_error"`, `failed to decode error frame`, `{\"type\":\"error\",`},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := TopLevelWebSocketError([]*httpclient.StreamEvent{{
+				Type: "error",
+				Data: []byte(tt.data),
+			}})
+
+			var httpErr *httpclient.Error
+			require.ErrorAs(t, err, &httpErr)
+			require.Equal(t, tt.wantStatus, httpErr.StatusCode)
+			require.True(t, httpclient.IsHTTPStatusCodeRetryable(httpErr.StatusCode),
+				"an unclassified upstream error frame must be retryable")
+
+			if tt.wantBody != "" {
+				require.JSONEq(t, tt.wantBody, string(httpErr.Body))
+			}
+
+			for _, want := range tt.wantContain {
+				require.Contains(t, string(httpErr.Body), want)
+			}
 		})
 	}
 }
