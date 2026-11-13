@@ -63,14 +63,16 @@ func PrepareHTTPTransportRequest(request *httpclient.Request, stripPreviousRespo
 	return &cloned
 }
 
-// Codex Desktop's turn/start toolOutput flow emits standalone named outputs for
-// delegation and automation bootstrap data. Responses WebSocket accepts them,
-// but Responses HTTP rejects their missing call IDs. Only these known bootstrap
-// items are downgraded; requests without their names skip the JSON walk.
+// Codex Desktop's turn/start and companion-page flows emit standalone named
+// outputs for delegation, automation, and page context. Responses WebSocket
+// accepts them, but Responses HTTP rejects their missing call IDs. Only these
+// known Codex outputs are downgraded; requests without their names skip the
+// JSON walk.
 func downgradeCodexBootstrapOutputs(body []byte) ([]byte, bool) {
 	if !bytes.Contains(body, []byte("create_thread")) &&
 		!bytes.Contains(body, []byte("send_message_to_thread")) &&
-		!bytes.Contains(body, []byte("automation_update")) {
+		!bytes.Contains(body, []byte("automation_update")) &&
+		!bytes.Contains(body, []byte("codex_apps_")) {
 		return body, false
 	}
 

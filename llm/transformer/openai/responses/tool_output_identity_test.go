@@ -65,6 +65,20 @@ func TestResponsesOrdinaryToolOutputWithoutCallIDRemainsToolMessage(t *testing.T
 	require.Equal(t, "ok", lo.FromPtr(chatRequest.Messages[0].Content.Content))
 }
 
+func TestResponsesCompanionPageOutputWithoutCallIDBecomesChatUserMessage(t *testing.T) {
+	body := []byte(`{"model":"synthetic-model","input":[
+		{"type":"function_call_output","name":"codex_apps_open_page","namespace":"agent","output":"page context"}
+	]}`)
+	request, err := NewWebSocketInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
+	require.NoError(t, err)
+
+	chatRequest := openai.RequestFromLLM(t.Context(), request, openai.ReasoningFieldNone)
+	require.Len(t, chatRequest.Messages, 1)
+	require.Equal(t, "user", chatRequest.Messages[0].Role)
+	require.Nil(t, chatRequest.Messages[0].ToolCallID)
+	require.Equal(t, "page context", lo.FromPtr(chatRequest.Messages[0].Content.Content))
+}
+
 func TestResponsesToolOutputWithoutCallIDBecomesChatUserMessage(t *testing.T) {
 	body := []byte(`{"model":"synthetic-model","input":[
 		{"type":"function_call_output","name":"automation_update","output":"schedule"},
