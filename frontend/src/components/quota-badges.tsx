@@ -1759,9 +1759,10 @@ function QuotaRow({
         </div>
       )}
 
-      {quota.apiKeyQuotas.length > 0 && <APIKeyQuotaList accounts={quota.apiKeyQuotas} formatTimeToReset={formatTimeToReset} />}
+      {/* One key has nothing to compare: keep that channel's native window rows. */}
+      {quota.apiKeyQuotas.length > 1 && <APIKeyQuotaList accounts={quota.apiKeyQuotas} formatTimeToReset={formatTimeToReset} />}
 
-      {quota.apiKeyQuotas.length === 0 && (channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') && (
+      {quota.apiKeyQuotas.length < 2 && (channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') && (
         <div className='mt-3 space-y-3'>
           {(() => {
             // OpenCode Go renders from the normalized limits: its checker maps
@@ -2226,7 +2227,7 @@ function QuotaRow({
         </div>
       )}
 
-      {quota.apiKeyQuotas.length === 0 &&
+      {quota.apiKeyQuotas.length < 2 &&
         (channel.type === 'zhipu' || channel.type === 'zhipu_anthropic' || channel.type === 'zai' || channel.type === 'zai_anthropic') && (
           <div className='mt-3 space-y-3'>
             {(() => {
@@ -2777,7 +2778,7 @@ function QuotaRow({
         </div>
       )}
 
-      {quota.apiKeyQuotas.length === 0 &&
+      {quota.apiKeyQuotas.length < 2 &&
         (channel.type === 'deepseek' ||
           channel.type === 'deepseek_anthropic' ||
           (isOpenaiType(channel.type) && channel.providerType === 'deepseek')) && (

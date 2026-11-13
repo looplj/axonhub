@@ -1230,7 +1230,7 @@ const affectedQuotaBranches = quotaJsx.children.filter((node) => {
   if (!ts.isJsxExpression(node) || !node.expression || !ts.isBinaryExpression(node.expression)) return false;
   const condition = node.expression.left.getText(badgesAst);
   return (
-    condition.includes('quota.apiKeyQuotas.length > 0') ||
+    /quota\.apiKeyQuotas\.length > \d/.test(condition) ||
     ["channel.type === 'opencode_go'", "channel.type === 'zhipu'", "channel.type === 'deepseek'"].some((provider) =>
       condition.includes(provider)
     )
@@ -1547,6 +1547,18 @@ test('all supported channel variants use the same per-key details and short keys
     assert.match(details, /Key #2 · \*\*\*\*same/, type);
     assert.doesNotMatch(details, /Key #1 ·/, 'a short key has no suffix to display');
   }
+});
+
+test('a single key keeps the native window rows instead of an account summary', () => {
+  const limits = [keyWindow('5h', 0.12), keyWindow('weekly', 0.3), keyWindow('monthly', 0.35)];
+  const html = renderKeyDetails(perKeyChannel([keyAccount(1, { limits })], { limits }));
+
+  // One key has nothing to compare across, so the channel keeps the per-window
+  // bars it always published and gains no summary or disclosure.
+  assert.equal((html.match(/cursor-default pb-1\.5/g) || []).length, 3);
+  assert.match(html, /5h window/);
+  assert.match(html, /12% used/);
+  assert.doesNotMatch(html, /accounts usable|Show per-key detail|aria-expanded|Key #/);
 });
 
 test('legacy provider snapshots without per-key quotas still render their original details', () => {
