@@ -229,6 +229,14 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 		Reasoning:        reasoning,
 	}
 
+	// Chat Completions requires every tool message to reference a tool call.
+	// Responses delegation and automation bootstrap outputs may have no call ID;
+	// retain their content as a user message instead of sending an invalid tool.
+	if msg.Role == "tool" && strings.TrimSpace(lo.FromPtr(msg.ToolCallID)) == "" {
+		msg.Role = "user"
+		msg.ToolCallID = nil
+	}
+
 	if m.Audio != nil {
 		msg.Audio = &OutputAudio{
 			ID:         m.Audio.ID,

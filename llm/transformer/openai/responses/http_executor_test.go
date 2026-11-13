@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
@@ -90,4 +91,81 @@ func TestHTTPTransportExecutorKeepsNormalHTTPContinuation(t *testing.T) {
 	require.Same(t, request, inner.request)
 	require.Equal(t, "resp_http", gjson.GetBytes(inner.request.Body, "previous_response_id").String())
 	require.Equal(t, "other_beta=v1", inner.request.Headers.Get("OpenAI-Beta"))
+}
+
+func TestWebSocketToHTTPTransportExecutorDowngradesCalllessFunctionOutputs(t *testing.T) {
+	outbound, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://api.example.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+		Transport:      TransportHTTP,
+	})
+	require.NoError(t, err)
+
+	webSocketBody := []byte(`{
+		"type":"response.create",
+		"stream_id":"lane",
+		"model":"gpt-5",
+		"input":[
+			{"type":"function_call_output","id":"fco_x","name":"create_thread","namespace":"codex_app","output":"<codex_delegation>delegate</codex_delegation>"},
+			{"type":"function_call","call_id":"call_1","name":"exec","arguments":"{}"},
+			{"type":"function_call_output","call_id":"call_1","output":"ok"}
+		]
+	}`)
+	body, err := AdaptRequestBody(webSocketBody, llm.APIFormatOpenAIResponseWebSocket, llm.APIFormatOpenAIResponse)
+	require.NoError(t, err)
+
+	inner := &httpTransportCaptureExecutor{}
+	executor := outbound.CustomizeExecutor(inner)
+	request := &httpclient.Request{Body: body}
+	originalBody := append([]byte(nil), request.Body...)
+
+	_, err = executor.Do(context.Background(), request)
+	require.NoError(t, err)
+	require.NotNil(t, inner.request)
+
+	callless := gjson.GetBytes(inner.request.Body, "input.0")
+	require.Equal(t, "message", callless.Get("type").String())
+	require.Equal(t, "user", callless.Get("role").String())
+	require.Equal(t, "input_text", callless.Get("content.0.type").String())
+	require.Equal(t, "<codex_delegation>delegate</codex_delegation>", callless.Get("content.0.text").String())
+	for _, key := range []string{"id", "name", "namespace", "call_id", "output"} {
+		require.False(t, callless.Get(key).Exists(), "downgraded item must not retain %s", key)
+	}
+	require.Equal(t, "function_call", gjson.GetBytes(inner.request.Body, "input.1.type").String())
+	require.Equal(t, "function_call_output", gjson.GetBytes(inner.request.Body, "input.2.type").String())
+	require.Equal(t, "call_1", gjson.GetBytes(inner.request.Body, "input.2.call_id").String())
+	require.Equal(t, "ok", gjson.GetBytes(inner.request.Body, "input.2.output").String())
+	require.Equal(t, originalBody, request.Body, "transport cleanup must not mutate the retained request")
+}
+
+func TestPrepareHTTPTransportRequestPreservesCalllessOutputParts(t *testing.T) {
+	request := &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5",
+		"input":[{"type":"function_call_output","call_id":"  ","output":[
+			{"type":"input_text","text":"a"},
+			{"type":"input_image","image_url":"data:image/png;base64,AA"}
+		]}]
+	}`)}
+
+	prepared := PrepareHTTPTransportRequest(request, false)
+	require.NotSame(t, request, prepared)
+	require.Equal(t, "message", gjson.GetBytes(prepared.Body, "input.0.type").String())
+	require.Equal(t, "user", gjson.GetBytes(prepared.Body, "input.0.role").String())
+	require.JSONEq(t, `[
+		{"type":"input_text","text":"a"},
+		{"type":"input_image","image_url":"data:image/png;base64,AA"}
+	]`, gjson.GetBytes(prepared.Body, "input.0.content").Raw)
+}
+
+func TestWebSocketTransportKeepsCalllessFunctionOutputs(t *testing.T) {
+	outbound, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://api.example.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+		Transport:      TransportWebSocket,
+	})
+	require.NoError(t, err)
+
+	request := &httpclient.Request{Body: []byte(`{"model":"gpt-5","input":[{"type":"function_call_output","output":"delegate"}]}`)}
+	require.Same(t, request, outbound.FinalizeTransportRequest(request))
+	require.Equal(t, "function_call_output", gjson.GetBytes(request.Body, "input.0.type").String())
 }
