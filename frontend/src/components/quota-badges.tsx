@@ -10,7 +10,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, RefreshCw, Zap, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning, ArrowUpDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ClaudeResetCredits } from '@/components/claude-reset-credits';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -23,6 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ClaudeResetCredits } from '@/components/claude-reset-credits';
 import type { ChannelQuotaRoutingMode } from '@/features/channels/data/schema';
 import { getChannelQuotaRoutingIndicator } from '@/features/channels/utils/quota-routing-status';
 import {
@@ -705,7 +705,9 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                     <div className='space-y-1'>
                       <div className='flex items-center justify-between text-xs'>
                         <span className='text-muted-foreground font-medium'>{t('quota.window.5h')}</span>
-                        <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round((qd.windows['5h'].utilization || 0) * 100) })}</span>
+                        <span className='text-foreground font-medium'>
+                          {t('quota.label.percent_used', { percent: Math.round((qd.windows['5h'].utilization || 0) * 100) })}
+                        </span>
                       </div>
                       <UsageTimeBar
                         usagePercent={(qd.windows['5h'].utilization || 0) * 100}
@@ -735,7 +737,9 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                     <div className='space-y-1'>
                       <div className='flex items-center justify-between text-xs'>
                         <span className='text-muted-foreground font-medium'>{t('quota.window.7d')}</span>
-                        <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round((qd.windows['7d'].utilization || 0) * 100) })}</span>
+                        <span className='text-foreground font-medium'>
+                          {t('quota.label.percent_used', { percent: Math.round((qd.windows['7d'].utilization || 0) * 100) })}
+                        </span>
                       </div>
                       <UsageTimeBar
                         usagePercent={(qd.windows['7d'].utilization || 0) * 100}
@@ -770,7 +774,9 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                       <div className='space-y-1'>
                         <div className='flex items-center justify-between text-xs'>
                           <span className='text-muted-foreground font-medium'>{label}</span>
-                          <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(usedPercent) })}</span>
+                          <span className='text-foreground font-medium'>
+                            {t('quota.label.percent_used', { percent: Math.round(usedPercent) })}
+                          </span>
                         </div>
                         <UsageTimeBar
                           usagePercent={usedPercent}
@@ -801,7 +807,9 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                     <div className='space-y-1'>
                       <div className='flex items-center justify-between text-xs'>
                         <span className='text-muted-foreground font-medium'>{t('quota.label.overage_window')}</span>
-                        <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round((qd.windows['overage'].utilization || 0) * 100) })}</span>
+                        <span className='text-foreground font-medium'>
+                          {t('quota.label.percent_used', { percent: Math.round((qd.windows['overage'].utilization || 0) * 100) })}
+                        </span>
                       </div>
                       <UsageTimeBar
                         usagePercent={(qd.windows['overage'].utilization || 0) * 100}
@@ -2232,7 +2240,10 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
               const dfe = qd.daily_free_energy;
               const dfeIncluded = dfe.kwh_included ?? 0;
               if (dfeIncluded > 0) {
-                const dfeUsed = dfe.kwh_used ?? 0;
+                // Mirrors the server's kwh_used -> kwh_remaining derivation so
+                // the label matches the bar when only the remaining amount is
+                // reported.
+                const dfeUsed = dfe.kwh_used ?? (dfe.kwh_remaining != null ? Math.max(0, dfeIncluded - dfe.kwh_remaining) : 0);
                 const dfeLimit = quota.limits.find((l) => l.window === 'daily_free_energy');
                 const usagePercent = dfeLimit ? dfeLimit.usageRatio * 100 : (dfeUsed / dfeIncluded) * 100;
                 // The limit carries no periodStart (deliberately display-only), so the
