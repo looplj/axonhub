@@ -34,6 +34,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestbodychunk"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/log"
 )
 
 func TestChunkedRequestBodyPostgresConcurrentGC(t *testing.T) {
@@ -165,6 +166,7 @@ func TestChunkedRequestBodyPostgresConcurrentGC(t *testing.T) {
 	go func() {
 		defer func() {
 			if recovered := recover(); recovered != nil {
+				log.Error(ctx, "Request body test goroutine panicked", log.Any("panic", recovered))
 				sweepResult <- fmt.Errorf("sweeper panic: %v", recovered)
 			}
 		}()
@@ -200,6 +202,7 @@ func TestChunkedRequestBodyPostgresConcurrentGC(t *testing.T) {
 	errors := make(chan error, 32)
 	reportPanic := func() {
 		if recovered := recover(); recovered != nil {
+			log.Error(ctx, "Request body test goroutine panicked", log.Any("panic", recovered))
 			errors <- fmt.Errorf("payload PostgreSQL test panic: %v", recovered)
 		}
 	}

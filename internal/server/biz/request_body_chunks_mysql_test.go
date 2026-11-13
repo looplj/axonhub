@@ -30,6 +30,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/migrate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestbodychunk"
+	"github.com/looplj/axonhub/internal/log"
 )
 
 func TestChunkedRequestBodyMySQLConcurrentSnapshot(t *testing.T) {
@@ -95,6 +96,7 @@ func TestChunkedRequestBodyMySQLConcurrentSnapshot(t *testing.T) {
 	go func() {
 		defer func() {
 			if value := recover(); value != nil {
+				log.Error(ctx, "Request body test goroutine panicked", log.Any("panic", value))
 				result <- fmt.Errorf("chunk writer panic: %v", value)
 			}
 		}()
