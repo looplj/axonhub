@@ -339,6 +339,14 @@ type Input struct {
 	// If both are populated, Text takes precedence during marshaling.
 	Text  *string
 	Items []Item
+
+	// Reminder is the synthetic json_object keyword reminder (when the
+	// response format requires one and the input lacks the keyword). It is
+	// prepended to the final upstream input array, after any raw-only items
+	// are merged back into Items, so it is the first item on every turn
+	// (WebSocket input-prefix stability) without shifting the positions the
+	// raw items were sent at. omitempty keeps it out of the wire format.
+	Reminder *Item `json:"reminder,omitempty"`
 }
 
 func (i *Input) UnmarshalJSON(data []byte) error {

@@ -461,6 +461,108 @@ func TestOutboundTransformer_TransformRequest_ReplaysProviderRawInputItems(t *te
 	require.Equal(t, "message", message["type"])
 }
 
+// The json_object reminder is prepended after the raw-only items are merged
+// back into the structured input. A fragment kept at original index 1 must
+// land after the structured item from original index 0 and before the one
+// from index 2, with the reminder first — the pre-fix merge shifted the
+// structured cursor by one and placed the fragment before its prompt.
+func TestOutboundTransformer_TransformRequest_JSONObjectReminderKeepsRawInputOrder(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": [
+				{
+					"type": "message",
+					"role": "user",
+					"content": [{"type":"input_text","text":"What images can you generate?"}]
+				},
+				{
+					"type": "tool_search_call",
+					"call_id": "call_search",
+					"status": "completed",
+					"arguments": {"query":"image generation","limit":10}
+				},
+				{
+					"type": "message",
+					"role": "assistant",
+					"content": [{"type":"output_text","text":"Here is the JSON: {\"tool\":\"image_gen\"}"}]
+				},
+				{
+					"type": "message",
+					"role": "user",
+					"content": [{"type":"input_text","text":"Use the image tool to generate a cat."}]
+				}
+			],
+			"text": {"format": {"type": "json_object"}}
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+
+	input, ok := payload["input"].([]any)
+	require.True(t, ok)
+	require.Len(t, input, 5)
+
+	// The reminder is the first item on every turn (WebSocket prefix stability).
+	reminder, ok := input[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "message", reminder["type"])
+	require.Equal(t, "developer", reminder["role"])
+
+	// The question that prompted the search stays before the completed call.
+	question, ok := input[1].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "user", question["role"])
+	require.Contains(t, inputTextOf(t, question), "What images can you generate?")
+
+	// The raw fragment at original index 1 lands after the structured item
+	// from original index 0 and before the one from index 2.
+	rawItem, ok := input[2].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "tool_search_call", rawItem["type"])
+
+	assistant, ok := input[3].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "assistant", assistant["role"])
+
+	lastUser, ok := input[4].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "user", lastUser["role"])
+	require.Contains(t, inputTextOf(t, lastUser), "Use the image tool to generate a cat.")
+}
+
+// inputTextOf concatenates the text of every content part of a message item
+// decoded as map[string]any.
+func inputTextOf(t *testing.T, message map[string]any) string {
+	t.Helper()
+
+	content, ok := message["content"].([]any)
+	require.True(t, ok)
+
+	var parts []string
+	for _, partValue := range content {
+		part, ok := partValue.(map[string]any)
+		require.True(t, ok)
+		if text, ok := part["text"].(string); ok {
+			parts = append(parts, text)
+		}
+	}
+
+	return strings.Join(parts, "\n")
+}
+
 func TestOutboundTransformer_TransformRequest_DoesNotReplayRawToolWhenToolsChanged(t *testing.T) {
 	inbound := NewInboundTransformer()
 	inboundReq := &httpclient.Request{

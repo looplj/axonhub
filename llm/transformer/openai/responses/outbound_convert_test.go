@@ -1028,22 +1028,18 @@ func TestEnsureJSONObjectKeyword(t *testing.T) {
 				},
 			}},
 			format: jsonFormat,
-			expected: Input{Items: []Item{
-				{
-					Type: "message",
-					Role: "developer",
-					Content: &Input{Items: []Item{
-						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
-					}},
+			expected: Input{
+				Items: []Item{
+					{
+						Type: "message",
+						Role: "user",
+						Content: &Input{Items: []Item{
+							{Type: "input_text", Text: lo.ToPtr("Hello")},
+						}},
+					},
 				},
-				{
-					Type: "message",
-					Role: "user",
-					Content: &Input{Items: []Item{
-						{Type: "input_text", Text: lo.ToPtr("Hello")},
-					}},
-				},
-			}},
+				Reminder: developerReminder(),
+			},
 		},
 		{
 			name: "message items mentioning the keyword are untouched",
@@ -1078,21 +1074,17 @@ func TestEnsureJSONObjectKeyword(t *testing.T) {
 				},
 			}},
 			format: jsonFormat,
-			expected: Input{Items: []Item{
-				{
-					Type: "message",
-					Role: "developer",
-					Content: &Input{Items: []Item{
-						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
-					}},
+			expected: Input{
+				Items: []Item{
+					{
+						Type:      "function_call",
+						CallID:    "call_1",
+						Name:      "lookup",
+						Arguments: `{"format":"json"}`,
+					},
 				},
-				{
-					Type:      "function_call",
-					CallID:    "call_1",
-					Name:      "lookup",
-					Arguments: `{"format":"json"}`,
-				},
-			}},
+				Reminder: developerReminder(),
+			},
 		},
 		{
 			name: "tool output does not satisfy the keyword check",
@@ -1104,20 +1096,16 @@ func TestEnsureJSONObjectKeyword(t *testing.T) {
 				},
 			}},
 			format: jsonFormat,
-			expected: Input{Items: []Item{
-				{
-					Type: "message",
-					Role: "developer",
-					Content: &Input{Items: []Item{
-						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
-					}},
+			expected: Input{
+				Items: []Item{
+					{
+						Type:   "function_call_output",
+						CallID: "call_1",
+						Output: &Input{Text: lo.ToPtr(`{"status":"JSON"}`)},
+					},
 				},
-				{
-					Type:   "function_call_output",
-					CallID: "call_1",
-					Output: &Input{Text: lo.ToPtr(`{"status":"JSON"}`)},
-				},
-			}},
+				Reminder: developerReminder(),
+			},
 		},
 		{
 			name: "assistant message mentioning the keyword still gains the reminder",
@@ -1131,36 +1119,26 @@ func TestEnsureJSONObjectKeyword(t *testing.T) {
 				},
 			}},
 			format: jsonFormat,
-			expected: Input{Items: []Item{
-				{
-					Type: "message",
-					Role: "developer",
-					Content: &Input{Items: []Item{
-						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
-					}},
+			expected: Input{
+				Items: []Item{
+					{
+						Type: "message",
+						Role: "assistant",
+						Content: &Input{Items: []Item{
+							{Type: "output_text", Text: lo.ToPtr("Here is your JSON: {\"name\":\"Ada\"}")},
+						}},
+					},
 				},
-				{
-					Type: "message",
-					Role: "assistant",
-					Content: &Input{Items: []Item{
-						{Type: "output_text", Text: lo.ToPtr("Here is your JSON: {\"name\":\"Ada\"}")},
-					}},
-				},
-			}},
+				Reminder: developerReminder(),
+			},
 		},
 		{
 			name:   "empty input still gains the reminder",
 			input:  Input{},
 			format: jsonFormat,
-			expected: Input{Items: []Item{
-				{
-					Type: "message",
-					Role: "developer",
-					Content: &Input{Items: []Item{
-						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
-					}},
-				},
-			}},
+			expected: Input{
+				Reminder: developerReminder(),
+			},
 		},
 	}
 
@@ -1168,6 +1146,19 @@ func TestEnsureJSONObjectKeyword(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.expected, ensureJSONObjectKeyword(tt.input, tt.format))
 		})
+	}
+}
+
+// developerReminder builds the synthetic json_object reminder item that
+// ensureJSONObjectKeyword attaches to Input.Reminder.
+func developerReminder() *Item {
+	return &Item{
+		Type: "message",
+		Role: "developer",
+		Content: &Input{Items: []Item{{
+			Type: "input_text",
+			Text: lo.ToPtr("Respond with a json object."),
+		}}},
 	}
 }
 

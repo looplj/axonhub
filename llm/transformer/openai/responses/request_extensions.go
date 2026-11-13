@@ -314,6 +314,16 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 			payload.ToolChoice = nil
 		}
 
+		if payload.Input.Reminder != nil {
+			// No raw-only items to merge with, so the reminder is prepended
+			// right away. marshalRequestPayload and mergeRawOnlyInputItems
+			// rely on the invariant that a reminder is only ever carried on
+			// an Input whose Items are the pre-reminder structured items.
+			reminder := *payload.Input.Reminder
+			payload.Input.Reminder = nil
+			payload.Input.Items = append([]Item{reminder}, payload.Input.Items...)
+		}
+
 		return json.Marshal(payload)
 	}
 
@@ -347,7 +357,10 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 		obj["tool_choice"] = cloneRaw(requestExt.RawToolChoice)
 	}
 
-	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt); ok {
+	// The json_object reminder is synthetic: mergeRawOnlyInputItems interleaves
+	// the raw-only fragments by their ORIGINAL indices, so it must be applied
+	// after the merge, not to the structured items the cursor walks.
+	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt, payload.Input.Reminder); ok {
 		inputRaw, err := json.Marshal(input)
 		if err != nil {
 			return nil, err
@@ -386,7 +399,7 @@ func marshalCompactRequestPayload(payload CompactAPIRequest, llmReq *llm.Request
 		return nil, err
 	}
 	mergeRawRequestFields(obj, requestExt)
-	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt); ok {
+	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt, nil); ok {
 		inputRaw, err := json.Marshal(input)
 		if err != nil {
 			return nil, err
@@ -399,9 +412,15 @@ func marshalCompactRequestPayload(payload CompactAPIRequest, llmReq *llm.Request
 
 // mergeRawOnlyInputItems rebuilds the outgoing `input` array from the merged
 // request: items rebuilt from messages and raw items that had no representation
-// are interleaved back into the positions they were sent in.
-func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions) ([]json.RawMessage, bool) {
-	if requestExt == nil || (len(requestExt.RawInputItems) == 0 && len(requestExt.OmittedInputItemIndices) == 0) {
+// are interleaved back into the positions they were sent in. reminder is the
+// synthetic json_object reminder, if any; it is prepended to the MERGED result
+// because a fragment's OriginalIndex addresses the items that existed when the
+// request was received, before the reminder was added. Prepending after the
+// merge keeps the reminder at index 0 on every turn (pooled WebSocket prefix
+// matching) without shifting the slots the cursor assigns to raw fragments.
+func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions, reminder *Item) ([]json.RawMessage, bool) {
+	if requestExt == nil ||
+		(len(requestExt.RawInputItems) == 0 && len(requestExt.OmittedInputItemIndices) == 0 && reminder == nil) {
 		return nil, false
 	}
 
@@ -459,6 +478,14 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 
 	if structuredIndex != len(structuredItems) {
 		return nil, false
+	}
+
+	if reminder != nil {
+		reminderRaw, err := json.Marshal(reminder)
+		if err != nil {
+			return nil, false
+		}
+		items = append([]json.RawMessage{reminderRaw}, items...)
 	}
 
 	return items, true

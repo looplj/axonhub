@@ -172,22 +172,24 @@ func ensureJSONObjectKeyword(input Input, responseFormat *llm.ResponseFormat) In
 		return Input{Text: &text}
 	}
 
-	// Keep the reminder first so it stays at the same position on every turn.
-	// WebSocket connection reuse matches the previous turn's input as a prefix
-	// of the new one, and a trailing reminder breaks that prefix after the
-	// first turn.
-	items := make([]Item, 0, len(input.Items)+1)
-	items = append(items, Item{
-		Type: "message",
-		Role: "developer",
-		Content: &Input{Items: []Item{{
-			Type: "input_text",
-			Text: lo.ToPtr(jsonObjectKeywordPrompt),
-		}}},
-	})
-	items = append(items, input.Items...)
-
-	return Input{Items: items}
+	// The reminder must be the first input item on every turn: WebSocket
+	// connection reuse matches the previous turn's input as a prefix of the
+	// new one, and a trailing reminder breaks that prefix after the first
+	// turn. It is carried in Input.Reminder and prepended by
+	// marshalRequestPayload AFTER the raw-only items are merged back in,
+	// because a raw item's OriginalIndex addresses the input as it was
+	// received, before this reminder existed.
+	return Input{
+		Items: input.Items,
+		Reminder: &Item{
+			Type: "message",
+			Role: "developer",
+			Content: &Input{Items: []Item{{
+				Type: "input_text",
+				Text: lo.ToPtr(jsonObjectKeywordPrompt),
+			}}},
+		},
+	}
 }
 
 func inputMentionsJSON(input Input) bool {
