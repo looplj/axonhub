@@ -180,17 +180,15 @@ func newWebSocketErrorEvent(raw []byte) *httpclient.Error {
 
 // newErrorEventResponseError converts a top-level Responses error frame into
 // the unified streaming error. eventType is the transport-declared event name,
-// which still identifies the frame when the payload cannot be decoded. A frame
-// without a usable 4xx/5xx status becomes 502, the same retryable
-// classification the non-streaming path uses.
+// which still identifies the frame when the payload cannot be decoded: a
+// receiver that cannot parse the frame's JSON reports an empty type, and a
+// malformed frame whose payload unambiguously starts an `error` frame must
+// still surface the provider's reason. A frame without a usable 4xx/5xx
+// status becomes 502, the same retryable classification the non-streaming
+// path uses.
 func newErrorEventResponseError(raw []byte, eventType string) *llm.ResponseError {
-	if eventType != string(StreamEventTypeError) {
-		var frame struct {
-			Type string `json:"type"`
-		}
-		if err := json.Unmarshal(raw, &frame); err != nil || frame.Type != string(StreamEventTypeError) {
-			return nil
-		}
+	if eventType != string(StreamEventTypeError) && !isErrorFrameCandidate(raw) {
+		return nil
 	}
 
 	status, detail := webSocketErrorEventDetail(raw)
@@ -204,6 +202,22 @@ func newErrorEventResponseError(raw []byte, eventType string) *llm.ResponseError
 			Param:   detail["param"],
 		},
 	}
+}
+
+// isErrorFrameCandidate reports whether raw can be classified as a top-level
+// error frame. Fully decodable frames are classified by their type field;
+// malformed frames by the frame prefix that the receiver itself could not
+// parse. Anything else is left to the generic decode error so non-error
+// frames keep their existing behavior.
+func isErrorFrameCandidate(raw []byte) bool {
+	var frame struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(raw, &frame); err == nil {
+		return frame.Type == string(StreamEventTypeError)
+	}
+
+	return strings.HasPrefix(strings.TrimSpace(string(raw)), `{"type":"error"`)
 }
 
 // webSocketErrorEventDetail extracts what the provider reported. Providers
