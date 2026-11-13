@@ -1,6 +1,7 @@
 package responses
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 type httpTransportExecutor struct {
@@ -29,17 +31,17 @@ func (e *httpTransportExecutor) DoStream(ctx context.Context, request *httpclien
 }
 
 // PrepareHTTPTransportRequest removes WebSocket-v2-only request metadata before
-// an HTTP/SSE attempt. It also downgrades function outputs without a call ID to
-// user messages because Responses HTTP rejects them. Generic Responses HTTP
-// requests retain a normal previous_response_id. Codex callers can force removal
-// because their HTTP endpoint does not support that field.
+// an HTTP/SSE attempt. It also downgrades Codex Desktop bootstrap outputs to
+// user messages because Responses HTTP rejects their missing call IDs. Generic
+// Responses HTTP requests retain a normal previous_response_id. Codex callers
+// can force removal because their HTTP endpoint does not support that field.
 func PrepareHTTPTransportRequest(request *httpclient.Request, stripPreviousResponseID bool) *httpclient.Request {
 	if request == nil {
 		return nil
 	}
 
 	headers, webSocketBetaRemoved := withoutWebSocketBeta(request.Headers)
-	body, bodyChanged := downgradeCalllessFunctionOutputs(request.Body)
+	body, bodyChanged := downgradeCodexBootstrapOutputs(request.Body)
 	if stripPreviousResponseID {
 		var previousResponseIDRemoved bool
 		body, previousResponseIDRemoved = withoutPreviousResponseID(body)
@@ -61,10 +63,17 @@ func PrepareHTTPTransportRequest(request *httpclient.Request, stripPreviousRespo
 	return &cloned
 }
 
-// Codex Desktop emits call-ID-less function_call_output items for delegation
-// and automation bootstrap data. Responses WebSocket accepts them, but
-// Responses HTTP rejects them, so preserve their payload as user content.
-func downgradeCalllessFunctionOutputs(body []byte) ([]byte, bool) {
+// Codex Desktop's turn/start toolOutput flow emits standalone named outputs for
+// delegation and automation bootstrap data. Responses WebSocket accepts them,
+// but Responses HTTP rejects their missing call IDs. Only these known bootstrap
+// items are downgraded; requests without their names skip the JSON walk.
+func downgradeCodexBootstrapOutputs(body []byte) ([]byte, bool) {
+	if !bytes.Contains(body, []byte("create_thread")) &&
+		!bytes.Contains(body, []byte("send_message_to_thread")) &&
+		!bytes.Contains(body, []byte("automation_update")) {
+		return body, false
+	}
+
 	input := gjson.GetBytes(body, "input")
 	if !input.IsArray() {
 		return body, false
@@ -73,7 +82,8 @@ func downgradeCalllessFunctionOutputs(body []byte) ([]byte, bool) {
 	original := body
 	changed := false
 	for index, item := range input.Array() {
-		if item.Get("type").String() != "function_call_output" {
+		if item.Get("type").String() != "function_call_output" ||
+			!openai.IsCodexBootstrapToolName(item.Get("name").String()) {
 			continue
 		}
 		callID := item.Get("call_id")

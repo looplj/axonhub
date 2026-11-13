@@ -65,6 +65,7 @@ type OutboundTransformerParams struct {
 }
 
 var _ transformer.Outbound = (*OutboundTransformer)(nil)
+var _ transformer.TransportRequestFinalizer = (*OutboundTransformer)(nil)
 
 func NewOutboundTransformer(params OutboundTransformerParams) (*OutboundTransformer, error) {
 	if params.TokenProvider == nil {
@@ -155,6 +156,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Auth:      authConfig,
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 	}, nil
+}
+
+// FinalizeTransportRequest applies Responses transport cleanup after pass-through and overrides.
+func (t *OutboundTransformer) FinalizeTransportRequest(request *httpclient.Request) *httpclient.Request {
+	return t.responses.FinalizeTransportRequest(request)
 }
 
 func SetCopilotHeaders(headers http.Header) {

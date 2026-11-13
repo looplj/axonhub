@@ -141,7 +141,7 @@ func TestWebSocketToHTTPTransportExecutorDowngradesCalllessFunctionOutputs(t *te
 func TestPrepareHTTPTransportRequestPreservesCalllessOutputParts(t *testing.T) {
 	request := &httpclient.Request{Body: []byte(`{
 		"model":"gpt-5",
-		"input":[{"type":"function_call_output","call_id":"  ","output":[
+		"input":[{"type":"function_call_output","name":"automation_update","call_id":"  ","output":[
 			{"type":"input_text","text":"a"},
 			{"type":"input_image","image_url":"data:image/png;base64,AA"}
 		]}]
@@ -157,6 +157,33 @@ func TestPrepareHTTPTransportRequestPreservesCalllessOutputParts(t *testing.T) {
 	]`, gjson.GetBytes(prepared.Body, "input.0.content").Raw)
 }
 
+func TestPrepareHTTPTransportRequestDowngradesCodexBootstrapNames(t *testing.T) {
+	for _, toolName := range []string{"create_thread", "send_message_to_thread", "automation_update"} {
+		t.Run(toolName, func(t *testing.T) {
+			request := &httpclient.Request{Body: []byte(`{"model":"gpt-5","input":[{"type":"function_call_output","name":"` + toolName + `","output":"delegate"}]}`)}
+			prepared := PrepareHTTPTransportRequest(request, false)
+			require.Equal(t, "message", gjson.GetBytes(prepared.Body, "input.0.type").String())
+			require.Equal(t, "user", gjson.GetBytes(prepared.Body, "input.0.role").String())
+			require.Equal(t, "delegate", gjson.GetBytes(prepared.Body, "input.0.content.0.text").String())
+		})
+	}
+}
+
+func TestPrepareHTTPTransportRequestOnlyHandlesCodexBootstrapOutputs(t *testing.T) {
+	tests := map[string]string{
+		"ordinary tool output":    `{"model":"gpt-5","input":[{"type":"function_call_output","name":"exec_command","output":"ok"}]}`,
+		"valid Codex tool output": `{"model":"gpt-5","input":[{"type":"function_call_output","name":"create_thread","call_id":"call_1","output":"ok"}]}`,
+	}
+	for name, body := range tests {
+		t.Run(name, func(t *testing.T) {
+			request := &httpclient.Request{Body: []byte(body)}
+			prepared := PrepareHTTPTransportRequest(request, false)
+			require.Same(t, request, prepared)
+			require.Equal(t, "function_call_output", gjson.GetBytes(prepared.Body, "input.0.type").String())
+		})
+	}
+}
+
 func TestWebSocketTransportKeepsCalllessFunctionOutputs(t *testing.T) {
 	outbound, err := NewOutboundTransformerWithConfig(&Config{
 		BaseURL:        "https://api.example.com/v1",
@@ -165,7 +192,7 @@ func TestWebSocketTransportKeepsCalllessFunctionOutputs(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request := &httpclient.Request{Body: []byte(`{"model":"gpt-5","input":[{"type":"function_call_output","output":"delegate"}]}`)}
+	request := &httpclient.Request{Body: []byte(`{"model":"gpt-5","input":[{"type":"function_call_output","name":"create_thread","output":"delegate"}]}`)}
 	require.Same(t, request, outbound.FinalizeTransportRequest(request))
 	require.Equal(t, "function_call_output", gjson.GetBytes(request.Body, "input.0.type").String())
 }
