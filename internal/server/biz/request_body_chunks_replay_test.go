@@ -164,7 +164,8 @@ func (m *payloadReplayMetrics) observe(t *testing.T, lane int, body []byte, chun
 func TestRequestBodyPayloadReplayAppendOnly(t *testing.T) {
 	var input bytes.Buffer
 	random := rand.New(rand.NewSource(37))
-	text := make([]byte, 64*1024)
+	text := make([]byte, 0, 64*1024)
+	text = append(text, make([]byte, 64*1024)...)
 	fill := func(data []byte) {
 		for i := range data {
 			data[i] = "abcdefghijklmnopqrstuvwxyz0123456789"[random.Intn(36)]
@@ -305,7 +306,7 @@ func runPayloadReplay(t *testing.T, input io.Reader, source, pgDSN string) paylo
 					err := db.QueryRowContext(ctx, "SELECT $1::jsonb = $2::jsonb", string(body), string(loaded)).Scan(&equivalent)
 					require.True(t, err == nil && equivalent, "inline jsonb roundtrip mismatch turn=%d lane=%d", turn, lane)
 				} else {
-					serialized, err := json.Marshal(objects.JSONRawMessage(body))
+					serialized, err := json.Marshal(body)
 					require.True(t, err == nil && bytes.Equal(serialized, loaded), "inline JSON serialization mismatch turn=%d lane=%d", turn, lane)
 				}
 				metrics.normalized++

@@ -197,8 +197,10 @@ func TestPrepareChunkedRequestBodyInputTailKeepsMaximumAndRoundTrips(t *testing.
 	cases := map[string][]int{
 		"single oversized item":          {3*requestBodyChunkMax + 8192},
 		"ends at forced coarse boundary": {2*requestBodyChunkMax - len(`{"content":""}`)},
-		"items across boundaries": {1023, 1024, 1025, requestBodyChunkMin - 1, requestBodyChunkMin, requestBodyChunkMax - 1,
-			requestBodyChunkMax, requestBodyChunkMax + 1},
+		"items across boundaries": {
+			1023, 1024, 1025, requestBodyChunkMin - 1, requestBodyChunkMin, requestBodyChunkMax - 1,
+			requestBodyChunkMax, requestBodyChunkMax + 1,
+		},
 	}
 	for name, sizes := range cases {
 		t.Run(name, func(t *testing.T) {
