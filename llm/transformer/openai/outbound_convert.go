@@ -179,6 +179,17 @@ func MessageFromLLM(m llm.Message) Message {
 	return MessageFromLLMWithConfig(m, ReasoningFieldAll)
 }
 
+// IsCodexBootstrapToolName reports whether name is a standalone tool-output
+// notification emitted by Codex Desktop's turn/start toolOutput flow.
+func IsCodexBootstrapToolName(name string) bool {
+	switch name {
+	case "create_thread", "send_message_to_thread", "automation_update":
+		return true
+	default:
+		return false
+	}
+}
+
 // MessageFromLLMWithConfig creates OpenAI Message from unified llm.Message with reasoning field configuration.
 func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Message {
 	var reasoningContent, reasoning *string
@@ -227,6 +238,14 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 		ToolCallID:       m.ToolCallID,
 		ReasoningContent: reasoningContent,
 		Reasoning:        reasoning,
+	}
+
+	// Codex Desktop uses standalone named outputs as turn bootstrap messages.
+	// Chat Completions cannot represent them as tool messages without a call ID.
+	if msg.Role == "tool" && strings.TrimSpace(lo.FromPtr(msg.ToolCallID)) == "" &&
+		IsCodexBootstrapToolName(lo.FromPtr(m.ToolCallName)) {
+		msg.Role = "user"
+		msg.ToolCallID = nil
 	}
 
 	if m.Audio != nil {

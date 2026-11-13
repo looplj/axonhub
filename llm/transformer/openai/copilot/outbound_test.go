@@ -11,6 +11,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -382,6 +383,60 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformerResponsesDowngradesCalllessFunctionOutputs(t *testing.T) {
+	transformer, err := NewOutboundTransformer(OutboundTransformerParams{
+		TokenProvider: &mockTokenProvider{token: "test-token"},
+	})
+	require.NoError(t, err)
+
+	request := &llm.Request{
+		Model: "gpt-5.4",
+		Messages: []llm.Message{
+			{
+				Role:         "tool",
+				ToolCallID:   lo.ToPtr(""),
+				ToolCallName: lo.ToPtr("automation_update"),
+				Content:      llm.MessageContent{Content: lo.ToPtr("schedule")},
+			},
+			{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{
+						ID:   "call_1",
+						Type: "function",
+						Function: llm.FunctionCall{
+							Name:      "exec",
+							Arguments: "{}",
+						},
+					},
+				},
+			},
+			{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_1"),
+				Content:    llm.MessageContent{Content: lo.ToPtr("ok")},
+			},
+		},
+	}
+
+	httpReq, err := transformer.TransformRequest(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, DefaultCopilotBaseURL+"/v1/responses", httpReq.URL)
+
+	// The orchestrator applies this after raw body pass-through and overrides.
+	httpReq = transformer.FinalizeTransportRequest(httpReq)
+
+	callless := gjson.GetBytes(httpReq.Body, "input.0")
+	require.Equal(t, "message", callless.Get("type").String())
+	require.Equal(t, "user", callless.Get("role").String())
+	require.Equal(t, "input_text", callless.Get("content.0.type").String())
+	require.Equal(t, "schedule", callless.Get("content.0.text").String())
+	require.Equal(t, "function_call", gjson.GetBytes(httpReq.Body, "input.1.type").String())
+	require.Equal(t, "function_call_output", gjson.GetBytes(httpReq.Body, "input.2.type").String())
+	require.Equal(t, "call_1", gjson.GetBytes(httpReq.Body, "input.2.call_id").String())
+	require.Equal(t, "ok", gjson.GetBytes(httpReq.Body, "input.2.output").String())
 }
 
 func TestOutboundTransformer_TransformRequest_VisionHeaders(t *testing.T) {

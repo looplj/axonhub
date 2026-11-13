@@ -1,8 +1,11 @@
 package responses
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -11,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 type httpTransportExecutor struct {
@@ -27,19 +31,21 @@ func (e *httpTransportExecutor) DoStream(ctx context.Context, request *httpclien
 }
 
 // PrepareHTTPTransportRequest removes WebSocket-v2-only request metadata before
-// an HTTP/SSE attempt. Generic Responses HTTP requests retain a normal
-// previous_response_id. Codex callers can force removal because their HTTP
-// endpoint does not support that field.
+// an HTTP/SSE attempt. It also downgrades Codex Desktop bootstrap outputs to
+// user messages because Responses HTTP rejects their missing call IDs. Generic
+// Responses HTTP requests retain a normal previous_response_id. Codex callers
+// can force removal because their HTTP endpoint does not support that field.
 func PrepareHTTPTransportRequest(request *httpclient.Request, stripPreviousResponseID bool) *httpclient.Request {
 	if request == nil {
 		return nil
 	}
 
 	headers, webSocketBetaRemoved := withoutWebSocketBeta(request.Headers)
-	body := request.Body
-	bodyChanged := false
+	body, bodyChanged := downgradeCodexBootstrapOutputs(request.Body)
 	if stripPreviousResponseID {
-		body, bodyChanged = withoutPreviousResponseID(body)
+		var previousResponseIDRemoved bool
+		body, previousResponseIDRemoved = withoutPreviousResponseID(body)
+		bodyChanged = bodyChanged || previousResponseIDRemoved
 	}
 
 	if !webSocketBetaRemoved && !bodyChanged {
@@ -55,6 +61,65 @@ func PrepareHTTPTransportRequest(request *httpclient.Request, stripPreviousRespo
 	}
 
 	return &cloned
+}
+
+// Codex Desktop's turn/start toolOutput flow emits standalone named outputs for
+// delegation and automation bootstrap data. Responses WebSocket accepts them,
+// but Responses HTTP rejects their missing call IDs. Only these known bootstrap
+// items are downgraded; requests without their names skip the JSON walk.
+func downgradeCodexBootstrapOutputs(body []byte) ([]byte, bool) {
+	if !bytes.Contains(body, []byte("create_thread")) &&
+		!bytes.Contains(body, []byte("send_message_to_thread")) &&
+		!bytes.Contains(body, []byte("automation_update")) {
+		return body, false
+	}
+
+	input := gjson.GetBytes(body, "input")
+	if !input.IsArray() {
+		return body, false
+	}
+
+	original := body
+	changed := false
+	for index, item := range input.Array() {
+		if item.Get("type").String() != "function_call_output" ||
+			!openai.IsCodexBootstrapToolName(item.Get("name").String()) {
+			continue
+		}
+		callID := item.Get("call_id")
+		if callID.Type == gjson.String && strings.TrimSpace(callID.String()) != "" {
+			continue
+		}
+
+		output := item.Get("output")
+		var content any
+		switch {
+		case output.Type == gjson.String:
+			content = []map[string]string{{"type": "input_text", "text": output.String()}}
+		case output.IsArray() && len(output.Array()) > 0:
+			content = json.RawMessage(output.Raw)
+		default:
+			text := ""
+			if output.Exists() && output.Type != gjson.Null && !output.IsArray() {
+				text = output.Raw
+			}
+			content = []map[string]string{{"type": "input_text", "text": text}}
+		}
+
+		replacement, err := json.Marshal(map[string]any{
+			"type": "message", "role": "user", "content": content,
+		})
+		if err != nil {
+			return original, false
+		}
+		body, err = sjson.SetRawBytes(body, "input."+strconv.Itoa(index), replacement)
+		if err != nil {
+			return original, false
+		}
+		changed = true
+	}
+
+	return body, changed
 }
 
 func withoutPreviousResponseID(body []byte) ([]byte, bool) {

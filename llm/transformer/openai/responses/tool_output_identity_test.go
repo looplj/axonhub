@@ -5,10 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 func TestResponsesToolOutputConversionPreservesItemIdentity(t *testing.T) {
@@ -47,4 +49,38 @@ func TestResponsesToolOutputWithoutCallIDPreservesName(t *testing.T) {
 	require.Equal(t, "function_call_output", gjson.GetBytes(encoded, "0.type").String())
 	require.False(t, gjson.GetBytes(encoded, "0.call_id").Exists())
 	require.Equal(t, "{\"page_id\":null}", gjson.GetBytes(encoded, "0.output").String())
+}
+
+func TestResponsesOrdinaryToolOutputWithoutCallIDRemainsToolMessage(t *testing.T) {
+	body := []byte(`{"model":"synthetic-model","input":[
+		{"type":"function_call_output","name":"exec_command","output":"ok"}
+	]}`)
+	request, err := NewWebSocketInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
+	require.NoError(t, err)
+
+	chatRequest := openai.RequestFromLLM(t.Context(), request, openai.ReasoningFieldNone)
+	require.Len(t, chatRequest.Messages, 1)
+	require.Equal(t, "tool", chatRequest.Messages[0].Role)
+	require.Equal(t, "", lo.FromPtr(chatRequest.Messages[0].ToolCallID))
+	require.Equal(t, "ok", lo.FromPtr(chatRequest.Messages[0].Content.Content))
+}
+
+func TestResponsesToolOutputWithoutCallIDBecomesChatUserMessage(t *testing.T) {
+	body := []byte(`{"model":"synthetic-model","input":[
+		{"type":"function_call_output","name":"automation_update","output":"schedule"},
+		{"type":"function_call","call_id":"call_1","name":"exec","arguments":"{}"},
+		{"type":"function_call_output","call_id":"call_1","output":"ok"}
+	]}`)
+	request, err := NewWebSocketInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: body})
+	require.NoError(t, err)
+
+	chatRequest := openai.RequestFromLLM(t.Context(), request, openai.ReasoningFieldNone)
+	require.Len(t, chatRequest.Messages, 3)
+	require.Equal(t, "user", chatRequest.Messages[0].Role)
+	require.Nil(t, chatRequest.Messages[0].ToolCallID)
+	require.Equal(t, "schedule", lo.FromPtr(chatRequest.Messages[0].Content.Content))
+	require.Equal(t, "assistant", chatRequest.Messages[1].Role)
+	require.Equal(t, "tool", chatRequest.Messages[2].Role)
+	require.Equal(t, "call_1", lo.FromPtr(chatRequest.Messages[2].ToolCallID))
+	require.Equal(t, "ok", lo.FromPtr(chatRequest.Messages[2].Content.Content))
 }
