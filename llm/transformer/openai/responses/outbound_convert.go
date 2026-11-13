@@ -204,6 +204,15 @@ func inputMentionsJSON(input Input) bool {
 			continue
 		}
 
+		// Assistant items are the previous turn's response, not client input.
+		// They can mention "json" (for example explanatory prose alongside
+		// JSON output), and letting them suppress the reminder would flip the
+		// decision between turns, breaking the input prefix stability the
+		// pooled WebSocket executor relies on for connection reuse.
+		if item.Role == "assistant" {
+			continue
+		}
+
 		if item.Content != nil && messageContentMentionsJSON(*item.Content) {
 			return true
 		}

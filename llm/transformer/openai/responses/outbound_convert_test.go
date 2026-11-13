@@ -1120,13 +1120,13 @@ func TestEnsureJSONObjectKeyword(t *testing.T) {
 			}},
 		},
 		{
-			name: "assistant message mentioning the keyword is untouched",
+			name: "assistant message mentioning the keyword still gains the reminder",
 			input: Input{Items: []Item{
 				{
 					Type: "message",
 					Role: "assistant",
 					Content: &Input{Items: []Item{
-						{Type: "output_text", Text: lo.ToPtr("I will reply in JSON.")},
+						{Type: "output_text", Text: lo.ToPtr("Here is your JSON: {\"name\":\"Ada\"}")},
 					}},
 				},
 			}},
@@ -1134,9 +1134,16 @@ func TestEnsureJSONObjectKeyword(t *testing.T) {
 			expected: Input{Items: []Item{
 				{
 					Type: "message",
+					Role: "developer",
+					Content: &Input{Items: []Item{
+						{Type: "input_text", Text: lo.ToPtr("Respond with a json object.")},
+					}},
+				},
+				{
+					Type: "message",
 					Role: "assistant",
 					Content: &Input{Items: []Item{
-						{Type: "output_text", Text: lo.ToPtr("I will reply in JSON.")},
+						{Type: "output_text", Text: lo.ToPtr("Here is your JSON: {\"name\":\"Ada\"}")},
 					}},
 				},
 			}},
