@@ -1726,9 +1726,12 @@ func TestOutboundTransformer_TransformStream_MalformedWebSocketErrorFrame(t *tes
 				Body:   []byte(`{"model":"gpt-5"}`),
 			})
 			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, source.Close()) })
+			t.Cleanup(func() { require.NoError(t, executor.Close()) })
 
 			stream, err := trans.TransformStream(t.Context(), nil, source)
 			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, stream.Close()) })
 
 			_, err = streams.All(stream)
 			require.Error(t, err)
