@@ -715,8 +715,14 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			case "content_filter":
 				stopReason := "refusal"
 				resp.StopReason = &stopReason
-			default:
+			case "stop_sequence", "pause_turn", "refusal":
+				// Already a valid Anthropic stop reason; pass through.
 				resp.StopReason = choice.FinishReason
+			default:
+				// Unknown reasons (e.g. "error", "cancelled") are not valid Anthropic
+				// stop reasons; fall back to end_turn like the streaming path.
+				stopReason := "end_turn"
+				resp.StopReason = &stopReason
 			}
 		} else {
 			stopReason := "end_turn"

@@ -2438,7 +2438,7 @@ func TestInboundTransformer_TransformResponse_EdgeCases(t *testing.T) {
 			expectError: false,
 			validate: func(t *testing.T, resp *Message) {
 				t.Helper()
-				require.Equal(t, "unknown_reason", *resp.StopReason)
+				require.Equal(t, "end_turn", *resp.StopReason)
 			},
 		},
 		{
