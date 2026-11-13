@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/gorilla/websocket"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
@@ -1582,8 +1584,8 @@ func TestOutboundTransformer_TransformStream_PreservesOfficialWebSocketError(t *
 			}`,
 		},
 		{
-			name:     "legacy flattened error has a type",
-			wantType: "error",
+			name:     "legacy flattened code supplies the type",
+			wantType: "invalid_value",
 			data: `{
 				"type":"error",
 				"status":400,
@@ -1610,6 +1612,146 @@ func TestOutboundTransformer_TransformStream_PreservesOfficialWebSocketError(t *
 			require.Equal(t, "invalid_value", responseErr.Detail.Code)
 			require.Equal(t, "invalid websocket request", responseErr.Detail.Message)
 			require.Equal(t, "input", responseErr.Detail.Param)
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformStream_ClassifiesUnclassifiedWebSocketError(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name         string
+		data         string
+		wantStatus   int
+		wantMsg      string
+		wantContains []string
+	}{
+		{
+			name:       "missing status",
+			data:       `{"type":"error","message":"upstream failed"}`,
+			wantStatus: http.StatusBadGateway,
+			wantMsg:    "upstream failed",
+		},
+		{
+			name:       "string status is parsed",
+			data:       `{"type":"error","status":"503","message":"overloaded"}`,
+			wantStatus: http.StatusServiceUnavailable,
+			wantMsg:    "overloaded",
+		},
+		{
+			name:       "numeric code decodes leniently",
+			data:       `{"type":"error","code":503,"message":"overloaded"}`,
+			wantStatus: http.StatusBadGateway,
+			wantMsg:    "overloaded",
+		},
+		{
+			name:       "fractional status is not a usable status",
+			data:       `{"type":"error","status":400.9,"message":"fractional"}`,
+			wantStatus: http.StatusBadGateway,
+			wantMsg:    "fractional",
+		},
+		{
+			name:       "empty frame falls back to the raw frame",
+			data:       `{"type":"error"}`,
+			wantStatus: http.StatusBadGateway,
+			wantMsg:    `websocket error event: {"type":"error"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream([]*httpclient.StreamEvent{{
+				Type: "error",
+				Data: []byte(tt.data),
+			}}))
+			require.NoError(t, err)
+			require.False(t, stream.Next())
+
+			var responseErr *llm.ResponseError
+			require.ErrorAs(t, stream.Err(), &responseErr)
+			require.Equal(t, tt.wantStatus, responseErr.StatusCode)
+			require.True(t, httpclient.IsHTTPStatusCodeRetryable(responseErr.StatusCode))
+
+			if tt.wantMsg != "" {
+				require.Equal(t, tt.wantMsg, responseErr.Detail.Message)
+			}
+
+			for _, want := range tt.wantContains {
+				require.Contains(t, responseErr.Detail.Message, want)
+			}
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformStream_MalformedWebSocketErrorFrame(t *testing.T) {
+	tests := []struct {
+		name         string
+		data         string
+		wantContains []string
+	}{
+		{
+			name:         "malformed error frame keeps the decode error and raw frame",
+			data:         `{"type":"error",`,
+			wantContains: []string{"failed to decode error frame", `{"type":"error",`},
+		},
+		{
+			name:         "malformed non-error frame keeps the generic decode error",
+			data:         `{"type":"response.created",`,
+			wantContains: []string{"failed to unmarshal responses api stream event"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+				require.NoError(t, err)
+				defer conn.Close()
+
+				var payload map[string]any
+				require.NoError(t, conn.ReadJSON(&payload))
+				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(tt.data)))
+			}))
+			defer server.Close()
+
+			trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+			require.NoError(t, err)
+
+			executor := NewWebSocketExecutor(nil)
+			source, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
+				Method: http.MethodPost,
+				URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+				Auth:   &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+				Body:   []byte(`{"model":"gpt-5"}`),
+			})
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, source.Close()) })
+			t.Cleanup(func() { require.NoError(t, executor.Close()) })
+
+			stream, err := trans.TransformStream(t.Context(), nil, source)
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, stream.Close()) })
+
+			_, err = streams.All(stream)
+			require.Error(t, err)
+
+			var responseErr *llm.ResponseError
+			if tt.name == "malformed error frame keeps the decode error and raw frame" {
+				require.ErrorAs(t, err, &responseErr)
+				require.Equal(t, http.StatusBadGateway, responseErr.StatusCode)
+				require.True(t, httpclient.IsHTTPStatusCodeRetryable(responseErr.StatusCode))
+
+				for _, want := range tt.wantContains {
+					require.Contains(t, responseErr.Detail.Message, want)
+				}
+			} else {
+				require.False(t, errors.As(err, &responseErr),
+					"malformed non-error frame must keep the generic decode error, got: %v", err)
+				for _, want := range tt.wantContains {
+					require.Contains(t, err.Error(), want)
+				}
+			}
 		})
 	}
 }

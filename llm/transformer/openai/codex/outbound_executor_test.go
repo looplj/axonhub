@@ -711,7 +711,18 @@ func TestCodexOutbound_DoReturnsWebSocketErrorEvents(t *testing.T) {
 
 	response, err := executor.Do(ctx, request)
 	require.Nil(t, response)
-	require.ErrorContains(t, err, "bad_request: invalid websocket request")
+
+	var httpErr *httpclient.Error
+	require.ErrorAs(t, err, &httpErr)
+	require.Equal(t, http.StatusBadGateway, httpErr.StatusCode)
+	require.True(t, httpclient.IsHTTPStatusCodeRetryable(httpErr.StatusCode))
+	require.JSONEq(t, `{
+		"error":{
+			"type":"bad_request",
+			"code":"bad_request",
+			"message":"invalid websocket request"
+		}
+	}`, string(httpErr.Body))
 }
 
 var _ pipeline.ChannelCustomizedExecutor = (*OutboundTransformer)(nil)
