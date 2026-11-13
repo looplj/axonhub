@@ -85,7 +85,7 @@ func quotaCheckerFixture(checker string) (QuotaData, error) {
 	case "synthetic":
 		return NewSyntheticQuotaChecker(nil).parseResponse([]byte(`{"weeklyTokenLimit":{"percentRemaining":75,"nextRegenAt":"2099-01-08T00:00:00Z"},"rollingFiveHourLimit":{"tickPercent":25,"nextTickAt":"2099-01-01T05:00:00Z"},"search":{"hourly":{"limit":250,"requests":50,"renewsAt":"2099-01-01T01:00:00Z"}}}`))
 	case "neuralwatt":
-		return NewNeuralWattQuotaChecker(nil).parseResponse([]byte(`{"subscription":{"kwh_included":100,"kwh_used":25,"kwh_remaining":75,"kwh_reset_date":"2099-02-01T00:00:00Z"}}`))
+		return NewNeuralWattQuotaChecker(nil).parseResponse([]byte(`{"subscription":{"kwh_included":100,"kwh_used":25,"kwh_remaining":75,"kwh_reset_date":"2099-02-01T00:00:00Z"},"daily_free_energy":{"kwh_included":0.25,"kwh_used":0.1,"kwh_remaining":0.15,"reset_at":"2099-01-02T00:00:00Z","model_labels":["Fixture Model"]}}`))
 	case "apertis":
 		return NewApertisQuotaChecker(nil).parseResponse([]byte(`{"is_subscriber":true,"subscription":{"status":"active","cycle_quota_limit":1000,"cycle_quota_used":250,"cycle_quota_remaining":750,"cycle_start":"2099-01-01T00:00:00Z","cycle_end":"2099-02-01T00:00:00Z"}}`))
 	case "opencode_go":

@@ -547,6 +547,67 @@ func newTestQuotaWebhookLimitsHarness(t *testing.T, client *ent.Client) (*Provid
 // `limits` array in quota webhook payloads: multi-account limits carry an
 // `[account: X]` suffix keyed for dedup, and account-less limits stay
 // byte-identical to the pre-suffix format.
+func TestProviderQuotaService_QuotaWebhookUsageRatioExcludesDisplayOnlyLimits(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	ch := createQuotaWebhookTestChannel(t, ctx, client)
+	seedQuotaRow(t, ctx, client, ch.ID, providerquotastatus.ProviderTypeClaudecode, providerquotastatus.StatusAvailable, map[string]any{})
+	updated, err := client.Channel.Query().Where(channel.IDEQ(ch.ID)).WithProviderQuotaStatus().Only(ctx)
+	require.NoError(t, err)
+	ch = updated
+
+	notifications := make(chan string, 8)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		notifications <- string(body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := WebhookNotifierConfig{
+		Targets: []WebhookTarget{
+			{
+				Name:      "default",
+				Enabled:   true,
+				URL:       server.URL,
+				TimeoutMs: 1000,
+				Body:      `{"event":"{{.Event}}","usage_ratio":{{.Quota.UsageRatio}}}`,
+			},
+		},
+		Subscriptions: []WebhookSubscription{
+			{Event: EventProviderQuotaWarning, TargetNames: []string{"default"}},
+		},
+	}
+
+	systemService := newTestSystemServiceWithWebhookConfig(t, client, cfg)
+	svc := NewProviderQuotaService(ProviderQuotaServiceParams{
+		Ent:             client,
+		SystemService:   systemService,
+		HttpClient:      httpclient.NewHttpClient(),
+		WebhookNotifier: NewWebhookNotifier(systemService, httpclient.NewHttpClient()),
+	})
+
+	svc.saveQuotaStatus(ctx, ch, "claudecode", "", provider_quota.QuotaData{
+		ProviderType: "claudecode",
+		Status:       string(providerquotastatus.StatusWarning),
+		Ready:        true,
+		Limits: []provider_quota.QuotaLimitStatus{
+			{Type: provider_quota.QuotaLimitTypeToken, Status: "warning", UsageRatio: 0.5},
+			{Type: provider_quota.QuotaLimitTypeFreeEnergy, Status: "exhausted", UsageRatio: 1.0, Window: "daily_free_energy"},
+		},
+	}, time.Now(), false)
+
+	select {
+	case body := <-notifications:
+		require.JSONEq(t, `{"event":"`+EventProviderQuotaWarning+`","usage_ratio":0.5}`, body)
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for quota webhook")
+	}
+}
+
 func TestProviderQuotaService_QuotaWebhookLimitsLines(t *testing.T) {
 	tests := []struct {
 		name   string

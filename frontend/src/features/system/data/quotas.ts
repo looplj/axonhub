@@ -235,6 +235,19 @@ export type ProviderNeuralWattQuotaData = ProviderQuotaDataCommon & {
     plan?: string | null;
     kwh_reset_date?: string | null;
   } | null;
+  daily_free_energy?: {
+    kwh_included?: number | null;
+    kwh_used?: number | null;
+    kwh_remaining?: number | null;
+    reset_at?: string | null;
+    model_labels?: string[] | null;
+  } | null;
+  usage_current_month?: {
+    cost_usd?: number | null;
+    requests?: number | null;
+    tokens?: number | null;
+    energy_kwh?: number | null;
+  } | null;
 };
 
 export type ProviderCharmHyperQuotaData = ProviderQuotaDataCommon & {

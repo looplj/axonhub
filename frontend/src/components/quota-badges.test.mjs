@@ -150,6 +150,20 @@ test('NeuralWatt kWh bar shares the elapsed-window marker and label', () => {
   assert.match(neuralwattBlock, /durationPercent=\{durationPercent\}/);
   assert.match(neuralwattBlock, /quota\.label\.time_elapsed/);
   assert.match(quotaBadges, /kwh:\s*'quota\.label\.kwh_remaining'/);
+
+  // The display-only daily free energy bar: raw reset + 24h cadence derive the
+  // elapsed marker, and the covered-model tooltip line comes from the promo.
+  assert.match(neuralwattBlock, /window === 'daily_free_energy'/);
+  assert.match(neuralwattBlock, /quota\.label\.daily_free_energy/);
+  assert.match(neuralwattBlock, /usage_current_month/);
+  assert.match(neuralwattBlock, /Date\.parse\(dfeReset\) - 24 \* 3600 \* 1000/);
+  // The kWh tooltip labels itself with the monthly reset, independent of the
+  // overall reset value.
+  assert.match(neuralwattBlock, /kwhLimit\?\.nextResetAt/);
+});
+
+test('channels table translates the daily free energy window', () => {
+  assert.match(read('features/channels/components/channels-columns.tsx'), /daily_free_energy:\s*'quota\.label\.daily_free_energy'/);
 });
 
 // Regression: the quota-display refactor dropped the OpenCode Go popover

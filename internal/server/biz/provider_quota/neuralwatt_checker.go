@@ -32,9 +32,29 @@ type NeuralWattSubscription struct {
 	KwhResetDate *string  `json:"kwh_reset_date,omitempty"`
 }
 
+type NeuralWattUsagePeriod struct {
+	CostUSD   *float64 `json:"cost_usd,omitempty"`
+	Requests  *int64   `json:"requests,omitempty"`
+	Tokens    *int64   `json:"tokens,omitempty"`
+	EnergyKwh *float64 `json:"energy_kwh,omitempty"`
+}
+
+type NeuralWattDailyFreeEnergy struct {
+	KwhIncluded  *float64 `json:"kwh_included,omitempty"`
+	KwhUsed      *float64 `json:"kwh_used,omitempty"`
+	KwhRemaining *float64 `json:"kwh_remaining,omitempty"`
+	ResetAt      *string  `json:"reset_at,omitempty"`
+	ModelLabels  []string `json:"model_labels,omitempty"`
+}
+
 type NeuralWattUsageResponse struct {
-	Balance      *NeuralWattBalance      `json:"balance,omitempty"`
-	Subscription *NeuralWattSubscription `json:"subscription,omitempty"`
+	Balance         *NeuralWattBalance         `json:"balance,omitempty"`
+	Subscription    *NeuralWattSubscription    `json:"subscription,omitempty"`
+	DailyFreeEnergy *NeuralWattDailyFreeEnergy `json:"daily_free_energy,omitempty"`
+	Usage           *struct {
+		Lifetime     *NeuralWattUsagePeriod `json:"lifetime,omitempty"`
+		CurrentMonth *NeuralWattUsagePeriod `json:"current_month,omitempty"`
+	} `json:"usage,omitempty"`
 }
 
 type NeuralWattQuotaChecker struct {
@@ -121,6 +141,41 @@ func (c *NeuralWattQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		rawData["subscription"] = convertNeuralWattSubscriptionToMap(response.Subscription)
 	}
 
+	if dfe := response.DailyFreeEnergy; dfe != nil {
+		dfeMap := map[string]any{}
+		if dfe.KwhIncluded != nil {
+			dfeMap["kwh_included"] = *dfe.KwhIncluded
+		}
+		if dfe.KwhUsed != nil {
+			dfeMap["kwh_used"] = *dfe.KwhUsed
+		}
+		if dfe.KwhRemaining != nil {
+			dfeMap["kwh_remaining"] = *dfe.KwhRemaining
+		}
+		if dfe.ResetAt != nil {
+			dfeMap["reset_at"] = *dfe.ResetAt
+		}
+		dfeMap["model_labels"] = dfe.ModelLabels
+		rawData["daily_free_energy"] = dfeMap
+	}
+
+	if cm := response.Usage; cm != nil && cm.CurrentMonth != nil {
+		cmMap := map[string]any{}
+		if cm.CurrentMonth.CostUSD != nil {
+			cmMap["cost_usd"] = *cm.CurrentMonth.CostUSD
+		}
+		if cm.CurrentMonth.Requests != nil {
+			cmMap["requests"] = *cm.CurrentMonth.Requests
+		}
+		if cm.CurrentMonth.Tokens != nil {
+			cmMap["tokens"] = *cm.CurrentMonth.Tokens
+		}
+		if cm.CurrentMonth.EnergyKwh != nil {
+			cmMap["energy_kwh"] = *cm.CurrentMonth.EnergyKwh
+		}
+		rawData["usage_current_month"] = cmMap
+	}
+
 	var usageRatio float64
 	if response.Subscription != nil && response.Subscription.KwhIncluded != nil && *response.Subscription.KwhIncluded > 0 {
 		if response.Subscription.KwhUsed != nil {
@@ -138,6 +193,48 @@ func (c *NeuralWattQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	limit.PeriodStart = PeriodStartFromMonthlyReset(nextResetAt)
 
 	limits := []QuotaLimitStatus{limit}
+
+	// The daily free energy promo is display-only: no request modality maps
+	// to QuotaLimitTypeFreeEnergy, so routing, the channel status and the
+	// overall NextResetAt ignore it (displayOnlyLimitTypes). It deliberately
+	// has no PeriodStart — building the limit explicitly (not via WithWindow)
+	// keeps it out of period cost aggregation, PeriodQuotaEstimate, and the
+	// frontend backpressure mirror.
+	if dfe := response.DailyFreeEnergy; dfe != nil && dfe.KwhIncluded != nil && *dfe.KwhIncluded > 0 {
+		dfeRatio := 0.0
+		if dfe.KwhUsed != nil {
+			dfeRatio = *dfe.KwhUsed / *dfe.KwhIncluded
+		} else if dfe.KwhRemaining != nil {
+			dfeRatio = 1.0 - (*dfe.KwhRemaining / *dfe.KwhIncluded)
+		}
+		if dfeRatio < 0 {
+			dfeRatio = 0
+		} else if dfeRatio > 1 {
+			dfeRatio = 1
+		}
+		dfeStatus := "available"
+		switch {
+		case dfeRatio >= 1:
+			dfeStatus = "exhausted"
+		case dfeRatio >= 1-warningRemainingFraction:
+			dfeStatus = "warning"
+		}
+		var dfeResetAt *time.Time
+		if dfe.ResetAt != nil {
+			if t, err := time.Parse(time.RFC3339, *dfe.ResetAt); err == nil {
+				dfeResetAt = &t
+			}
+		}
+
+		limits = append(limits, QuotaLimitStatus{
+			Type:        QuotaLimitTypeFreeEnergy,
+			Status:      dfeStatus,
+			UsageRatio:  dfeRatio,
+			Ready:       IsReadyStatus(dfeStatus),
+			NextResetAt: dfeResetAt,
+			Window:      "daily_free_energy",
+		})
+	}
 
 	return NormalizeQuotaData(QuotaData{
 		Status:       normalizedStatus,

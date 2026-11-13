@@ -459,6 +459,8 @@
   "quota.label.topped_up_balance": "Topped-up balance",
   "quota.label.booster_balance": "Booster balance",
   "quota.label.monthly_spend": "Monthly spend",
+  "quota.label.daily_free_energy": "Daily Free Energy",
+  "quota.label.daily_free_energy_models": "Covered models",
   "quota.provider.apertis": "Apertis",
   "system.providerQuota.refresh.label": "Refresh quotas",
   "system.providerQuota.sort.label": "Sort channels",

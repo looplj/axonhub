@@ -77,6 +77,7 @@ const QUOTA_WINDOW_LABEL_KEYS: Record<string, string> = {
   cycle: 'quota.window.cycle',
   overage: 'quota.label.overage_window',
   search_hourly: 'quota.window.search_hourly',
+  daily_free_energy: 'quota.label.daily_free_energy',
 };
 
 function getQuotaLimits(channel: Channel) {

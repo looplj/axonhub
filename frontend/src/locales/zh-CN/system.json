@@ -520,6 +520,8 @@
   "quota.label.topped_up_balance": "充值余额",
   "quota.label.booster_balance": "Booster 余额",
   "quota.label.monthly_spend": "本月消费",
+  "quota.label.daily_free_energy": "每日免费能源",
+  "quota.label.daily_free_energy_models": "覆盖模型",
   "quota.provider.apertis": "Apertis",
   "system.tabs.codex": "Codex 兼容",
   "system.codex.title": "Codex 兼容",
