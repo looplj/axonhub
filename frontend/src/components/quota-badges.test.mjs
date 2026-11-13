@@ -156,7 +156,8 @@ test('NeuralWatt kWh bar shares the elapsed-window marker and label', () => {
   assert.match(neuralwattBlock, /window === 'daily_free_energy'/);
   assert.match(neuralwattBlock, /quota\.label\.daily_free_energy/);
   assert.match(neuralwattBlock, /usage_current_month/);
-  assert.match(neuralwattBlock, /Date\.parse\(dfeReset\) - 24 \* 3600 \* 1000/);
+  assert.match(neuralwattBlock, /Number\.isFinite\(dfeResetMs\)/);
+  assert.match(neuralwattBlock, /new Date\(dfeResetMs - 24 \* 3600 \* 1000\)/);
   // The kWh tooltip labels itself with the monthly reset, independent of the
   // overall reset value.
   assert.match(neuralwattBlock, /kwhLimit\?\.nextResetAt/);

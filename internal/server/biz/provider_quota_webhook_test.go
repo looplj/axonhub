@@ -543,10 +543,9 @@ func newTestQuotaWebhookLimitsHarness(t *testing.T, client *ent.Client) (*Provid
 	return svc, notifications
 }
 
-// TestProviderQuotaService_QuotaWebhookLimitsLines locks the rendered
-// `limits` array in quota webhook payloads: multi-account limits carry an
-// `[account: X]` suffix keyed for dedup, and account-less limits stay
-// byte-identical to the pre-suffix format.
+// TestProviderQuotaService_QuotaWebhookUsageRatioExcludesDisplayOnlyLimits
+// locks the usage_ratio max: display-only limits (e.g. a spent daily free
+// energy promo) must not report 1.0 on a later monthly-driven event.
 func TestProviderQuotaService_QuotaWebhookUsageRatioExcludesDisplayOnlyLimits(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -608,6 +607,10 @@ func TestProviderQuotaService_QuotaWebhookUsageRatioExcludesDisplayOnlyLimits(t 
 	}
 }
 
+// TestProviderQuotaService_QuotaWebhookLimitsLines locks the rendered
+// `limits` array in quota webhook payloads: multi-account limits carry an
+// `[account: X]` suffix keyed for dedup, and account-less limits stay
+// byte-identical to the pre-suffix format.
 func TestProviderQuotaService_QuotaWebhookLimitsLines(t *testing.T) {
 	tests := []struct {
 		name   string

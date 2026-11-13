@@ -2238,8 +2238,11 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                 // The limit carries no periodStart (deliberately display-only), so the
                 // elapsed marker comes from the known 24h cadence and the raw reset.
                 const dfeReset = dfe.reset_at;
-                const durationPercent = dfeReset
-                  ? getDurationPercent(new Date(Date.parse(dfeReset) - 24 * 3600 * 1000).toISOString(), dfeReset)
+                const dfeResetMs = dfeReset ? Date.parse(dfeReset) : Number.NaN;
+                // Date.parse can yield NaN for provider garbage; isFinite keeps
+                // the popover renderable (toISOString throws on non-finite time).
+                const durationPercent = Number.isFinite(dfeResetMs)
+                  ? getDurationPercent(new Date(dfeResetMs - 24 * 3600 * 1000).toISOString(), dfeReset)
                   : undefined;
 
                 items.push(
