@@ -464,7 +464,13 @@ func (t *OutboundTransformer) transformStandardResponse(
 		case "failed":
 			choice.FinishReason = lo.ToPtr("error")
 		case "incomplete":
-			choice.FinishReason = lo.ToPtr("length")
+			// Distinguish truncation from content-filter rejection, matching the
+			// streaming path.
+			if resp.IncompleteDetails != nil && resp.IncompleteDetails.Reason == "content_filter" {
+				choice.FinishReason = lo.ToPtr("content_filter")
+			} else {
+				choice.FinishReason = lo.ToPtr("length")
+			}
 		case "canceled", "cancelled":
 			choice.FinishReason = lo.ToPtr("cancelled")
 		}

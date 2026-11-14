@@ -81,6 +81,34 @@ func TestOutboundTransformer_TransformResponse_CanceledFinishReason(t *testing.T
 	require.Equal(t, "cancelled", *result.Choices[0].FinishReason)
 }
 
+func TestOutboundTransformer_TransformResponse_IncompleteFinishReason(t *testing.T) {
+	tests := []struct {
+		name     string
+		details  string
+		expected string
+	}{
+		{name: "content_filter reason", details: `,"incomplete_details":{"reason":"content_filter"}`, expected: "content_filter"},
+		{name: "max_output_tokens reason", details: `,"incomplete_details":{"reason":"max_output_tokens"}`, expected: "length"},
+		{name: "no details", details: ``, expected: "length"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+			require.NoError(t, err)
+
+			result, err := transformer.TransformResponse(context.Background(), &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body:       []byte(`{"id":"resp_incomplete","object":"response","created_at":1700000000,"status":"incomplete","model":"gpt-5","output":[]` + tt.details + `}`),
+			})
+			require.NoError(t, err)
+			require.Len(t, result.Choices, 1)
+			require.NotNil(t, result.Choices[0].FinishReason)
+			require.Equal(t, tt.expected, *result.Choices[0].FinishReason)
+		})
+	}
+}
+
 func TestOutboundTransformer_buildFullRequestURL(t *testing.T) {
 	tests := []struct {
 		name     string
