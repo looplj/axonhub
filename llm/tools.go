@@ -275,11 +275,19 @@ func FilterGoogleNativeTools(tools []Tool) []Tool {
 }
 
 type WebSearch struct {
+	// Version is the provider-native web search tool version, for example
+	// Anthropic's "web_search_20260209". Transformers that understand the
+	// version preserve it; other providers must drop it instead of forwarding.
+	Version        string                    `json:"version,omitempty"`
 	MaxUses        *int64                    `json:"max_uses,omitempty"`
 	Strict         *bool                     `json:"strict,omitempty"`
 	AllowedDomains []string                  `json:"allowed_domains,omitzero"`
 	BlockedDomains []string                  `json:"blocked_domains,omitzero"`
 	UserLocation   WebSearchToolUserLocation `json:"user_location,omitzero"`
+	// AllowedCallers restricts which callers may invoke the native tool,
+	// e.g. ["direct"] or ["code_execution_20260120"]. Anthropic-only today;
+	// other providers have no equivalent and must drop it.
+	AllowedCallers []string `json:"allowed_callers,omitempty"`
 }
 
 type WebSearchToolUserLocation struct {
