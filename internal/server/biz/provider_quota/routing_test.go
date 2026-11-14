@@ -205,6 +205,90 @@ func TestEvaluateQuotaRouting_DecisionTable(t *testing.T) {
 			limitType:     QuotaLimitTypeToken,
 			wantState:     RoutingUnknown,
 		},
+		{
+			// Members of one availability group are alternatives: one key ahead
+			// of pace with one key open must not throttle the channel.
+			name: "grouped windows: one member ahead, one open",
+			limits: []QuotaLimitStatus{
+				{
+					Type:              QuotaLimitTypeToken,
+					Status:            "available",
+					UsageRatio:        0.9,
+					Window:            QuotaWindow5h,
+					PeriodStart:       &windowStart,
+					NextResetAt:       &windowReset,
+					AvailabilityGroup: "api_key_accounts",
+				},
+				{
+					Type:              QuotaLimitTypeToken,
+					Status:            "available",
+					UsageRatio:        0.4,
+					Window:            QuotaWindow5h,
+					PeriodStart:       &windowStart,
+					NextResetAt:       &windowReset,
+					AvailabilityGroup: "api_key_accounts",
+				},
+			},
+			overallStatus: "available",
+			limitType:     QuotaLimitTypeToken,
+			wantState:     RoutingOpen,
+		},
+		{
+			// Every non-exhausted, non-balance member ahead of pace leaves no
+			// open alternative in the group.
+			name: "grouped windows: all members ahead",
+			limits: []QuotaLimitStatus{
+				{
+					Type:              QuotaLimitTypeToken,
+					Status:            "available",
+					UsageRatio:        0.9,
+					Window:            QuotaWindow5h,
+					PeriodStart:       &windowStart,
+					NextResetAt:       &windowReset,
+					AvailabilityGroup: "api_key_accounts",
+				},
+				{
+					Type:              QuotaLimitTypeToken,
+					Status:            "available",
+					UsageRatio:        0.8,
+					Window:            QuotaWindow5h,
+					PeriodStart:       &windowStart,
+					NextResetAt:       &windowReset,
+					AvailabilityGroup: "api_key_accounts",
+				},
+			},
+			overallStatus: "available",
+			limitType:     QuotaLimitTypeToken,
+			wantState:     RoutingStickyOnly,
+			wantReason:    "window_pressure",
+		},
+		{
+			// A single key keeps the AND between its own windows: one window
+			// ahead of pace is already window pressure.
+			name: "single key's own windows stay ANDed",
+			limits: []QuotaLimitStatus{
+				{
+					Type:        QuotaLimitTypeToken,
+					Status:      "available",
+					UsageRatio:  0.2,
+					Window:      QuotaWindowWeekly,
+					PeriodStart: &windowStart,
+					NextResetAt: &windowReset,
+				},
+				{
+					Type:        QuotaLimitTypeToken,
+					Status:      "available",
+					UsageRatio:  0.9,
+					Window:      QuotaWindow5h,
+					PeriodStart: &windowStart,
+					NextResetAt: &windowReset,
+				},
+			},
+			overallStatus: "available",
+			limitType:     QuotaLimitTypeToken,
+			wantState:     RoutingStickyOnly,
+			wantReason:    "window_pressure",
+		},
 	}
 
 	for _, tt := range tests {

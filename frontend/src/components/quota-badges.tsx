@@ -156,7 +156,11 @@ function getBatteryIcon(level: BatteryLevel) {
   }
 }
 
-function getBatteryLevel(percentage: number, status: string): BatteryLevel {
+// getBatteryLevel maps a 0-100 used percentage onto the battery icon. It only
+// accepts a known percentage; a pool with no current observation is handled by
+// the caller, which must render the trigger's warning state instead of a level
+// that implies stored charge.
+export function getBatteryLevel(percentage: number, status: string): BatteryLevel {
   if (status === 'exhausted') return 'warning';
   const remaining = 100 - percentage;
   if (remaining < 5) return 'empty';
@@ -950,8 +954,11 @@ function QuotaRow({
   if (routingIndicator === 'exhausted') modeBadge = { key: 'quota.status.remove_on_exhausted', color: 'red' };
   else if (routingIndicator === 'backpressure') modeBadge = { key: 'quota.status.backpressure', color: 'amber' };
 
+  // A pool with no current observation renders the trigger's unknown
+  // treatment: the warning icon without a battery level that implies charge.
   const percentage = getChannelPercentage(channel);
-  const batteryLevel = getBatteryLevel(percentage, status);
+  const batteryUnknown = percentage === undefined;
+  const batteryLevel = batteryUnknown ? 'warning' : getBatteryLevel(percentage, status);
   const BatteryIcon = getBatteryIcon(batteryLevel);
 
   const handleResetCodexQuota = async () => {
@@ -1092,7 +1099,7 @@ function QuotaRow({
       <div className='flex items-center justify-between'>
         <div className='flex min-w-0 flex-1 items-center gap-2'>
           <BatteryIcon
-            className={`h-4 w-4 shrink-0 ${status === 'exhausted' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : 'text-muted-foreground'}`}
+            className={`h-4 w-4 shrink-0 ${status === 'exhausted' || batteryUnknown ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : 'text-muted-foreground'}`}
           />
           <span className='text-foreground truncate font-medium' title={channel.name}>
             {channel.name}

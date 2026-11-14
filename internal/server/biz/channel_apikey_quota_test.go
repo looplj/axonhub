@@ -156,6 +156,7 @@ func setupQuotaKeyTestEnv(t *testing.T) *quotaKeyTestEnv {
 		checkInterval: 5 * time.Minute,
 	}
 	quotaSvc.SetQuotaKeyReconciler(channels)
+	channels.SetChannelProviderQuotaInvalidator(quotaSvc)
 
 	return &quotaKeyTestEnv{
 		client:   client,
@@ -788,6 +789,157 @@ func TestQuotaKey_ProviderSwitchClearsPreviousQuotaDisables(t *testing.T) {
 
 	switched := env.reload(t, ch.ID)
 	require.Empty(t, quotaOwnedKeys(switched), "the previous provider's quota disable is released")
+	require.Equal(t, channel.StatusEnabled, switched.Status)
+	require.Nil(t, switched.AutoDisabledAt)
+}
+
+// TestQuotaKey_ManualChannelDisableKeepsItsStateOnExhaustion pins the
+// ownership rule: an operator-disabled channel whose last key is exhausted
+// through the reconciliation path keeps its manual state, and a later
+// available observation does not re-enable it.
+func TestQuotaKey_ManualChannelDisableKeepsItsStateOnExhaustion(t *testing.T) {
+	env := setupQuotaKeyTestEnv(t)
+	ch := env.createOpenCodeChannel(t, quotaTestKeyA, quotaTestKeyB)
+
+	// The operator takes the channel offline before the first poll.
+	_, err := env.client.Channel.UpdateOneID(ch.ID).
+		SetStatus(channel.StatusDisabled).
+		SetErrorMessage("operator took the channel offline").
+		Save(env.ctx)
+	require.NoError(t, err)
+	require.NoError(t, env.channels.DisableAPIKey(env.ctx, ch.ID, quotaTestKeyB, 0, "operator disabled the serving key"))
+
+	// A manually disabled channel is not pollable, so the scheduled pass
+	// skips it; the reset-refresh path reaches it and must reconcile.
+	check := func(t *testing.T) {
+		t.Helper()
+		current := env.reload(t, ch.ID)
+		env.quota.mu.Lock()
+		defer env.quota.mu.Unlock()
+		env.quota.checkChannelQuota(env.ctx, quotaCheckGroup{
+			channels:   []*ent.Channel{current},
+			accountKey: quotaAccountKey("opencode_go", current),
+		}, time.Now())
+	}
+
+	env.server.usage(quotaTestKeyA, 100, 10, 10)
+	env.server.usage(quotaTestKeyB, 10, 10, 10)
+	check(t)
+
+	kept := env.reload(t, ch.ID)
+	require.Equal(t, channel.StatusDisabled, kept.Status, "the manual channel state survives the quota exhaustion")
+	require.Nil(t, kept.AutoDisabledAt, "a manual channel disable is never restamped as an auto-disable")
+	require.NotNil(t, kept.ErrorMessage)
+	require.Equal(t, "operator took the channel offline", *kept.ErrorMessage)
+	require.Equal(t, []string{quotaTestKeyA}, quotaOwnedKeys(kept), "the exhausted key is still parked by quota")
+
+	// A later available observation must not resurrect a channel the operator
+	// turned off.
+	env.server.usage(quotaTestKeyA, 5, 5, 5)
+	check(t)
+
+	recovered := env.reload(t, ch.ID)
+	require.Equal(t, channel.StatusDisabled, recovered.Status, "a manual channel disable outlives the key recovery")
+	require.Nil(t, recovered.AutoDisabledAt)
+	require.Equal(t, []string{}, quotaOwnedKeys(recovered), "the parked key is released")
+}
+
+// TestQuotaKey_StaleVersionIsDiscarded pins the version fence: a poll that
+// started earlier cannot remove a disable that a newer poll wrote while the
+// older provider request was in flight. The reconciler compares against the
+// pre-request snapshot's UpdatedAt, not the row it reloaded after the request.
+func TestQuotaKey_StaleVersionIsDiscarded(t *testing.T) {
+	env := setupQuotaKeyTestEnv(t)
+	ch := env.createOpenCodeChannel(t, quotaTestKeyA, quotaTestKeyB)
+
+	env.server.usage(quotaTestKeyA, 100, 10, 10)
+	env.server.usage(quotaTestKeyB, 100, 10, 10)
+	env.poll(t)
+	require.Equal(t, []string{quotaTestKeyA, quotaTestKeyB}, quotaOwnedKeys(env.reload(t, ch.ID)))
+
+	// The snapshot of a poll that is about to make its provider request.
+	snapshot := env.reload(t, ch.ID)
+
+	// A newer poll recovers both keys and writes the release.
+	env.server.usage(quotaTestKeyA, 5, 5, 5)
+	env.server.usage(quotaTestKeyB, 5, 5, 5)
+	env.poll(t)
+	require.Empty(t, quotaOwnedKeys(env.reload(t, ch.ID)), "the newer poll releases the keys")
+
+	// The older poll's observation (both keys exhausted) arrives now. Reconciling
+	// it against the row it just reloaded would re-park both keys.
+	accounts := []provider_quota.APIKeyQuota{
+		{Key: quotaTestKeyA, Ref: "stale-a", Index: 1, Data: provider_quota.QuotaData{Status: "exhausted", ProviderType: "opencode_go"}},
+		{Key: quotaTestKeyB, Ref: "stale-b", Index: 2, Data: provider_quota.QuotaData{Status: "exhausted", ProviderType: "opencode_go"}},
+	}
+	_, err := env.channels.ReconcileQuotaKeys(env.ctx, snapshot, accounts)
+	require.ErrorIs(t, err, errQuotaKeySnapshotStale)
+
+	current := env.reload(t, ch.ID)
+	require.Empty(t, current.DisabledAPIKeys, "a superseded observation persists nothing")
+	require.Equal(t, channel.StatusEnabled, current.Status)
+}
+
+// TestQuotaKey_ProviderSwitchThroughUpdateChannelReleasesQuotaDisables drives
+// the production path: UpdateChannel with a changed provider identity deletes
+// the quota status row, so the cleanup must release the previous provider's
+// quota-owned disables from the channel row itself, not from the deleted edge.
+func TestQuotaKey_ProviderSwitchThroughUpdateChannelReleasesQuotaDisables(t *testing.T) {
+	env := setupQuotaKeyTestEnv(t)
+	ch := env.createOpenCodeChannel(t, quotaTestKeyA)
+
+	env.server.usage(quotaTestKeyA, 100, 10, 10)
+	env.poll(t)
+
+	parked := env.reload(t, ch.ID)
+	require.Equal(t, []string{quotaTestKeyA}, quotaOwnedKeys(parked))
+	require.NotNil(t, parked.AutoDisabledAt)
+
+	// The production path: an identity change through UpdateChannel. The
+	// invalidator deletes the quota status row, so no edge remains for the
+	// cleanup pass to compare against.
+	zhipu := channel.TypeZhipu
+	_, err := env.channels.UpdateChannel(env.ctx, ch.ID, &ent.UpdateChannelInput{Type: &zhipu})
+	require.NoError(t, err)
+
+	switched := env.reload(t, ch.ID)
+	require.Empty(t, quotaOwnedKeys(switched), "the previous provider's quota disable is released at the transition")
+	require.Equal(t, channel.StatusEnabled, switched.Status)
+	require.Nil(t, switched.AutoDisabledAt)
+}
+
+// TestQuotaKey_GraphqlTransactionContextReleasesQuotaDisablesAfterCommit drives
+// the release through the same context shape the GraphQL transactioner builds:
+// the after-commit callback inherits the committed transaction's client value,
+// so the reload and the release must run on the live client, not on the
+// finished transaction.
+func TestQuotaKey_GraphqlTransactionContextReleasesQuotaDisablesAfterCommit(t *testing.T) {
+	env := setupQuotaKeyTestEnv(t)
+	ch := env.createOpenCodeChannel(t, quotaTestKeyA)
+
+	env.server.usage(quotaTestKeyA, 100, 10, 10)
+	env.poll(t)
+
+	parked := env.reload(t, ch.ID)
+	require.Equal(t, []string{quotaTestKeyA}, quotaOwnedKeys(parked))
+	require.NotNil(t, parked.AutoDisabledAt)
+
+	tx, err := env.client.Tx(env.ctx)
+	require.NoError(t, err)
+	// The transactioner's OpenTx shape: the transaction value carries the
+	// transactional client as its client value.
+	gqlCtx := ent.NewContext(ent.NewTxContext(env.ctx, tx), tx.Client())
+	zhipu := channel.TypeZhipu
+	updated, err := tx.Channel.UpdateOneID(ch.ID).SetType(zhipu).Save(gqlCtx)
+	require.NoError(t, err)
+
+	// Commit synchronously, exactly where UpdateChannel's runAfterCommit hook
+	// fires the provider quota invalidation with the caller's context.
+	require.NoError(t, tx.Commit())
+	env.channels.invalidateProviderQuota(gqlCtx, updated.ID)
+
+	switched := env.reload(t, ch.ID)
+	require.Empty(t, quotaOwnedKeys(switched), "the release survives the committed transaction client in the context")
 	require.Equal(t, channel.StatusEnabled, switched.Status)
 	require.Nil(t, switched.AutoDisabledAt)
 }

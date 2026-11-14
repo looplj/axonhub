@@ -194,10 +194,16 @@ func newSchemaFromDeps(deps Dependencies) graphql.ExecutableSchema {
 var (
 	skipTestChannelTransaction = entgql.SkipOperations("TestChannel", "TestChannelAPIKeys")
 	skipBulkImportTransaction  = entgql.SkipIfHasFields("bulkImportChannels")
+	// checkProviderQuotas and resetChannelQuotaNow resolve into the quota
+	// service, whose channel writes go through its own client and would block
+	// on row locks the enclosing transaction holds. The reconciler uses its own
+	// client, so matching the selected fields keeps a client-chosen operation
+	// name from opting unrelated mutations in or out.
+	skipQuotaMutationsTransaction = entgql.SkipIfHasFields("checkProviderQuotas", "resetChannelQuotaNow")
 )
 
 func skipGraphqlTransaction(op *ast.OperationDefinition) bool {
-	return skipTestChannelTransaction(op) || skipBulkImportTransaction(op)
+	return skipTestChannelTransaction(op) || skipBulkImportTransaction(op) || skipQuotaMutationsTransaction(op)
 }
 
 func presentGraphqlError(ctx context.Context, err error) *gqlerror.Error {

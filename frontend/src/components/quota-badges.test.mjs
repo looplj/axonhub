@@ -1582,6 +1582,36 @@ test('a pool with no current observation reports an unknown battery instead of 0
   assert.equal(badgePercent(perKeyChannel([keyAccount(3, { limits: [keyWindow('5h', 0.25)] })])), 25, 'a known key still reports usage');
 });
 
+// --- Row battery for unknown observations ---
+
+// Extract the production battery-level helper so the unknown-percentage branch
+// is asserted on the real code path, not a re-implementation.
+const getBatteryLevelNode = badgesAst.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === 'getBatteryLevel');
+assert.ok(getBatteryLevelNode, 'getBatteryLevel must stay in quota-badges.tsx');
+const { getBatteryLevel: rowBatteryLevel } = await loadTsModule(
+  `export ${getBatteryLevelNode.getText(badgesAst).replace(/^export\s+/, '')}`
+);
+
+test('an unknown observation never yields a full battery', () => {
+  // The helper's contract is a known percentage: the unknown pool is named by
+  // the caller, which renders the trigger's warning state.
+  const source = read('components/quota-badges.tsx');
+  const rowBody = source.slice(source.indexOf('function QuotaRow({'), source.indexOf('\nfunction ', source.indexOf('function QuotaRow({')));
+  assert.match(rowBody, /const batteryUnknown = percentage === undefined;/, 'the row must name the unknown case explicitly');
+  assert.match(
+    rowBody,
+    /batteryUnknown \? 'warning' : getBatteryLevel\(percentage, status\)/,
+    'an unknown observation renders the warning level, never a stored-charge battery'
+  );
+  assert.doesNotMatch(rowBody, /getBatteryLevel\(percentage[^,]*\s*\|\s*undefined/, 'the helper no longer accepts undefined');
+  // The known branches keep their contract.
+  assert.equal(rowBatteryLevel(0, 'available'), 'full');
+  assert.equal(rowBatteryLevel(30, 'available'), 'medium');
+  assert.equal(rowBatteryLevel(85, 'available'), 'low');
+  assert.equal(rowBatteryLevel(97, 'available'), 'empty');
+  assert.equal(rowBatteryLevel(10, 'exhausted'), 'warning');
+});
+
 test('per-key details keep the provider-reported credit amounts', () => {
   const account = keyAccount(1, {
     limits: [keyWindow('5h', 0.26), keyWindow('weekly', 0.4)],

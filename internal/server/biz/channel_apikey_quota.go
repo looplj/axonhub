@@ -123,18 +123,37 @@ func (svc *ChannelService) ReconcileQuotaKeys(
 		return ch, fmt.Errorf("%w (channel %d)", errQuotaKeySnapshotStale, ch.ID)
 	}
 
+	// The mutexes are process-local, so a poll that started earlier can still
+	// hold the snapshot of a row a newer poll already reconciled. A move of the
+	// row since the pre-request snapshot means this observation is superseded,
+	// and reconciling it would remove a disable the newer poll wrote. The write
+	// below only re-checks the reloaded row, which is the very writer it must
+	// fence out.
+	if !ch.UpdatedAt.Equal(snapshot.UpdatedAt) {
+		return ch, fmt.Errorf("%w (channel %d)", errQuotaKeySnapshotStale, ch.ID)
+	}
+
 	collecting, err := svc.quotaKeyCollectionEnabled(ctx, ch)
 	if err != nil {
 		return ch, err
 	}
 
-	// A cleanup-only pass after a provider switch cannot justify the previous
-	// provider's observations, so release those records instead of keeping a key
-	// parked on a quota window that no longer describes it. The next poll parks
-	// whatever the current provider reports.
-	if accounts == nil && ch.Edges.ProviderQuotaStatus != nil {
-		if currentProvider, ok := quotaKeyProviderType(ch); ok &&
-			ch.Edges.ProviderQuotaStatus.ProviderType.String() != currentProvider {
+	// A cleanup-only pass cannot justify a record the channel's quota state no
+	// longer carries. The invalidator hard-deletes the status row at a provider
+	// identity change, so a missing edge is itself the transition: the previous
+	// provider's observations can no longer park a key, and the next poll
+	// parks whatever the current provider reports. The edge-based provider
+	// comparison remains for callers that run before the delete.
+	if accounts == nil {
+		edgeMismatch := false
+		if edge := ch.Edges.ProviderQuotaStatus; edge != nil {
+			if currentProvider, ok := quotaKeyProviderType(ch); ok {
+				edgeMismatch = edge.ProviderType.String() != currentProvider
+			}
+		} else {
+			edgeMismatch = true
+		}
+		if edgeMismatch {
 			collecting = false
 		}
 	}
@@ -156,8 +175,13 @@ func (svc *ChannelService) ReconcileQuotaKeys(
 	case result.leavesEmpty:
 		// Zero enabled credentials reuses the existing all-keys bookkeeping, so
 		// the channel disappears from the serving cache exactly as it does when
-		// the last key is disabled by hand — unless that state is already set.
-		if !channelIsAllKeysDisabled(ch) {
+		// the last key is disabled by hand. The auto-disable markers may only
+		// be applied when the channel was serving or is already auto-disabled:
+		// a manually disabled channel keeps its status, its error message and a
+		// nil AutoDisabledAt, exactly as DisableAPIKey does, so a later
+		// recovery cannot resurrect it.
+		if !channelIsAllKeysDisabled(ch) &&
+			(ch.Status == channel.StatusEnabled || ch.AutoDisabledAt != nil) {
 			autoDisabled = true
 			update = update.
 				SetStatus(channel.StatusDisabled).
@@ -273,6 +297,32 @@ func refreshAPIKeyQuotaOwnership(ch *ent.Channel, accounts []provider_quota.APIK
 	}
 
 	return refreshed
+}
+
+// releasePreviousProviderQuotaDisables drops the quota-owned key disables whose
+// observation the channel no longer belongs to. ChannelService.UpdateChannel
+// deletes the ProviderQuotaStatus row before calling this at a provider
+// identity change, so the edge the reconciler would compare against is gone;
+// the identity of the reconciler's own snapshot is the source of truth. It is
+// also the safety net for a provider whose identity the checker cannot
+// recognize.
+func (svc *ChannelService) releasePreviousProviderQuotaDisables(ctx context.Context, ch *ent.Channel) {
+	if !hasActiveQuotaOwnedRecord(ch.DisabledAPIKeys) {
+		return
+	}
+
+	if ch.Edges.ProviderQuotaStatus != nil {
+		if provider, ok := quotaKeyProviderType(ch); !ok ||
+			ch.Edges.ProviderQuotaStatus.ProviderType.String() == provider {
+			return
+		}
+	}
+
+	if _, err := svc.ReconcileQuotaKeys(ctx, ch, nil); err != nil {
+		log.Warn(ctx, "failed to release quota-owned API key disables after provider switch",
+			log.Int("channel_id", ch.ID),
+			log.Cause(err))
+	}
 }
 
 // quotaKeyCollectionEnabled reports whether quota observations may change this

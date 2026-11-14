@@ -57,5 +57,29 @@ func (svc *ChannelService) invalidateProviderQuota(ctx context.Context, channelI
 		log.Warn(ctx, "failed to invalidate provider quota after channel provider change",
 			log.Int("channel_id", channelID),
 			log.Cause(err))
+		return
 	}
+
+	// The invalidator just hard-deleted the quota status row, so the reconciler
+	// can no longer read the previous provider from the channel's edge. Release
+	// the previous provider's quota-owned key disables here, at the identity
+	// transition, where the channel row still carries them. The reconciler
+	// takes the channel's own mutex and never calls back into the provider
+	// quota service, so this runs outside its lock.
+	//
+	// This runs after the surrounding transaction has committed (runAfterCommit),
+	// so the transaction client the caller's context carries is already done.
+	// Reload and release through the live client on a context detached from
+	// that transaction, keeping the cancellation behavior runAfterCommit
+	// provides.
+	liveCtx := ent.NewContext(context.WithoutCancel(ctx), svc.db)
+	ch, err := svc.db.Channel.Get(liveCtx, channelID)
+	if err != nil {
+		log.Warn(ctx, "failed to load channel for quota key release after provider change",
+			log.Int("channel_id", channelID),
+			log.Cause(err))
+		return
+	}
+
+	svc.releasePreviousProviderQuotaDisables(liveCtx, ch)
 }

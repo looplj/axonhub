@@ -27,6 +27,14 @@ const PROVIDER_QUOTA_STATUSES_QUERY = `
           settings {
             quotaRoutingMode
           }
+          # The persisted per-key view is only recomputed during collection, so
+          # the current disable records carry the ownership the popover shows:
+          # a key an operator took over manually is never quota-owned again.
+          disabledAPIKeys {
+            key
+            expiresAt
+            quotaDisabled
+          }
           providerQuotaStatus {
             status
             nextResetAt
@@ -961,6 +969,7 @@ type QueryChannelNode = {
   type: string;
   orderingWeight: number;
   settings: { quotaRoutingMode: ChannelQuotaRoutingMode } | null;
+  disabledAPIKeys: Array<{ key: string; expiresAt: string | null; quotaDisabled: boolean }> | null;
   providerQuotaStatus: ProviderQuotaStatusNode | null;
 };
 
@@ -970,6 +979,9 @@ type QueryChannelsResponse = {
       node: QueryChannelNode | null;
     } | null>;
   };
+  // Hex SHA-256 of every disabled key across the fetched channels, keyed by
+  // the key itself: the same value the backend stamps as a row's ref.
+  disabledKeyDigests: Record<string, string>;
 };
 
 type QueryChannelNodeWithQuota = QueryChannelNode & {
@@ -978,6 +990,94 @@ type QueryChannelNodeWithQuota = QueryChannelNode & {
 
 function hasProviderQuotaStatus(node: QueryChannelNode | null | undefined): node is QueryChannelNodeWithQuota {
   return node?.providerQuotaStatus != null;
+}
+
+type DisabledKeyRecord = { key: string; expiresAt: string | null; quotaDisabled: boolean };
+
+// digestAPIKeys hashes the disabled keys the query carries, using the same hex
+// SHA-256 the backend stamps as a per-key quota row's ref, so a row can be
+// matched to the disable record it names without exposing the key. Keys that
+// cannot be hashed are reported as unresolved so the ownership sync can keep
+// their persisted rows instead of clearing them.
+async function digestAPIKeys(keys: string[]): Promise<{ digests: Record<string, string>; unresolved: Set<string> }> {
+  const digests: Record<string, string> = {};
+  const unresolved = new Set<string>();
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) {
+    for (const key of keys) {
+      unresolved.add(key);
+    }
+    return { digests, unresolved };
+  }
+
+  for (const key of keys) {
+    try {
+      const bytes = new TextEncoder().encode(key);
+      const digest = new Uint8Array(await subtle.digest('SHA-256', bytes));
+      digests[key] = Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    } catch {
+      // An unavailable digest cannot prove the key's identity.
+      unresolved.add(key);
+    }
+  }
+  return { digests, unresolved };
+}
+
+// applyDisabledKeyOwnershipSync derives each per-key row's usability and
+// ownership from the channel's current disable records as well as from
+// collection. A key an operator kept disabled manually is no longer quota-owned
+// and the row must stop claiming automatic recovery from the moment the
+// mutation lands; a key the operator re-enabled is usable again even when the
+// stored row still says parked. The query supplies each key's digest so the row
+// it names can be matched without exposing the key.
+//
+// A null/undefined list means the records are unavailable, not that the channel
+// has none; the persisted rows then stay exactly as stored. An empty list is a
+// real answer and clears non-matching rows. Unresolved digests are scoped to
+// this channel's own keys: a digest that failed to compute for an unrelated
+// channel must not protect this channel's rows.
+export function applyDisabledKeyOwnershipSync(
+  apiKeyQuotas: ProviderAPIKeyQuota[],
+  disabledKeys: DisabledKeyRecord[] | null,
+  digests: Record<string, string>,
+  unresolvedKeys?: Set<string>
+): ProviderAPIKeyQuota[] {
+  if (apiKeyQuotas.length === 0) return apiKeyQuotas;
+  if (disabledKeys == null) return apiKeyQuotas;
+
+  const now = Date.now();
+  const refOwnership = new Map<string, boolean>();
+  for (const record of disabledKeys) {
+    if (record.expiresAt && Date.parse(record.expiresAt) <= now) continue;
+    const ref = digests[record.key];
+    if (ref) refOwnership.set(ref, record.quotaDisabled === true);
+  }
+
+  // A key whose digest could not be computed may still name a stale row; the
+  // persisted ownership can only be cleared once every reference resolved.
+  // Only this channel's own keys count: unresolved digests from other channels
+  // say nothing about this one.
+  const unresolved = unresolvedKeys != null && disabledKeys.some((record) => unresolvedKeys.has(record.key));
+
+  return apiKeyQuotas.map((account) => {
+    const quotaOwned = refOwnership.get(account.ref);
+    if (quotaOwned === undefined) {
+      // No active record: the key is usable, and nothing quota-owned.
+      if (account.disabled || account.quotaDisabled) {
+        if (unresolved) {
+          // The key's identity cannot be proven absent from the disable list;
+          // keep the persisted ownership and usability as stored.
+          return account;
+        }
+        return { ...account, disabled: false, quotaDisabled: false };
+      }
+      return account;
+    }
+
+    // The key is in the channel's disabled list, so it is not usable; the
+    // record's ownership flag decides whether a quota recovery may clear it.
+    return { ...account, disabled: true, quotaDisabled: quotaOwned };
+  });
 }
 
 // parseChannelNode converts a channel with quota status into the discriminated
@@ -1192,16 +1292,20 @@ export function useProviderQuotaStatuses() {
           ],
         },
       };
-      return graphqlRequest<QueryChannelsResponse>(PROVIDER_QUOTA_STATUSES_QUERY, { input });
+      const data = await graphqlRequest<QueryChannelsResponse>(PROVIDER_QUOTA_STATUSES_QUERY, { input });
+      const keys = [
+        ...new Set((data.queryChannels.edges ?? []).flatMap((edge) => (edge?.node?.disabledAPIKeys ?? []).map((key) => key.key))),
+      ];
+      const { digests, unresolved } = await digestAPIKeys(keys);
+      return { ...data, disabledKeyDigests: digests, disabledKeyUnresolved: unresolved };
     },
     refetchInterval: 60000,
     refetchIntervalInBackground: true,
   });
 
-  const edges = query.data?.queryChannels?.edges;
-  const channels = useMemo(
+  const nodes = useMemo(
     () =>
-      (edges ?? [])
+      (query.data?.queryChannels?.edges ?? [])
         .map((edge) => edge?.node ?? null)
         .filter(hasProviderQuotaStatus)
         .filter((c) => {
@@ -1210,9 +1314,31 @@ export function useProviderQuotaStatuses() {
           // available with their generic status for administrators to inspect.
           const quotaData = c.providerQuotaStatus.quotaData as { error?: string; error_code?: string } | undefined;
           return quotaData?.error_code !== 'missing_credentials' && quotaData?.error !== 'channel has no credentials';
-        })
-        .map(parseChannelNode),
-    [edges]
+        }),
+    [query.data]
+  );
+
+  // The per-key view is persisted during collection, so its ownership only
+  // reflects the last collection pass. Derive it from the channel's current
+  // disable records on every render: a key an operator took over manually must
+  // stop claiming quota ownership and automatic recovery immediately. The
+  // query precomputes the digest of every disabled key, the same value the
+  // backend stamps as a row's ref.
+  const channels = useMemo(
+    () =>
+      // The spread below would widen the discriminated union, so name the
+      // element type explicitly: the runtime shape is parseChannelNode's,
+      // with only the derived per-key rows substituted, and the cast restores
+      // the type-level correlation between type and quotaData the spread
+      // destroys (apiKeyQuotas has one declared type on every arm).
+      nodes.map((node): ProviderQuotaChannel => {
+        const channel = parseChannelNode(node);
+        const digests = query.data?.disabledKeyDigests ?? {};
+        const unresolved = query.data?.disabledKeyUnresolved;
+        const derived = applyDisabledKeyOwnershipSync(channel.quotaStatus.apiKeyQuotas, node.disabledAPIKeys, digests, unresolved);
+        return { ...channel, quotaStatus: { ...channel.quotaStatus, apiKeyQuotas: derived } } as ProviderQuotaChannel;
+      }),
+    [nodes, query.data]
   );
 
   return {
