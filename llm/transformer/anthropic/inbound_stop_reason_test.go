@@ -62,3 +62,44 @@ func TestInboundStream_ContentFilterStopReason(t *testing.T) {
 	require.NotNil(t, stopReason)
 	require.Equal(t, "refusal", *stopReason)
 }
+
+func TestInboundTransformer_TransformResponse_UnknownFinishReason(t *testing.T) {
+	tests := []struct {
+		finishReason string
+		want         string
+	}{
+		{"error", "end_turn"},
+		{"cancelled", "end_turn"},
+		{"pause_turn", "pause_turn"},
+		{"stop_sequence", "stop_sequence"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.finishReason, func(t *testing.T) {
+			transformer := NewInboundTransformer()
+			finishReason := tt.finishReason
+			text := "partial"
+
+			resp, err := transformer.TransformResponse(t.Context(), &llm.Response{
+				ID:      "msg_unknown",
+				Object:  "chat.completion",
+				Model:   "claude-sonnet-4-6",
+				Created: 1234567890,
+				Choices: []llm.Choice{{
+					Index: 0,
+					Message: &llm.Message{
+						Role:    "assistant",
+						Content: llm.MessageContent{Content: &text},
+					},
+					FinishReason: &finishReason,
+				}},
+			})
+			require.NoError(t, err)
+
+			var msg Message
+			require.NoError(t, json.Unmarshal(resp.Body, &msg))
+			require.NotNil(t, msg.StopReason)
+			require.Equal(t, tt.want, *msg.StopReason)
+		})
+	}
+}
