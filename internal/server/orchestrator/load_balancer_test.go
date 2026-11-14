@@ -685,3 +685,37 @@ func TestLoadBalancer_Sort_TopK(t *testing.T) {
 		})
 	}
 }
+
+// TestLoadBalancer_SortTopKWithoutTracking verifies that a caller can keep more
+// candidates than the limit used for the retry-driven path. Preflight rejections
+// (probe lease busy) do not consume a retry, so the selection keeps spare
+// candidates for the rollover instead of stopping at the retry budget.
+func TestLoadBalancer_SortTopKWithoutTracking(t *testing.T) {
+	ctx := context.Background()
+
+	strategy := &channelBasedStrategy{
+		name: "test",
+		scores: map[int]float64{
+			1: 30,
+			2: 20,
+			3: 10,
+		},
+	}
+
+	lb := newTestLoadBalancer(t, nil, strategy)
+
+	candidates := []*ChannelModelsCandidate{
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "ch3"}}},
+	}
+
+	limited := lb.SortWithoutTracking(ctx, candidates, "", false, 1)
+	require.Len(t, limited, 1, "a caller-supplied limit of 1 must keep a single candidate")
+
+	kept := lb.SortTopKWithoutTracking(ctx, candidates, "", false, 3)
+	require.Len(t, kept, 3, "the caller-provided limit must be honoured")
+	assert.Equal(t, 1, kept[0].Channel.ID)
+	assert.Equal(t, 2, kept[1].Channel.ID)
+	assert.Equal(t, 3, kept[2].Channel.ID)
+}

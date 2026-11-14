@@ -179,7 +179,19 @@ type probeReleasingStream struct {
 }
 
 func (s *probeReleasingStream) Next() bool {
-	return s.stream.Next()
+	if s.stream.Next() {
+		return true
+	}
+
+	// A stream that ends without an error is a successful response even when the
+	// provider never reported token usage, which is common for streaming. TTL
+	// recovery is gone, so without this fallback an Open circuit would stay Open
+	// after a stream that actually worked.
+	if s.stream.Err() == nil {
+		s.recordSuccess()
+	}
+
+	return false
 }
 
 func (s *probeReleasingStream) Current() *llm.Response {
@@ -188,20 +200,31 @@ func (s *probeReleasingStream) Current() *llm.Response {
 		return nil
 	}
 
-	if s.modelCircuitBreaker == nil {
-		return event
-	}
-
+	// Record as soon as the provider reports usage, so the circuit closes without
+	// waiting for the stream to end.
 	if !s.recorded {
 		if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
-			if s.channelID != 0 && s.modelID != "" {
-				s.modelCircuitBreaker.RecordSuccess(s.ctx, s.channelID, s.modelID)
-			}
-			s.recorded = true
+			s.recordSuccess()
 		}
 	}
 
 	return event
+}
+
+// recordSuccess marks the model healthy once per stream. It is a no-op when the
+// stream is not tracked, already recorded, or has no channel/model to attribute
+// the success to.
+func (s *probeReleasingStream) recordSuccess() {
+	if s.recorded || s.modelCircuitBreaker == nil {
+		return
+	}
+
+	if s.channelID == 0 || s.modelID == "" {
+		return
+	}
+
+	s.modelCircuitBreaker.RecordSuccess(s.ctx, s.channelID, s.modelID)
+	s.recorded = true
 }
 
 func (s *probeReleasingStream) Err() error {
