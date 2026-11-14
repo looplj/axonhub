@@ -369,7 +369,7 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 
 	for _, endpoint := range endpoints {
 		if endpoint.APIFormat == llm.APIFormatTypeSafeSystemOne.String() && !supportsSystemOneEndpoint(channelType) {
-			return fmt.Errorf("api_format %q is only supported by TypeSafe, OpenAI and Cloudflare channel types", endpoint.APIFormat)
+			return fmt.Errorf("api_format %q is only supported by TypeSafe and channel types with built-in OpenAI endpoints, except Codex and GitHub Copilot", endpoint.APIFormat)
 		}
 	}
 
@@ -387,16 +387,24 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 }
 
 // supportsSystemOneEndpoint reports whether a channel type may serve the
-// typesafe/systemone api format. OpenAI accepts it as a manually configured
-// endpoint, and Cloudflare Workers AI hosts System One decision models alongside
-// its OpenAI-compatible surface.
+// typesafe/systemone api format. Channels with built-in OpenAI endpoints may
+// opt in through a manually configured endpoint, except channels whose outbound
+// requires a different authentication flow such as Codex and GitHub Copilot.
 func supportsSystemOneEndpoint(channelType channel.Type) bool {
-	switch channelType {
-	case channel.TypeTypesafe, channel.TypeOpenai, channel.TypeCloudflare:
+	if channelType == channel.TypeTypesafe {
 		return true
-	default:
+	}
+	if channelType == channel.TypeCodex || channelType == channel.TypeGithubCopilot {
 		return false
 	}
+
+	for _, endpoint := range DefaultEndpointsForChannelType(channelType) {
+		if strings.HasPrefix(endpoint.APIFormat, "openai/") {
+			return true
+		}
+	}
+
+	return false
 }
 
 func DefaultEndpointsForChannelType(t channel.Type) []objects.ChannelEndpoint {

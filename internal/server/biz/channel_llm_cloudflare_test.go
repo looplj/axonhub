@@ -55,7 +55,7 @@ func TestCloudflareChannel_ValidatesSystemOneEndpoint(t *testing.T) {
 	// Channel types without a System One surface (e.g. Anthropic) keep rejecting it.
 	err := validateEndpointsForChannelType(channel.TypeAnthropic, endpoints)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "only supported by TypeSafe, OpenAI and Cloudflare channel types")
+	require.Contains(t, err.Error(), "only supported by TypeSafe and channel types with built-in OpenAI endpoints")
 }
 
 func TestCloudflareChannel_BuildsOpenAIOutbounds(t *testing.T) {
