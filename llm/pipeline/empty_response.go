@@ -148,6 +148,13 @@ func hasResponseContent(resp *llm.Response) bool {
 	}
 
 	for _, choice := range resp.Choices {
+		// A moderation block is a protocol-legal terminal result even when the
+		// provider returns no assistant text. Treating it as empty would retry a
+		// request the upstream already refused.
+		if choice.FinishReason != nil && *choice.FinishReason == "content_filter" {
+			return true
+		}
+
 		if hasMessageContent(choice.Delta) || hasMessageContent(choice.Message) {
 			return true
 		}
