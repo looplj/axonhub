@@ -468,7 +468,7 @@ func TestTokenProviderNilConflictStopsAutoRefresh(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		_, _ = provider.runAutoRefreshOnce(autoCtx, time.Minute)
+		_ = provider.runAutoRefreshOnce(autoCtx, time.Minute)
 		close(done)
 	}()
 

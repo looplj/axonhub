@@ -2,9 +2,12 @@ package oauth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -50,6 +53,7 @@ type TokenProvider struct {
 
 	autoMu     sync.Mutex
 	autoCancel context.CancelFunc
+	autoSeq    uint64
 }
 
 // CredentialConflictError reports that persistence found newer channel credentials.
@@ -90,6 +94,93 @@ type ExchangeParams struct {
 type AutoRefreshOptions struct {
 	Interval      time.Duration
 	RefreshBefore time.Duration
+}
+
+const (
+	// autoRefreshFailureMaxMultiplier bounds exponential failure backoff
+	// relative to the configured fallback interval.
+	autoRefreshFailureMaxMultiplier = 4
+)
+
+type autoRefreshConfig struct {
+	refreshBefore    time.Duration
+	fallbackInterval time.Duration
+	failureBase      time.Duration
+	failureMax       time.Duration
+}
+
+type autoRefreshOutcome int
+
+const (
+	autoRefreshSucceeded autoRefreshOutcome = iota
+	autoRefreshTransientFailure
+	autoRefreshPermanentFailure
+	autoRefreshStopped
+)
+
+// autoRefreshBackoff tracks consecutive transient failures and produces a
+// bounded retry delay. Jitter is applied only below the cap; at the cap the
+// delay stays fixed.
+type autoRefreshBackoff struct {
+	base                time.Duration
+	max                 time.Duration
+	consecutiveFailures int
+}
+
+func newAutoRefreshBackoff(base, max time.Duration) *autoRefreshBackoff {
+	if base <= 0 {
+		base = 1 * time.Minute
+	}
+
+	if max <= 0 {
+		max = base * autoRefreshFailureMaxMultiplier
+	}
+
+	if max < base {
+		max = base
+	}
+
+	return &autoRefreshBackoff{base: base, max: max}
+}
+
+func (b *autoRefreshBackoff) reset() {
+	b.consecutiveFailures = 0
+}
+
+func (b *autoRefreshBackoff) next() time.Duration {
+	b.consecutiveFailures++
+
+	delay := b.base
+	for i := 1; i < b.consecutiveFailures && delay < b.max; i++ {
+		delay *= 2
+	}
+
+	if delay > b.max {
+		delay = b.max
+	}
+
+	return jitterAutoRefreshDelay(delay, b.max)
+}
+
+// jitterAutoRefreshDelay adds up to 25% positive jitter so multiple providers
+// do not retry in lockstep. Jitter never makes a retry earlier than delay and
+// never exceeds max; once delay has reached max the retry is the fixed cap.
+func jitterAutoRefreshDelay(delay, max time.Duration) time.Duration {
+	if delay <= 0 {
+		return 0
+	}
+
+	span := delay / 4
+	if span <= 0 {
+		return delay
+	}
+
+	jittered := delay + time.Duration(rand.Int64N(int64(span)+1))
+	if max > 0 && jittered > max {
+		return max
+	}
+
+	return jittered
 }
 
 func NewTokenProvider(params TokenProviderParams) *TokenProvider {
@@ -364,6 +455,13 @@ func (p *TokenProvider) StartAutoRefresh(ctx context.Context, opts AutoRefreshOp
 		refreshBefore = 5 * time.Minute
 	}
 
+	cfg := autoRefreshConfig{
+		refreshBefore:    refreshBefore,
+		fallbackInterval: fallbackInterval,
+		failureBase:      fallbackInterval,
+		failureMax:       fallbackInterval * autoRefreshFailureMaxMultiplier,
+	}
+
 	p.autoMu.Lock()
 
 	if p.autoCancel != nil {
@@ -372,10 +470,12 @@ func (p *TokenProvider) StartAutoRefresh(ctx context.Context, opts AutoRefreshOp
 	}
 
 	autoCtx, cancel := context.WithCancel(ctx)
+	p.autoSeq++
+	id := p.autoSeq
 	p.autoCancel = cancel
 	p.autoMu.Unlock()
 
-	go p.runAutoRefresh(autoCtx, refreshBefore, fallbackInterval)
+	go p.runAutoRefresh(autoCtx, cancel, id, cfg)
 }
 
 func (p *TokenProvider) StopAutoRefresh() {
@@ -393,8 +493,9 @@ func (p *TokenProvider) StopAutoRefresh() {
 
 func (p *TokenProvider) runAutoRefresh(
 	autoCtx context.Context,
-	refreshBefore time.Duration,
-	fallbackInterval time.Duration,
+	cancel context.CancelFunc,
+	id uint64,
+	cfg autoRefreshConfig,
 ) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -402,48 +503,82 @@ func (p *TokenProvider) runAutoRefresh(
 		}
 	}()
 
+	backoff := newAutoRefreshBackoff(cfg.failureBase, cfg.failureMax)
 	delay := time.Duration(0)
+
 	for {
 		if !sleepForAutoRefresh(autoCtx, delay) {
 			return
 		}
 
-		refreshFailed, ok := p.runAutoRefreshOnce(autoCtx, refreshBefore)
-		if !ok {
+		switch p.runAutoRefreshOnce(autoCtx, cfg.refreshBefore) {
+		case autoRefreshStopped:
 			return
-		}
-
-		if refreshFailed {
-			delay = fallbackInterval
-		} else {
-			delay = p.nextAutoRefreshDelay(refreshBefore, fallbackInterval)
+		case autoRefreshPermanentFailure:
+			p.retireAutoRefresh(id, cancel)
+			return
+		case autoRefreshTransientFailure:
+			delay = backoff.next()
+		case autoRefreshSucceeded:
+			backoff.reset()
+			delay = p.nextAutoRefreshDelay(cfg.refreshBefore, cfg.fallbackInterval)
+		default:
+			return
 		}
 	}
 }
 
-func (p *TokenProvider) runAutoRefreshOnce(autoCtx context.Context, refreshBefore time.Duration) (refreshFailed bool, ok bool) {
+// retireAutoRefresh clears the loop state only when the finishing loop is still
+// the active one, so a concurrently started loop keeps its own cancellation.
+func (p *TokenProvider) retireAutoRefresh(id uint64, cancel context.CancelFunc) {
+	p.autoMu.Lock()
+	if p.autoSeq == id && p.autoCancel != nil {
+		p.autoCancel = nil
+	}
+	p.autoMu.Unlock()
+
+	cancel()
+}
+
+func (p *TokenProvider) runAutoRefreshOnce(autoCtx context.Context, refreshBefore time.Duration) (outcome autoRefreshOutcome) {
 	defer func() {
 		if r := recover(); r != nil {
 			slog.ErrorContext(autoCtx, "auto refresh token provider panicked", slog.Any("cause", r))
-			refreshFailed = false
-			ok = false
+			outcome = autoRefreshStopped
 		}
 	}()
 
 	if autoCtx.Err() != nil {
-		return false, false
+		return autoRefreshStopped
 	}
 
 	if _, err := p.EnsureFresh(autoCtx, refreshBefore); err != nil {
-		slog.WarnContext(autoCtx, "failed to auto refresh token", slog.Any("error", err))
-		refreshFailed = true
+		if autoCtx.Err() != nil {
+			return autoRefreshStopped
+		}
+
+		attrs := []slog.Attr{slog.String("error", sanitizedOAuthRefreshError(err))}
+
+		if code := oauthRefreshErrorCode(err); code != "" {
+			attrs = append(attrs, slog.String("oauth_error", safeOAuthErrorCode(code)))
+		}
+
+		if isPermanentOAuthRefreshError(err) {
+			slog.LogAttrs(autoCtx, slog.LevelWarn, "oauth token refresh rejected by provider; stopping automatic refresh", attrs...)
+
+			return autoRefreshPermanentFailure
+		}
+
+		slog.LogAttrs(autoCtx, slog.LevelWarn, "failed to auto refresh token", attrs...)
+
+		return autoRefreshTransientFailure
 	}
 
 	if autoCtx.Err() != nil {
-		return refreshFailed, false
+		return autoRefreshStopped
 	}
 
-	return refreshFailed, true
+	return autoRefreshSucceeded
 }
 
 func sleepForAutoRefresh(ctx context.Context, delay time.Duration) bool {
@@ -483,6 +618,105 @@ func (p *TokenProvider) nextAutoRefreshDelay(refreshBefore time.Duration, fallba
 	}
 
 	return delay
+}
+
+// permanentOAuthRefreshErrors are OAuth 2.0 error codes that mean the stored
+// credentials are unusable and cannot be repaired by retrying. A bare HTTP 401
+// is deliberately not enough: proxies and transient provider faults can return
+// it without invalidating the refresh token.
+var permanentOAuthRefreshErrors = map[string]struct{}{
+	"invalid_grant":       {},
+	"invalid_client":      {},
+	"unauthorized_client": {},
+}
+
+// unknownOAuthErrorCode replaces any provider-supplied code that is not in the
+// safe enum, so an error body cannot smuggle secrets into logs.
+const unknownOAuthErrorCode = "unknown_oauth_error"
+
+func safeOAuthErrorCode(code string) string {
+	code = strings.ToLower(strings.TrimSpace(code))
+	if _, ok := permanentOAuthRefreshErrors[code]; ok {
+		return code
+	}
+
+	return unknownOAuthErrorCode
+}
+
+func isPermanentOAuthRefreshError(err error) bool {
+	code := oauthRefreshErrorCode(err)
+	if code == "" {
+		return false
+	}
+
+	_, ok := permanentOAuthRefreshErrors[code]
+
+	return ok
+}
+
+func oauthRefreshErrorCode(err error) string {
+	var tokenErr *tokenResponseError
+	if errors.As(err, &tokenErr) {
+		return strings.ToLower(strings.TrimSpace(tokenErr.Code))
+	}
+
+	var httpErr *httpclient.Error
+	if !errors.As(err, &httpErr) {
+		return ""
+	}
+
+	switch httpErr.StatusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden:
+	default:
+		return ""
+	}
+
+	return oauthErrorCodeFromBody(httpErr.Body)
+}
+
+func oauthErrorCodeFromBody(body []byte) string {
+	var payload struct {
+		Error json.RawMessage `json:"error"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil || len(payload.Error) == 0 {
+		return ""
+	}
+
+	var code string
+	if err := json.Unmarshal(payload.Error, &code); err == nil {
+		return strings.ToLower(strings.TrimSpace(code))
+	}
+
+	var obj struct {
+		Code string `json:"code"`
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(payload.Error, &obj); err == nil {
+		code = obj.Code
+		if code == "" {
+			code = obj.Type
+		}
+
+		return strings.ToLower(strings.TrimSpace(code))
+	}
+
+	return ""
+}
+
+// sanitizedOAuthRefreshError keeps the useful status information while leaving
+// out response bodies, which may echo credentials back from the provider.
+func sanitizedOAuthRefreshError(err error) string {
+	var httpErr *httpclient.Error
+	if errors.As(err, &httpErr) {
+		return httpErr.Error()
+	}
+
+	var tokenErr *tokenResponseError
+	if errors.As(err, &tokenErr) {
+		return fmt.Sprintf("token request failed: %s", safeOAuthErrorCode(tokenErr.Code))
+	}
+
+	return err.Error()
 }
 
 // StaticTokenProvider provides a fixed set of credentials.
