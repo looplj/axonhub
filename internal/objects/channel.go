@@ -465,6 +465,14 @@ type DisabledAPIKey struct {
 	ErrorCode  int        `json:"errorCode"`
 	Reason     string     `json:"reason,omitempty"`
 	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
+
+	// QuotaDisabled marks a disable owned by a proactive provider quota
+	// observation rather than by a manual action, a plugin or an HTTP error
+	// rule. Only records with this flag are reconciled by quota checks;
+	// missing/false — including every record written before the field existed
+	// — means the channel lifecycle owns the record. Ownership is never
+	// inferred from the reason text, the error code or the expiry.
+	QuotaDisabled bool `json:"quotaDisabled,omitempty"`
 }
 
 // IsExpired reports whether a temporary API key disable has elapsed.

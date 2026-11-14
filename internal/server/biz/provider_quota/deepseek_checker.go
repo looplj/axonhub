@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -44,99 +45,45 @@ func NewDeepSeekQuotaChecker(httpClient *httpclient.HttpClient) *DeepSeekQuotaCh
 	return &DeepSeekQuotaChecker{httpClient: httpClient}
 }
 
-// CheckQuota reads the balance of every serving API-key account and folds the
-// results into one channel payload. A funded account keeps the channel
-// available, while one empty or failing account cannot exhaust it.
+// CheckQuota reads the balance of every configured API-key account through the
+// shared per-key collector. A funded account keeps the channel available, while
+// one empty or failing account cannot exhaust it.
 func (c *DeepSeekQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
-	keys := deepseekChannelAPIKeys(ch)
-	if len(keys) == 0 {
-		return QuotaData{}, fmt.Errorf("channel has no API key")
-	}
-
-	disabled := deepseekDisabledKeySet(ch)
-	enabledKeys := make([]string, 0, len(keys))
-	for _, key := range keys {
-		if disabled[key] {
-			continue
-		}
-		enabledKeys = append(enabledKeys, key)
-	}
-	if len(enabledKeys) == 0 {
-		return QuotaData{}, fmt.Errorf("channel has no enabled API key")
-	}
-
 	hc := c.httpClient
 	if ch.Settings != nil && ch.Settings.Proxy != nil {
 		hc = c.httpClient.WithProxy(ch.Settings.Proxy)
 	}
 
 	balanceURL := buildDeepSeekBalanceURL(ch.BaseURL)
-	includeAccount := len(enabledKeys) > 1
 
-	accounts := make([]map[string]any, 0, len(enabledKeys))
-	balances := make([]QuotaBalance, 0, len(enabledKeys))
-	status := ""
-	successes := 0
-	var firstErr error
+	return CollectAPIKeyQuotas(ctx, ch, "deepseek", time.Now(), func(ctx context.Context, _ *ent.Channel, apiKey string) (QuotaData, error) {
+		return fetchDeepSeekAccountQuota(ctx, hc, balanceURL, apiKey)
+	})
+}
 
-	for _, key := range enabledKeys {
-		accountLabel := deepseekKeySuffix(key)
-
-		response, err := fetchDeepSeekBalance(ctx, hc, balanceURL, key)
-		if err != nil {
-			accounts = append(accounts, map[string]any{
-				"account": accountLabel,
-				"error":   err.Error(),
-			})
-			if firstErr == nil {
-				firstErr = err
-			}
-
-			continue
-		}
-
-		accountBalances := parseDeepSeekBalances(response.BalanceInfos)
-		accountStatus := determineDeepSeekStatus(response.IsAvailable, accountBalances)
-		if includeAccount {
-			for i := range accountBalances {
-				accountBalances[i].Account = accountLabel
-			}
-		}
-		balances = append(balances, accountBalances...)
-		status = betterDeepSeekStatus(status, accountStatus)
-		successes++
-
-		accountRaw := map[string]any{
-			"account": accountLabel,
-		}
-		if response.IsAvailable != nil {
-			accountRaw["is_available"] = *response.IsAvailable
-		}
-		if len(response.BalanceInfos) > 0 {
-			accountRaw["balance_infos"] = convertDeepSeekBalanceInfos(response.BalanceInfos)
-		}
-		accounts = append(accounts, accountRaw)
+// fetchDeepSeekAccountQuota reads and normalizes one account's balance. The
+// provider's is_available flag stays authoritative, and the raw balance fields
+// are kept for the account's own detail view.
+func fetchDeepSeekAccountQuota(
+	ctx context.Context,
+	hc *httpclient.HttpClient,
+	balanceURL string,
+	apiKey string,
+) (QuotaData, error) {
+	response, err := fetchDeepSeekBalance(ctx, hc, balanceURL, apiKey)
+	if err != nil {
+		return QuotaData{}, err
 	}
 
-	if successes == 0 {
-		return QuotaData{}, fmt.Errorf("DeepSeek balance check failed for all %d enabled keys: %w", len(enabledKeys), firstErr)
-	}
-	if status == "" {
-		status = "unknown"
-	}
+	balances := parseDeepSeekBalances(response.BalanceInfos)
+	status := determineDeepSeekStatus(response.IsAvailable, balances)
 
-	rawData := map[string]any{
-		"accounts": accounts,
+	rawData := map[string]any{}
+	if response.IsAvailable != nil {
+		rawData["is_available"] = *response.IsAvailable
 	}
-	// Keep the original single-account shape as well so existing tooling and
-	// cached-schema consumers can still read the provider payload.
-	if len(accounts) == 1 {
-		if v, ok := accounts[0]["is_available"]; ok {
-			rawData["is_available"] = v
-		}
-		if v, ok := accounts[0]["balance_infos"]; ok {
-			rawData["balance_infos"] = v
-		}
+	if len(response.BalanceInfos) > 0 {
+		rawData["balance_infos"] = convertDeepSeekBalanceInfos(response.BalanceInfos)
 	}
 
 	return NormalizeQuotaData(QuotaData{
@@ -167,7 +114,9 @@ func fetchDeepSeekBalance(
 		return DeepSeekBalanceResponse{}, fmt.Errorf("DeepSeek balance request failed: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return DeepSeekBalanceResponse{}, fmt.Errorf("DeepSeek balance API returned status %d: %s", resp.StatusCode, string(resp.Body))
+		// The status code is enough to classify the failure; the upstream body
+		// stays out of the error because the quota service logs it.
+		return DeepSeekBalanceResponse{}, fmt.Errorf("DeepSeek balance API returned status %d", resp.StatusCode)
 	}
 
 	var response DeepSeekBalanceResponse
@@ -210,17 +159,6 @@ func determineDeepSeekStatus(isAvailable *bool, balances []QuotaBalance) string 
 	}
 
 	return "unknown"
-}
-
-// betterDeepSeekStatus folds per-account states so a single funded account
-// keeps the channel routable even when another account is empty.
-func betterDeepSeekStatus(current string, candidate string) string {
-	rank := map[string]int{"available": 2, "exhausted": 1, "unknown": 0}
-	if current == "" || rank[candidate] > rank[current] {
-		return candidate
-	}
-
-	return current
 }
 
 // SupportsChannel reports whether the channel uses DeepSeek's balance API,
@@ -269,56 +207,6 @@ func buildDeepSeekBalanceURL(baseURL string) string {
 	parsed.User = nil
 
 	return parsed.String()
-}
-
-// deepseekChannelAPIKeys returns the channel's non-empty API keys in order,
-// without duplicates.
-func deepseekChannelAPIKeys(ch *ent.Channel) []string {
-	candidates := ch.Credentials.GetAllAPIKeys()
-	keys := make([]string, 0, len(candidates))
-	seen := make(map[string]struct{}, len(candidates))
-
-	for _, candidate := range candidates {
-		key := strings.TrimSpace(candidate)
-		if key == "" {
-			continue
-		}
-		if _, ok := seen[key]; ok {
-			continue
-		}
-
-		seen[key] = struct{}{}
-		keys = append(keys, key)
-	}
-
-	return keys
-}
-
-// deepseekDisabledKeySet returns the keys currently parked on the channel.
-func deepseekDisabledKeySet(ch *ent.Channel) map[string]bool {
-	disabled := make(map[string]bool, len(ch.DisabledAPIKeys))
-
-	for _, entry := range ch.DisabledAPIKeys {
-		key := strings.TrimSpace(entry.Key)
-		if key == "" || entry.IsExpired() {
-			continue
-		}
-
-		disabled[key] = true
-	}
-
-	return disabled
-}
-
-// deepseekKeySuffix is the trailing fragment the channel UI prints when it
-// masks a key, so multi-account balance rows stay distinguishable.
-func deepseekKeySuffix(key string) string {
-	runes := []rune(key)
-	if len(runes) <= 4 {
-		return key
-	}
-
-	return string(runes[len(runes)-4:])
 }
 
 // parseDeepSeekBalances converts provider balance entries into normalized

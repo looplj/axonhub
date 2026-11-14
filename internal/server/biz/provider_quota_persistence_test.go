@@ -153,7 +153,7 @@ func TestProviderQuotaService_SaveQuotaError_ResetsChangedProviderIdentity(t *te
 		checkInterval:   5 * time.Minute,
 	}
 	now := time.Now()
-	service.saveQuotaError(ctx, channelWithStatus, "synthetic", "", errors.New("synthetic quota unavailable"), 1, now)
+	service.saveQuotaError(ctx, channelWithStatus, "synthetic", "", errors.New("synthetic quota unavailable"), 1, now, nil)
 
 	persisted, err := client.ProviderQuotaStatus.Query().
 		Where(providerquotastatus.ChannelIDEQ(channelEntity.ID)).
@@ -235,7 +235,7 @@ func TestProviderQuotaService_SaveQuotaError_ProviderChangeDropsForcedCarryFromC
 	// fails with invalid credentials: the provider change forces the reset
 	// path, so the old provider's carried status must be dropped everywhere.
 	service.saveQuotaError(ctx, channelWithStatus, "synthetic", "",
-		fmt.Errorf("bad key: %w", provider_quota.ErrInvalidCredentials), 1, time.Now())
+		fmt.Errorf("bad key: %w", provider_quota.ErrInvalidCredentials), 1, time.Now(), nil)
 
 	persisted, err := client.ProviderQuotaStatus.Query().
 		Where(providerquotastatus.ChannelIDEQ(channelEntity.ID)).
@@ -484,7 +484,7 @@ func TestProviderQuotaService_SaveQuotaStatus_PersistsSyntheticCredits(t *testin
 	require.NoError(t, err)
 	require.NotNil(t, channelWithStatus.Edges.ProviderQuotaStatus)
 
-	service.saveQuotaError(ctx, channelWithStatus, "synthetic", "", errors.New("synthetic quota unavailable"), 1, now)
+	service.saveQuotaError(ctx, channelWithStatus, "synthetic", "", errors.New("synthetic quota unavailable"), 1, now, nil)
 
 	cachedValue, ok = service.quotaCache.Load(channelEntity.ID)
 	require.True(t, ok)

@@ -1,10 +1,13 @@
-// 职责: 展示渠道额度窗口、路由状态及可用的手动重置操作。
+// 职责: 展示渠道额度窗口、逐 API key 额度账户、路由状态及可用的手动重置操作。
 // 关联文件:
 //   frontend/src/features/system/data/quotas.ts
 //   frontend/src/components/claude-reset-credits.tsx
-//   frontend/src/locales/en.json
-//   frontend/src/locales/zh.json
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+//   frontend/src/locales/en/system.json
+//   frontend/src/locales/zh-CN/system.json
+// 注意事项:
+//   多密钥渠道折叠时按窗口展示渠道可用容量（取可服务 key 的最小用量），
+//   限流窗口不能相加；逐 key 明细只在展开后挂载。
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, RefreshCw, Zap, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning, ArrowUpDown } from 'lucide-react';
@@ -27,6 +30,7 @@ import type { ChannelQuotaRoutingMode } from '@/features/channels/data/schema';
 import { getChannelQuotaRoutingIndicator } from '@/features/channels/utils/quota-routing-status';
 import {
   useProviderQuotaStatuses,
+  ProviderQuotaBalance,
   ProviderQuotaChannel,
   ProviderQuotaLimit,
   ProviderNanoGPTQuotaData,
@@ -40,7 +44,7 @@ import {
   ProviderKimiCodeQuotaData,
   ProviderMinimaxQuotaData,
   ProviderZhipuQuotaData,
-  ZhipuAccountQuota,
+  ProviderAPIKeyQuota,
   ZhipuWindowRow,
   ProviderZenmuxQuotaData,
   ClineQuotaWindow,
@@ -152,7 +156,11 @@ function getBatteryIcon(level: BatteryLevel) {
   }
 }
 
-function getBatteryLevel(percentage: number, status: string): BatteryLevel {
+// getBatteryLevel maps a 0-100 used percentage onto the battery icon. It only
+// accepts a known percentage; a pool with no current observation is handled by
+// the caller, which must render the trigger's warning state instead of a level
+// that implies stored charge.
+export function getBatteryLevel(percentage: number, status: string): BatteryLevel {
   if (status === 'exhausted') return 'warning';
   const remaining = 100 - percentage;
   if (remaining < 5) return 'empty';
@@ -213,7 +221,26 @@ function getClineUsagePercent(window?: ClineQuotaWindow): number {
 
 // getChannelPercentage maps provider quota data onto the 0-100 used percentage
 // shown by the quota badge.
-function getChannelPercentage(channel: ProviderQuotaChannel): number {
+function getChannelPercentage(channel: ProviderQuotaChannel): number | undefined {
+  if (channel.quotaStatus.apiKeyQuotas.length > 0) {
+    if (channel.quotaStatus.status === 'exhausted') return 100;
+
+    const serviceable = channel.quotaStatus.apiKeyQuotas.filter(
+      (account) => !account.disabled && !account.errorCode && account.status !== 'unknown'
+    );
+    // No key has a current observation. Reporting 0% would draw a full battery,
+    // and the stored provider payload is the previous check's data, not this one.
+    if (serviceable.length === 0) return undefined;
+
+    const accountPercentages = serviceable.flatMap((account) => {
+      const windows = account.limits.filter(
+        (limit) => limit.type === 'token' && limit.window !== 'pay_as_you_go' && limit.window !== 'credits'
+      );
+      return windows.length > 0 ? [Math.max(...windows.map((limit) => limit.usageRatio * 100))] : [];
+    });
+    if (accountPercentages.length > 0) return Math.min(...accountPercentages);
+  }
+
   let percentage = 0;
   if (channel.type === 'claudecode') {
     const qd = channel.quotaStatus.quotaData;
@@ -333,7 +360,21 @@ function getApertisPercentage(qd: ProviderApertisQuotaData | undefined): number 
 // UsageTimeBar shows usage on a single progress bar with a small triangle below
 // it marking how far the reset window has elapsed (time progress). Hovering
 // reveals the detailed figures via tooltip, keeping the row compact.
-function UsageTimeBar({ usagePercent, durationPercent, tooltip }: { usagePercent: number; durationPercent?: number; tooltip: ReactNode }) {
+function UsageTimeBar({
+  usagePercent,
+  durationPercent,
+  tooltip,
+  ariaLabel,
+  ariaValueText,
+}: {
+  usagePercent: number;
+  durationPercent?: number;
+  tooltip: ReactNode;
+  // Providers that publish several meters per row give each one an explicit
+  // name and value, so the focus stop is not an unnamed generic element.
+  ariaLabel?: string;
+  ariaValueText?: string;
+}) {
   const clamped = Math.min(Math.max(usagePercent || 0, 0), 100);
   const markerLeft = durationPercent === undefined ? undefined : Math.min(Math.max(durationPercent, 0), 100);
   const u = clamped / 100;
@@ -364,7 +405,16 @@ function UsageTimeBar({ usagePercent, durationPercent, tooltip }: { usagePercent
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className='relative cursor-default pb-1.5' tabIndex={0}>
+        <div
+          className='relative cursor-default pb-1.5'
+          tabIndex={0}
+          role={ariaLabel ? 'progressbar' : undefined}
+          aria-label={ariaLabel}
+          aria-valuemin={ariaLabel ? 0 : undefined}
+          aria-valuemax={ariaLabel ? 100 : undefined}
+          aria-valuenow={ariaLabel ? Math.round(clamped) : undefined}
+          aria-valuetext={ariaValueText}
+        >
           <div className='bg-muted/60 h-1.5 w-full overflow-hidden rounded-full'>
             <div
               className='h-full transition-all duration-500'
@@ -404,6 +454,373 @@ const WINDOW_LABEL_KEYS: Record<string, string> = {
   cycle: 'quota.label.subscription',
   kwh: 'quota.label.kwh_remaining',
 };
+
+// quotaWindowLabel resolves a stored window identifier through the shared map.
+function quotaWindowLabel(t: (key: string) => string, window?: string) {
+  return window && WINDOW_LABEL_KEYS[window] ? t(WINDOW_LABEL_KEYS[window]) : window;
+}
+
+// quotaPercentClass colors a usage percentage by severity, theme-aware so both
+// the light and dark popover keep AA contrast at 11–12px.
+function quotaPercentClass(percent: number) {
+  if (percent >= 100) return 'text-red-600 dark:text-red-400';
+  if (percent >= 80) return 'text-amber-700 dark:text-amber-500';
+  return 'text-muted-foreground';
+}
+
+// quotaAccountState separates ownership (disabled, quota-parked) from the
+// provider's latest observation, because a parked key whose check failed must
+// say so instead of presenting the old observation as the current fact.
+function quotaAccountState(t: (key: string) => string, account: ProviderAPIKeyQuota): { label: string; className: string } {
+  const observation = account.errorCode
+    ? { label: t('quota.label.account_error'), className: 'text-red-600 dark:text-red-400' }
+    : account.status === 'unknown'
+      ? { label: t('quota.label.unavailable'), className: 'text-muted-foreground' }
+      : {
+          label: t(STATUS_LABELS[account.status]),
+          className:
+            account.status === 'exhausted'
+              ? 'text-red-600 dark:text-red-400'
+              : account.status === 'warning'
+                ? 'text-amber-700 dark:text-amber-500'
+                : 'text-muted-foreground',
+        };
+
+  if (!account.disabled) return observation;
+
+  const ownership = {
+    label: t(account.quotaDisabled ? 'quota.label.quota_disabled' : 'quota.label.account_disabled'),
+    className: 'text-amber-700 dark:text-amber-500',
+  };
+  // A quota-parked key that the provider now reports exhausted says one thing,
+  // not the same thing twice.
+  if (account.quotaDisabled && !account.errorCode && account.status === 'exhausted') return ownership;
+
+  // Composed line: an error keeps its urgency, otherwise the disabled fact is
+  // what the operator must not miss.
+  return {
+    label: `${observation.label} · ${ownership.label}`,
+    className: account.errorCode ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-500',
+  };
+}
+
+// quotaWindowCreditAmounts reads the provider's raw credit figures for one
+// window of one key. The shared details replaced the provider-specific tooltip,
+// so these amounts have to travel with the shared rows instead of being lost.
+function quotaWindowCreditAmounts(
+  account: ProviderAPIKeyQuota,
+  limit: ProviderQuotaLimit
+): { remaining: number; total: number } | undefined {
+  const rawWindow = limit.window === '5h' ? 'five_hour' : limit.window === 'weekly' ? 'weekly_limit' : undefined;
+  if (!rawWindow) return undefined;
+
+  const rows = (account.quotaData as ProviderZhipuQuotaData | undefined)?.rows;
+  const row = rows?.find((entry) => entry.window === rawWindow);
+  if (!row || row.remaining == null || row.usage == null) return undefined;
+
+  return { remaining: row.remaining, total: row.usage };
+}
+
+// APIKeyBalanceRows is the money-only rendering shared by balance accounts and
+// by detail rows whose key has no token windows.
+function APIKeyBalanceRows({ balances, compact }: { balances: ProviderQuotaBalance[]; compact?: boolean }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className='space-y-0.5'>
+      {balances.map((balance, index) => {
+        const currency = balance.currency?.trim().toUpperCase();
+        const total = formatQuotaBalance(balance.total);
+        const granted = formatQuotaBalance(balance.granted);
+        const toppedUp = formatQuotaBalance(balance.topped_up);
+        const extras = compact
+          ? []
+          : [
+              granted !== undefined ? `${t('quota.label.granted_balance')} ${granted}` : '',
+              toppedUp !== undefined ? `${t('quota.label.topped_up_balance')} ${toppedUp}` : '',
+            ].filter(Boolean);
+
+        return (
+          <div key={`${currency}-${index}`} className='flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-[11px]'>
+            <span className='text-foreground font-medium whitespace-nowrap tabular-nums'>
+              {total !== undefined ? (currency ? `${currency} ${total}` : total) : t('quota.label.unavailable')}
+            </span>
+            {extras.length > 0 && (
+              <span className='text-muted-foreground flex flex-wrap gap-x-2 tabular-nums'>
+                {extras.map((extra) => (
+                  <span key={extra} className='whitespace-nowrap'>
+                    {extra}
+                  </span>
+                ))}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// APIKeyQuotaDetails is the expanded per-key breakdown: every visible key with
+// all of its window bars at once, so keys can be compared row by row.
+function APIKeyQuotaDetails({
+  accounts,
+  formatTimeToReset,
+}: {
+  accounts: ProviderAPIKeyQuota[];
+  formatTimeToReset: (resetAt?: string) => string;
+}) {
+  const { t } = useTranslation();
+  const [showDisabledAccounts, setShowDisabledAccounts] = useState(false);
+  const hiddenCount = accounts.filter((account) => account.disabled && !account.quotaDisabled).length;
+  const visibleAccounts = accounts.filter((account) => showDisabledAccounts || !(account.disabled && !account.quotaDisabled));
+
+  return (
+    <div className='space-y-2.5'>
+      {visibleAccounts.map((account, accountIndex) => {
+        const state = quotaAccountState(t, account);
+        const limits = account.limits.filter((limit) => limit.type === 'token');
+        const label = `${t('quota.label.key_index', { index: account.index })}${account.suffix ? ` · ****${account.suffix}` : ''}`;
+
+        return (
+          <div
+            key={account.ref ?? `account-${accountIndex}`}
+            className={accountIndex > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-2.5' : 'space-y-1.5'}
+          >
+            <div className='flex items-baseline justify-between gap-3'>
+              <span className='text-foreground truncate text-xs font-medium' title={label}>
+                {label}
+              </span>
+              <span className={`shrink-0 text-[11px] ${state.className}`}>{state.label}</span>
+            </div>
+
+            {limits.length > 0 ? (
+              <div className='grid grid-cols-1 gap-x-6 gap-y-2 @lg:grid-cols-3'>
+                {limits.map((limit, index) => {
+                  const usedPercent = limit.usageRatio * 100;
+                  const known = limit.status !== 'unknown';
+                  const creditAmounts = known ? quotaWindowCreditAmounts(account, limit) : undefined;
+
+                  return (
+                    <div key={`${limit.window}-${index}`} className='min-w-0 space-y-1'>
+                      <div className='flex items-baseline justify-between gap-2 text-xs'>
+                        <span className='text-muted-foreground truncate font-medium'>{quotaWindowLabel(t, limit.window)}</span>
+                        {known && (
+                          <span className={`shrink-0 font-normal tabular-nums ${quotaPercentClass(usedPercent)}`}>
+                            {Math.round(usedPercent)}%
+                          </span>
+                        )}
+                      </div>
+                      {known ? (
+                        <>
+                          <UsageTimeBar
+                            usagePercent={usedPercent}
+                            durationPercent={getLimitDurationPercent(limit)}
+                            ariaLabel={t('quota.label.key_usage', { window: quotaWindowLabel(t, limit.window), key: label })}
+                            ariaValueText={`${Math.round(usedPercent)}%`}
+                            tooltip={
+                              <div className='space-y-0.5'>
+                                <div className='font-medium'>{quotaWindowLabel(t, limit.window)}</div>
+                                <div>{t('quota.label.percent_used', { percent: Math.round(usedPercent) })}</div>
+                                {limit.nextResetAt && <div>{formatTimeToReset(limit.nextResetAt)}</div>}
+                              </div>
+                            }
+                          />
+                          {creditAmounts && (
+                            <div className='text-muted-foreground text-[11px] tabular-nums'>
+                              {t('quota.label.credits_amount', {
+                                remaining: creditAmounts.remaining.toLocaleString(),
+                                total: creditAmounts.total.toLocaleString(),
+                              })}
+                            </div>
+                          )}
+                          {limit.nextResetAt && (
+                            <div className='text-muted-foreground text-[11px] tabular-nums'>{formatTimeToReset(limit.nextResetAt)}</div>
+                          )}
+                        </>
+                      ) : (
+                        <div className='text-muted-foreground text-[11px]'>{t('quota.label.unavailable')}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : account.balances.length > 0 ? (
+              <APIKeyBalanceRows balances={account.balances} compact />
+            ) : null}
+          </div>
+        );
+      })}
+
+      {hiddenCount > 0 && (
+        <button
+          type='button'
+          className='text-primary hover:text-primary/80 focus-visible:ring-ring/50 -my-1 rounded py-1 text-[11px] font-medium hover:underline focus-visible:ring-2 focus-visible:outline-none'
+          onClick={() => setShowDisabledAccounts((shown) => !shown)}
+        >
+          {showDisabledAccounts
+            ? t('quota.label.hide_disabled_accounts', { count: hiddenCount })
+            : t('quota.label.show_disabled_accounts', { count: hiddenCount })}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// APIKeyQuotaList renders one channel whose API keys are independent quota
+// accounts. Collapsed, it answers the routing question: one meter per window for
+// the channel's effective capacity (the key that can still serve), plus how many
+// keys are usable and how many are spent. The per-key breakdown is one click
+// away, because it is several windows' worth of detail most checks do not need.
+function APIKeyQuotaList({
+  accounts,
+  formatTimeToReset,
+}: {
+  accounts: ProviderAPIKeyQuota[];
+  formatTimeToReset: (resetAt?: string) => string;
+}) {
+  const { t } = useTranslation();
+  const [showKeys, setShowKeys] = useState(false);
+  const [showDisabledAccounts, setShowDisabledAccounts] = useState(false);
+  const detailId = `${useId()}-per-key-detail`;
+
+  const usableCount = accounts.filter(
+    (account) => !account.disabled && !account.errorCode && (account.status === 'available' || account.status === 'warning')
+  ).length;
+  const exhaustedCount = accounts.filter((account) => account.status === 'exhausted').length;
+  const hiddenBalanceCount = accounts.filter((account) => account.disabled && !account.quotaDisabled).length;
+  const visibleBalanceAccounts = accounts.filter((account) => showDisabledAccounts || !(account.disabled && !account.quotaDisabled));
+  const hasKeyWindows = accounts.some((account) => account.limits.some((limit) => limit.type === 'token'));
+
+  // Channel capacity per window: rate windows are not pooled, so the channel can
+  // use the least-used key that still has quota. Unreadable and unconfigured keys
+  // contribute nothing rather than a fabricated zero.
+  const capacity = (() => {
+    const order: string[] = [];
+    const byWindow = new Map<string, { account: ProviderAPIKeyQuota; limit: ProviderQuotaLimit }[]>();
+
+    for (const account of accounts) {
+      // A key with an exhausted window cannot serve, even when another of its
+      // windows still has room; only a serviceable key sets channel capacity.
+      if (account.disabled || account.errorCode || account.status === 'exhausted') continue;
+      for (const limit of account.limits) {
+        if (limit.type !== 'token' || limit.status === 'unknown' || !limit.window) continue;
+        if (!byWindow.has(limit.window)) {
+          byWindow.set(limit.window, []);
+          order.push(limit.window);
+        }
+        byWindow.get(limit.window)!.push({ account, limit });
+      }
+    }
+
+    return order.map((window) => {
+      const candidates = byWindow.get(window)!;
+      const best = candidates.reduce((chosen, candidate) => (candidate.limit.usageRatio < chosen.limit.usageRatio ? candidate : chosen));
+
+      return { window, limit: best.limit, keysWithWindow: candidates.length };
+    });
+  })();
+
+  const balanceDisabledToggle = hiddenBalanceCount > 0 && (
+    <button
+      type='button'
+      className='text-primary hover:text-primary/80 focus-visible:ring-ring/50 -my-1 rounded py-1 text-[11px] font-medium hover:underline focus-visible:ring-2 focus-visible:outline-none'
+      onClick={() => setShowDisabledAccounts((shown) => !shown)}
+    >
+      {showDisabledAccounts
+        ? t('quota.label.hide_disabled_accounts', { count: hiddenBalanceCount })
+        : t('quota.label.show_disabled_accounts', { count: hiddenBalanceCount })}
+    </button>
+  );
+
+  return (
+    <div className='@container mt-3 space-y-2'>
+      <div className='flex flex-wrap items-baseline justify-between gap-x-2 text-[11px]'>
+        <span className='text-muted-foreground tabular-nums'>
+          {t('quota.label.accounts_summary', { usable: usableCount, total: accounts.length })}
+        </span>
+        {exhaustedCount > 0 && (
+          <span className='text-red-600 tabular-nums dark:text-red-400'>{t('quota.label.exhausted_count', { count: exhaustedCount })}</span>
+        )}
+      </div>
+
+      {capacity.length > 0 && (
+        <div className='space-y-1.5'>
+          {capacity.map(({ window, limit, keysWithWindow }) => {
+            const percent = limit.usageRatio * 100;
+            const detail =
+              keysWithWindow < accounts.length
+                ? t('quota.label.channel_capacity', { window: quotaWindowLabel(t, window), count: keysWithWindow })
+                : undefined;
+
+            return (
+              <div key={`capacity-${window}`} className='space-y-1'>
+                <div className='flex items-baseline justify-between gap-2 text-xs'>
+                  <span className='text-muted-foreground truncate font-medium'>{quotaWindowLabel(t, window)}</span>
+                  <span className={`shrink-0 font-normal tabular-nums ${quotaPercentClass(percent)}`}>{Math.round(percent)}%</span>
+                </div>
+                <UsageTimeBar
+                  usagePercent={percent}
+                  durationPercent={getLimitDurationPercent(limit)}
+                  ariaLabel={t('quota.label.channel_capacity', { window: quotaWindowLabel(t, window), count: keysWithWindow })}
+                  ariaValueText={`${Math.round(percent)}%`}
+                  tooltip={
+                    <div className='space-y-0.5'>
+                      <div className='font-medium'>{quotaWindowLabel(t, window)}</div>
+                      <div>{t('quota.label.percent_used', { percent: Math.round(percent) })}</div>
+                      {detail && <div>{detail}</div>}
+                      {limit.nextResetAt && <div>{formatTimeToReset(limit.nextResetAt)}</div>}
+                    </div>
+                  }
+                />
+                {limit.nextResetAt && (percent >= 80 || limit.status === 'exhausted') && (
+                  <div className='text-muted-foreground text-[11px] tabular-nums'>{formatTimeToReset(limit.nextResetAt)}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!hasKeyWindows ? (
+        <div className='space-y-2'>
+          {visibleBalanceAccounts.map((account, accountIndex) => (
+            <div key={account.ref ?? `account-${accountIndex}`} className='space-y-0.5'>
+              <div className='flex items-baseline justify-between gap-3'>
+                <span className='text-foreground truncate text-xs font-medium'>
+                  {`${t('quota.label.key_index', { index: account.index })}${account.suffix ? ` · ****${account.suffix}` : ''}`}
+                </span>
+                {(() => {
+                  const state = quotaAccountState(t, account);
+                  return <span className={`shrink-0 text-[11px] ${state.className}`}>{state.label}</span>;
+                })()}
+              </div>
+              <APIKeyBalanceRows balances={account.balances} />
+            </div>
+          ))}
+          {balanceDisabledToggle}
+        </div>
+      ) : (
+        <>
+          <button
+            type='button'
+            aria-expanded={showKeys}
+            aria-controls={detailId}
+            onClick={() => setShowKeys((shown) => !shown)}
+            className='text-primary hover:text-primary/80 focus-visible:ring-ring/50 -my-1 rounded py-1 text-[11px] font-medium hover:underline focus-visible:ring-2 focus-visible:outline-none'
+          >
+            {showKeys ? t('quota.label.hide_key_details') : t('quota.label.show_key_details', { count: accounts.length })}
+          </button>
+          {/* The panel stays mounted so aria-controls always resolves; its rows
+              mount only while open. */}
+          <div id={detailId} hidden={!showKeys} className='space-y-2.5'>
+            {showKeys && <APIKeyQuotaDetails accounts={accounts} formatTimeToReset={formatTimeToReset} />}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // periodStart only exists because the backend priced the window from usage
 // logs: only limits with a pinned period start take part in the cost
@@ -509,12 +926,20 @@ function isResetCreditUnexpired(reset: { expiresAt?: string }, now = Date.now())
 }
 
 // QuotaRow renders one channel's quota details in the provider quota popover.
-function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; effectiveMode: QuotaRoutingMode | null }) {
+function QuotaRow({
+  channel,
+  effectiveMode,
+  fullWidth,
+}: {
+  channel: ProviderQuotaChannel;
+  effectiveMode: QuotaRoutingMode | null;
+  // The wide popover lays channels out two-up; a channel that publishes one
+  // meter per API key needs the whole width to keep its windows in one row.
+  fullWidth?: boolean;
+}) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [isResetting, setIsResetting] = useState(false);
-  // Channels can carry dozens of keys; the disabled ones stay collapsed.
-  const [showDisabledAccounts, setShowDisabledAccounts] = useState(false);
   const quota = channel.quotaStatus;
 
   const status = quota.status;
@@ -530,8 +955,11 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
   if (routingIndicator === 'exhausted') modeBadge = { key: 'quota.status.remove_on_exhausted', color: 'red' };
   else if (routingIndicator === 'backpressure') modeBadge = { key: 'quota.status.backpressure', color: 'amber' };
 
+  // A pool with no current observation renders the trigger's unknown
+  // treatment: the warning icon without a battery level that implies charge.
   const percentage = getChannelPercentage(channel);
-  const batteryLevel = getBatteryLevel(percentage, status);
+  const batteryUnknown = percentage === undefined;
+  const batteryLevel = batteryUnknown ? 'warning' : getBatteryLevel(percentage, status);
   const BatteryIcon = getBatteryIcon(batteryLevel);
 
   const handleResetCodexQuota = async () => {
@@ -668,11 +1096,11 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
     return `${minutes}${t('quota.label.m')}`;
   };
   return (
-    <div className='min-w-0 space-y-3 border-b py-3 first:pt-1 last:border-0 last:pb-1'>
+    <div className={`min-w-0 space-y-3 border-b py-3 first:pt-1 last:border-0 last:pb-1 ${fullWidth ? 'col-span-full' : ''}`}>
       <div className='flex items-center justify-between'>
         <div className='flex min-w-0 flex-1 items-center gap-2'>
           <BatteryIcon
-            className={`h-4 w-4 shrink-0 ${status === 'exhausted' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : 'text-muted-foreground'}`}
+            className={`h-4 w-4 shrink-0 ${status === 'exhausted' || batteryUnknown ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : 'text-muted-foreground'}`}
           />
           <span className='text-foreground truncate font-medium' title={channel.name}>
             {channel.name}
@@ -1373,7 +1801,10 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
         </div>
       )}
 
-      {(channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') && (
+      {/* One key has nothing to compare: keep that channel's native window rows. */}
+      {quota.apiKeyQuotas.length > 1 && <APIKeyQuotaList accounts={quota.apiKeyQuotas} formatTimeToReset={formatTimeToReset} />}
+
+      {quota.apiKeyQuotas.length < 2 && (channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') && (
         <div className='mt-3 space-y-3'>
           {(() => {
             // OpenCode Go renders from the normalized limits: its checker maps
@@ -1838,160 +2269,66 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
         </div>
       )}
 
-      {(channel.type === 'zhipu' || channel.type === 'zhipu_anthropic' || channel.type === 'zai' || channel.type === 'zai_anthropic') && (
-        <div className='mt-3 space-y-3'>
-          {(() => {
-            const qd = channel.quotaStatus.quotaData as ProviderZhipuQuotaData | undefined;
-            if (!qd) return null;
+      {quota.apiKeyQuotas.length < 2 &&
+        (channel.type === 'zhipu' || channel.type === 'zhipu_anthropic' || channel.type === 'zai' || channel.type === 'zai_anthropic') && (
+          <div className='mt-3 space-y-3'>
+            {(() => {
+              const qd = channel.quotaStatus.quotaData as ProviderZhipuQuotaData | undefined;
+              if (!qd) return null;
 
-            const windowLabels: Record<string, string> = {
-              five_hour: t('quota.window.5h'),
-              weekly_limit: t('quota.window.weekly'),
-            };
-
-            // One bar per window; reused for the aggregated fallback and for
-            // every account of a multi-key channel.
-            const renderWindowRows = (rows: ZhipuWindowRow[]) =>
-              rows.map((row, index) => {
-                const percentage = Math.min(100, row.usedPercent);
-                return (
-                  <div
-                    key={`${row.window}-${index}`}
-                    className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}
-                  >
-                    <div className='flex items-center justify-between text-xs'>
-                      <span className='text-muted-foreground font-medium'>{windowLabels[row.window] ?? row.window}</span>
-                      <span className='text-foreground font-medium'>
-                        {t('quota.label.percent_used', { percent: Math.round(percentage) })}
-                      </span>
-                    </div>
-                    <UsageTimeBar
-                      usagePercent={percentage}
-                      durationPercent={
-                        row.resetAt
-                          ? calcDurationPercent(
-                              row.window === 'five_hour' ? 5 * 3600 : 7 * 24 * 3600,
-                              (new Date(row.resetAt).getTime() - Date.now()) / 1000
-                            )
-                          : undefined
-                      }
-                      tooltip={
-                        <div className='space-y-0.5'>
-                          <div className='font-medium'>{windowLabels[row.window] ?? row.window}</div>
-                          <div>{t('quota.label.percent_used', { percent: Math.round(percentage) })}</div>
-                          {row.remaining != null && row.usage != null && (
-                            <div>
-                              {t('quota.label.credits_amount', {
-                                remaining: row.remaining.toLocaleString(),
-                                total: row.usage.toLocaleString(),
-                              })}
-                            </div>
-                          )}
-                          {row.resetAt && <div>{formatTimeToReset(row.resetAt)}</div>}
-                        </div>
-                      }
-                    />
-                  </div>
-                );
-              });
-
-            const accounts = qd.accounts ?? [];
-            if (accounts.length > 1) {
-              // A channel can carry dozens of keys, so the detail stays a
-              // compact list: the aggregate windows on top, then one line per
-              // account with its two figures. Disabled and failing keys are
-              // collapsed behind a toggle.
-              const usableAccounts = accounts.filter((account) => !account.disabled && !account.error);
-              const readyAccountCount = usableAccounts.filter((account) => account.ready === true).length;
-              const unavailableAccounts = accounts.filter((account) => account.disabled || account.error);
-              const visibleAccounts = showDisabledAccounts ? [...usableAccounts, ...unavailableAccounts] : usableAccounts;
-              const hiddenCount = unavailableAccounts.length;
-
-              const windowPercent = (account: ZhipuAccountQuota, window: string) =>
-                account.rows?.find((row) => row.window === window)?.usedPercent;
-              const percentClass = (percent?: number) => {
-                if (percent === undefined) return 'text-muted-foreground';
-                if (percent >= 100) return 'text-red-500';
-                if (percent >= 80) return 'text-amber-500';
-                return 'text-green-600 dark:text-green-500';
+              const windowLabels: Record<string, string> = {
+                five_hour: t('quota.window.5h'),
+                weekly_limit: t('quota.window.weekly'),
               };
-              const formatPercent = (percent?: number) => (percent === undefined ? '-' : `${Math.round(Math.min(100, percent))}%`);
 
-              return (
-                <>
-                  <div className='flex items-center justify-between text-xs'>
-                    <span className='text-muted-foreground font-medium'>
-                      {t('quota.label.accounts_summary', { usable: readyAccountCount, total: accounts.length })}
-                    </span>
-                    <span className='text-muted-foreground text-[11px]'>{t('quota.label.worst_window')}</span>
-                  </div>
-                  {renderWindowRows(qd.rows ?? [])}
-                  <div className='max-h-44 space-y-0.5 overflow-y-auto pr-1'>
-                    {visibleAccounts.map((account, accountIndex) => {
-                      const fiveHour = windowPercent(account, 'five_hour');
-                      const weekly = windowPercent(account, 'weekly_limit');
-                      const failed = Boolean(account.error);
-                      return (
-                        <Tooltip key={account.ref ?? `account-${accountIndex}`}>
-                          <TooltipTrigger asChild>
-                            <div
-                              tabIndex={0}
-                              className='hover:bg-muted/50 focus-visible:ring-ring/50 flex cursor-default items-center justify-between gap-2 rounded px-1 py-0.5 text-[11px] focus-visible:ring-2 focus-visible:outline-none'
-                            >
-                              <span className={`font-mono ${account.disabled || failed ? 'text-muted-foreground' : 'text-foreground'}`}>
-                                {`****${account.suffix ?? ''}`}
-                              </span>
-                              {failed ? (
-                                <span className='text-red-500'>{t('quota.label.account_error')}</span>
-                              ) : (
-                                <span className='flex items-center gap-2 tabular-nums'>
-                                  <span
-                                    className={percentClass(fiveHour)}
-                                  >{`${t('quota.label.short_5h')} ${formatPercent(fiveHour)}`}</span>
-                                  <span
-                                    className={percentClass(weekly)}
-                                  >{`${t('quota.label.short_weekly')} ${formatPercent(weekly)}`}</span>
-                                  {account.disabled && <span className='text-amber-500'>{t('quota.label.account_disabled')}</span>}
-                                </span>
-                              )}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent className='space-y-0.5'>
-                            <div className='font-medium'>{`****${account.suffix ?? ''}`}</div>
-                            {(account.rows ?? []).map((row, rowIndex) => (
-                              <div key={`${row.window}-${rowIndex}`}>
-                                {`${windowLabels[row.window] ?? row.window}: ${t('quota.label.percent_used', { percent: Math.round(Math.min(100, row.usedPercent)) })}`}
-                                {row.remaining != null && row.usage != null
-                                  ? ` · ${t('quota.label.credits_amount', { remaining: row.remaining.toLocaleString(), total: row.usage.toLocaleString() })}`
-                                  : ''}
-                                {row.resetAt ? ` · ${formatTimeToReset(row.resetAt)}` : ''}
-                              </div>
-                            ))}
-                            {account.error && <div className='text-red-500'>{account.error}</div>}
-                            {account.disabled && <div className='text-amber-500'>{t('quota.label.account_disabled')}</div>}
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    })}
-                  </div>
-                  {hiddenCount > 0 && (
-                    <button
-                      type='button'
-                      className='text-primary hover:text-primary/80 self-start text-[11px] font-medium hover:underline'
-                      onClick={() => setShowDisabledAccounts((shown) => !shown)}
+              const renderWindowRows = (rows: ZhipuWindowRow[]) =>
+                rows.map((row, index) => {
+                  const percentage = Math.min(100, row.usedPercent);
+                  return (
+                    <div
+                      key={`${row.window}-${index}`}
+                      className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}
                     >
-                      {showDisabledAccounts
-                        ? t('quota.label.hide_disabled_accounts', { count: hiddenCount })
-                        : t('quota.label.show_disabled_accounts', { count: hiddenCount })}
-                    </button>
-                  )}
-                </>
-              );
-            }
-            return <>{renderWindowRows(qd.rows ?? [])}</>;
-          })()}
-        </div>
-      )}
+                      <div className='flex items-center justify-between text-xs'>
+                        <span className='text-muted-foreground font-medium'>{windowLabels[row.window] ?? row.window}</span>
+                        <span className='text-foreground font-medium'>
+                          {t('quota.label.percent_used', { percent: Math.round(percentage) })}
+                        </span>
+                      </div>
+                      <UsageTimeBar
+                        usagePercent={percentage}
+                        durationPercent={
+                          row.resetAt
+                            ? calcDurationPercent(
+                                row.window === 'five_hour' ? 5 * 3600 : 7 * 24 * 3600,
+                                (new Date(row.resetAt).getTime() - Date.now()) / 1000
+                              )
+                            : undefined
+                        }
+                        tooltip={
+                          <div className='space-y-0.5'>
+                            <div className='font-medium'>{windowLabels[row.window] ?? row.window}</div>
+                            <div>{t('quota.label.percent_used', { percent: Math.round(percentage) })}</div>
+                            {row.remaining != null && row.usage != null && (
+                              <div>
+                                {t('quota.label.credits_amount', {
+                                  remaining: row.remaining.toLocaleString(),
+                                  total: row.usage.toLocaleString(),
+                                })}
+                              </div>
+                            )}
+                            {row.resetAt && <div>{formatTimeToReset(row.resetAt)}</div>}
+                          </div>
+                        }
+                      />
+                    </div>
+                  );
+                });
+
+              return <>{renderWindowRows(qd.rows ?? [])}</>;
+            })()}
+          </div>
+        )}
 
       {isOpenaiType(channel.type) && channel.providerType === 'synthetic' && (
         <div className='mt-3 space-y-3'>
@@ -2563,53 +2900,54 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
         </div>
       )}
 
-      {(channel.type === 'deepseek' ||
-        channel.type === 'deepseek_anthropic' ||
-        (isOpenaiType(channel.type) && channel.providerType === 'deepseek')) && (
-        <div className='mt-3 space-y-3'>
-          {(() => {
-            const balances = parseQuotaBalances(channel.quotaStatus.quotaData);
-            if (balances.length === 0) return null;
+      {quota.apiKeyQuotas.length < 2 &&
+        (channel.type === 'deepseek' ||
+          channel.type === 'deepseek_anthropic' ||
+          (isOpenaiType(channel.type) && channel.providerType === 'deepseek')) && (
+          <div className='mt-3 space-y-3'>
+            {(() => {
+              const balances = parseQuotaBalances(channel.quotaStatus.quotaData);
+              if (balances.length === 0) return null;
 
-            return balances.map((balance, index) => {
-              const currency = balance.currency?.trim().toUpperCase();
-              const total = formatQuotaBalance(balance.total);
-              const granted = formatQuotaBalance(balance.granted);
-              const toppedUp = formatQuotaBalance(balance.topped_up);
+              return balances.map((balance, index) => {
+                const currency = balance.currency?.trim().toUpperCase();
+                const total = formatQuotaBalance(balance.total);
+                const granted = formatQuotaBalance(balance.granted);
+                const toppedUp = formatQuotaBalance(balance.topped_up);
 
-              return (
-                <div
-                  key={`${balance.account ?? ''}-${currency ?? 'balance'}-${index}`}
-                  className={index > 0 ? 'border-border/60 space-y-1 border-t border-dashed pt-3' : 'space-y-1'}
-                >
-                  <div className='flex items-center justify-between text-xs'>
-                    <span className='text-muted-foreground font-medium'>
-                      {t('quota.label.account_balance')}
-                      {currency ? ` (${currency})` : ''}
-                      {balance.account ? ` · ${balance.account}` : ''}
-                    </span>
-                    <span className='text-foreground font-medium'>
-                      {total !== undefined ? (currency ? `${currency} ${total}` : total) : t('quota.label.unavailable')}
-                    </span>
+                return (
+                  <div
+                    key={`${balance.account ?? ''}-${currency ?? 'balance'}-${index}`}
+                    className={index > 0 ? 'border-border/60 space-y-1 border-t border-dashed pt-3' : 'space-y-1'}
+                  >
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>
+                        {t('quota.label.account_balance')}
+                        {currency ? ` (${currency})` : ''}
+                        {balance.account ? ` · ${balance.account}` : ''}
+                      </span>
+                      <span className='text-foreground font-medium'>
+                        {total !== undefined ? (currency ? `${currency} ${total}` : total) : t('quota.label.unavailable')}
+                      </span>
+                    </div>
+                    {granted !== undefined && (
+                      <div className='flex items-center justify-between text-[11px]'>
+                        <span className='text-muted-foreground font-medium'>{t('quota.label.granted_balance')}</span>
+                        <span className='text-foreground font-medium'>{granted}</span>
+                      </div>
+                    )}
+                    {toppedUp !== undefined && (
+                      <div className='flex items-center justify-between text-[11px]'>
+                        <span className='text-muted-foreground font-medium'>{t('quota.label.topped_up_balance')}</span>
+                        <span className='text-foreground font-medium'>{toppedUp}</span>
+                      </div>
+                    )}
                   </div>
-                  {granted !== undefined && (
-                    <div className='flex items-center justify-between text-[11px]'>
-                      <span className='text-muted-foreground font-medium'>{t('quota.label.granted_balance')}</span>
-                      <span className='text-foreground font-medium'>{granted}</span>
-                    </div>
-                  )}
-                  {toppedUp !== undefined && (
-                    <div className='flex items-center justify-between text-[11px]'>
-                      <span className='text-muted-foreground font-medium'>{t('quota.label.topped_up_balance')}</span>
-                      <span className='text-foreground font-medium'>{toppedUp}</span>
-                    </div>
-                  )}
-                </div>
-              );
-            });
-          })()}
-        </div>
-      )}
+                );
+              });
+            })()}
+          </div>
+        )}
 
       {isZenmuxType(channel.type) && (
         <div className='mt-3 space-y-3'>
@@ -2717,7 +3055,8 @@ function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: Provide
     return <BatteryWarning className='h-5 w-5 text-red-500 transition-colors' />;
   }
 
-  const highestUsed = Math.max(...channels.map(getChannelPercentage));
+  const percentages = channels.map(getChannelPercentage).filter((percentage): percentage is number => percentage !== undefined);
+  const highestUsed = percentages.length > 0 ? Math.max(...percentages) : 0;
 
   const hasExhausted = channels.some((c) => c.quotaStatus.status === 'exhausted');
   const hasWarning = channels.some((c) => c.quotaStatus.status === 'warning');
@@ -2725,6 +3064,7 @@ function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: Provide
   let level: BatteryLevel = 'full';
   if (hasExhausted) level = 'warning';
   else if (hasWarning) level = 'low';
+  else if (channels.length > 0 && percentages.length === 0) level = 'warning';
   else level = getBatteryLevel(highestUsed, 'available');
 
   const BatteryIcon = getBatteryIcon(level);
@@ -3062,7 +3402,12 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
             // elapsed-time markers from Date.now(), and React Query's
             // structural sharing keeps channel objects identical across
             // unchanged polls — memoizing here froze those clocks.
-            <QuotaRow key={item.channel.id} channel={item.channel} effectiveMode={effectiveModeByChannel.get(item.channel.id) ?? null} />
+            <QuotaRow
+              key={item.channel.id}
+              channel={item.channel}
+              effectiveMode={effectiveModeByChannel.get(item.channel.id) ?? null}
+              fullWidth={item.channel.quotaStatus.apiKeyQuotas.length > 1}
+            />
           )
         )}
       </div>

@@ -13,6 +13,7 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
@@ -383,6 +384,11 @@ type ProviderQuotaService struct {
 
 	// Registry
 	checkers map[string]provider_quota.QuotaChecker
+
+	// quotaKeyReconciler syncs quota-owned key disables for the providers whose
+	// API keys are independent quota accounts. Optional for direct construction
+	// in tests; the fx wiring installs the channel service.
+	quotaKeyReconciler ChannelQuotaKeyReconciler
 
 	mu         sync.Mutex
 	quotaCache sync.Map
@@ -803,9 +809,6 @@ func (svc *ProviderQuotaService) runQuotaCheckForce(ctx context.Context) {
 func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) {
 	ctx = ent.NewContext(ctx, svc.db)
 	settings := svc.SystemService.ProviderQuotaCollectionSettingsOrDefault(ctx)
-	if !settings.Enabled {
-		return
-	}
 
 	now := time.Now()
 	log.Debug(ctx, "Checking for channels to poll",
@@ -814,20 +817,30 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 		log.Bool("force", force),
 	)
 
-	q := svc.db.Channel.Query().
-		Where(
-			channel.StatusEQ(channel.StatusEnabled),
-			channel.TypeIn(providerQuotaChannelTypes...),
-		)
-
-	channelsToCheck, err := q.
+	// Quota-owned key disables are aligned before the collection early return:
+	// a channel whose collection, routing mode or provider identity opts out has
+	// to drop only the disables this service owns, without a provider request.
+	// The supported-type filter is deliberately not applied here, because a
+	// channel may have changed to an unsupported provider since it was polled.
+	channels, err := svc.db.Channel.Query().
+		Where(channel.StatusIn(channel.StatusEnabled, channel.StatusDisabled)).
 		WithProviderQuotaStatus().
 		All(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to query channels for quota check", log.Cause(err))
 		return
 	}
-	channelsToCheck = lo.Filter(channelsToCheck, func(ch *ent.Channel, _ int) bool {
+
+	svc.releaseQuotaKeyDisables(ctx, channels)
+
+	if !settings.Enabled {
+		return
+	}
+
+	channelsToCheck := lo.Filter(channels, func(ch *ent.Channel, _ int) bool {
+		if !isQuotaPollableChannel(ch) {
+			return false
+		}
 		providerType := svc.getProviderType(ch)
 		return providerType != "" && settings.Providers[providerType]
 	})
@@ -864,6 +877,126 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 	if err := eg.Wait(); err != nil {
 		log.Info(ctx, "quota check group interrupted", log.Cause(err))
 	}
+}
+
+// isQuotaPollableChannel reports whether a channel should be polled: every
+// enabled channel, plus a channel whose last credential this package disabled on
+// quota grounds (which keeps it displayable and pollable so it can recover). A
+// channel disabled by an HTTP error rule alone is displayable through the
+// frontend's all-keys query but is not newly polled, and a manually disabled
+// channel is never polled.
+func isQuotaPollableChannel(ch *ent.Channel) bool {
+	if ch.Status == channel.StatusEnabled {
+		return true
+	}
+
+	return ch.Status == channel.StatusDisabled &&
+		ch.AutoDisabledAt != nil &&
+		ch.ErrorMessage != nil &&
+		strings.HasPrefix(*ch.ErrorMessage, allKeysDisabledErrorPrefix) &&
+		hasActiveQuotaOwnedRecord(ch.DisabledAPIKeys)
+}
+
+// failureAccountsFor returns the failed keys' rows only when the stored channel
+// still has the identity those rows were produced for. Credentials edited while
+// the request was in flight would otherwise park the previous keys' rows on the
+// channel until the next poll. The error and its backoff are recorded either
+// way: they describe the poll, not the credentials.
+func (svc *ProviderQuotaService) failureAccountsFor(
+	ctx context.Context,
+	member *ent.Channel,
+	accounts []provider_quota.APIKeyQuota,
+) []provider_quota.APIKeyQuota {
+	current, err := svc.db.Channel.Get(ctx, member.ID)
+	if err != nil {
+		// The identity is unknown, not changed: leave whatever is stored.
+		return nil
+	}
+	if !quotaKeyIdentityUnchanged(member, current) {
+		// An empty (non-nil) slice tells the caller to drop the previous keys'
+		// rows instead of leaving them visible for the new identity.
+		return []provider_quota.APIKeyQuota{}
+	}
+	if len(accounts) == 0 {
+		// The poll produced no per-key rows at all, for example when the
+		// credentials now hold only blank keys. The identity is unchanged, so
+		// the stored rows belong to keys that no longer exist: drop them.
+		return []provider_quota.APIKeyQuota{}
+	}
+
+	return accounts
+}
+
+// releaseQuotaKeyDisables drops quota-owned key disables whose collection,
+// routing mode or provider identity no longer justifies them. It never makes a
+// provider request.
+func (svc *ProviderQuotaService) releaseQuotaKeyDisables(ctx context.Context, channels []*ent.Channel) {
+	if svc.quotaKeyReconciler == nil {
+		return
+	}
+
+	for _, ch := range channels {
+		if !hasActiveQuotaOwnedRecord(ch.DisabledAPIKeys) {
+			continue
+		}
+
+		if _, err := svc.reconcileQuotaKeyDisables(ctx, ch, nil); err != nil {
+			log.Warn(ctx, "Failed to release quota-owned API key disables",
+				log.Int("channel_id", ch.ID),
+				log.String("provider", svc.getProviderType(ch)),
+				log.Cause(err))
+		}
+	}
+}
+
+// reconcileQuotaKeyDisables runs one reconciliation under a host-authorized
+// context.
+//
+// INVARIANT: ProviderQuotaService.mu is held by the caller, and the reconciler
+// it invokes never calls back into this service (its callback contract forbids
+// it), so this call cannot acquire the quota mutex in reverse.
+func (svc *ProviderQuotaService) reconcileQuotaKeyDisables(
+	ctx context.Context,
+	ch *ent.Channel,
+	accounts []provider_quota.APIKeyQuota,
+) (*ent.Channel, error) {
+	if svc.quotaKeyReconciler == nil {
+		return ch, nil
+	}
+
+	return authz.RunAsHost(ctx, svc.db, "provider-quota-key-reconcile", func(ctx context.Context) (*ent.Channel, error) {
+		return svc.quotaKeyReconciler.ReconcileQuotaKeys(ctx, ch, accounts)
+	})
+}
+
+// applyQuotaKeyReconciliation aligns quota-owned key disables with the per-key
+// results just collected and returns the recomputed member payload. It reports
+// false when the result must not be persisted: the snapshot was stale, or the
+// reconciliation itself failed.
+func (svc *ProviderQuotaService) applyQuotaKeyReconciliation(
+	ctx context.Context,
+	member *ent.Channel,
+	quotaData provider_quota.QuotaData,
+	providerType string,
+	now time.Time,
+) (provider_quota.QuotaData, bool) {
+	reconciled, err := svc.reconcileQuotaKeyDisables(ctx, member, quotaData.APIKeyQuotas)
+	if err != nil {
+		// Only identifiers and the reconciler's own sanitized cause: the error
+		// never carries credentials or an upstream body.
+		log.Warn(ctx, "Skipped provider quota save after key reconciliation failure",
+			log.Int("channel_id", member.ID),
+			log.String("provider", providerType),
+			log.Cause(err))
+
+		return provider_quota.QuotaData{}, false
+	}
+
+	accounts := refreshAPIKeyQuotaOwnership(reconciled, quotaData.APIKeyQuotas)
+	memberQuotaData := provider_quota.AggregateAPIKeyQuotas(providerType, accounts, now)
+	memberQuotaData.Resets = quotaData.Resets
+
+	return memberQuotaData, true
 }
 
 // checkChannelQuota runs under svc.mu, held by both scheduled and manual checks.
@@ -912,9 +1045,12 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 			log.String("provider", providerType),
 			log.Cause(err))
 
+		// An all-key failure reconciles nothing: the account rows it carries are
+		// stored for display, and every existing quota-owned disable survives.
 		failures := nextQuotaGroupErrorCount(group.channels, providerType)
 		for _, member := range group.channels {
-			svc.saveQuotaError(ctx, member, providerType, group.accountKey, err, failures, now)
+			svc.saveQuotaError(ctx, member, providerType, group.accountKey, err, failures, now,
+				svc.failureAccountsFor(ctx, member, quotaData.APIKeyQuotas))
 		}
 		return
 	}
@@ -941,6 +1077,16 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 		memberQuotaData := quotaData
 		memberQuotaData.Limits = cloneLimits(quotaData.Limits)
 		memberQuotaData.Balances = cloneBalances(quotaData.Balances)
+
+		if len(quotaData.APIKeyQuotas) > 0 && svc.quotaKeyReconciler != nil {
+			reconciledQuotaData, ok := svc.applyQuotaKeyReconciliation(ctx, member, quotaData, providerType, now)
+			if !ok {
+				continue
+			}
+
+			memberQuotaData = reconciledQuotaData
+		}
+
 		// saveQuotaStatus may write _previous_status into RawData, which is a
 		// shared map across the account group; clone it so each member's
 		// persisted row carries only its own carried status.
@@ -1274,6 +1420,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 	quotaErr error,
 	failures int,
 	now time.Time,
+	accounts []provider_quota.APIKeyQuota,
 ) {
 	pt := providerquotastatus.ProviderType(providerType)
 	nextCheck := now.Add(quotaErrorBackoff(svc.getCheckInterval(), failures))
@@ -1343,6 +1490,17 @@ func (svc *ProviderQuotaService) saveQuotaError(
 			"error_count": failures,
 		})
 		delete(merged, "error")
+		if accounts != nil {
+			// Replace the account detail rows with the fresh failure rows; the
+			// channel status, its limits and the carried _previous_status stay
+			// exactly as they were. An empty set drops the rows of a channel
+			// identity that no longer exists.
+			if rows := encodeAPIKeyQuotas(accounts); len(rows) > 0 {
+				merged["_api_key_quotas"] = rows
+			} else {
+				delete(merged, "_api_key_quotas")
+			}
+		}
 
 		err := svc.db.ProviderQuotaStatus.UpdateOne(existing).
 			SetAccountKey(accountKey).
@@ -1362,16 +1520,23 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		return
 	}
 
+	errorData := map[string]any{
+		"error_code":  errorCode,
+		"error_count": failures,
+	}
+	if rows := encodeAPIKeyQuotas(accounts); len(rows) > 0 {
+		// A first-ever failure keeps the account rows, so the UI can show which
+		// keys it could not read.
+		errorData["_api_key_quotas"] = rows
+	}
+
 	err := svc.db.ProviderQuotaStatus.Create().
 		SetChannelID(ch.ID).
 		SetProviderType(pt).
 		SetAccountKey(accountKey).
 		SetStatus(providerquotastatus.StatusUnknown).
 		SetReady(false).
-		SetQuotaData(map[string]any{
-			"error_code":  errorCode,
-			"error_count": failures,
-		}).
+		SetQuotaData(errorData).
 		SetNextCheckAt(nextCheck).
 		Exec(ctx)
 	if err != nil {
@@ -1481,65 +1646,130 @@ func (svc *ProviderQuotaService) mergeLimitsIntoQuotaData(quotaData provider_quo
 		data["_resets"] = quotaData.Resets
 	}
 
-	if len(quotaData.Limits) > 0 {
-		limitMaps := make([]map[string]any, 0, len(quotaData.Limits))
-		for _, l := range quotaData.Limits {
-			m := map[string]any{
-				"type":       string(l.Type),
-				"status":     l.Status,
-				"usageRatio": l.UsageRatio,
-				"ready":      l.Ready,
-			}
-			if l.NextResetAt != nil {
-				m["nextResetAt"] = l.NextResetAt.Format(time.RFC3339)
-			}
-			if l.Window != "" {
-				m["window"] = l.Window
-			}
-			if l.Account != "" {
-				m["account"] = l.Account
-			}
-			if l.AvailabilityGroup != "" {
-				m["availabilityGroup"] = l.AvailabilityGroup
-			}
-			if l.PeriodStart != nil {
-				m["periodStart"] = l.PeriodStart.Format(time.RFC3339)
-			}
-			if l.PeriodCost != nil {
-				m["periodCost"] = *l.PeriodCost
-			}
-			if l.PeriodQuota != nil {
-				m["periodQuota"] = *l.PeriodQuota
-			}
-			limitMaps = append(limitMaps, m)
-		}
+	if limitMaps := encodeQuotaLimits(quotaData.Limits); len(limitMaps) > 0 {
 		data["_limits"] = limitMaps
 	}
-
-	if len(quotaData.Balances) > 0 {
-		balanceMaps := make([]map[string]any, 0, len(quotaData.Balances))
-		for _, b := range quotaData.Balances {
-			m := map[string]any{
-				"total": b.Total,
-			}
-			if b.Currency != "" {
-				m["currency"] = b.Currency
-			}
-			if b.Account != "" {
-				m["account"] = b.Account
-			}
-			if b.Granted != nil {
-				m["granted"] = *b.Granted
-			}
-			if b.ToppedUp != nil {
-				m["topped_up"] = *b.ToppedUp
-			}
-			balanceMaps = append(balanceMaps, m)
-		}
+	if balanceMaps := encodeQuotaBalances(quotaData.Balances); len(balanceMaps) > 0 {
 		data["_balances"] = balanceMaps
+	}
+	if accounts := encodeAPIKeyQuotas(quotaData.APIKeyQuotas); len(accounts) > 0 {
+		// The per-key view is provider-agnostic: never serialize the in-process
+		// struct, which carries the configured keys themselves.
+		data["_api_key_quotas"] = accounts
 	}
 
 	return data
+}
+
+// encodeQuotaLimits converts normalized limits into the persisted camel-case
+// rows shared by the channel payload and every per-key detail payload.
+func encodeQuotaLimits(limits []provider_quota.QuotaLimitStatus) []map[string]any {
+	if len(limits) == 0 {
+		return nil
+	}
+
+	rows := make([]map[string]any, 0, len(limits))
+	for _, l := range limits {
+		m := map[string]any{
+			"type":       string(l.Type),
+			"status":     l.Status,
+			"usageRatio": l.UsageRatio,
+			"ready":      l.Ready,
+		}
+		if l.NextResetAt != nil {
+			m["nextResetAt"] = l.NextResetAt.Format(time.RFC3339)
+		}
+		if l.Window != "" {
+			m["window"] = l.Window
+		}
+		if l.Account != "" {
+			m["account"] = l.Account
+		}
+		if l.AvailabilityGroup != "" {
+			m["availabilityGroup"] = l.AvailabilityGroup
+		}
+		if l.PeriodStart != nil {
+			m["periodStart"] = l.PeriodStart.Format(time.RFC3339)
+		}
+		if l.PeriodCost != nil {
+			m["periodCost"] = *l.PeriodCost
+		}
+		if l.PeriodQuota != nil {
+			m["periodQuota"] = *l.PeriodQuota
+		}
+		rows = append(rows, m)
+	}
+
+	return rows
+}
+
+// encodeQuotaBalances converts normalized balances into the persisted rows.
+func encodeQuotaBalances(balances []provider_quota.QuotaBalance) []map[string]any {
+	if len(balances) == 0 {
+		return nil
+	}
+
+	rows := make([]map[string]any, 0, len(balances))
+	for _, b := range balances {
+		m := map[string]any{
+			"total": b.Total,
+		}
+		if b.Currency != "" {
+			m["currency"] = b.Currency
+		}
+		if b.Account != "" {
+			m["account"] = b.Account
+		}
+		if b.Granted != nil {
+			m["granted"] = *b.Granted
+		}
+		if b.ToppedUp != nil {
+			m["topped_up"] = *b.ToppedUp
+		}
+		rows = append(rows, m)
+	}
+
+	return rows
+}
+
+// encodeAPIKeyQuotas serializes the per-key view. Refs stay opaque, suffixes
+// are display-only, and the configured key itself is never written.
+func encodeAPIKeyQuotas(accounts []provider_quota.APIKeyQuota) []map[string]any {
+	if len(accounts) == 0 {
+		return nil
+	}
+
+	rows := make([]map[string]any, 0, len(accounts))
+	for _, account := range accounts {
+		nested := lo.Assign(map[string]any{}, account.Data.RawData)
+		if limits := encodeQuotaLimits(account.Data.Limits); len(limits) > 0 {
+			nested["_limits"] = limits
+		}
+		if balances := encodeQuotaBalances(account.Data.Balances); len(balances) > 0 {
+			nested["_balances"] = balances
+		}
+
+		row := map[string]any{
+			"ref":           account.Ref,
+			"index":         account.Index,
+			"suffix":        account.Suffix,
+			"disabled":      account.Disabled,
+			"quotaDisabled": account.QuotaDisabled,
+			"status":        account.Data.Status,
+			"ready":         account.Data.Ready,
+			"quotaData":     nested,
+		}
+		if account.ErrorCode != "" {
+			row["errorCode"] = account.ErrorCode
+		}
+		if account.Data.NextResetAt != nil {
+			row["nextResetAt"] = account.Data.NextResetAt.Format(time.RFC3339)
+		}
+
+		rows = append(rows, row)
+	}
+
+	return rows
 }
 
 func extractLimitsFromQuotaData(data map[string]any) []provider_quota.QuotaLimitStatus {

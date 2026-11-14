@@ -354,7 +354,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 		// An invalid-credentials failure resets the row to unknown; the last
 		// known status must survive for the post-re-auth recovery event.
 		ch = requery(ch)
-		svc.saveQuotaError(ctx, ch, "claudecode", "", fmt.Errorf("bad key: %w", provider_quota.ErrInvalidCredentials), 1, time.Now())
+		svc.saveQuotaError(ctx, ch, "claudecode", "", fmt.Errorf("bad key: %w", provider_quota.ErrInvalidCredentials), 1, time.Now(), nil)
 		expectNoQuotaWebhook(t, notifications)
 
 		persisted, err := client.ProviderQuotaStatus.Query().
@@ -382,7 +382,7 @@ func TestProviderQuotaService_QuotaStatusChangeWebhooks(t *testing.T) {
 		svc, notifications, requery := newTestQuotaWebhookHarness(t, client)
 
 		ch = requery(ch)
-		svc.saveQuotaError(ctx, ch, "claudecode", "", errors.New("boom"), 1, time.Now())
+		svc.saveQuotaError(ctx, ch, "claudecode", "", errors.New("boom"), 1, time.Now(), nil)
 		expectNoQuotaWebhook(t, notifications)
 
 		persisted, err := client.ProviderQuotaStatus.Query().
@@ -458,7 +458,7 @@ func TestProviderQuotaService_CredentialResetAfterFailedReloadEmitsRecoveryOnce(
 	// The failed check with invalid credentials resets the row to unknown
 	// and records the last known status in the cache entry.
 	ch = requery(ch)
-	svc.saveQuotaError(ctx, ch, "codex", "", fmt.Errorf("expired token: %w", provider_quota.ErrInvalidCredentials), 1, time.Now())
+	svc.saveQuotaError(ctx, ch, "codex", "", fmt.Errorf("expired token: %w", provider_quota.ErrInvalidCredentials), 1, time.Now(), nil)
 	expectNoQuotaWebhook(t, notifications)
 
 	persisted, err := client.ProviderQuotaStatus.Query().

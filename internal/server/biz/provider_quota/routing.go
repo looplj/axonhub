@@ -102,14 +102,38 @@ func EvaluateQuotaRouting(
 	}
 
 	for _, group := range groups {
+		// Members of a real availability group are alternatives: the group is
+		// under pressure only when no member is open, so one ahead key cannot
+		// throttle a channel that still has an open key. Ungrouped windows
+		// stay ANDed, per the pre-existing per-limit rule.
+		if group[0].AvailabilityGroup == "" {
+			for _, limit := range group {
+				if IsBalanceLimit(limit) || routingLimitExhausted(limit) {
+					continue
+				}
+				elapsedRatio, ok := ElapsedRatio(limit, now)
+				if ok && limit.UsageRatio > elapsedRatio {
+					return RoutingStickyOnly, "window_pressure"
+				}
+			}
+			continue
+		}
+
+		groupHasOpen := false
+		groupAhead := false
 		for _, limit := range group {
 			if IsBalanceLimit(limit) || routingLimitExhausted(limit) {
 				continue
 			}
 			elapsedRatio, ok := ElapsedRatio(limit, now)
-			if ok && limit.UsageRatio > elapsedRatio {
-				return RoutingStickyOnly, "window_pressure"
+			if !ok || limit.UsageRatio <= elapsedRatio {
+				groupHasOpen = true
+				continue
 			}
+			groupAhead = true
+		}
+		if groupAhead && !groupHasOpen {
+			return RoutingStickyOnly, "window_pressure"
 		}
 	}
 

@@ -450,9 +450,14 @@ func matchingCredentialKeys(row *ent.Channel, fingerprint string) []string {
 	return matches
 }
 
+// credentialActivelyDisabled reports whether an existing disable record makes
+// another disable of the same key a no-op. A record owned by a provider quota
+// observation does not: DisableAPIKey transfers its ownership to the caller,
+// so skipping here would leave the key quota-owned and a later quota recovery
+// would re-enable a plugin-disabled key.
 func credentialActivelyDisabled(row *ent.Channel, key string) bool {
 	for _, item := range row.DisabledAPIKeys {
-		if item.Key == key && !item.IsExpired() {
+		if item.Key == key && !item.IsExpired() && !item.QuotaDisabled {
 			return true
 		}
 	}

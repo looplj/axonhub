@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -64,27 +63,15 @@ func NewOpenCodeGoQuotaChecker(httpClient *httpclient.HttpClient) *OpenCodeGoQuo
 	}
 }
 
-// opencodeGoAPIKey returns the first usable API key configured on the channel.
-// It reuses ChannelCredentials.GetAllAPIKeys for the legacy-key ordering and
-// OAuth exclusion, keeping only the trim-and-skip-blank selection here.
-func opencodeGoAPIKey(ch *ent.Channel) string {
-	for _, candidate := range ch.Credentials.GetAllAPIKeys() {
-		if trimmed := strings.TrimSpace(candidate); trimmed != "" {
-			return trimmed
-		}
-	}
-
-	return ""
+// CheckQuota fetches and parses OpenCode Go usage for every configured API key.
+// Non-2xx responses surface as per-key errors from the HTTP client with their
+// status code.
+func (c *OpenCodeGoQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
+	return CollectAPIKeyQuotas(ctx, ch, opencodeGoProviderType, c.now(), c.checkAPIKeyQuota)
 }
 
-// CheckQuota fetches and parses OpenCode Go usage for the channel. Non-2xx
-// responses surface as errors from the HTTP client with their status code.
-func (c *OpenCodeGoQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
-	apiKey := opencodeGoAPIKey(ch)
-	if apiKey == "" {
-		return QuotaData{}, fmt.Errorf("channel has no API key")
-	}
-
+// checkAPIKeyQuota reads the usage of one upstream API key.
+func (c *OpenCodeGoQuotaChecker) checkAPIKeyQuota(ctx context.Context, ch *ent.Channel, apiKey string) (QuotaData, error) {
 	request := httpclient.NewRequestBuilder().
 		WithMethod(http.MethodGet).
 		WithURL(opencodeGoUsageURL).

@@ -17,6 +17,9 @@ import (
 const (
 	credentialTriggerManual  = "manual"
 	credentialTriggerExpired = "expired"
+	// credentialTriggerQuota marks a credential event caused by a proactive
+	// provider quota observation rather than by an operator or an HTTP rule.
+	credentialTriggerQuota = "quota"
 )
 
 func (svc *ChannelService) publishChannelAutoEnabled(ctx context.Context, channelID int) {
@@ -177,13 +180,23 @@ func channelStatusAfterCredentialChange(ch *ent.Channel, disabledKeys []objects.
 	if forceDisabled {
 		return channel.StatusDisabled
 	}
-	if ch.Status == channel.StatusDisabled && ch.ErrorMessage != nil &&
+	// AutoDisabledAt is cleared by every manual status change, so requiring it
+	// keeps a recovered credential from undoing a later manual channel disable
+	// — or reporting the channel as enabled.
+	if ch.Status == channel.StatusDisabled && ch.AutoDisabledAt != nil && ch.ErrorMessage != nil &&
 		strings.HasPrefix(*ch.ErrorMessage, allKeysDisabledErrorPrefix) &&
 		len(ch.Credentials.GetEnabledCredentialRefs(disabledKeys)) > 0 {
 		return channel.StatusEnabled
 	}
 
 	return ch.Status
+}
+
+// channelIsAllKeysDisabled reports whether the channel is in the state this
+// package enters when its last usable credential disappears.
+func channelIsAllKeysDisabled(ch *ent.Channel) bool {
+	return ch != nil && ch.Status == channel.StatusDisabled && ch.AutoDisabledAt != nil &&
+		ch.ErrorMessage != nil && strings.HasPrefix(*ch.ErrorMessage, allKeysDisabledErrorPrefix)
 }
 
 func rfc3339OrNil(value *time.Time) any {
