@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/predicate"
+	"github.com/looplj/axonhub/internal/ent/requestbodychunkref"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -74,6 +75,20 @@ func (_u *RequestExecutionUpdate) SetNillableUpstreamModelID(v *string) *Request
 // ClearUpstreamModelID clears the value of the "upstream_model_id" field.
 func (_u *RequestExecutionUpdate) ClearUpstreamModelID() *RequestExecutionUpdate {
 	_u.mutation.ClearUpstreamModelID()
+	return _u
+}
+
+// SetRequestBodyChunked sets the "request_body_chunked" field.
+func (_u *RequestExecutionUpdate) SetRequestBodyChunked(v bool) *RequestExecutionUpdate {
+	_u.mutation.SetRequestBodyChunked(v)
+	return _u
+}
+
+// SetNillableRequestBodyChunked sets the "request_body_chunked" field if the given value is not nil.
+func (_u *RequestExecutionUpdate) SetNillableRequestBodyChunked(v *bool) *RequestExecutionUpdate {
+	if v != nil {
+		_u.SetRequestBodyChunked(*v)
+	}
 	return _u
 }
 
@@ -325,9 +340,45 @@ func (_u *RequestExecutionUpdate) SetNillablePassThroughApplied(v *bool) *Reques
 	return _u
 }
 
+// AddRequestBodyChunkIDs adds the "request_body_chunks" edge to the RequestBodyChunkRef entity by IDs.
+func (_u *RequestExecutionUpdate) AddRequestBodyChunkIDs(ids ...int) *RequestExecutionUpdate {
+	_u.mutation.AddRequestBodyChunkIDs(ids...)
+	return _u
+}
+
+// AddRequestBodyChunks adds the "request_body_chunks" edges to the RequestBodyChunkRef entity.
+func (_u *RequestExecutionUpdate) AddRequestBodyChunks(v ...*RequestBodyChunkRef) *RequestExecutionUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddRequestBodyChunkIDs(ids...)
+}
+
 // Mutation returns the RequestExecutionMutation object of the builder.
 func (_u *RequestExecutionUpdate) Mutation() *RequestExecutionMutation {
 	return _u.mutation
+}
+
+// ClearRequestBodyChunks clears all "request_body_chunks" edges to the RequestBodyChunkRef entity.
+func (_u *RequestExecutionUpdate) ClearRequestBodyChunks() *RequestExecutionUpdate {
+	_u.mutation.ClearRequestBodyChunks()
+	return _u
+}
+
+// RemoveRequestBodyChunkIDs removes the "request_body_chunks" edge to RequestBodyChunkRef entities by IDs.
+func (_u *RequestExecutionUpdate) RemoveRequestBodyChunkIDs(ids ...int) *RequestExecutionUpdate {
+	_u.mutation.RemoveRequestBodyChunkIDs(ids...)
+	return _u
+}
+
+// RemoveRequestBodyChunks removes "request_body_chunks" edges to RequestBodyChunkRef entities.
+func (_u *RequestExecutionUpdate) RemoveRequestBodyChunks(v ...*RequestBodyChunkRef) *RequestExecutionUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveRequestBodyChunkIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -425,6 +476,9 @@ func (_u *RequestExecutionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if _u.mutation.ChannelAPIKeySuffixCleared() {
 		_spec.ClearField(requestexecution.FieldChannelAPIKeySuffix, field.TypeString)
+	}
+	if value, ok := _u.mutation.RequestBodyChunked(); ok {
+		_spec.SetField(requestexecution.FieldRequestBodyChunked, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.ResponseHeaders(); ok {
 		_spec.SetField(requestexecution.FieldResponseHeaders, field.TypeJSON, value)
@@ -524,6 +578,51 @@ func (_u *RequestExecutionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if value, ok := _u.mutation.PassThroughApplied(); ok {
 		_spec.SetField(requestexecution.FieldPassThroughApplied, field.TypeBool, value)
 	}
+	if _u.mutation.RequestBodyChunksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.RequestBodyChunksTable,
+			Columns: []string{requestexecution.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedRequestBodyChunksIDs(); len(nodes) > 0 && !_u.mutation.RequestBodyChunksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.RequestBodyChunksTable,
+			Columns: []string{requestexecution.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RequestBodyChunksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.RequestBodyChunksTable,
+			Columns: []string{requestexecution.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -589,6 +688,20 @@ func (_u *RequestExecutionUpdateOne) SetNillableUpstreamModelID(v *string) *Requ
 // ClearUpstreamModelID clears the value of the "upstream_model_id" field.
 func (_u *RequestExecutionUpdateOne) ClearUpstreamModelID() *RequestExecutionUpdateOne {
 	_u.mutation.ClearUpstreamModelID()
+	return _u
+}
+
+// SetRequestBodyChunked sets the "request_body_chunked" field.
+func (_u *RequestExecutionUpdateOne) SetRequestBodyChunked(v bool) *RequestExecutionUpdateOne {
+	_u.mutation.SetRequestBodyChunked(v)
+	return _u
+}
+
+// SetNillableRequestBodyChunked sets the "request_body_chunked" field if the given value is not nil.
+func (_u *RequestExecutionUpdateOne) SetNillableRequestBodyChunked(v *bool) *RequestExecutionUpdateOne {
+	if v != nil {
+		_u.SetRequestBodyChunked(*v)
+	}
 	return _u
 }
 
@@ -840,9 +953,45 @@ func (_u *RequestExecutionUpdateOne) SetNillablePassThroughApplied(v *bool) *Req
 	return _u
 }
 
+// AddRequestBodyChunkIDs adds the "request_body_chunks" edge to the RequestBodyChunkRef entity by IDs.
+func (_u *RequestExecutionUpdateOne) AddRequestBodyChunkIDs(ids ...int) *RequestExecutionUpdateOne {
+	_u.mutation.AddRequestBodyChunkIDs(ids...)
+	return _u
+}
+
+// AddRequestBodyChunks adds the "request_body_chunks" edges to the RequestBodyChunkRef entity.
+func (_u *RequestExecutionUpdateOne) AddRequestBodyChunks(v ...*RequestBodyChunkRef) *RequestExecutionUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddRequestBodyChunkIDs(ids...)
+}
+
 // Mutation returns the RequestExecutionMutation object of the builder.
 func (_u *RequestExecutionUpdateOne) Mutation() *RequestExecutionMutation {
 	return _u.mutation
+}
+
+// ClearRequestBodyChunks clears all "request_body_chunks" edges to the RequestBodyChunkRef entity.
+func (_u *RequestExecutionUpdateOne) ClearRequestBodyChunks() *RequestExecutionUpdateOne {
+	_u.mutation.ClearRequestBodyChunks()
+	return _u
+}
+
+// RemoveRequestBodyChunkIDs removes the "request_body_chunks" edge to RequestBodyChunkRef entities by IDs.
+func (_u *RequestExecutionUpdateOne) RemoveRequestBodyChunkIDs(ids ...int) *RequestExecutionUpdateOne {
+	_u.mutation.RemoveRequestBodyChunkIDs(ids...)
+	return _u
+}
+
+// RemoveRequestBodyChunks removes "request_body_chunks" edges to RequestBodyChunkRef entities.
+func (_u *RequestExecutionUpdateOne) RemoveRequestBodyChunks(v ...*RequestBodyChunkRef) *RequestExecutionUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveRequestBodyChunkIDs(ids...)
 }
 
 // Where appends a list predicates to the RequestExecutionUpdate builder.
@@ -971,6 +1120,9 @@ func (_u *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Reques
 	if _u.mutation.ChannelAPIKeySuffixCleared() {
 		_spec.ClearField(requestexecution.FieldChannelAPIKeySuffix, field.TypeString)
 	}
+	if value, ok := _u.mutation.RequestBodyChunked(); ok {
+		_spec.SetField(requestexecution.FieldRequestBodyChunked, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.ResponseHeaders(); ok {
 		_spec.SetField(requestexecution.FieldResponseHeaders, field.TypeJSON, value)
 	}
@@ -1068,6 +1220,51 @@ func (_u *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Reques
 	}
 	if value, ok := _u.mutation.PassThroughApplied(); ok {
 		_spec.SetField(requestexecution.FieldPassThroughApplied, field.TypeBool, value)
+	}
+	if _u.mutation.RequestBodyChunksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.RequestBodyChunksTable,
+			Columns: []string{requestexecution.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedRequestBodyChunksIDs(); len(nodes) > 0 && !_u.mutation.RequestBodyChunksCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.RequestBodyChunksTable,
+			Columns: []string{requestexecution.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RequestBodyChunksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.RequestBodyChunksTable,
+			Columns: []string{requestexecution.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &RequestExecution{config: _u.config}

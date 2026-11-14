@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"entgo.io/ent/dialect"
 	"github.com/eko/gocache/lib/v4/store"
 	"github.com/tidwall/gjson"
 
@@ -301,73 +302,96 @@ func (s *RequestService) CreateRequest(
 		log.Warn(ctx, "Failed to get default data storage, request will be created without data storage", log.Cause(err))
 	}
 
-	client := s.entFromContext(ctx)
-	mut := client.Request.Create().
-		SetProjectID(projectID).
-		SetModelID(llmRequest.Model).
-		SetFormat(string(format)).
-		SetSource(contexts.GetSourceOrDefault(ctx, request.SourceAPI)).
-		SetStatus(request.StatusProcessing).
-		SetStream(isStream).
-		SetRequestHeaders(requestHeadersBytes)
-
-	if httpRequest != nil {
-		mut = mut.SetClientIP(httpRequest.ClientIP)
-		mut = mut.SetUserAgent(httpRequest.UserAgent)
-	}
-
-	if llmRequest.ReasoningEffort != "" {
-		mut = mut.SetReasoningEffort(llmRequest.ReasoningEffort)
-	}
-
-	// Determine if we should store in database or external storage
 	useExternalStorage := storeRequestBody && s.shouldUseExternalStorage(ctx, dataStorage)
-
-	if useExternalStorage {
-		// Set empty JSON for database, actual data will be in external storage
-		mut = mut.SetRequestBody([]byte("{}"))
-	} else {
-		// Store in database
-		mut = mut.SetRequestBody(stripJSONNul(requestBodyBytes))
+	var chunked *ChunkedRequestBody
+	if projectID > 0 && storeRequestBody && !useExternalStorage && json.Valid(requestBodyBytes) {
+		chunked = PrepareChunkedRequestBody(stripJSONNul(requestBodyBytes))
 	}
-
-	if dataStorage != nil {
-		mut = mut.SetDataStorageID(dataStorage.ID)
-	}
-
-	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
-		mut = mut.SetAPIKeyID(apiKey.ID)
-	}
-
+	var req *ent.Request
 	var traceID int
+	create := func(ctx context.Context) error {
+		client := s.entFromContext(ctx)
+		mut := client.Request.Create().
+			SetProjectID(projectID).
+			SetModelID(llmRequest.Model).
+			SetFormat(string(format)).
+			SetSource(contexts.GetSourceOrDefault(ctx, request.SourceAPI)).
+			SetStatus(request.StatusProcessing).
+			SetStream(isStream).
+			SetRequestHeaders(requestHeadersBytes)
 
-	if trace, ok := contexts.GetTrace(ctx); ok && trace != nil {
-		traceID = trace.ID
-		mut = mut.SetTraceID(traceID)
-	}
-
-	if contexts.GetSourceOrDefault(ctx, request.SourceAPI) == request.SourcePlayground {
-		if user, ok := contexts.GetUser(ctx); ok && user != nil {
-			mut = mut.SetUserID(user.ID)
+		if httpRequest != nil {
+			mut = mut.SetClientIP(httpRequest.ClientIP)
+			mut = mut.SetUserAgent(httpRequest.UserAgent)
 		}
-	}
 
-	// Create request
-	req, err := mut.Save(ctx)
-	if err != nil {
-		if !useExternalStorage {
-			log.Warn(ctx, "Failed to save request body due to error, retrying with placeholder", log.Cause(err))
+		if llmRequest.ReasoningEffort != "" {
+			mut = mut.SetReasoningEffort(llmRequest.ReasoningEffort)
+		}
 
-			mut = mut.SetRequestBody(_InvalidRequestBodyJSON)
-
-			req, err = mut.Save(ctx)
-			if err != nil {
-				log.Error(ctx, "Failed to save request even with placeholder", log.Cause(err))
-				return nil, err
-			}
+		if useExternalStorage {
+			// Set empty JSON for database, actual data will be in external storage
+			mut = mut.SetRequestBody([]byte("{}"))
+		} else if chunked != nil {
+			mut = mut.SetRequestBody(chunked.Manifest).SetRequestBodyChunked(true)
 		} else {
-			return nil, err
+			// Store in database
+			mut = mut.SetRequestBody(stripJSONNul(requestBodyBytes))
 		}
+
+		if dataStorage != nil {
+			mut = mut.SetDataStorageID(dataStorage.ID)
+		}
+
+		if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
+			mut = mut.SetAPIKeyID(apiKey.ID)
+		}
+
+		if trace, ok := contexts.GetTrace(ctx); ok && trace != nil {
+			traceID = trace.ID
+			mut = mut.SetTraceID(traceID)
+		}
+
+		if contexts.GetSourceOrDefault(ctx, request.SourceAPI) == request.SourcePlayground {
+			if user, ok := contexts.GetUser(ctx); ok && user != nil {
+				mut = mut.SetUserID(user.ID)
+			}
+		}
+
+		// Create request
+		var err error
+		req, err = mut.Save(ctx)
+		if err != nil {
+			if !useExternalStorage && chunked == nil {
+				log.Warn(ctx, "Failed to save request body due to error, retrying with placeholder", log.Cause(err))
+
+				mut = mut.SetRequestBody(_InvalidRequestBodyJSON)
+
+				req, err = mut.Save(ctx)
+				if err != nil {
+					log.Error(ctx, "Failed to save request even with placeholder", log.Cause(err))
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+		if chunked != nil {
+			return chunked.Save(ctx, client, projectID, req.ID, 0)
+		}
+		return nil
+	}
+	if chunked != nil {
+		_, existingTransaction := s.entFromContext(ctx).Driver().(dialect.Tx)
+		err = s.RunInTransaction(ctx, create)
+		if err == nil && !existingTransaction {
+			req.Unwrap()
+		}
+	} else {
+		err = create(ctx)
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	// Save request body to external storage if needed
@@ -386,7 +410,7 @@ func (s *RequestService) CreateRequest(
 	// newer timestamp.
 	if traceID != 0 {
 		err := authz.RunWithSystemBypassVoid(ctx, "trace-last-request-at", func(bypassCtx context.Context) error {
-			return client.Trace.Update().
+			return s.entFromContext(ctx).Trace.Update().
 				Where(trace.ID(traceID), trace.LastRequestAtLT(req.CreatedAt)).
 				SetLastRequestAt(req.CreatedAt).
 				Exec(bypassCtx)
@@ -444,8 +468,6 @@ func (s *RequestService) CreateRequestExecution(
 		}
 	}
 
-	client := s.entFromContext(ctx)
-
 	// Get data storage if set on request
 	var dataStorage *ent.DataStorage
 
@@ -470,67 +492,96 @@ func (s *RequestService) CreateRequestExecution(
 		requestBodyForDB = stripJSONNul(requestBodyBytes)
 	}
 
-	mut := client.RequestExecution.Create().
-		SetFormat(string(format)).
-		SetRequestID(request.ID).
-		SetProjectID(request.ProjectID).
-		SetChannelID(channel.ID).
-		SetModelID(modelID).
-		SetRequestBody(requestBodyForDB).
-		SetStatus(requestexecution.StatusProcessing).
-		SetStream(request.Stream).
-		SetRequestHeaders(requestHeadersBytes).
-		SetPassThroughApplied(passThroughApplied)
-
-	if reasoningEffort := extractOutboundReasoningEffort(channelRequest, format); reasoningEffort != nil {
-		mut = mut.SetReasoningEffort(*reasoningEffort)
+	var chunked *ChunkedRequestBody
+	if request.ProjectID > 0 && storeRequestBody && !useExternalStorage && json.Valid(requestBodyForDB) {
+		chunked = PrepareChunkedRequestBody(requestBodyForDB)
 	}
-
-	// Record which channel credential served this execution. Both facts are read
-	// from the key actually sent upstream, which is known here while the
-	// credentials are still at hand.
-	if apiKey, ok := contexts.GetChannelAPIKey(ctx); ok {
-		runes := []rune(apiKey)
-		if len(runes) > 4 {
-			mut = mut.SetChannelAPIKeySuffix(string(runes[len(runes)-4:]))
+	var execution *ent.RequestExecution
+	create := func(ctx context.Context) error {
+		client := s.entFromContext(ctx)
+		mut := client.RequestExecution.Create().
+			SetFormat(string(format)).
+			SetRequestID(request.ID).
+			SetProjectID(request.ProjectID).
+			SetChannelID(channel.ID).
+			SetModelID(modelID).
+			SetRequestBody(requestBodyForDB).
+			SetStatus(requestexecution.StatusProcessing).
+			SetStream(request.Stream).
+			SetRequestHeaders(requestHeadersBytes).
+			SetPassThroughApplied(passThroughApplied)
+		if chunked != nil {
+			mut.SetRequestBody(chunked.Manifest).SetRequestBodyChunked(true)
 		}
 
-		// The 1-based position is derived here rather than resolved from the
-		// stored suffix later: a lookup would drift as soon as keys are
-		// reordered or removed, and it cannot tell two keys with the same last-4
-		// characters apart. Single-key and OAuth channels have nothing to
-		// disambiguate, so they stay null.
-		if allKeys := channel.Credentials.GetAllAPIKeys(); len(allKeys) > 1 {
-			if idx := slices.Index(allKeys, apiKey); idx >= 0 {
-				mut = mut.SetChannelAPIKeyIndex(idx + 1)
+		if reasoningEffort := extractOutboundReasoningEffort(channelRequest, format); reasoningEffort != nil {
+			mut = mut.SetReasoningEffort(*reasoningEffort)
+		}
+
+		// Record which channel credential served this execution. Both facts are read
+		// from the key actually sent upstream, which is known here while the
+		// credentials are still at hand.
+		if apiKey, ok := contexts.GetChannelAPIKey(ctx); ok {
+			runes := []rune(apiKey)
+			if len(runes) > 4 {
+				mut = mut.SetChannelAPIKeySuffix(string(runes[len(runes)-4:]))
+			}
+
+			// The 1-based position is derived here rather than resolved from the
+			// stored suffix later: a lookup would drift as soon as keys are
+			// reordered or removed, and it cannot tell two keys with the same last-4
+			// characters apart. Single-key and OAuth channels have nothing to
+			// disambiguate, so they stay null.
+			if allKeys := channel.Credentials.GetAllAPIKeys(); len(allKeys) > 1 {
+				if idx := slices.Index(allKeys, apiKey); idx >= 0 {
+					mut = mut.SetChannelAPIKeyIndex(idx + 1)
+				}
 			}
 		}
-	}
 
-	if channelRequest.URL != "" {
-		mut = mut.SetRequestURL(channelRequest.URL)
-	}
-
-	// Use the same data storage as the request
-	if request.DataStorageID != 0 {
-		mut = mut.SetDataStorageID(request.DataStorageID)
-	}
-
-	execution, err := mut.Save(ctx)
-	if err != nil {
-		if useExternalStorage {
-			return nil, err
+		if channelRequest.URL != "" {
+			mut = mut.SetRequestURL(channelRequest.URL)
 		}
 
-		log.Warn(ctx, "Failed to save execution request body due to error, retrying with placeholder", log.Cause(err))
+		// Use the same data storage as the request
+		if request.DataStorageID != 0 {
+			mut = mut.SetDataStorageID(request.DataStorageID)
+		}
 
-		mut = mut.SetRequestBody(_InvalidRequestBodyJSON)
-
+		var err error
 		execution, err = mut.Save(ctx)
 		if err != nil {
-			log.Error(ctx, "Failed to save execution request even with placeholder", log.Cause(err))
-			return nil, err
+			if useExternalStorage || chunked != nil {
+				return err
+			}
+
+			log.Warn(ctx, "Failed to save execution request body due to error, retrying with placeholder", log.Cause(err))
+
+			mut = mut.SetRequestBody(_InvalidRequestBodyJSON)
+
+			execution, err = mut.Save(ctx)
+			if err != nil {
+				log.Error(ctx, "Failed to save execution request even with placeholder", log.Cause(err))
+				return err
+			}
 		}
+		if chunked != nil {
+			return chunked.Save(ctx, client, request.ProjectID, 0, execution.ID)
+		}
+		return nil
+	}
+	var err error
+	if chunked != nil {
+		_, existingTransaction := s.entFromContext(ctx).Driver().(dialect.Tx)
+		err = s.RunInTransaction(ctx, create)
+		if err == nil && !existingTransaction {
+			execution.Unwrap()
+		}
+	} else {
+		err = create(ctx)
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	// Save request body to external storage if needed
@@ -1503,6 +1554,9 @@ func (s *RequestService) LoadRequestBody(ctx context.Context, req *ent.Request) 
 	if req == nil {
 		return nil, fmt.Errorf("request is nil")
 	}
+	if req.RequestBodyChunked {
+		return LoadChunkedRequestBody(ctx, s.entFromContext(ctx), req.ProjectID, req.ID, 0, req.RequestBody)
+	}
 
 	dataStorage, err := s.getDataStorage(ctx, req.DataStorageID)
 	if err != nil {
@@ -1700,6 +1754,9 @@ func (s *RequestService) LoadResponseChunks(ctx context.Context, req *ent.Reques
 func (s *RequestService) LoadRequestExecutionRequestBody(ctx context.Context, exec *ent.RequestExecution) (objects.JSONRawMessage, error) {
 	if exec == nil {
 		return nil, fmt.Errorf("request execution is nil")
+	}
+	if exec.RequestBodyChunked {
+		return LoadChunkedRequestBody(ctx, s.entFromContext(ctx), exec.ProjectID, 0, exec.ID, exec.RequestBody)
 	}
 
 	dataStorage, err := s.getDataStorage(ctx, exec.DataStorageID)

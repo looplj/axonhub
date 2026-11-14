@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestbodychunkref"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -185,6 +186,20 @@ func (_c *RequestCreate) SetRequestHeaders(v objects.JSONRawMessage) *RequestCre
 // SetRequestBody sets the "request_body" field.
 func (_c *RequestCreate) SetRequestBody(v objects.JSONRawMessage) *RequestCreate {
 	_c.mutation.SetRequestBody(v)
+	return _c
+}
+
+// SetRequestBodyChunked sets the "request_body_chunked" field.
+func (_c *RequestCreate) SetRequestBodyChunked(v bool) *RequestCreate {
+	_c.mutation.SetRequestBodyChunked(v)
+	return _c
+}
+
+// SetNillableRequestBodyChunked sets the "request_body_chunked" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableRequestBodyChunked(v *bool) *RequestCreate {
+	if v != nil {
+		_c.SetRequestBodyChunked(*v)
+	}
 	return _c
 }
 
@@ -380,6 +395,21 @@ func (_c *RequestCreate) SetNillableContentSavedAt(v *time.Time) *RequestCreate 
 	return _c
 }
 
+// AddRequestBodyChunkIDs adds the "request_body_chunks" edge to the RequestBodyChunkRef entity by IDs.
+func (_c *RequestCreate) AddRequestBodyChunkIDs(ids ...int) *RequestCreate {
+	_c.mutation.AddRequestBodyChunkIDs(ids...)
+	return _c
+}
+
+// AddRequestBodyChunks adds the "request_body_chunks" edges to the RequestBodyChunkRef entity.
+func (_c *RequestCreate) AddRequestBodyChunks(v ...*RequestBodyChunkRef) *RequestCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddRequestBodyChunkIDs(ids...)
+}
+
 // SetAPIKey sets the "api_key" edge to the APIKey entity.
 func (_c *RequestCreate) SetAPIKey(v *APIKey) *RequestCreate {
 	return _c.SetAPIKeyID(v.ID)
@@ -498,6 +528,10 @@ func (_c *RequestCreate) defaults() error {
 		v := request.DefaultFormat
 		_c.mutation.SetFormat(v)
 	}
+	if _, ok := _c.mutation.RequestBodyChunked(); !ok {
+		v := request.DefaultRequestBodyChunked
+		_c.mutation.SetRequestBodyChunked(v)
+	}
 	if _, ok := _c.mutation.Stream(); !ok {
 		v := request.DefaultStream
 		_c.mutation.SetStream(v)
@@ -538,6 +572,9 @@ func (_c *RequestCreate) check() error {
 	}
 	if _, ok := _c.mutation.RequestBody(); !ok {
 		return &ValidationError{Name: "request_body", err: errors.New(`ent: missing required field "Request.request_body"`)}
+	}
+	if _, ok := _c.mutation.RequestBodyChunked(); !ok {
+		return &ValidationError{Name: "request_body_chunked", err: errors.New(`ent: missing required field "Request.request_body_chunked"`)}
 	}
 	if v, ok := _c.mutation.ExternalID(); ok {
 		if err := request.ExternalIDValidator(v); err != nil {
@@ -630,6 +667,10 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		_spec.SetField(request.FieldRequestBody, field.TypeJSON, value)
 		_node.RequestBody = value
 	}
+	if value, ok := _c.mutation.RequestBodyChunked(); ok {
+		_spec.SetField(request.FieldRequestBodyChunked, field.TypeBool, value)
+		_node.RequestBodyChunked = value
+	}
 	if value, ok := _c.mutation.ResponseHeaders(); ok {
 		_spec.SetField(request.FieldResponseHeaders, field.TypeJSON, value)
 		_node.ResponseHeaders = value
@@ -689,6 +730,22 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ContentSavedAt(); ok {
 		_spec.SetField(request.FieldContentSavedAt, field.TypeTime, value)
 		_node.ContentSavedAt = &value
+	}
+	if nodes := _c.mutation.RequestBodyChunksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   request.RequestBodyChunksTable,
+			Columns: []string{request.RequestBodyChunksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestbodychunkref.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.APIKeyIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -886,6 +943,18 @@ func (u *RequestUpsert) UpdateRequestHeaders() *RequestUpsert {
 // ClearRequestHeaders clears the value of the "request_headers" field.
 func (u *RequestUpsert) ClearRequestHeaders() *RequestUpsert {
 	u.SetNull(request.FieldRequestHeaders)
+	return u
+}
+
+// SetRequestBodyChunked sets the "request_body_chunked" field.
+func (u *RequestUpsert) SetRequestBodyChunked(v bool) *RequestUpsert {
+	u.Set(request.FieldRequestBodyChunked, v)
+	return u
+}
+
+// UpdateRequestBodyChunked sets the "request_body_chunked" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateRequestBodyChunked() *RequestUpsert {
+	u.SetExcluded(request.FieldRequestBodyChunked)
 	return u
 }
 
@@ -1251,6 +1320,20 @@ func (u *RequestUpsertOne) UpdateRequestHeaders() *RequestUpsertOne {
 func (u *RequestUpsertOne) ClearRequestHeaders() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearRequestHeaders()
+	})
+}
+
+// SetRequestBodyChunked sets the "request_body_chunked" field.
+func (u *RequestUpsertOne) SetRequestBodyChunked(v bool) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetRequestBodyChunked(v)
+	})
+}
+
+// UpdateRequestBodyChunked sets the "request_body_chunked" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateRequestBodyChunked() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateRequestBodyChunked()
 	})
 }
 
@@ -1823,6 +1906,20 @@ func (u *RequestUpsertBulk) UpdateRequestHeaders() *RequestUpsertBulk {
 func (u *RequestUpsertBulk) ClearRequestHeaders() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearRequestHeaders()
+	})
+}
+
+// SetRequestBodyChunked sets the "request_body_chunked" field.
+func (u *RequestUpsertBulk) SetRequestBodyChunked(v bool) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetRequestBodyChunked(v)
+	})
+}
+
+// UpdateRequestBodyChunked sets the "request_body_chunked" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateRequestBodyChunked() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateRequestBodyChunked()
 	})
 }
 

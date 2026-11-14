@@ -50,6 +50,8 @@ type RequestExecution struct {
 	ChannelAPIKeySuffix *string `json:"channel_api_key_suffix,omitempty"`
 	// RequestBody holds the value of the "request_body" field.
 	RequestBody objects.JSONRawMessage `json:"request_body,omitempty"`
+	// Request body is a manifest referencing project-scoped content chunks
+	RequestBodyChunked bool `json:"request_body_chunked,omitempty"`
 	// Response headers received from the upstream provider, with sensitive values masked
 	ResponseHeaders objects.JSONRawMessage `json:"response_headers,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
@@ -84,6 +86,8 @@ type RequestExecution struct {
 
 // RequestExecutionEdges holds the relations/edges for other nodes in the graph.
 type RequestExecutionEdges struct {
+	// RequestBodyChunks holds the value of the request_body_chunks edge.
+	RequestBodyChunks []*RequestBodyChunkRef `json:"request_body_chunks,omitempty"`
 	// Request holds the value of the request edge.
 	Request *Request `json:"request,omitempty"`
 	// Channel holds the value of the channel edge.
@@ -92,9 +96,20 @@ type RequestExecutionEdges struct {
 	DataStorage *DataStorage `json:"data_storage,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 	// totalCount holds the count of the edges above.
 	totalCount [3]map[string]int
+
+	namedRequestBodyChunks map[string][]*RequestBodyChunkRef
+}
+
+// RequestBodyChunksOrErr returns the RequestBodyChunks value or an error if the edge
+// was not loaded in eager-loading.
+func (e RequestExecutionEdges) RequestBodyChunksOrErr() ([]*RequestBodyChunkRef, error) {
+	if e.loadedTypes[0] {
+		return e.RequestBodyChunks, nil
+	}
+	return nil, &NotLoadedError{edge: "request_body_chunks"}
 }
 
 // RequestOrErr returns the Request value or an error if the edge
@@ -102,7 +117,7 @@ type RequestExecutionEdges struct {
 func (e RequestExecutionEdges) RequestOrErr() (*Request, error) {
 	if e.Request != nil {
 		return e.Request, nil
-	} else if e.loadedTypes[0] {
+	} else if e.loadedTypes[1] {
 		return nil, &NotFoundError{label: request.Label}
 	}
 	return nil, &NotLoadedError{edge: "request"}
@@ -113,7 +128,7 @@ func (e RequestExecutionEdges) RequestOrErr() (*Request, error) {
 func (e RequestExecutionEdges) ChannelOrErr() (*Channel, error) {
 	if e.Channel != nil {
 		return e.Channel, nil
-	} else if e.loadedTypes[1] {
+	} else if e.loadedTypes[2] {
 		return nil, &NotFoundError{label: channel.Label}
 	}
 	return nil, &NotLoadedError{edge: "channel"}
@@ -124,7 +139,7 @@ func (e RequestExecutionEdges) ChannelOrErr() (*Channel, error) {
 func (e RequestExecutionEdges) DataStorageOrErr() (*DataStorage, error) {
 	if e.DataStorage != nil {
 		return e.DataStorage, nil
-	} else if e.loadedTypes[2] {
+	} else if e.loadedTypes[3] {
 		return nil, &NotFoundError{label: datastorage.Label}
 	}
 	return nil, &NotLoadedError{edge: "data_storage"}
@@ -137,7 +152,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case requestexecution.FieldRequestBody, requestexecution.FieldResponseHeaders, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks, requestexecution.FieldRequestHeaders:
 			values[i] = new([]byte)
-		case requestexecution.FieldStream, requestexecution.FieldPassThroughApplied:
+		case requestexecution.FieldRequestBodyChunked, requestexecution.FieldStream, requestexecution.FieldPassThroughApplied:
 			values[i] = new(sql.NullBool)
 		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldChannelAPIKeyIndex, requestexecution.FieldDataStorageID, requestexecution.FieldResponseStatusCode, requestexecution.FieldMetricsLatencyMs, requestexecution.FieldMetricsFirstTokenLatencyMs, requestexecution.FieldMetricsReasoningDurationMs:
 			values[i] = new(sql.NullInt64)
@@ -255,6 +270,12 @@ func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field request_body: %w", err)
 				}
 			}
+		case requestexecution.FieldRequestBodyChunked:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field request_body_chunked", values[i])
+			} else if value.Valid {
+				_m.RequestBodyChunked = value.Bool
+			}
 		case requestexecution.FieldResponseHeaders:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field response_headers", values[i])
@@ -358,6 +379,11 @@ func (_m *RequestExecution) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
+// QueryRequestBodyChunks queries the "request_body_chunks" edge of the RequestExecution entity.
+func (_m *RequestExecution) QueryRequestBodyChunks() *RequestBodyChunkRefQuery {
+	return NewRequestExecutionClient(_m.config).QueryRequestBodyChunks(_m)
+}
+
 // QueryRequest queries the "request" edge of the RequestExecution entity.
 func (_m *RequestExecution) QueryRequest() *RequestQuery {
 	return NewRequestExecutionClient(_m.config).QueryRequest(_m)
@@ -444,6 +470,9 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString("request_body=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RequestBody))
 	builder.WriteString(", ")
+	builder.WriteString("request_body_chunked=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RequestBodyChunked))
+	builder.WriteString(", ")
 	builder.WriteString("response_headers=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ResponseHeaders))
 	builder.WriteString(", ")
@@ -492,6 +521,30 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString(fmt.Sprintf("%v", _m.PassThroughApplied))
 	builder.WriteByte(')')
 	return builder.String()
+}
+
+// NamedRequestBodyChunks returns the RequestBodyChunks named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *RequestExecution) NamedRequestBodyChunks(name string) ([]*RequestBodyChunkRef, error) {
+	if _m.Edges.namedRequestBodyChunks == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedRequestBodyChunks[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *RequestExecution) appendNamedRequestBodyChunks(name string, edges ...*RequestBodyChunkRef) {
+	if _m.Edges.namedRequestBodyChunks == nil {
+		_m.Edges.namedRequestBodyChunks = make(map[string][]*RequestBodyChunkRef)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedRequestBodyChunks[name] = []*RequestBodyChunkRef{}
+	} else {
+		_m.Edges.namedRequestBodyChunks[name] = append(_m.Edges.namedRequestBodyChunks[name], edges...)
+	}
 }
 
 // RequestExecutions is a parsable slice of RequestExecution.

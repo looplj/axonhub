@@ -33,6 +33,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestbodychunk"
+	"github.com/looplj/axonhub/internal/ent/requestbodychunkref"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
@@ -85,6 +87,10 @@ type Client struct {
 	ProviderQuotaStatus *ProviderQuotaStatusClient
 	// Request is the client for interacting with the Request builders.
 	Request *RequestClient
+	// RequestBodyChunk is the client for interacting with the RequestBodyChunk builders.
+	RequestBodyChunk *RequestBodyChunkClient
+	// RequestBodyChunkRef is the client for interacting with the RequestBodyChunkRef builders.
+	RequestBodyChunkRef *RequestBodyChunkRefClient
 	// RequestExecution is the client for interacting with the RequestExecution builders.
 	RequestExecution *RequestExecutionClient
 	// Role is the client for interacting with the Role builders.
@@ -134,6 +140,8 @@ func (c *Client) init() {
 	c.PromptProtectionRule = NewPromptProtectionRuleClient(c.config)
 	c.ProviderQuotaStatus = NewProviderQuotaStatusClient(c.config)
 	c.Request = NewRequestClient(c.config)
+	c.RequestBodyChunk = NewRequestBodyChunkClient(c.config)
+	c.RequestBodyChunkRef = NewRequestBodyChunkRefClient(c.config)
 	c.RequestExecution = NewRequestExecutionClient(c.config)
 	c.Role = NewRoleClient(c.config)
 	c.System = NewSystemClient(c.config)
@@ -253,6 +261,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		PromptProtectionRule:     NewPromptProtectionRuleClient(cfg),
 		ProviderQuotaStatus:      NewProviderQuotaStatusClient(cfg),
 		Request:                  NewRequestClient(cfg),
+		RequestBodyChunk:         NewRequestBodyChunkClient(cfg),
+		RequestBodyChunkRef:      NewRequestBodyChunkRefClient(cfg),
 		RequestExecution:         NewRequestExecutionClient(cfg),
 		Role:                     NewRoleClient(cfg),
 		System:                   NewSystemClient(cfg),
@@ -299,6 +309,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		PromptProtectionRule:     NewPromptProtectionRuleClient(cfg),
 		ProviderQuotaStatus:      NewProviderQuotaStatusClient(cfg),
 		Request:                  NewRequestClient(cfg),
+		RequestBodyChunk:         NewRequestBodyChunkClient(cfg),
+		RequestBodyChunkRef:      NewRequestBodyChunkRefClient(cfg),
 		RequestExecution:         NewRequestExecutionClient(cfg),
 		Role:                     NewRoleClient(cfg),
 		System:                   NewSystemClient(cfg),
@@ -341,8 +353,9 @@ func (c *Client) Use(hooks ...Hook) {
 		c.ChannelModelPriceVersion, c.ChannelOverrideTemplate, c.ChannelProbe,
 		c.DataStorage, c.Invitation, c.Model, c.OIDCIdentity, c.Plugin,
 		c.PluginStorage, c.Project, c.Prompt, c.PromptProtectionRule,
-		c.ProviderQuotaStatus, c.Request, c.RequestExecution, c.Role, c.System,
-		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
+		c.ProviderQuotaStatus, c.Request, c.RequestBodyChunk, c.RequestBodyChunkRef,
+		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
+		c.UserProject, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -356,8 +369,9 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.ChannelModelPriceVersion, c.ChannelOverrideTemplate, c.ChannelProbe,
 		c.DataStorage, c.Invitation, c.Model, c.OIDCIdentity, c.Plugin,
 		c.PluginStorage, c.Project, c.Prompt, c.PromptProtectionRule,
-		c.ProviderQuotaStatus, c.Request, c.RequestExecution, c.Role, c.System,
-		c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject, c.UserRole,
+		c.ProviderQuotaStatus, c.Request, c.RequestBodyChunk, c.RequestBodyChunkRef,
+		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
+		c.UserProject, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -402,6 +416,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ProviderQuotaStatus.mutate(ctx, m)
 	case *RequestMutation:
 		return c.Request.mutate(ctx, m)
+	case *RequestBodyChunkMutation:
+		return c.RequestBodyChunk.mutate(ctx, m)
+	case *RequestBodyChunkRefMutation:
+		return c.RequestBodyChunkRef.mutate(ctx, m)
 	case *RequestExecutionMutation:
 		return c.RequestExecution.mutate(ctx, m)
 	case *RoleMutation:
@@ -3336,6 +3354,22 @@ func (c *RequestClient) GetX(ctx context.Context, id int) *Request {
 	return obj
 }
 
+// QueryRequestBodyChunks queries the request_body_chunks edge of a Request.
+func (c *RequestClient) QueryRequestBodyChunks(_m *Request) *RequestBodyChunkRefQuery {
+	query := (&RequestBodyChunkRefClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(request.Table, request.FieldID, id),
+			sqlgraph.To(requestbodychunkref.Table, requestbodychunkref.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, request.RequestBodyChunksTable, request.RequestBodyChunksColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryAPIKey queries the api_key edge of a Request.
 func (c *RequestClient) QueryAPIKey(_m *Request) *APIKeyQuery {
 	query := (&APIKeyClient{config: c.config}).Query()
@@ -3474,6 +3508,338 @@ func (c *RequestClient) mutate(ctx context.Context, m *RequestMutation) (Value, 
 	}
 }
 
+// RequestBodyChunkClient is a client for the RequestBodyChunk schema.
+type RequestBodyChunkClient struct {
+	config
+}
+
+// NewRequestBodyChunkClient returns a client for the RequestBodyChunk from the given config.
+func NewRequestBodyChunkClient(c config) *RequestBodyChunkClient {
+	return &RequestBodyChunkClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `requestbodychunk.Hooks(f(g(h())))`.
+func (c *RequestBodyChunkClient) Use(hooks ...Hook) {
+	c.hooks.RequestBodyChunk = append(c.hooks.RequestBodyChunk, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `requestbodychunk.Intercept(f(g(h())))`.
+func (c *RequestBodyChunkClient) Intercept(interceptors ...Interceptor) {
+	c.inters.RequestBodyChunk = append(c.inters.RequestBodyChunk, interceptors...)
+}
+
+// Create returns a builder for creating a RequestBodyChunk entity.
+func (c *RequestBodyChunkClient) Create() *RequestBodyChunkCreate {
+	mutation := newRequestBodyChunkMutation(c.config, OpCreate)
+	return &RequestBodyChunkCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of RequestBodyChunk entities.
+func (c *RequestBodyChunkClient) CreateBulk(builders ...*RequestBodyChunkCreate) *RequestBodyChunkCreateBulk {
+	return &RequestBodyChunkCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *RequestBodyChunkClient) MapCreateBulk(slice any, setFunc func(*RequestBodyChunkCreate, int)) *RequestBodyChunkCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &RequestBodyChunkCreateBulk{err: fmt.Errorf("calling to RequestBodyChunkClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*RequestBodyChunkCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &RequestBodyChunkCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for RequestBodyChunk.
+func (c *RequestBodyChunkClient) Update() *RequestBodyChunkUpdate {
+	mutation := newRequestBodyChunkMutation(c.config, OpUpdate)
+	return &RequestBodyChunkUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *RequestBodyChunkClient) UpdateOne(_m *RequestBodyChunk) *RequestBodyChunkUpdateOne {
+	mutation := newRequestBodyChunkMutation(c.config, OpUpdateOne, withRequestBodyChunk(_m))
+	return &RequestBodyChunkUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *RequestBodyChunkClient) UpdateOneID(id int) *RequestBodyChunkUpdateOne {
+	mutation := newRequestBodyChunkMutation(c.config, OpUpdateOne, withRequestBodyChunkID(id))
+	return &RequestBodyChunkUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for RequestBodyChunk.
+func (c *RequestBodyChunkClient) Delete() *RequestBodyChunkDelete {
+	mutation := newRequestBodyChunkMutation(c.config, OpDelete)
+	return &RequestBodyChunkDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *RequestBodyChunkClient) DeleteOne(_m *RequestBodyChunk) *RequestBodyChunkDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *RequestBodyChunkClient) DeleteOneID(id int) *RequestBodyChunkDeleteOne {
+	builder := c.Delete().Where(requestbodychunk.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &RequestBodyChunkDeleteOne{builder}
+}
+
+// Query returns a query builder for RequestBodyChunk.
+func (c *RequestBodyChunkClient) Query() *RequestBodyChunkQuery {
+	return &RequestBodyChunkQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeRequestBodyChunk},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a RequestBodyChunk entity by its id.
+func (c *RequestBodyChunkClient) Get(ctx context.Context, id int) (*RequestBodyChunk, error) {
+	return c.Query().Where(requestbodychunk.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *RequestBodyChunkClient) GetX(ctx context.Context, id int) *RequestBodyChunk {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryReferences queries the references edge of a RequestBodyChunk.
+func (c *RequestBodyChunkClient) QueryReferences(_m *RequestBodyChunk) *RequestBodyChunkRefQuery {
+	query := (&RequestBodyChunkRefClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(requestbodychunk.Table, requestbodychunk.FieldID, id),
+			sqlgraph.To(requestbodychunkref.Table, requestbodychunkref.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, requestbodychunk.ReferencesTable, requestbodychunk.ReferencesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *RequestBodyChunkClient) Hooks() []Hook {
+	hooks := c.hooks.RequestBodyChunk
+	return append(hooks[:len(hooks):len(hooks)], requestbodychunk.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *RequestBodyChunkClient) Interceptors() []Interceptor {
+	return c.inters.RequestBodyChunk
+}
+
+func (c *RequestBodyChunkClient) mutate(ctx context.Context, m *RequestBodyChunkMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&RequestBodyChunkCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&RequestBodyChunkUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&RequestBodyChunkUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&RequestBodyChunkDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown RequestBodyChunk mutation op: %q", m.Op())
+	}
+}
+
+// RequestBodyChunkRefClient is a client for the RequestBodyChunkRef schema.
+type RequestBodyChunkRefClient struct {
+	config
+}
+
+// NewRequestBodyChunkRefClient returns a client for the RequestBodyChunkRef from the given config.
+func NewRequestBodyChunkRefClient(c config) *RequestBodyChunkRefClient {
+	return &RequestBodyChunkRefClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `requestbodychunkref.Hooks(f(g(h())))`.
+func (c *RequestBodyChunkRefClient) Use(hooks ...Hook) {
+	c.hooks.RequestBodyChunkRef = append(c.hooks.RequestBodyChunkRef, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `requestbodychunkref.Intercept(f(g(h())))`.
+func (c *RequestBodyChunkRefClient) Intercept(interceptors ...Interceptor) {
+	c.inters.RequestBodyChunkRef = append(c.inters.RequestBodyChunkRef, interceptors...)
+}
+
+// Create returns a builder for creating a RequestBodyChunkRef entity.
+func (c *RequestBodyChunkRefClient) Create() *RequestBodyChunkRefCreate {
+	mutation := newRequestBodyChunkRefMutation(c.config, OpCreate)
+	return &RequestBodyChunkRefCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of RequestBodyChunkRef entities.
+func (c *RequestBodyChunkRefClient) CreateBulk(builders ...*RequestBodyChunkRefCreate) *RequestBodyChunkRefCreateBulk {
+	return &RequestBodyChunkRefCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *RequestBodyChunkRefClient) MapCreateBulk(slice any, setFunc func(*RequestBodyChunkRefCreate, int)) *RequestBodyChunkRefCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &RequestBodyChunkRefCreateBulk{err: fmt.Errorf("calling to RequestBodyChunkRefClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*RequestBodyChunkRefCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &RequestBodyChunkRefCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for RequestBodyChunkRef.
+func (c *RequestBodyChunkRefClient) Update() *RequestBodyChunkRefUpdate {
+	mutation := newRequestBodyChunkRefMutation(c.config, OpUpdate)
+	return &RequestBodyChunkRefUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *RequestBodyChunkRefClient) UpdateOne(_m *RequestBodyChunkRef) *RequestBodyChunkRefUpdateOne {
+	mutation := newRequestBodyChunkRefMutation(c.config, OpUpdateOne, withRequestBodyChunkRef(_m))
+	return &RequestBodyChunkRefUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *RequestBodyChunkRefClient) UpdateOneID(id int) *RequestBodyChunkRefUpdateOne {
+	mutation := newRequestBodyChunkRefMutation(c.config, OpUpdateOne, withRequestBodyChunkRefID(id))
+	return &RequestBodyChunkRefUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for RequestBodyChunkRef.
+func (c *RequestBodyChunkRefClient) Delete() *RequestBodyChunkRefDelete {
+	mutation := newRequestBodyChunkRefMutation(c.config, OpDelete)
+	return &RequestBodyChunkRefDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *RequestBodyChunkRefClient) DeleteOne(_m *RequestBodyChunkRef) *RequestBodyChunkRefDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *RequestBodyChunkRefClient) DeleteOneID(id int) *RequestBodyChunkRefDeleteOne {
+	builder := c.Delete().Where(requestbodychunkref.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &RequestBodyChunkRefDeleteOne{builder}
+}
+
+// Query returns a query builder for RequestBodyChunkRef.
+func (c *RequestBodyChunkRefClient) Query() *RequestBodyChunkRefQuery {
+	return &RequestBodyChunkRefQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeRequestBodyChunkRef},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a RequestBodyChunkRef entity by its id.
+func (c *RequestBodyChunkRefClient) Get(ctx context.Context, id int) (*RequestBodyChunkRef, error) {
+	return c.Query().Where(requestbodychunkref.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *RequestBodyChunkRefClient) GetX(ctx context.Context, id int) *RequestBodyChunkRef {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryRequest queries the request edge of a RequestBodyChunkRef.
+func (c *RequestBodyChunkRefClient) QueryRequest(_m *RequestBodyChunkRef) *RequestQuery {
+	query := (&RequestClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(requestbodychunkref.Table, requestbodychunkref.FieldID, id),
+			sqlgraph.To(request.Table, request.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, requestbodychunkref.RequestTable, requestbodychunkref.RequestColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryExecution queries the execution edge of a RequestBodyChunkRef.
+func (c *RequestBodyChunkRefClient) QueryExecution(_m *RequestBodyChunkRef) *RequestExecutionQuery {
+	query := (&RequestExecutionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(requestbodychunkref.Table, requestbodychunkref.FieldID, id),
+			sqlgraph.To(requestexecution.Table, requestexecution.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, requestbodychunkref.ExecutionTable, requestbodychunkref.ExecutionColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryChunk queries the chunk edge of a RequestBodyChunkRef.
+func (c *RequestBodyChunkRefClient) QueryChunk(_m *RequestBodyChunkRef) *RequestBodyChunkQuery {
+	query := (&RequestBodyChunkClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(requestbodychunkref.Table, requestbodychunkref.FieldID, id),
+			sqlgraph.To(requestbodychunk.Table, requestbodychunk.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, requestbodychunkref.ChunkTable, requestbodychunkref.ChunkColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *RequestBodyChunkRefClient) Hooks() []Hook {
+	hooks := c.hooks.RequestBodyChunkRef
+	return append(hooks[:len(hooks):len(hooks)], requestbodychunkref.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *RequestBodyChunkRefClient) Interceptors() []Interceptor {
+	return c.inters.RequestBodyChunkRef
+}
+
+func (c *RequestBodyChunkRefClient) mutate(ctx context.Context, m *RequestBodyChunkRefMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&RequestBodyChunkRefCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&RequestBodyChunkRefUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&RequestBodyChunkRefUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&RequestBodyChunkRefDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown RequestBodyChunkRef mutation op: %q", m.Op())
+	}
+}
+
 // RequestExecutionClient is a client for the RequestExecution schema.
 type RequestExecutionClient struct {
 	config
@@ -3580,6 +3946,22 @@ func (c *RequestExecutionClient) GetX(ctx context.Context, id int) *RequestExecu
 		panic(err)
 	}
 	return obj
+}
+
+// QueryRequestBodyChunks queries the request_body_chunks edge of a RequestExecution.
+func (c *RequestExecutionClient) QueryRequestBodyChunks(_m *RequestExecution) *RequestBodyChunkRefQuery {
+	query := (&RequestBodyChunkRefClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, id),
+			sqlgraph.To(requestbodychunkref.Table, requestbodychunkref.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, requestexecution.RequestBodyChunksTable, requestexecution.RequestBodyChunksColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // QueryRequest queries the request edge of a RequestExecution.
@@ -5087,14 +5469,16 @@ type (
 		APIKey, APIKeyProfileTemplate, Channel, ChannelModelPrice,
 		ChannelModelPriceVersion, ChannelOverrideTemplate, ChannelProbe, DataStorage,
 		Invitation, Model, OIDCIdentity, Plugin, PluginStorage, Project, Prompt,
-		PromptProtectionRule, ProviderQuotaStatus, Request, RequestExecution, Role,
-		System, Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Hook
+		PromptProtectionRule, ProviderQuotaStatus, Request, RequestBodyChunk,
+		RequestBodyChunkRef, RequestExecution, Role, System, Thread, Trace, UsageLog,
+		User, UserProject, UserRole []ent.Hook
 	}
 	inters struct {
 		APIKey, APIKeyProfileTemplate, Channel, ChannelModelPrice,
 		ChannelModelPriceVersion, ChannelOverrideTemplate, ChannelProbe, DataStorage,
 		Invitation, Model, OIDCIdentity, Plugin, PluginStorage, Project, Prompt,
-		PromptProtectionRule, ProviderQuotaStatus, Request, RequestExecution, Role,
-		System, Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Interceptor
+		PromptProtectionRule, ProviderQuotaStatus, Request, RequestBodyChunk,
+		RequestBodyChunkRef, RequestExecution, Role, System, Thread, Trace, UsageLog,
+		User, UserProject, UserRole []ent.Interceptor
 	}
 )

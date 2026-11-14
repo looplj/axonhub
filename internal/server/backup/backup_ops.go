@@ -311,6 +311,14 @@ func (svc *BackupService) streamUsageRequests(ctx context.Context, o *objWriter,
 			return rows, nextID, nil
 		},
 		func(req *ent.Request) ([]byte, bool, error) {
+			if req.RequestBodyChunked {
+				body, err := biz.LoadChunkedRequestBody(ctx, svc.db, req.ProjectID, req.ID, 0, req.RequestBody)
+				if err != nil {
+					return nil, false, fmt.Errorf("hydrate request body %d: %w", req.ID, err)
+				}
+				req.RequestBody = body
+				req.RequestBodyChunked = false
+			}
 			b, err := json.Marshal(backupUsageRequest(req, opts.IncludeAPIKeys))
 			return b, true, err
 		},

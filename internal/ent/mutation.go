@@ -30,6 +30,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestbodychunk"
+	"github.com/looplj/axonhub/internal/ent/requestbodychunkref"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
@@ -69,6 +71,8 @@ const (
 	TypePromptProtectionRule     = "PromptProtectionRule"
 	TypeProviderQuotaStatus      = "ProviderQuotaStatus"
 	TypeRequest                  = "Request"
+	TypeRequestBodyChunk         = "RequestBodyChunk"
+	TypeRequestBodyChunkRef      = "RequestBodyChunkRef"
 	TypeRequestExecution         = "RequestExecution"
 	TypeRole                     = "Role"
 	TypeSystem                   = "System"
@@ -18460,6 +18464,7 @@ type RequestMutation struct {
 	appendrequest_headers             objects.JSONRawMessage
 	request_body                      *objects.JSONRawMessage
 	appendrequest_body                objects.JSONRawMessage
+	request_body_chunked              *bool
 	response_headers                  *objects.JSONRawMessage
 	appendresponse_headers            objects.JSONRawMessage
 	response_body                     *objects.JSONRawMessage
@@ -18483,6 +18488,9 @@ type RequestMutation struct {
 	content_storage_key               *string
 	content_saved_at                  *time.Time
 	clearedFields                     map[string]struct{}
+	request_body_chunks               map[int]struct{}
+	removedrequest_body_chunks        map[int]struct{}
+	clearedrequest_body_chunks        bool
 	api_key                           *int
 	clearedapi_key                    bool
 	project                           *int
@@ -19198,6 +19206,42 @@ func (m *RequestMutation) AppendedRequestBody() (objects.JSONRawMessage, bool) {
 func (m *RequestMutation) ResetRequestBody() {
 	m.request_body = nil
 	m.appendrequest_body = nil
+}
+
+// SetRequestBodyChunked sets the "request_body_chunked" field.
+func (m *RequestMutation) SetRequestBodyChunked(b bool) {
+	m.request_body_chunked = &b
+}
+
+// RequestBodyChunked returns the value of the "request_body_chunked" field in the mutation.
+func (m *RequestMutation) RequestBodyChunked() (r bool, exists bool) {
+	v := m.request_body_chunked
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestBodyChunked returns the old "request_body_chunked" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldRequestBodyChunked(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestBodyChunked is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestBodyChunked requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestBodyChunked: %w", err)
+	}
+	return oldValue.RequestBodyChunked, nil
+}
+
+// ResetRequestBodyChunked resets all changes to the "request_body_chunked" field.
+func (m *RequestMutation) ResetRequestBodyChunked() {
+	m.request_body_chunked = nil
 }
 
 // SetResponseHeaders sets the "response_headers" field.
@@ -20051,6 +20095,60 @@ func (m *RequestMutation) ResetContentSavedAt() {
 	delete(m.clearedFields, request.FieldContentSavedAt)
 }
 
+// AddRequestBodyChunkIDs adds the "request_body_chunks" edge to the RequestBodyChunkRef entity by ids.
+func (m *RequestMutation) AddRequestBodyChunkIDs(ids ...int) {
+	if m.request_body_chunks == nil {
+		m.request_body_chunks = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.request_body_chunks[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRequestBodyChunks clears the "request_body_chunks" edge to the RequestBodyChunkRef entity.
+func (m *RequestMutation) ClearRequestBodyChunks() {
+	m.clearedrequest_body_chunks = true
+}
+
+// RequestBodyChunksCleared reports if the "request_body_chunks" edge to the RequestBodyChunkRef entity was cleared.
+func (m *RequestMutation) RequestBodyChunksCleared() bool {
+	return m.clearedrequest_body_chunks
+}
+
+// RemoveRequestBodyChunkIDs removes the "request_body_chunks" edge to the RequestBodyChunkRef entity by IDs.
+func (m *RequestMutation) RemoveRequestBodyChunkIDs(ids ...int) {
+	if m.removedrequest_body_chunks == nil {
+		m.removedrequest_body_chunks = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.request_body_chunks, ids[i])
+		m.removedrequest_body_chunks[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRequestBodyChunks returns the removed IDs of the "request_body_chunks" edge to the RequestBodyChunkRef entity.
+func (m *RequestMutation) RemovedRequestBodyChunksIDs() (ids []int) {
+	for id := range m.removedrequest_body_chunks {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RequestBodyChunksIDs returns the "request_body_chunks" edge IDs in the mutation.
+func (m *RequestMutation) RequestBodyChunksIDs() (ids []int) {
+	for id := range m.request_body_chunks {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRequestBodyChunks resets all changes to the "request_body_chunks" edge.
+func (m *RequestMutation) ResetRequestBodyChunks() {
+	m.request_body_chunks = nil
+	m.clearedrequest_body_chunks = false
+	m.removedrequest_body_chunks = nil
+}
+
 // ClearAPIKey clears the "api_key" edge to the APIKey entity.
 func (m *RequestMutation) ClearAPIKey() {
 	m.clearedapi_key = true
@@ -20328,7 +20426,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 29)
+	fields := make([]string, 0, 30)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -20367,6 +20465,9 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.request_body != nil {
 		fields = append(fields, request.FieldRequestBody)
+	}
+	if m.request_body_chunked != nil {
+		fields = append(fields, request.FieldRequestBodyChunked)
 	}
 	if m.response_headers != nil {
 		fields = append(fields, request.FieldResponseHeaders)
@@ -20450,6 +20551,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.RequestHeaders()
 	case request.FieldRequestBody:
 		return m.RequestBody()
+	case request.FieldRequestBodyChunked:
+		return m.RequestBodyChunked()
 	case request.FieldResponseHeaders:
 		return m.ResponseHeaders()
 	case request.FieldResponseBody:
@@ -20517,6 +20620,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldRequestHeaders(ctx)
 	case request.FieldRequestBody:
 		return m.OldRequestBody(ctx)
+	case request.FieldRequestBodyChunked:
+		return m.OldRequestBodyChunked(ctx)
 	case request.FieldResponseHeaders:
 		return m.OldResponseHeaders(ctx)
 	case request.FieldResponseBody:
@@ -20648,6 +20753,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRequestBody(v)
+		return nil
+	case request.FieldRequestBodyChunked:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestBodyChunked(v)
 		return nil
 	case request.FieldResponseHeaders:
 		v, ok := value.(objects.JSONRawMessage)
@@ -21017,6 +21129,9 @@ func (m *RequestMutation) ResetField(name string) error {
 	case request.FieldRequestBody:
 		m.ResetRequestBody()
 		return nil
+	case request.FieldRequestBodyChunked:
+		m.ResetRequestBodyChunked()
+		return nil
 	case request.FieldResponseHeaders:
 		m.ResetResponseHeaders()
 		return nil
@@ -21071,7 +21186,10 @@ func (m *RequestMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RequestMutation) AddedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
+	if m.request_body_chunks != nil {
+		edges = append(edges, request.EdgeRequestBodyChunks)
+	}
 	if m.api_key != nil {
 		edges = append(edges, request.EdgeAPIKey)
 	}
@@ -21100,6 +21218,12 @@ func (m *RequestMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *RequestMutation) AddedIDs(name string) []ent.Value {
 	switch name {
+	case request.EdgeRequestBodyChunks:
+		ids := make([]ent.Value, 0, len(m.request_body_chunks))
+		for id := range m.request_body_chunks {
+			ids = append(ids, id)
+		}
+		return ids
 	case request.EdgeAPIKey:
 		if id := m.api_key; id != nil {
 			return []ent.Value{*id}
@@ -21138,7 +21262,10 @@ func (m *RequestMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RequestMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
+	if m.removedrequest_body_chunks != nil {
+		edges = append(edges, request.EdgeRequestBodyChunks)
+	}
 	if m.removedexecutions != nil {
 		edges = append(edges, request.EdgeExecutions)
 	}
@@ -21152,6 +21279,12 @@ func (m *RequestMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *RequestMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
+	case request.EdgeRequestBodyChunks:
+		ids := make([]ent.Value, 0, len(m.removedrequest_body_chunks))
+		for id := range m.removedrequest_body_chunks {
+			ids = append(ids, id)
+		}
+		return ids
 	case request.EdgeExecutions:
 		ids := make([]ent.Value, 0, len(m.removedexecutions))
 		for id := range m.removedexecutions {
@@ -21170,7 +21303,10 @@ func (m *RequestMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RequestMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 7)
+	edges := make([]string, 0, 8)
+	if m.clearedrequest_body_chunks {
+		edges = append(edges, request.EdgeRequestBodyChunks)
+	}
 	if m.clearedapi_key {
 		edges = append(edges, request.EdgeAPIKey)
 	}
@@ -21199,6 +21335,8 @@ func (m *RequestMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *RequestMutation) EdgeCleared(name string) bool {
 	switch name {
+	case request.EdgeRequestBodyChunks:
+		return m.clearedrequest_body_chunks
 	case request.EdgeAPIKey:
 		return m.clearedapi_key
 	case request.EdgeProject:
@@ -21244,6 +21382,9 @@ func (m *RequestMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *RequestMutation) ResetEdge(name string) error {
 	switch name {
+	case request.EdgeRequestBodyChunks:
+		m.ResetRequestBodyChunks()
+		return nil
 	case request.EdgeAPIKey:
 		m.ResetAPIKey()
 		return nil
@@ -21269,6 +21410,1334 @@ func (m *RequestMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Request edge %s", name)
 }
 
+// RequestBodyChunkMutation represents an operation that mutates the RequestBodyChunk nodes in the graph.
+type RequestBodyChunkMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	project_id        *int
+	addproject_id     *int
+	hash              *string
+	data              *[]byte
+	created_at        *time.Time
+	clearedFields     map[string]struct{}
+	references        map[int]struct{}
+	removedreferences map[int]struct{}
+	clearedreferences bool
+	done              bool
+	oldValue          func(context.Context) (*RequestBodyChunk, error)
+	predicates        []predicate.RequestBodyChunk
+}
+
+var _ ent.Mutation = (*RequestBodyChunkMutation)(nil)
+
+// requestbodychunkOption allows management of the mutation configuration using functional options.
+type requestbodychunkOption func(*RequestBodyChunkMutation)
+
+// newRequestBodyChunkMutation creates new mutation for the RequestBodyChunk entity.
+func newRequestBodyChunkMutation(c config, op Op, opts ...requestbodychunkOption) *RequestBodyChunkMutation {
+	m := &RequestBodyChunkMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeRequestBodyChunk,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withRequestBodyChunkID sets the ID field of the mutation.
+func withRequestBodyChunkID(id int) requestbodychunkOption {
+	return func(m *RequestBodyChunkMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *RequestBodyChunk
+		)
+		m.oldValue = func(ctx context.Context) (*RequestBodyChunk, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().RequestBodyChunk.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withRequestBodyChunk sets the old RequestBodyChunk of the mutation.
+func withRequestBodyChunk(node *RequestBodyChunk) requestbodychunkOption {
+	return func(m *RequestBodyChunkMutation) {
+		m.oldValue = func(context.Context) (*RequestBodyChunk, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m RequestBodyChunkMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m RequestBodyChunkMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *RequestBodyChunkMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *RequestBodyChunkMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().RequestBodyChunk.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *RequestBodyChunkMutation) SetProjectID(i int) {
+	m.project_id = &i
+	m.addproject_id = nil
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *RequestBodyChunkMutation) ProjectID() (r int, exists bool) {
+	v := m.project_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the RequestBodyChunk entity.
+// If the RequestBodyChunk object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestBodyChunkMutation) OldProjectID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// AddProjectID adds i to the "project_id" field.
+func (m *RequestBodyChunkMutation) AddProjectID(i int) {
+	if m.addproject_id != nil {
+		*m.addproject_id += i
+	} else {
+		m.addproject_id = &i
+	}
+}
+
+// AddedProjectID returns the value that was added to the "project_id" field in this mutation.
+func (m *RequestBodyChunkMutation) AddedProjectID() (r int, exists bool) {
+	v := m.addproject_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *RequestBodyChunkMutation) ResetProjectID() {
+	m.project_id = nil
+	m.addproject_id = nil
+}
+
+// SetHash sets the "hash" field.
+func (m *RequestBodyChunkMutation) SetHash(s string) {
+	m.hash = &s
+}
+
+// Hash returns the value of the "hash" field in the mutation.
+func (m *RequestBodyChunkMutation) Hash() (r string, exists bool) {
+	v := m.hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldHash returns the old "hash" field's value of the RequestBodyChunk entity.
+// If the RequestBodyChunk object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestBodyChunkMutation) OldHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldHash: %w", err)
+	}
+	return oldValue.Hash, nil
+}
+
+// ResetHash resets all changes to the "hash" field.
+func (m *RequestBodyChunkMutation) ResetHash() {
+	m.hash = nil
+}
+
+// SetData sets the "data" field.
+func (m *RequestBodyChunkMutation) SetData(b []byte) {
+	m.data = &b
+}
+
+// Data returns the value of the "data" field in the mutation.
+func (m *RequestBodyChunkMutation) Data() (r []byte, exists bool) {
+	v := m.data
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldData returns the old "data" field's value of the RequestBodyChunk entity.
+// If the RequestBodyChunk object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestBodyChunkMutation) OldData(ctx context.Context) (v []byte, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldData is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldData requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldData: %w", err)
+	}
+	return oldValue.Data, nil
+}
+
+// ResetData resets all changes to the "data" field.
+func (m *RequestBodyChunkMutation) ResetData() {
+	m.data = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *RequestBodyChunkMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *RequestBodyChunkMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the RequestBodyChunk entity.
+// If the RequestBodyChunk object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestBodyChunkMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *RequestBodyChunkMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// AddReferenceIDs adds the "references" edge to the RequestBodyChunkRef entity by ids.
+func (m *RequestBodyChunkMutation) AddReferenceIDs(ids ...int) {
+	if m.references == nil {
+		m.references = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.references[ids[i]] = struct{}{}
+	}
+}
+
+// ClearReferences clears the "references" edge to the RequestBodyChunkRef entity.
+func (m *RequestBodyChunkMutation) ClearReferences() {
+	m.clearedreferences = true
+}
+
+// ReferencesCleared reports if the "references" edge to the RequestBodyChunkRef entity was cleared.
+func (m *RequestBodyChunkMutation) ReferencesCleared() bool {
+	return m.clearedreferences
+}
+
+// RemoveReferenceIDs removes the "references" edge to the RequestBodyChunkRef entity by IDs.
+func (m *RequestBodyChunkMutation) RemoveReferenceIDs(ids ...int) {
+	if m.removedreferences == nil {
+		m.removedreferences = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.references, ids[i])
+		m.removedreferences[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedReferences returns the removed IDs of the "references" edge to the RequestBodyChunkRef entity.
+func (m *RequestBodyChunkMutation) RemovedReferencesIDs() (ids []int) {
+	for id := range m.removedreferences {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ReferencesIDs returns the "references" edge IDs in the mutation.
+func (m *RequestBodyChunkMutation) ReferencesIDs() (ids []int) {
+	for id := range m.references {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetReferences resets all changes to the "references" edge.
+func (m *RequestBodyChunkMutation) ResetReferences() {
+	m.references = nil
+	m.clearedreferences = false
+	m.removedreferences = nil
+}
+
+// Where appends a list predicates to the RequestBodyChunkMutation builder.
+func (m *RequestBodyChunkMutation) Where(ps ...predicate.RequestBodyChunk) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the RequestBodyChunkMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *RequestBodyChunkMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.RequestBodyChunk, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *RequestBodyChunkMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *RequestBodyChunkMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (RequestBodyChunk).
+func (m *RequestBodyChunkMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *RequestBodyChunkMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.project_id != nil {
+		fields = append(fields, requestbodychunk.FieldProjectID)
+	}
+	if m.hash != nil {
+		fields = append(fields, requestbodychunk.FieldHash)
+	}
+	if m.data != nil {
+		fields = append(fields, requestbodychunk.FieldData)
+	}
+	if m.created_at != nil {
+		fields = append(fields, requestbodychunk.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *RequestBodyChunkMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case requestbodychunk.FieldProjectID:
+		return m.ProjectID()
+	case requestbodychunk.FieldHash:
+		return m.Hash()
+	case requestbodychunk.FieldData:
+		return m.Data()
+	case requestbodychunk.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *RequestBodyChunkMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case requestbodychunk.FieldProjectID:
+		return m.OldProjectID(ctx)
+	case requestbodychunk.FieldHash:
+		return m.OldHash(ctx)
+	case requestbodychunk.FieldData:
+		return m.OldData(ctx)
+	case requestbodychunk.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown RequestBodyChunk field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *RequestBodyChunkMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case requestbodychunk.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
+		return nil
+	case requestbodychunk.FieldHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetHash(v)
+		return nil
+	case requestbodychunk.FieldData:
+		v, ok := value.([]byte)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetData(v)
+		return nil
+	case requestbodychunk.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown RequestBodyChunk field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *RequestBodyChunkMutation) AddedFields() []string {
+	var fields []string
+	if m.addproject_id != nil {
+		fields = append(fields, requestbodychunk.FieldProjectID)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *RequestBodyChunkMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case requestbodychunk.FieldProjectID:
+		return m.AddedProjectID()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *RequestBodyChunkMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case requestbodychunk.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddProjectID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown RequestBodyChunk numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *RequestBodyChunkMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *RequestBodyChunkMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *RequestBodyChunkMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown RequestBodyChunk nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *RequestBodyChunkMutation) ResetField(name string) error {
+	switch name {
+	case requestbodychunk.FieldProjectID:
+		m.ResetProjectID()
+		return nil
+	case requestbodychunk.FieldHash:
+		m.ResetHash()
+		return nil
+	case requestbodychunk.FieldData:
+		m.ResetData()
+		return nil
+	case requestbodychunk.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown RequestBodyChunk field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *RequestBodyChunkMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.references != nil {
+		edges = append(edges, requestbodychunk.EdgeReferences)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *RequestBodyChunkMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case requestbodychunk.EdgeReferences:
+		ids := make([]ent.Value, 0, len(m.references))
+		for id := range m.references {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *RequestBodyChunkMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedreferences != nil {
+		edges = append(edges, requestbodychunk.EdgeReferences)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *RequestBodyChunkMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case requestbodychunk.EdgeReferences:
+		ids := make([]ent.Value, 0, len(m.removedreferences))
+		for id := range m.removedreferences {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *RequestBodyChunkMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedreferences {
+		edges = append(edges, requestbodychunk.EdgeReferences)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *RequestBodyChunkMutation) EdgeCleared(name string) bool {
+	switch name {
+	case requestbodychunk.EdgeReferences:
+		return m.clearedreferences
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *RequestBodyChunkMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown RequestBodyChunk unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *RequestBodyChunkMutation) ResetEdge(name string) error {
+	switch name {
+	case requestbodychunk.EdgeReferences:
+		m.ResetReferences()
+		return nil
+	}
+	return fmt.Errorf("unknown RequestBodyChunk edge %s", name)
+}
+
+// RequestBodyChunkRefMutation represents an operation that mutates the RequestBodyChunkRef nodes in the graph.
+type RequestBodyChunkRefMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *int
+	position         *int
+	addposition      *int
+	clearedFields    map[string]struct{}
+	request          *int
+	clearedrequest   bool
+	execution        *int
+	clearedexecution bool
+	chunk            *int
+	clearedchunk     bool
+	done             bool
+	oldValue         func(context.Context) (*RequestBodyChunkRef, error)
+	predicates       []predicate.RequestBodyChunkRef
+}
+
+var _ ent.Mutation = (*RequestBodyChunkRefMutation)(nil)
+
+// requestbodychunkrefOption allows management of the mutation configuration using functional options.
+type requestbodychunkrefOption func(*RequestBodyChunkRefMutation)
+
+// newRequestBodyChunkRefMutation creates new mutation for the RequestBodyChunkRef entity.
+func newRequestBodyChunkRefMutation(c config, op Op, opts ...requestbodychunkrefOption) *RequestBodyChunkRefMutation {
+	m := &RequestBodyChunkRefMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeRequestBodyChunkRef,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withRequestBodyChunkRefID sets the ID field of the mutation.
+func withRequestBodyChunkRefID(id int) requestbodychunkrefOption {
+	return func(m *RequestBodyChunkRefMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *RequestBodyChunkRef
+		)
+		m.oldValue = func(ctx context.Context) (*RequestBodyChunkRef, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().RequestBodyChunkRef.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withRequestBodyChunkRef sets the old RequestBodyChunkRef of the mutation.
+func withRequestBodyChunkRef(node *RequestBodyChunkRef) requestbodychunkrefOption {
+	return func(m *RequestBodyChunkRefMutation) {
+		m.oldValue = func(context.Context) (*RequestBodyChunkRef, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m RequestBodyChunkRefMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m RequestBodyChunkRefMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *RequestBodyChunkRefMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *RequestBodyChunkRefMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().RequestBodyChunkRef.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetRequestID sets the "request_id" field.
+func (m *RequestBodyChunkRefMutation) SetRequestID(i int) {
+	m.request = &i
+}
+
+// RequestID returns the value of the "request_id" field in the mutation.
+func (m *RequestBodyChunkRefMutation) RequestID() (r int, exists bool) {
+	v := m.request
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestID returns the old "request_id" field's value of the RequestBodyChunkRef entity.
+// If the RequestBodyChunkRef object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestBodyChunkRefMutation) OldRequestID(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestID: %w", err)
+	}
+	return oldValue.RequestID, nil
+}
+
+// ClearRequestID clears the value of the "request_id" field.
+func (m *RequestBodyChunkRefMutation) ClearRequestID() {
+	m.request = nil
+	m.clearedFields[requestbodychunkref.FieldRequestID] = struct{}{}
+}
+
+// RequestIDCleared returns if the "request_id" field was cleared in this mutation.
+func (m *RequestBodyChunkRefMutation) RequestIDCleared() bool {
+	_, ok := m.clearedFields[requestbodychunkref.FieldRequestID]
+	return ok
+}
+
+// ResetRequestID resets all changes to the "request_id" field.
+func (m *RequestBodyChunkRefMutation) ResetRequestID() {
+	m.request = nil
+	delete(m.clearedFields, requestbodychunkref.FieldRequestID)
+}
+
+// SetExecutionID sets the "execution_id" field.
+func (m *RequestBodyChunkRefMutation) SetExecutionID(i int) {
+	m.execution = &i
+}
+
+// ExecutionID returns the value of the "execution_id" field in the mutation.
+func (m *RequestBodyChunkRefMutation) ExecutionID() (r int, exists bool) {
+	v := m.execution
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExecutionID returns the old "execution_id" field's value of the RequestBodyChunkRef entity.
+// If the RequestBodyChunkRef object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestBodyChunkRefMutation) OldExecutionID(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExecutionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExecutionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExecutionID: %w", err)
+	}
+	return oldValue.ExecutionID, nil
+}
+
+// ClearExecutionID clears the value of the "execution_id" field.
+func (m *RequestBodyChunkRefMutation) ClearExecutionID() {
+	m.execution = nil
+	m.clearedFields[requestbodychunkref.FieldExecutionID] = struct{}{}
+}
+
+// ExecutionIDCleared returns if the "execution_id" field was cleared in this mutation.
+func (m *RequestBodyChunkRefMutation) ExecutionIDCleared() bool {
+	_, ok := m.clearedFields[requestbodychunkref.FieldExecutionID]
+	return ok
+}
+
+// ResetExecutionID resets all changes to the "execution_id" field.
+func (m *RequestBodyChunkRefMutation) ResetExecutionID() {
+	m.execution = nil
+	delete(m.clearedFields, requestbodychunkref.FieldExecutionID)
+}
+
+// SetChunkID sets the "chunk_id" field.
+func (m *RequestBodyChunkRefMutation) SetChunkID(i int) {
+	m.chunk = &i
+}
+
+// ChunkID returns the value of the "chunk_id" field in the mutation.
+func (m *RequestBodyChunkRefMutation) ChunkID() (r int, exists bool) {
+	v := m.chunk
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChunkID returns the old "chunk_id" field's value of the RequestBodyChunkRef entity.
+// If the RequestBodyChunkRef object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestBodyChunkRefMutation) OldChunkID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChunkID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChunkID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChunkID: %w", err)
+	}
+	return oldValue.ChunkID, nil
+}
+
+// ResetChunkID resets all changes to the "chunk_id" field.
+func (m *RequestBodyChunkRefMutation) ResetChunkID() {
+	m.chunk = nil
+}
+
+// SetPosition sets the "position" field.
+func (m *RequestBodyChunkRefMutation) SetPosition(i int) {
+	m.position = &i
+	m.addposition = nil
+}
+
+// Position returns the value of the "position" field in the mutation.
+func (m *RequestBodyChunkRefMutation) Position() (r int, exists bool) {
+	v := m.position
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPosition returns the old "position" field's value of the RequestBodyChunkRef entity.
+// If the RequestBodyChunkRef object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestBodyChunkRefMutation) OldPosition(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPosition is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPosition requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPosition: %w", err)
+	}
+	return oldValue.Position, nil
+}
+
+// AddPosition adds i to the "position" field.
+func (m *RequestBodyChunkRefMutation) AddPosition(i int) {
+	if m.addposition != nil {
+		*m.addposition += i
+	} else {
+		m.addposition = &i
+	}
+}
+
+// AddedPosition returns the value that was added to the "position" field in this mutation.
+func (m *RequestBodyChunkRefMutation) AddedPosition() (r int, exists bool) {
+	v := m.addposition
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPosition resets all changes to the "position" field.
+func (m *RequestBodyChunkRefMutation) ResetPosition() {
+	m.position = nil
+	m.addposition = nil
+}
+
+// ClearRequest clears the "request" edge to the Request entity.
+func (m *RequestBodyChunkRefMutation) ClearRequest() {
+	m.clearedrequest = true
+	m.clearedFields[requestbodychunkref.FieldRequestID] = struct{}{}
+}
+
+// RequestCleared reports if the "request" edge to the Request entity was cleared.
+func (m *RequestBodyChunkRefMutation) RequestCleared() bool {
+	return m.RequestIDCleared() || m.clearedrequest
+}
+
+// RequestIDs returns the "request" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// RequestID instead. It exists only for internal usage by the builders.
+func (m *RequestBodyChunkRefMutation) RequestIDs() (ids []int) {
+	if id := m.request; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRequest resets all changes to the "request" edge.
+func (m *RequestBodyChunkRefMutation) ResetRequest() {
+	m.request = nil
+	m.clearedrequest = false
+}
+
+// ClearExecution clears the "execution" edge to the RequestExecution entity.
+func (m *RequestBodyChunkRefMutation) ClearExecution() {
+	m.clearedexecution = true
+	m.clearedFields[requestbodychunkref.FieldExecutionID] = struct{}{}
+}
+
+// ExecutionCleared reports if the "execution" edge to the RequestExecution entity was cleared.
+func (m *RequestBodyChunkRefMutation) ExecutionCleared() bool {
+	return m.ExecutionIDCleared() || m.clearedexecution
+}
+
+// ExecutionIDs returns the "execution" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ExecutionID instead. It exists only for internal usage by the builders.
+func (m *RequestBodyChunkRefMutation) ExecutionIDs() (ids []int) {
+	if id := m.execution; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetExecution resets all changes to the "execution" edge.
+func (m *RequestBodyChunkRefMutation) ResetExecution() {
+	m.execution = nil
+	m.clearedexecution = false
+}
+
+// ClearChunk clears the "chunk" edge to the RequestBodyChunk entity.
+func (m *RequestBodyChunkRefMutation) ClearChunk() {
+	m.clearedchunk = true
+	m.clearedFields[requestbodychunkref.FieldChunkID] = struct{}{}
+}
+
+// ChunkCleared reports if the "chunk" edge to the RequestBodyChunk entity was cleared.
+func (m *RequestBodyChunkRefMutation) ChunkCleared() bool {
+	return m.clearedchunk
+}
+
+// ChunkIDs returns the "chunk" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ChunkID instead. It exists only for internal usage by the builders.
+func (m *RequestBodyChunkRefMutation) ChunkIDs() (ids []int) {
+	if id := m.chunk; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetChunk resets all changes to the "chunk" edge.
+func (m *RequestBodyChunkRefMutation) ResetChunk() {
+	m.chunk = nil
+	m.clearedchunk = false
+}
+
+// Where appends a list predicates to the RequestBodyChunkRefMutation builder.
+func (m *RequestBodyChunkRefMutation) Where(ps ...predicate.RequestBodyChunkRef) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the RequestBodyChunkRefMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *RequestBodyChunkRefMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.RequestBodyChunkRef, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *RequestBodyChunkRefMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *RequestBodyChunkRefMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (RequestBodyChunkRef).
+func (m *RequestBodyChunkRefMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *RequestBodyChunkRefMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.request != nil {
+		fields = append(fields, requestbodychunkref.FieldRequestID)
+	}
+	if m.execution != nil {
+		fields = append(fields, requestbodychunkref.FieldExecutionID)
+	}
+	if m.chunk != nil {
+		fields = append(fields, requestbodychunkref.FieldChunkID)
+	}
+	if m.position != nil {
+		fields = append(fields, requestbodychunkref.FieldPosition)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *RequestBodyChunkRefMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case requestbodychunkref.FieldRequestID:
+		return m.RequestID()
+	case requestbodychunkref.FieldExecutionID:
+		return m.ExecutionID()
+	case requestbodychunkref.FieldChunkID:
+		return m.ChunkID()
+	case requestbodychunkref.FieldPosition:
+		return m.Position()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *RequestBodyChunkRefMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case requestbodychunkref.FieldRequestID:
+		return m.OldRequestID(ctx)
+	case requestbodychunkref.FieldExecutionID:
+		return m.OldExecutionID(ctx)
+	case requestbodychunkref.FieldChunkID:
+		return m.OldChunkID(ctx)
+	case requestbodychunkref.FieldPosition:
+		return m.OldPosition(ctx)
+	}
+	return nil, fmt.Errorf("unknown RequestBodyChunkRef field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *RequestBodyChunkRefMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case requestbodychunkref.FieldRequestID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestID(v)
+		return nil
+	case requestbodychunkref.FieldExecutionID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExecutionID(v)
+		return nil
+	case requestbodychunkref.FieldChunkID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChunkID(v)
+		return nil
+	case requestbodychunkref.FieldPosition:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPosition(v)
+		return nil
+	}
+	return fmt.Errorf("unknown RequestBodyChunkRef field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *RequestBodyChunkRefMutation) AddedFields() []string {
+	var fields []string
+	if m.addposition != nil {
+		fields = append(fields, requestbodychunkref.FieldPosition)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *RequestBodyChunkRefMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case requestbodychunkref.FieldPosition:
+		return m.AddedPosition()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *RequestBodyChunkRefMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case requestbodychunkref.FieldPosition:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPosition(v)
+		return nil
+	}
+	return fmt.Errorf("unknown RequestBodyChunkRef numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *RequestBodyChunkRefMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(requestbodychunkref.FieldRequestID) {
+		fields = append(fields, requestbodychunkref.FieldRequestID)
+	}
+	if m.FieldCleared(requestbodychunkref.FieldExecutionID) {
+		fields = append(fields, requestbodychunkref.FieldExecutionID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *RequestBodyChunkRefMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *RequestBodyChunkRefMutation) ClearField(name string) error {
+	switch name {
+	case requestbodychunkref.FieldRequestID:
+		m.ClearRequestID()
+		return nil
+	case requestbodychunkref.FieldExecutionID:
+		m.ClearExecutionID()
+		return nil
+	}
+	return fmt.Errorf("unknown RequestBodyChunkRef nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *RequestBodyChunkRefMutation) ResetField(name string) error {
+	switch name {
+	case requestbodychunkref.FieldRequestID:
+		m.ResetRequestID()
+		return nil
+	case requestbodychunkref.FieldExecutionID:
+		m.ResetExecutionID()
+		return nil
+	case requestbodychunkref.FieldChunkID:
+		m.ResetChunkID()
+		return nil
+	case requestbodychunkref.FieldPosition:
+		m.ResetPosition()
+		return nil
+	}
+	return fmt.Errorf("unknown RequestBodyChunkRef field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *RequestBodyChunkRefMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.request != nil {
+		edges = append(edges, requestbodychunkref.EdgeRequest)
+	}
+	if m.execution != nil {
+		edges = append(edges, requestbodychunkref.EdgeExecution)
+	}
+	if m.chunk != nil {
+		edges = append(edges, requestbodychunkref.EdgeChunk)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *RequestBodyChunkRefMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case requestbodychunkref.EdgeRequest:
+		if id := m.request; id != nil {
+			return []ent.Value{*id}
+		}
+	case requestbodychunkref.EdgeExecution:
+		if id := m.execution; id != nil {
+			return []ent.Value{*id}
+		}
+	case requestbodychunkref.EdgeChunk:
+		if id := m.chunk; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *RequestBodyChunkRefMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *RequestBodyChunkRefMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *RequestBodyChunkRefMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.clearedrequest {
+		edges = append(edges, requestbodychunkref.EdgeRequest)
+	}
+	if m.clearedexecution {
+		edges = append(edges, requestbodychunkref.EdgeExecution)
+	}
+	if m.clearedchunk {
+		edges = append(edges, requestbodychunkref.EdgeChunk)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *RequestBodyChunkRefMutation) EdgeCleared(name string) bool {
+	switch name {
+	case requestbodychunkref.EdgeRequest:
+		return m.clearedrequest
+	case requestbodychunkref.EdgeExecution:
+		return m.clearedexecution
+	case requestbodychunkref.EdgeChunk:
+		return m.clearedchunk
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *RequestBodyChunkRefMutation) ClearEdge(name string) error {
+	switch name {
+	case requestbodychunkref.EdgeRequest:
+		m.ClearRequest()
+		return nil
+	case requestbodychunkref.EdgeExecution:
+		m.ClearExecution()
+		return nil
+	case requestbodychunkref.EdgeChunk:
+		m.ClearChunk()
+		return nil
+	}
+	return fmt.Errorf("unknown RequestBodyChunkRef unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *RequestBodyChunkRefMutation) ResetEdge(name string) error {
+	switch name {
+	case requestbodychunkref.EdgeRequest:
+		m.ResetRequest()
+		return nil
+	case requestbodychunkref.EdgeExecution:
+		m.ResetExecution()
+		return nil
+	case requestbodychunkref.EdgeChunk:
+		m.ResetChunk()
+		return nil
+	}
+	return fmt.Errorf("unknown RequestBodyChunkRef edge %s", name)
+}
+
 // RequestExecutionMutation represents an operation that mutates the RequestExecution nodes in the graph.
 type RequestExecutionMutation struct {
 	config
@@ -21289,6 +22758,7 @@ type RequestExecutionMutation struct {
 	channel_api_key_suffix            *string
 	request_body                      *objects.JSONRawMessage
 	appendrequest_body                objects.JSONRawMessage
+	request_body_chunked              *bool
 	response_headers                  *objects.JSONRawMessage
 	appendresponse_headers            objects.JSONRawMessage
 	response_body                     *objects.JSONRawMessage
@@ -21311,6 +22781,9 @@ type RequestExecutionMutation struct {
 	request_url                       *string
 	pass_through_applied              *bool
 	clearedFields                     map[string]struct{}
+	request_body_chunks               map[int]struct{}
+	removedrequest_body_chunks        map[int]struct{}
+	clearedrequest_body_chunks        bool
 	request                           *int
 	clearedrequest                    bool
 	channel                           *int
@@ -22071,6 +23544,42 @@ func (m *RequestExecutionMutation) ResetRequestBody() {
 	m.appendrequest_body = nil
 }
 
+// SetRequestBodyChunked sets the "request_body_chunked" field.
+func (m *RequestExecutionMutation) SetRequestBodyChunked(b bool) {
+	m.request_body_chunked = &b
+}
+
+// RequestBodyChunked returns the value of the "request_body_chunked" field in the mutation.
+func (m *RequestExecutionMutation) RequestBodyChunked() (r bool, exists bool) {
+	v := m.request_body_chunked
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestBodyChunked returns the old "request_body_chunked" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldRequestBodyChunked(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestBodyChunked is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestBodyChunked requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestBodyChunked: %w", err)
+	}
+	return oldValue.RequestBodyChunked, nil
+}
+
+// ResetRequestBodyChunked resets all changes to the "request_body_chunked" field.
+func (m *RequestExecutionMutation) ResetRequestBodyChunked() {
+	m.request_body_chunked = nil
+}
+
 // SetResponseHeaders sets the "response_headers" field.
 func (m *RequestExecutionMutation) SetResponseHeaders(orm objects.JSONRawMessage) {
 	m.response_headers = &orm
@@ -22817,6 +24326,60 @@ func (m *RequestExecutionMutation) ResetPassThroughApplied() {
 	m.pass_through_applied = nil
 }
 
+// AddRequestBodyChunkIDs adds the "request_body_chunks" edge to the RequestBodyChunkRef entity by ids.
+func (m *RequestExecutionMutation) AddRequestBodyChunkIDs(ids ...int) {
+	if m.request_body_chunks == nil {
+		m.request_body_chunks = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.request_body_chunks[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRequestBodyChunks clears the "request_body_chunks" edge to the RequestBodyChunkRef entity.
+func (m *RequestExecutionMutation) ClearRequestBodyChunks() {
+	m.clearedrequest_body_chunks = true
+}
+
+// RequestBodyChunksCleared reports if the "request_body_chunks" edge to the RequestBodyChunkRef entity was cleared.
+func (m *RequestExecutionMutation) RequestBodyChunksCleared() bool {
+	return m.clearedrequest_body_chunks
+}
+
+// RemoveRequestBodyChunkIDs removes the "request_body_chunks" edge to the RequestBodyChunkRef entity by IDs.
+func (m *RequestExecutionMutation) RemoveRequestBodyChunkIDs(ids ...int) {
+	if m.removedrequest_body_chunks == nil {
+		m.removedrequest_body_chunks = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.request_body_chunks, ids[i])
+		m.removedrequest_body_chunks[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRequestBodyChunks returns the removed IDs of the "request_body_chunks" edge to the RequestBodyChunkRef entity.
+func (m *RequestExecutionMutation) RemovedRequestBodyChunksIDs() (ids []int) {
+	for id := range m.removedrequest_body_chunks {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RequestBodyChunksIDs returns the "request_body_chunks" edge IDs in the mutation.
+func (m *RequestExecutionMutation) RequestBodyChunksIDs() (ids []int) {
+	for id := range m.request_body_chunks {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRequestBodyChunks resets all changes to the "request_body_chunks" edge.
+func (m *RequestExecutionMutation) ResetRequestBodyChunks() {
+	m.request_body_chunks = nil
+	m.clearedrequest_body_chunks = false
+	m.removedrequest_body_chunks = nil
+}
+
 // ClearRequest clears the "request" edge to the Request entity.
 func (m *RequestExecutionMutation) ClearRequest() {
 	m.clearedrequest = true
@@ -22932,7 +24495,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 27)
+	fields := make([]string, 0, 28)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -22974,6 +24537,9 @@ func (m *RequestExecutionMutation) Fields() []string {
 	}
 	if m.request_body != nil {
 		fields = append(fields, requestexecution.FieldRequestBody)
+	}
+	if m.request_body_chunked != nil {
+		fields = append(fields, requestexecution.FieldRequestBodyChunked)
 	}
 	if m.response_headers != nil {
 		fields = append(fields, requestexecution.FieldResponseHeaders)
@@ -23050,6 +24616,8 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.ChannelAPIKeySuffix()
 	case requestexecution.FieldRequestBody:
 		return m.RequestBody()
+	case requestexecution.FieldRequestBodyChunked:
+		return m.RequestBodyChunked()
 	case requestexecution.FieldResponseHeaders:
 		return m.ResponseHeaders()
 	case requestexecution.FieldResponseBody:
@@ -23113,6 +24681,8 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldChannelAPIKeySuffix(ctx)
 	case requestexecution.FieldRequestBody:
 		return m.OldRequestBody(ctx)
+	case requestexecution.FieldRequestBodyChunked:
+		return m.OldRequestBodyChunked(ctx)
 	case requestexecution.FieldResponseHeaders:
 		return m.OldResponseHeaders(ctx)
 	case requestexecution.FieldResponseBody:
@@ -23245,6 +24815,13 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRequestBody(v)
+		return nil
+	case requestexecution.FieldRequestBodyChunked:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestBodyChunked(v)
 		return nil
 	case requestexecution.FieldResponseHeaders:
 		v, ok := value.(objects.JSONRawMessage)
@@ -23608,6 +25185,9 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 	case requestexecution.FieldRequestBody:
 		m.ResetRequestBody()
 		return nil
+	case requestexecution.FieldRequestBodyChunked:
+		m.ResetRequestBodyChunked()
+		return nil
 	case requestexecution.FieldResponseHeaders:
 		m.ResetResponseHeaders()
 		return nil
@@ -23653,7 +25233,10 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RequestExecutionMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
+	if m.request_body_chunks != nil {
+		edges = append(edges, requestexecution.EdgeRequestBodyChunks)
+	}
 	if m.request != nil {
 		edges = append(edges, requestexecution.EdgeRequest)
 	}
@@ -23670,6 +25253,12 @@ func (m *RequestExecutionMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *RequestExecutionMutation) AddedIDs(name string) []ent.Value {
 	switch name {
+	case requestexecution.EdgeRequestBodyChunks:
+		ids := make([]ent.Value, 0, len(m.request_body_chunks))
+		for id := range m.request_body_chunks {
+			ids = append(ids, id)
+		}
+		return ids
 	case requestexecution.EdgeRequest:
 		if id := m.request; id != nil {
 			return []ent.Value{*id}
@@ -23688,19 +25277,33 @@ func (m *RequestExecutionMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RequestExecutionMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
+	if m.removedrequest_body_chunks != nil {
+		edges = append(edges, requestexecution.EdgeRequestBodyChunks)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *RequestExecutionMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case requestexecution.EdgeRequestBodyChunks:
+		ids := make([]ent.Value, 0, len(m.removedrequest_body_chunks))
+		for id := range m.removedrequest_body_chunks {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RequestExecutionMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
+	if m.clearedrequest_body_chunks {
+		edges = append(edges, requestexecution.EdgeRequestBodyChunks)
+	}
 	if m.clearedrequest {
 		edges = append(edges, requestexecution.EdgeRequest)
 	}
@@ -23717,6 +25320,8 @@ func (m *RequestExecutionMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *RequestExecutionMutation) EdgeCleared(name string) bool {
 	switch name {
+	case requestexecution.EdgeRequestBodyChunks:
+		return m.clearedrequest_body_chunks
 	case requestexecution.EdgeRequest:
 		return m.clearedrequest
 	case requestexecution.EdgeChannel:
@@ -23748,6 +25353,9 @@ func (m *RequestExecutionMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *RequestExecutionMutation) ResetEdge(name string) error {
 	switch name {
+	case requestexecution.EdgeRequestBodyChunks:
+		m.ResetRequestBodyChunks()
+		return nil
 	case requestexecution.EdgeRequest:
 		m.ResetRequest()
 		return nil

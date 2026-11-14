@@ -25,9 +25,16 @@ func NewStreamTerminalTracker(expectedChoices int) *StreamTerminalTracker {
 	}
 }
 
-func NewStreamTerminalTrackerForRequest(request *ent.Request) *StreamTerminalTracker {
+func NewStreamTerminalTrackerForRequest(request *ent.Request, state *PersistenceState) *StreamTerminalTracker {
 	if request == nil {
 		return NewStreamTerminalTracker(0)
+	}
+	if request.RequestBodyChunked && state != nil && state.RawRequest != nil {
+		body := state.RawRequest.JSONBody
+		if len(body) == 0 {
+			body = state.RawRequest.Body
+		}
+		return NewStreamTerminalTracker(expectedStreamChoices(body))
 	}
 	expected := ExpectedStreamChoices(request)
 	return NewStreamTerminalTracker(expected)
@@ -37,13 +44,17 @@ func ExpectedStreamChoices(request *ent.Request) int {
 	if request == nil {
 		return 0
 	}
-	if n := gjson.GetBytes(request.RequestBody, "n"); n.Exists() {
+	return expectedStreamChoices(request.RequestBody)
+}
+
+func expectedStreamChoices(body []byte) int {
+	if n := gjson.GetBytes(body, "n"); n.Exists() {
 		if n.Int() > 0 {
 			return int(n.Int())
 		}
 		return 0
 	}
-	if gjson.GetBytes(request.RequestBody, "stream").Bool() {
+	if gjson.GetBytes(body, "stream").Bool() {
 		return 1
 	}
 	return 0

@@ -44,6 +44,8 @@ const (
 	FieldRequestHeaders = "request_headers"
 	// FieldRequestBody holds the string denoting the request_body field in the database.
 	FieldRequestBody = "request_body"
+	// FieldRequestBodyChunked holds the string denoting the request_body_chunked field in the database.
+	FieldRequestBodyChunked = "request_body_chunked"
 	// FieldResponseHeaders holds the string denoting the response_headers field in the database.
 	FieldResponseHeaders = "response_headers"
 	// FieldResponseBody holds the string denoting the response_body field in the database.
@@ -76,6 +78,8 @@ const (
 	FieldContentStorageKey = "content_storage_key"
 	// FieldContentSavedAt holds the string denoting the content_saved_at field in the database.
 	FieldContentSavedAt = "content_saved_at"
+	// EdgeRequestBodyChunks holds the string denoting the request_body_chunks edge name in mutations.
+	EdgeRequestBodyChunks = "request_body_chunks"
 	// EdgeAPIKey holds the string denoting the api_key edge name in mutations.
 	EdgeAPIKey = "api_key"
 	// EdgeProject holds the string denoting the project edge name in mutations.
@@ -92,6 +96,13 @@ const (
 	EdgeUsageLogs = "usage_logs"
 	// Table holds the table name of the request in the database.
 	Table = "requests"
+	// RequestBodyChunksTable is the table that holds the request_body_chunks relation/edge.
+	RequestBodyChunksTable = "request_body_chunk_refs"
+	// RequestBodyChunksInverseTable is the table name for the RequestBodyChunkRef entity.
+	// It exists in this package in order to avoid circular dependency with the "requestbodychunkref" package.
+	RequestBodyChunksInverseTable = "request_body_chunk_refs"
+	// RequestBodyChunksColumn is the table column denoting the request_body_chunks relation/edge.
+	RequestBodyChunksColumn = "request_id"
 	// APIKeyTable is the table that holds the api_key relation/edge.
 	APIKeyTable = "requests"
 	// APIKeyInverseTable is the table name for the APIKey entity.
@@ -159,6 +170,7 @@ var Columns = []string{
 	FieldFormat,
 	FieldRequestHeaders,
 	FieldRequestBody,
+	FieldRequestBodyChunked,
 	FieldResponseHeaders,
 	FieldResponseBody,
 	FieldResponseChunks,
@@ -205,6 +217,8 @@ var (
 	DefaultProjectID int
 	// DefaultFormat holds the default value on creation for the "format" field.
 	DefaultFormat string
+	// DefaultRequestBodyChunked holds the default value on creation for the "request_body_chunked" field.
+	DefaultRequestBodyChunked bool
 	// ExternalIDValidator is a validator for the "external_id" field. It is called by the builders before save.
 	ExternalIDValidator func(string) error
 	// DefaultStream holds the default value on creation for the "stream" field.
@@ -333,6 +347,11 @@ func ByFormat(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFormat, opts...).ToFunc()
 }
 
+// ByRequestBodyChunked orders the results by the request_body_chunked field.
+func ByRequestBodyChunked(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRequestBodyChunked, opts...).ToFunc()
+}
+
 // ByChannelID orders the results by the channel_id field.
 func ByChannelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldChannelID, opts...).ToFunc()
@@ -398,6 +417,20 @@ func ByContentSavedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldContentSavedAt, opts...).ToFunc()
 }
 
+// ByRequestBodyChunksCount orders the results by request_body_chunks count.
+func ByRequestBodyChunksCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newRequestBodyChunksStep(), opts...)
+	}
+}
+
+// ByRequestBodyChunks orders the results by request_body_chunks terms.
+func ByRequestBodyChunks(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newRequestBodyChunksStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByAPIKeyField orders the results by api_key field.
 func ByAPIKeyField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -459,6 +492,13 @@ func ByUsageLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newUsageLogsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
+}
+func newRequestBodyChunksStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(RequestBodyChunksInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, RequestBodyChunksTable, RequestBodyChunksColumn),
+	)
 }
 func newAPIKeyStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(

@@ -21,7 +21,7 @@
 | [权限管理](guides/permissions.md) | 企业级 RBAC 访问控制配置 |
 | [负载均衡](guides/load-balance.md) | 智能路由和故障转移设置 |
 | [成本追踪](guides/cost-tracking.md) | 实时监控和用量分析 |
-| [请求追踪](guides/tracing.md) | 完整的请求链路追踪 |
+| [请求追踪](guides/tracing.md) | 完整的请求链路追踪与数据库请求正文去重 |
 | [请求覆盖](guides/request-override.md) | 动态修改请求参数 |
 | [安全功能](guides/security.md) | IP 访问控制、IP 黑名单和 API Key IP 限制 |
 | [提示词保护规则](guides/prompt-protection-rules.md) | 敏感信息过滤和保护 |
@@ -51,6 +51,7 @@
 | 文档 | 描述 |
 |------|------|
 | [开发指南](development/development.md) | 本地开发环境搭建和贡献指南 |
+| [请求正文回放](development/request-body-replay.md) | 复现存储、字节复用和写入延迟测量 |
 | [Git 工作流](development/git-workflow.md) | 项目的 Git 分支和提交规范 |
 | [实体关系图](development/erd.md) | 数据库模型关系图 |
 | [转换流程](development/transformation-flow.md) | 请求/响应转换流程详解 |

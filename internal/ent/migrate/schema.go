@@ -602,6 +602,7 @@ var (
 		{Name: "format", Type: field.TypeString, Default: "openai/chat_completions"},
 		{Name: "request_headers", Type: field.TypeJSON, Nullable: true},
 		{Name: "request_body", Type: field.TypeJSON},
+		{Name: "request_body_chunked", Type: field.TypeBool, Default: false},
 		{Name: "response_headers", Type: field.TypeJSON, Nullable: true},
 		{Name: "response_body", Type: field.TypeJSON, Nullable: true},
 		{Name: "response_chunks", Type: field.TypeJSON, Nullable: true},
@@ -631,31 +632,31 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "requests_api_keys_requests",
-				Columns:    []*schema.Column{RequestsColumns[25]},
+				Columns:    []*schema.Column{RequestsColumns[26]},
 				RefColumns: []*schema.Column{APIKeysColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_channels_requests",
-				Columns:    []*schema.Column{RequestsColumns[26]},
+				Columns:    []*schema.Column{RequestsColumns[27]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_data_storages_requests",
-				Columns:    []*schema.Column{RequestsColumns[27]},
+				Columns:    []*schema.Column{RequestsColumns[28]},
 				RefColumns: []*schema.Column{DataStoragesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "requests_projects_requests",
-				Columns:    []*schema.Column{RequestsColumns[28]},
+				Columns:    []*schema.Column{RequestsColumns[29]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "requests_traces_requests",
-				Columns:    []*schema.Column{RequestsColumns[29]},
+				Columns:    []*schema.Column{RequestsColumns[30]},
 				RefColumns: []*schema.Column{TracesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -664,37 +665,109 @@ var (
 			{
 				Name:    "requests_by_api_key_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[25], RequestsColumns[1]},
+				Columns: []*schema.Column{RequestsColumns[26], RequestsColumns[1]},
 			},
 			{
 				Name:    "requests_by_project_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[28], RequestsColumns[1]},
+				Columns: []*schema.Column{RequestsColumns[29], RequestsColumns[1]},
 			},
 			{
 				Name:    "requests_by_project_id_user_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[28], RequestsColumns[3], RequestsColumns[1]},
+				Columns: []*schema.Column{RequestsColumns[29], RequestsColumns[3], RequestsColumns[1]},
 			},
 			{
 				Name:    "requests_by_channel_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[26], RequestsColumns[1]},
+				Columns: []*schema.Column{RequestsColumns[27], RequestsColumns[1]},
 			},
 			{
 				Name:    "requests_by_trace_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[29], RequestsColumns[1]},
+				Columns: []*schema.Column{RequestsColumns[30], RequestsColumns[1]},
 			},
 			{
 				Name:    "requests_by_external_id_api_key_id_status_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[13], RequestsColumns[25], RequestsColumns[14], RequestsColumns[1]},
+				Columns: []*schema.Column{RequestsColumns[14], RequestsColumns[26], RequestsColumns[15], RequestsColumns[1]},
 			},
 			{
 				Name:    "requests_by_created_at",
 				Unique:  false,
 				Columns: []*schema.Column{RequestsColumns[1]},
+			},
+		},
+	}
+	// RequestBodyChunksColumns holds the columns for the "request_body_chunks" table.
+	RequestBodyChunksColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "hash", Type: field.TypeString, Size: 64},
+		{Name: "data", Type: field.TypeBytes, SchemaType: map[string]string{"mysql": "mediumblob"}},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+	}
+	// RequestBodyChunksTable holds the schema information for the "request_body_chunks" table.
+	RequestBodyChunksTable = &schema.Table{
+		Name:       "request_body_chunks",
+		Columns:    RequestBodyChunksColumns,
+		PrimaryKey: []*schema.Column{RequestBodyChunksColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "request_body_chunks_by_project_hash",
+				Unique:  true,
+				Columns: []*schema.Column{RequestBodyChunksColumns[1], RequestBodyChunksColumns[2]},
+			},
+		},
+	}
+	// RequestBodyChunkRefsColumns holds the columns for the "request_body_chunk_refs" table.
+	RequestBodyChunkRefsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "position", Type: field.TypeInt},
+		{Name: "request_id", Type: field.TypeInt, Nullable: true},
+		{Name: "chunk_id", Type: field.TypeInt},
+		{Name: "execution_id", Type: field.TypeInt, Nullable: true},
+	}
+	// RequestBodyChunkRefsTable holds the schema information for the "request_body_chunk_refs" table.
+	RequestBodyChunkRefsTable = &schema.Table{
+		Name:       "request_body_chunk_refs",
+		Columns:    RequestBodyChunkRefsColumns,
+		PrimaryKey: []*schema.Column{RequestBodyChunkRefsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "request_body_chunk_refs_requests_request_body_chunks",
+				Columns:    []*schema.Column{RequestBodyChunkRefsColumns[2]},
+				RefColumns: []*schema.Column{RequestsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "request_body_chunk_refs_request_body_chunks_references",
+				Columns:    []*schema.Column{RequestBodyChunkRefsColumns[3]},
+				RefColumns: []*schema.Column{RequestBodyChunksColumns[0]},
+				OnDelete:   schema.Restrict,
+			},
+			{
+				Symbol:     "request_body_chunk_refs_request_executions_request_body_chunks",
+				Columns:    []*schema.Column{RequestBodyChunkRefsColumns[4]},
+				RefColumns: []*schema.Column{RequestExecutionsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "request_body_chunk_refs_by_request_position",
+				Unique:  true,
+				Columns: []*schema.Column{RequestBodyChunkRefsColumns[2], RequestBodyChunkRefsColumns[1]},
+			},
+			{
+				Name:    "request_body_chunk_refs_by_execution_position",
+				Unique:  true,
+				Columns: []*schema.Column{RequestBodyChunkRefsColumns[4], RequestBodyChunkRefsColumns[1]},
+			},
+			{
+				Name:    "request_body_chunk_refs_by_chunk",
+				Unique:  false,
+				Columns: []*schema.Column{RequestBodyChunkRefsColumns[3]},
 			},
 		},
 	}
@@ -712,6 +785,7 @@ var (
 		{Name: "reasoning_effort", Type: field.TypeString, Nullable: true},
 		{Name: "channel_api_key_suffix", Type: field.TypeString, Nullable: true},
 		{Name: "request_body", Type: field.TypeJSON},
+		{Name: "request_body_chunked", Type: field.TypeBool, Default: false},
 		{Name: "response_headers", Type: field.TypeJSON, Nullable: true},
 		{Name: "response_body", Type: field.TypeJSON, Nullable: true},
 		{Name: "response_chunks", Type: field.TypeJSON, Nullable: true},
@@ -737,19 +811,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "request_executions_channels_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[25]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[26]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "request_executions_data_storages_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[26]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[27]},
 				RefColumns: []*schema.Column{DataStoragesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "request_executions_requests_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[27]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[28]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -758,17 +832,17 @@ var (
 			{
 				Name:    "request_executions_by_request_id_status_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[27], RequestExecutionsColumns[17], RequestExecutionsColumns[1]},
+				Columns: []*schema.Column{RequestExecutionsColumns[28], RequestExecutionsColumns[18], RequestExecutionsColumns[1]},
 			},
 			{
 				Name:    "request_executions_by_request_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[27], RequestExecutionsColumns[1]},
+				Columns: []*schema.Column{RequestExecutionsColumns[28], RequestExecutionsColumns[1]},
 			},
 			{
 				Name:    "request_executions_by_channel_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[25], RequestExecutionsColumns[1]},
+				Columns: []*schema.Column{RequestExecutionsColumns[26], RequestExecutionsColumns[1]},
 			},
 		},
 	}
@@ -1139,6 +1213,8 @@ var (
 		PromptProtectionRulesTable,
 		ProviderQuotaStatusTable,
 		RequestsTable,
+		RequestBodyChunksTable,
+		RequestBodyChunkRefsTable,
 		RequestExecutionsTable,
 		RolesTable,
 		SystemsTable,
@@ -1168,6 +1244,9 @@ func init() {
 	RequestsTable.ForeignKeys[2].RefTable = DataStoragesTable
 	RequestsTable.ForeignKeys[3].RefTable = ProjectsTable
 	RequestsTable.ForeignKeys[4].RefTable = TracesTable
+	RequestBodyChunkRefsTable.ForeignKeys[0].RefTable = RequestsTable
+	RequestBodyChunkRefsTable.ForeignKeys[1].RefTable = RequestBodyChunksTable
+	RequestBodyChunkRefsTable.ForeignKeys[2].RefTable = RequestExecutionsTable
 	RequestExecutionsTable.ForeignKeys[0].RefTable = ChannelsTable
 	RequestExecutionsTable.ForeignKeys[1].RefTable = DataStoragesTable
 	RequestExecutionsTable.ForeignKeys[2].RefTable = RequestsTable

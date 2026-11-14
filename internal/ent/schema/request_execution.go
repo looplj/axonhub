@@ -6,6 +6,7 @@ import (
 
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -102,6 +103,10 @@ func (RequestExecution) Fields() []ent.Field {
 		field.JSON("request_body", objects.JSONRawMessage{}).Immutable().Annotations(
 			entgql.Directives(forceResolver()),
 		),
+		field.Bool("request_body_chunked").
+			Default(false).
+			Annotations(entgql.Skip()).
+			Comment("Request body is a manifest referencing project-scoped content chunks"),
 		// The final response from the provider.
 		// e.g: the provider response with Claude format, and the user expects the response with OpenAI format, the response_body is the Claude response format.
 		field.JSON("response_headers", objects.JSONRawMessage{}).
@@ -145,6 +150,8 @@ func (RequestExecution) Fields() []ent.Field {
 
 func (RequestExecution) Edges() []ent.Edge {
 	return []ent.Edge{
+		edge.To("request_body_chunks", RequestBodyChunkRef.Type).
+			Annotations(entgql.Skip(), entsql.OnDelete(entsql.Cascade)),
 		edge.From("request", Request.Type).
 			Field("request_id").
 			Ref("executions").

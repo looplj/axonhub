@@ -48,6 +48,10 @@ type Tx struct {
 	ProviderQuotaStatus *ProviderQuotaStatusClient
 	// Request is the client for interacting with the Request builders.
 	Request *RequestClient
+	// RequestBodyChunk is the client for interacting with the RequestBodyChunk builders.
+	RequestBodyChunk *RequestBodyChunkClient
+	// RequestBodyChunkRef is the client for interacting with the RequestBodyChunkRef builders.
+	RequestBodyChunkRef *RequestBodyChunkRefClient
 	// RequestExecution is the client for interacting with the RequestExecution builders.
 	RequestExecution *RequestExecutionClient
 	// Role is the client for interacting with the Role builders.
@@ -215,6 +219,8 @@ func (tx *Tx) init() {
 	tx.PromptProtectionRule = NewPromptProtectionRuleClient(tx.config)
 	tx.ProviderQuotaStatus = NewProviderQuotaStatusClient(tx.config)
 	tx.Request = NewRequestClient(tx.config)
+	tx.RequestBodyChunk = NewRequestBodyChunkClient(tx.config)
+	tx.RequestBodyChunkRef = NewRequestBodyChunkRefClient(tx.config)
 	tx.RequestExecution = NewRequestExecutionClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)
 	tx.System = NewSystemClient(tx.config)

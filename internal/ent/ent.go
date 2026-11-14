@@ -30,6 +30,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestbodychunk"
+	"github.com/looplj/axonhub/internal/ent/requestbodychunkref"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
@@ -117,6 +119,8 @@ func checkColumn(t, c string) error {
 			promptprotectionrule.Table:     promptprotectionrule.ValidColumn,
 			providerquotastatus.Table:      providerquotastatus.ValidColumn,
 			request.Table:                  request.ValidColumn,
+			requestbodychunk.Table:         requestbodychunk.ValidColumn,
+			requestbodychunkref.Table:      requestbodychunkref.ValidColumn,
 			requestexecution.Table:         requestexecution.ValidColumn,
 			role.Table:                     role.ValidColumn,
 			system.Table:                   system.ValidColumn,

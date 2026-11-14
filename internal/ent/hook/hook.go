@@ -225,6 +225,30 @@ func (f RequestFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RequestMutation", m)
 }
 
+// The RequestBodyChunkFunc type is an adapter to allow the use of ordinary
+// function as RequestBodyChunk mutator.
+type RequestBodyChunkFunc func(context.Context, *ent.RequestBodyChunkMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f RequestBodyChunkFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.RequestBodyChunkMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RequestBodyChunkMutation", m)
+}
+
+// The RequestBodyChunkRefFunc type is an adapter to allow the use of ordinary
+// function as RequestBodyChunkRef mutator.
+type RequestBodyChunkRefFunc func(context.Context, *ent.RequestBodyChunkRefMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f RequestBodyChunkRefFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.RequestBodyChunkRefMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RequestBodyChunkRefMutation", m)
+}
+
 // The RequestExecutionFunc type is an adapter to allow the use of ordinary
 // function as RequestExecution mutator.
 type RequestExecutionFunc func(context.Context, *ent.RequestExecutionMutation) (ent.Value, error)

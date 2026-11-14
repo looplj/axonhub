@@ -543,6 +543,54 @@ func (f RequestMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutatio
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.RequestMutation", m)
 }
 
+// The RequestBodyChunkQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type RequestBodyChunkQueryRuleFunc func(context.Context, *ent.RequestBodyChunkQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f RequestBodyChunkQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.RequestBodyChunkQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.RequestBodyChunkQuery", q)
+}
+
+// The RequestBodyChunkMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type RequestBodyChunkMutationRuleFunc func(context.Context, *ent.RequestBodyChunkMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f RequestBodyChunkMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.RequestBodyChunkMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.RequestBodyChunkMutation", m)
+}
+
+// The RequestBodyChunkRefQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type RequestBodyChunkRefQueryRuleFunc func(context.Context, *ent.RequestBodyChunkRefQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f RequestBodyChunkRefQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.RequestBodyChunkRefQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.RequestBodyChunkRefQuery", q)
+}
+
+// The RequestBodyChunkRefMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type RequestBodyChunkRefMutationRuleFunc func(context.Context, *ent.RequestBodyChunkRefMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f RequestBodyChunkRefMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.RequestBodyChunkRefMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.RequestBodyChunkRefMutation", m)
+}
+
 // The RequestExecutionQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type RequestExecutionQueryRuleFunc func(context.Context, *ent.RequestExecutionQuery) error
@@ -830,6 +878,10 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.RequestQuery:
 		return q.Filter(), nil
+	case *ent.RequestBodyChunkQuery:
+		return q.Filter(), nil
+	case *ent.RequestBodyChunkRefQuery:
+		return q.Filter(), nil
 	case *ent.RequestExecutionQuery:
 		return q.Filter(), nil
 	case *ent.RoleQuery:
@@ -890,6 +942,10 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	case *ent.ProviderQuotaStatusMutation:
 		return m.Filter(), nil
 	case *ent.RequestMutation:
+		return m.Filter(), nil
+	case *ent.RequestBodyChunkMutation:
+		return m.Filter(), nil
+	case *ent.RequestBodyChunkRefMutation:
 		return m.Filter(), nil
 	case *ent.RequestExecutionMutation:
 		return m.Filter(), nil

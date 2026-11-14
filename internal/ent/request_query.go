@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestbodychunkref"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -27,21 +28,23 @@ import (
 // RequestQuery is the builder for querying Request entities.
 type RequestQuery struct {
 	config
-	ctx                 *QueryContext
-	order               []request.OrderOption
-	inters              []Interceptor
-	predicates          []predicate.Request
-	withAPIKey          *APIKeyQuery
-	withProject         *ProjectQuery
-	withTrace           *TraceQuery
-	withDataStorage     *DataStorageQuery
-	withExecutions      *RequestExecutionQuery
-	withChannel         *ChannelQuery
-	withUsageLogs       *UsageLogQuery
-	loadTotal           []func(context.Context, []*Request) error
-	modifiers           []func(*sql.Selector)
-	withNamedExecutions map[string]*RequestExecutionQuery
-	withNamedUsageLogs  map[string]*UsageLogQuery
+	ctx                        *QueryContext
+	order                      []request.OrderOption
+	inters                     []Interceptor
+	predicates                 []predicate.Request
+	withRequestBodyChunks      *RequestBodyChunkRefQuery
+	withAPIKey                 *APIKeyQuery
+	withProject                *ProjectQuery
+	withTrace                  *TraceQuery
+	withDataStorage            *DataStorageQuery
+	withExecutions             *RequestExecutionQuery
+	withChannel                *ChannelQuery
+	withUsageLogs              *UsageLogQuery
+	loadTotal                  []func(context.Context, []*Request) error
+	modifiers                  []func(*sql.Selector)
+	withNamedRequestBodyChunks map[string]*RequestBodyChunkRefQuery
+	withNamedExecutions        map[string]*RequestExecutionQuery
+	withNamedUsageLogs         map[string]*UsageLogQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -76,6 +79,28 @@ func (_q *RequestQuery) Unique(unique bool) *RequestQuery {
 func (_q *RequestQuery) Order(o ...request.OrderOption) *RequestQuery {
 	_q.order = append(_q.order, o...)
 	return _q
+}
+
+// QueryRequestBodyChunks chains the current query on the "request_body_chunks" edge.
+func (_q *RequestQuery) QueryRequestBodyChunks() *RequestBodyChunkRefQuery {
+	query := (&RequestBodyChunkRefClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(request.Table, request.FieldID, selector),
+			sqlgraph.To(requestbodychunkref.Table, requestbodychunkref.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, request.RequestBodyChunksTable, request.RequestBodyChunksColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // QueryAPIKey chains the current query on the "api_key" edge.
@@ -419,23 +444,35 @@ func (_q *RequestQuery) Clone() *RequestQuery {
 		return nil
 	}
 	return &RequestQuery{
-		config:          _q.config,
-		ctx:             _q.ctx.Clone(),
-		order:           append([]request.OrderOption{}, _q.order...),
-		inters:          append([]Interceptor{}, _q.inters...),
-		predicates:      append([]predicate.Request{}, _q.predicates...),
-		withAPIKey:      _q.withAPIKey.Clone(),
-		withProject:     _q.withProject.Clone(),
-		withTrace:       _q.withTrace.Clone(),
-		withDataStorage: _q.withDataStorage.Clone(),
-		withExecutions:  _q.withExecutions.Clone(),
-		withChannel:     _q.withChannel.Clone(),
-		withUsageLogs:   _q.withUsageLogs.Clone(),
+		config:                _q.config,
+		ctx:                   _q.ctx.Clone(),
+		order:                 append([]request.OrderOption{}, _q.order...),
+		inters:                append([]Interceptor{}, _q.inters...),
+		predicates:            append([]predicate.Request{}, _q.predicates...),
+		withRequestBodyChunks: _q.withRequestBodyChunks.Clone(),
+		withAPIKey:            _q.withAPIKey.Clone(),
+		withProject:           _q.withProject.Clone(),
+		withTrace:             _q.withTrace.Clone(),
+		withDataStorage:       _q.withDataStorage.Clone(),
+		withExecutions:        _q.withExecutions.Clone(),
+		withChannel:           _q.withChannel.Clone(),
+		withUsageLogs:         _q.withUsageLogs.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
 		modifiers: append([]func(*sql.Selector){}, _q.modifiers...),
 	}
+}
+
+// WithRequestBodyChunks tells the query-builder to eager-load the nodes that are connected to
+// the "request_body_chunks" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *RequestQuery) WithRequestBodyChunks(opts ...func(*RequestBodyChunkRefQuery)) *RequestQuery {
+	query := (&RequestBodyChunkRefClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withRequestBodyChunks = query
+	return _q
 }
 
 // WithAPIKey tells the query-builder to eager-load the nodes that are connected to
@@ -599,7 +636,8 @@ func (_q *RequestQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Requ
 	var (
 		nodes       = []*Request{}
 		_spec       = _q.querySpec()
-		loadedTypes = [7]bool{
+		loadedTypes = [8]bool{
+			_q.withRequestBodyChunks != nil,
 			_q.withAPIKey != nil,
 			_q.withProject != nil,
 			_q.withTrace != nil,
@@ -629,6 +667,15 @@ func (_q *RequestQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Requ
 	}
 	if len(nodes) == 0 {
 		return nodes, nil
+	}
+	if query := _q.withRequestBodyChunks; query != nil {
+		if err := _q.loadRequestBodyChunks(ctx, query, nodes,
+			func(n *Request) { n.Edges.RequestBodyChunks = []*RequestBodyChunkRef{} },
+			func(n *Request, e *RequestBodyChunkRef) {
+				n.Edges.RequestBodyChunks = append(n.Edges.RequestBodyChunks, e)
+			}); err != nil {
+			return nil, err
+		}
 	}
 	if query := _q.withAPIKey; query != nil {
 		if err := _q.loadAPIKey(ctx, query, nodes, nil,
@@ -674,6 +721,13 @@ func (_q *RequestQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Requ
 			return nil, err
 		}
 	}
+	for name, query := range _q.withNamedRequestBodyChunks {
+		if err := _q.loadRequestBodyChunks(ctx, query, nodes,
+			func(n *Request) { n.appendNamedRequestBodyChunks(name) },
+			func(n *Request, e *RequestBodyChunkRef) { n.appendNamedRequestBodyChunks(name, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedExecutions {
 		if err := _q.loadExecutions(ctx, query, nodes,
 			func(n *Request) { n.appendNamedExecutions(name) },
@@ -696,6 +750,39 @@ func (_q *RequestQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Requ
 	return nodes, nil
 }
 
+func (_q *RequestQuery) loadRequestBodyChunks(ctx context.Context, query *RequestBodyChunkRefQuery, nodes []*Request, init func(*Request), assign func(*Request, *RequestBodyChunkRef)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Request)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(requestbodychunkref.FieldRequestID)
+	}
+	query.Where(predicate.RequestBodyChunkRef(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(request.RequestBodyChunksColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.RequestID
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "request_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "request_id" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
 func (_q *RequestQuery) loadAPIKey(ctx context.Context, query *APIKeyQuery, nodes []*Request, init func(*Request), assign func(*Request, *APIKey)) error {
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*Request)
@@ -1008,6 +1095,20 @@ func (_q *RequestQuery) sqlQuery(ctx context.Context) *sql.Selector {
 func (_q *RequestQuery) Modify(modifiers ...func(s *sql.Selector)) *RequestSelect {
 	_q.modifiers = append(_q.modifiers, modifiers...)
 	return _q.Select()
+}
+
+// WithNamedRequestBodyChunks tells the query-builder to eager-load the nodes that are connected to the "request_body_chunks"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *RequestQuery) WithNamedRequestBodyChunks(name string, opts ...func(*RequestBodyChunkRefQuery)) *RequestQuery {
+	query := (&RequestBodyChunkRefClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedRequestBodyChunks == nil {
+		_q.withNamedRequestBodyChunks = make(map[string]*RequestBodyChunkRefQuery)
+	}
+	_q.withNamedRequestBodyChunks[name] = query
+	return _q
 }
 
 // WithNamedExecutions tells the query-builder to eager-load the nodes that are connected to the "executions"

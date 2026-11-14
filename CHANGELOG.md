@@ -13,6 +13,9 @@
 
 ### Fixed
 
+- Reduced repeated request-history tail data during small Responses appends, avoided request-body payload readback on writes, and reused PostgreSQL upsert-returned chunk IDs.
+- Restored externally stored execution request bodies in request details when hidden storage metadata is reloaded.
+- Deduplicated large database request bodies across calls and execution attempts while preserving complete JSON, request-log backups, and retention-safe cleanup. Existing rows stay readable; downgrade requires exporting request logs and restoring them into a separate database.
 - Dashboard analytics no longer rescan the full usage history for every widget: request, cost, and token widgets share one grouped query, expensive 30-day aggregates are cached, SQLite uses window functions instead of correlated `MAX(id)` scans, and off-screen sections load only when they approach the viewport.
 - PostgreSQL fastest-model and fastest-channel resolver rankings use `DISTINCT ON` to select each request's latest successful execution before aggregation; SQLite retains the `ROW_NUMBER` path. `modelPerformanceStats` keeps `ROW_NUMBER` because `DISTINCT ON` measured a 5% regression without the covering index (not yet approved).
 - Personal API Key names can be reused by different creators in a project; creating or renaming a key rejects collisions with non-personal keys visible to its creator. Duplicate checks run after create authorization.
