@@ -52,6 +52,19 @@
           "axonhubVersion": "^1.0.0"
         }
       ]
+    },
+    {
+      "id": "jinyuliu.bucket-rotate",
+      "name": "载荷存储切桶",
+      "description": "当前默认载荷存储（S3 桶）接近阈值时，自动把默认数据存储切到下一个桶；历史请求仍从原桶读取，无需迁移。附状态页，可查看各桶用量、手动测量和切换。",
+      "versions": [
+        {
+          "version": "0.1.0",
+          "url": "https://github.com/jin-yu-liu/axonhub-bucket-rotate/releases/download/v0.1.0/bucket-rotate-0.1.0.axplugin",
+          "sha256": "1096d615d57a01db6f1ce0bd655b2efd6efd0a6a05798ec63e04b7452bfb609b",
+          "axonhubVersion": "^1.0.0"
+        }
+      ]
     }
   ]
 }
