@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -438,7 +437,7 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
               </div>
             </div>
 
-            <ScrollArea className='min-h-0 flex-1'>
+            <div className='min-h-0 flex-1 overflow-y-auto'>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -650,7 +649,7 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
                   )}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
           </div>
         </div>
 
