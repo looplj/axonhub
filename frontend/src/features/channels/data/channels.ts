@@ -126,6 +126,7 @@ const CREATE_CHANNEL_MUTATION = `
         transformOptions {
           forceArrayInstructions
           forceArrayInputs
+          forceArrayStop
           replaceDeveloperRoleWithSystem
           reasoningEffortMapping { from to }
         }
@@ -226,6 +227,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
         transformOptions {
           forceArrayInstructions
           forceArrayInputs
+          forceArrayStop
           replaceDeveloperRoleWithSystem
           reasoningEffortMapping { from to }
         }
@@ -326,6 +328,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         transformOptions {
           forceArrayInstructions
           forceArrayInputs
+          forceArrayStop
           replaceDeveloperRoleWithSystem
           reasoningEffortMapping { from to }
         }
@@ -425,6 +428,7 @@ const CHANNEL_FIELDS_FRAGMENT = `
         transformOptions {
           forceArrayInstructions
           forceArrayInputs
+          forceArrayStop
           replaceDeveloperRoleWithSystem
           reasoningEffortMapping { from to }
         }
@@ -667,6 +671,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
+            forceArrayStop
             replaceDeveloperRoleWithSystem
             reasoningEffortMapping { from to }
           }
@@ -915,6 +920,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
+            forceArrayStop
             replaceDeveloperRoleWithSystem
             reasoningEffortMapping { from to }
           }
@@ -1183,6 +1189,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             transformOptions {
               forceArrayInstructions
               forceArrayInputs
+              forceArrayStop
               replaceDeveloperRoleWithSystem
               reasoningEffortMapping { from to }
             }

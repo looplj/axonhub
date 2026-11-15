@@ -458,6 +458,8 @@
   "channels.dialogs.fields.transformOptions.forceArrayInstructions.description": "强制渠道接受数组格式的指令",
   "channels.dialogs.fields.transformOptions.forceArrayInputs.label": "强制数组输入",
   "channels.dialogs.fields.transformOptions.forceArrayInputs.description": "强制渠道接受数组格式的输入",
+  "channels.dialogs.fields.transformOptions.forceArrayStop.label": "强制数组 stop",
+  "channels.dialogs.fields.transformOptions.forceArrayStop.description": "强制将停止序列以数组格式发送给上游",
   "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.label": "将 developer 角色替换为 system",
   "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description": "用于不支持 developer 角色的渠道，发送请求前将 developer 角色替换为 system",
   "channels.dialogs.fields.transformOptions.reasoningEffortMapping.label": "reasoning_effort 映射",

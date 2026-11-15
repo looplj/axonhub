@@ -112,6 +112,12 @@ type TransformOptions struct {
 	// ForceArrayInputs forces the channel to accept array format for inputs.
 	ForceArrayInputs bool `json:"forceArrayInputs"`
 
+	// ForceArrayStop forces the outbound stop field to always be an array.
+	// OpenAI allows both "stop": "x" and "stop": ["x"], but some strict
+	// OpenAI-compatible upstreams only accept the array form and reject a
+	// plain string with HTTP 400.
+	ForceArrayStop bool `json:"forceArrayStop"`
+
 	// ReplaceDeveloperRoleWithSystem replaces developer role with system in messages for Bailian compatibility.
 	ReplaceDeveloperRoleWithSystem bool `json:"replaceDeveloperRoleWithSystem"`
 

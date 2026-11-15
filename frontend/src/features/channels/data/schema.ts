@@ -265,6 +265,7 @@ export type ReasoningEffortMapping = z.infer<typeof reasoningEffortMappingSchema
 export const transformOptionsSchema = z.object({
   forceArrayInstructions: z.boolean().optional(),
   forceArrayInputs: z.boolean().optional(),
+  forceArrayStop: z.boolean().optional(),
   replaceDeveloperRoleWithSystem: z.boolean().optional(),
   reasoningEffortMapping: z.array(reasoningEffortMappingSchema).nullish(),
 });

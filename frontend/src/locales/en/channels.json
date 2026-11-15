@@ -461,6 +461,8 @@
   "channels.dialogs.fields.transformOptions.forceArrayInstructions.description": "Force the channel to accept array format for instructions",
   "channels.dialogs.fields.transformOptions.forceArrayInputs.label": "Force Array Inputs",
   "channels.dialogs.fields.transformOptions.forceArrayInputs.description": "Force the channel to accept array format for inputs",
+  "channels.dialogs.fields.transformOptions.forceArrayStop.label": "Force Array Stop",
+  "channels.dialogs.fields.transformOptions.forceArrayStop.description": "Always send stop sequences as an array",
   "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.label": "Replace developer role with system",
   "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description": "Replace developer role with system before sending requests for channels that do not support the developer role",
   "channels.dialogs.fields.transformOptions.reasoningEffortMapping.label": "reasoning_effort mapping",

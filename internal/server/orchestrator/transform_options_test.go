@@ -311,3 +311,71 @@ func TestReplaceDeveloperRoleWithSystem(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyTransformOptions_ForceArrayStop(t *testing.T) {
+	stop := "</block>"
+	req := &llm.Request{
+		Model: "test-model",
+		Stop:  &llm.Stop{Stop: &stop},
+	}
+
+	settings := &objects.ChannelSettings{
+		TransformOptions: objects.TransformOptions{
+			ForceArrayStop: true,
+		},
+	}
+
+	result := applyTransformOptions(req, settings)
+
+	require.NotSame(t, req, result)
+	require.Nil(t, result.Stop.Stop)
+	require.Equal(t, []string{"</block>"}, result.Stop.MultipleStop)
+	// The original request must stay untouched: the Stop pointer is replaced on
+	// the shallow copy, never mutated in place.
+	require.Equal(t, "</block>", *req.Stop.Stop)
+}
+
+func TestApplyTransformOptions_ForceArrayStopDisabled(t *testing.T) {
+	stop := "</block>"
+	req := &llm.Request{
+		Model: "test-model",
+		Stop:  &llm.Stop{Stop: &stop},
+	}
+
+	settings := &objects.ChannelSettings{
+		TransformOptions: objects.TransformOptions{
+			ForceArrayStop: false,
+		},
+	}
+
+	result := applyTransformOptions(req, settings)
+
+	require.Same(t, req, result)
+	require.Equal(t, "</block>", *result.Stop.Stop)
+	require.Empty(t, result.Stop.MultipleStop)
+}
+
+func TestApplyTransformOptions_ForceArrayStopCompletion(t *testing.T) {
+	stop := "</block>"
+	req := &llm.Request{
+		Model: "test-model",
+		Completion: &llm.CompletionRequest{
+			Stop: &llm.Stop{Stop: &stop},
+		},
+	}
+
+	settings := &objects.ChannelSettings{
+		TransformOptions: objects.TransformOptions{
+			ForceArrayStop: true,
+		},
+	}
+
+	result := applyTransformOptions(req, settings)
+
+	require.NotSame(t, req, result)
+	require.NotSame(t, req.Completion, result.Completion)
+	require.Nil(t, result.Completion.Stop.Stop)
+	require.Equal(t, []string{"</block>"}, result.Completion.Stop.MultipleStop)
+	// The original completion request must stay untouched.
+	require.Equal(t, "</block>", *req.Completion.Stop.Stop)
+}
