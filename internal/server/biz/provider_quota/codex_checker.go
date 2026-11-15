@@ -3,8 +3,10 @@ package provider_quota
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"strings"
 	"time"
 
@@ -244,6 +246,14 @@ func (c *CodexQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 
 	resp, err := hc.Do(ctx, httpRequest)
 	if err != nil {
+		// The usage endpoint is OAuth-backed: a 401 means the stored credential
+		// can no longer produce a trustworthy quota answer, not that this poll
+		// failed transiently. Other statuses keep their ordinary check error so
+		// the existing retry/keep semantics stay unchanged.
+		if upstream, ok := errors.AsType[*httpclient.Error](err); ok && upstream.StatusCode == http.StatusUnauthorized {
+			return QuotaData{}, errors.Join(ErrInvalidCredentials, &httpclient.Error{StatusCode: upstream.StatusCode})
+		}
+
 		return QuotaData{}, fmt.Errorf("quota request failed: %w", err)
 	}
 
