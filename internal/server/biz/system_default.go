@@ -73,6 +73,7 @@ var defaultStoragePolicy = StoragePolicy{
 	LivePreview:       false,
 	StoreRequestBody:  true,
 	StoreResponseBody: true,
+	StoreUpstreamMeta: false,
 	CleanupOptions:    defaultCleanupOptions(),
 }
 

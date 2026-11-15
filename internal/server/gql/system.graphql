@@ -29,6 +29,7 @@ type StoragePolicy {
   livePreview: Boolean!
   storeRequestBody: Boolean!
   storeResponseBody: Boolean!
+  storeUpstreamMeta: Boolean!
   cleanupOptions: [CleanupOption!]!
 }
 
@@ -49,6 +50,7 @@ input UpdateStoragePolicyInput {
   livePreview: Boolean
   storeRequestBody: Boolean
   storeResponseBody: Boolean
+  storeUpstreamMeta: Boolean
   cleanupOptions: [CleanupOptionInput!]
 }
 

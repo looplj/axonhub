@@ -1966,6 +1966,7 @@ type ComplexityRoot struct {
 		StoreChunks       func(childComplexity int) int
 		StoreRequestBody  func(childComplexity int) int
 		StoreResponseBody func(childComplexity int) int
+		StoreUpstreamMeta func(childComplexity int) int
 	}
 
 	SyncChannelModelsPayload struct {
@@ -11328,6 +11329,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.StoragePolicy.StoreResponseBody(childComplexity), true
+	case "StoragePolicy.storeUpstreamMeta":
+		if e.complexity.StoragePolicy.StoreUpstreamMeta == nil {
+			break
+		}
+
+		return e.complexity.StoragePolicy.StoreUpstreamMeta(childComplexity), true
 
 	case "SyncChannelModelsPayload.channelID":
 		if e.complexity.SyncChannelModelsPayload.ChannelID == nil {
@@ -53086,6 +53093,8 @@ func (ec *executionContext) fieldContext_Query_storagePolicy(_ context.Context, 
 				return ec.fieldContext_StoragePolicy_storeRequestBody(ctx, field)
 			case "storeResponseBody":
 				return ec.fieldContext_StoragePolicy_storeResponseBody(ctx, field)
+			case "storeUpstreamMeta":
+				return ec.fieldContext_StoragePolicy_storeUpstreamMeta(ctx, field)
 			case "cleanupOptions":
 				return ec.fieldContext_StoragePolicy_cleanupOptions(ctx, field)
 			}
@@ -60829,6 +60838,35 @@ func (ec *executionContext) _StoragePolicy_storeResponseBody(ctx context.Context
 }
 
 func (ec *executionContext) fieldContext_StoragePolicy_storeResponseBody(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StoragePolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StoragePolicy_storeUpstreamMeta(ctx context.Context, field graphql.CollectedField, obj *biz.StoragePolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_StoragePolicy_storeUpstreamMeta,
+		func(ctx context.Context) (any, error) {
+			return obj.StoreUpstreamMeta, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_StoragePolicy_storeUpstreamMeta(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StoragePolicy",
 		Field:      field,
@@ -94361,7 +94399,7 @@ func (ec *executionContext) unmarshalInputUpdateStoragePolicyInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"storeChunks", "livePreview", "storeRequestBody", "storeResponseBody", "cleanupOptions"}
+	fieldsInOrder := [...]string{"storeChunks", "livePreview", "storeRequestBody", "storeResponseBody", "storeUpstreamMeta", "cleanupOptions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -94396,6 +94434,13 @@ func (ec *executionContext) unmarshalInputUpdateStoragePolicyInput(ctx context.C
 				return it, err
 			}
 			it.StoreResponseBody = data
+		case "storeUpstreamMeta":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storeUpstreamMeta"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StoreUpstreamMeta = data
 		case "cleanupOptions":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cleanupOptions"))
 			data, err := ec.unmarshalOCleanupOptionInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCleanupOptionᚄ(ctx, v)
@@ -116397,6 +116442,11 @@ func (ec *executionContext) _StoragePolicy(ctx context.Context, sel ast.Selectio
 			}
 		case "storeResponseBody":
 			out.Values[i] = ec._StoragePolicy_storeResponseBody(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "storeUpstreamMeta":
+			out.Values[i] = ec._StoragePolicy_storeUpstreamMeta(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
