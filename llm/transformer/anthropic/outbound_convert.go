@@ -304,7 +304,10 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 			}
 
 			anthropicTool := Tool{
-				Type: ToolTypeWebSearch20250305,
+				// Known versions are preserved so that a same-protocol request keeps
+				// its dynamic filtering opt-in. Unknown versions fall back to the
+				// original tool instead of being echoed.
+				Type: nativeWebSearchToolType(tool.WebSearch),
 				Name: WebSearchFunctionName,
 			}
 			// Copy web search parameters if available
@@ -320,6 +323,7 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 					Timezone: tool.WebSearch.UserLocation.Timezone,
 					Type:     tool.WebSearch.UserLocation.Type,
 				}
+				anthropicTool.AllowedCallers = tool.WebSearch.AllowedCallers
 			}
 
 			anthropicTools = append(anthropicTools, anthropicTool)

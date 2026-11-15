@@ -175,6 +175,15 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, err
 	}
 
+	// A native web search tool with a version this package does not know is not
+	// downgraded to another API contract. The unified request can be filled from
+	// public JSON, so reject it here with the explicit invalid-request error.
+	if supportsAnthropicNativeTools(t.config) {
+		if err := validateNativeWebSearchToolVersions(llmReq.Tools); err != nil {
+			return nil, err
+		}
+	}
+
 	// Convert to Anthropic request format
 	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
 
@@ -246,9 +255,11 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Add beta header for web search feature only when:
-	// 1. Native web search tool is present, AND
+	// 1. The legacy native web search tool is present. Versioned tools that do not
+	//    need the 2025-03-05 beta (for example web_search_20260209) are sent
+	//    without it, and
 	// 2. Platform is direct Anthropic API or Bedrock (not Vertex which may not support this beta)
-	if containsNativeWebSearchTool(anthropicReq.Tools) {
+	if containsLegacyNativeWebSearchTool(anthropicReq.Tools) {
 		//nolint:exhaustive // Checked.
 		switch t.config.Type {
 		case PlatformDirect:
@@ -450,8 +461,10 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 	}
 }
 
-// containsNativeWebSearchTool checks if the Anthropic tools slice contains the native web search tool.
-func containsNativeWebSearchTool(tools []Tool) bool {
+// containsLegacyNativeWebSearchTool checks whether the Anthropic tools slice
+// contains the original native web search tool, which still needs the
+// web-search-2025-03-05 beta header. Newer versions are sent without it.
+func containsLegacyNativeWebSearchTool(tools []Tool) bool {
 	for _, tool := range tools {
 		if tool.Type == ToolTypeWebSearch20250305 {
 			return true
