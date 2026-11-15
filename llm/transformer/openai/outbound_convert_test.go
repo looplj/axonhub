@@ -1069,3 +1069,19 @@ func TestRequestFromLLM_NamedToolChoiceUnchanged(t *testing.T) {
 	require.NoError(t, err)
 	require.JSONEq(t, `{"type":"function","function":{"name":"tool_a"}}`, string(data))
 }
+
+func TestChoice_ToLLMChoice_NormalizesSensitiveFinishReason(t *testing.T) {
+	t.Parallel()
+
+	convert := func(reason string) string {
+		choice := Choice{FinishReason: lo.ToPtr(reason)}
+		return lo.FromPtr(choice.ToLLMChoice().FinishReason)
+	}
+
+	require.Equal(t, "content_filter", convert("sensitive"))
+	require.Equal(t, "content_filter", convert("content_filter"))
+	require.Equal(t, "stop", convert("stop"))
+	require.Equal(t, "length", convert("length"))
+	require.Equal(t, "safety", convert("safety"))
+	require.Equal(t, "Sensitive", convert("Sensitive"), "alias match must stay exact")
+}

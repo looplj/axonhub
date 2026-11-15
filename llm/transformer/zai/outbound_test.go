@@ -12,6 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestOutboundTransformer_TransformRequest_URL(t *testing.T) {
@@ -606,4 +607,32 @@ func TestOutboundTransformer_TransformRequest_NonGLMStripsReasoningEffort(t *tes
 	require.NotNil(t, zaiReq.Thinking)
 	assert.Equal(t, "enabled", zaiReq.Thinking.Type)
 	assert.Equal(t, "", zaiReq.ReasoningEffort)
+}
+
+func TestOutboundTransformer_TransformResponse_NormalizesSensitiveFinishReason(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://open.bigmodel.cn/api/paas/v4",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
+	})
+	require.NoError(t, err)
+
+	resp, err := transformer.TransformResponse(context.Background(), &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body: []byte(`{
+			"id": "chatcmpl-zai",
+			"object": "chat.completion",
+			"created": 1720000000,
+			"model": "glm-4",
+			"choices": [{
+				"index": 0,
+				"message": {"role": "assistant"},
+				"finish_reason": "sensitive"
+			}]
+		}`),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Len(t, resp.Choices, 1)
+	require.NotNil(t, resp.Choices[0].FinishReason)
+	assert.Equal(t, "content_filter", *resp.Choices[0].FinishReason)
 }

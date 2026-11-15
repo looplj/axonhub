@@ -1115,7 +1115,10 @@ func (s *anthropicInboundStream) Next() bool {
 				contentClosed = true
 			}
 
-			if !contentClosed && !s.hasTextContentStarted && !s.hasToolContentStarted && !s.hasThinkingContentStarted {
+			// A content_filter terminal may carry no content block at all. Closing
+			// index 0 here would emit an orphan content_block_stop to the client.
+			if !contentClosed && !s.hasTextContentStarted && !s.hasToolContentStarted && !s.hasThinkingContentStarted &&
+				*choice.FinishReason != "content_filter" {
 				streamEvent := StreamEvent{
 					Type:  "content_block_stop",
 					Index: &s.contentIndex,

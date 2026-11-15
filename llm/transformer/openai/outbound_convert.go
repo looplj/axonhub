@@ -517,11 +517,24 @@ func (r *Response) ToLLMResponse() *llm.Response {
 	return resp
 }
 
+// normalizeUpstreamFinishReason maps OpenAI-compatible provider aliases at the
+// upstream decode boundary. Zai/Zhipu use the word "sensitive" for a moderation
+// block; downstream code only knows the standard "content_filter" terminal.
+func normalizeUpstreamFinishReason(reason *string) *string {
+	if reason == nil || *reason != "sensitive" {
+		return reason
+	}
+
+	normalized := "content_filter"
+
+	return &normalized
+}
+
 // ToLLMChoice converts OpenAI Choice to unified llm.Choice.
 func (c Choice) ToLLMChoice() llm.Choice {
 	choice := llm.Choice{
 		Index:        c.Index,
-		FinishReason: c.FinishReason,
+		FinishReason: normalizeUpstreamFinishReason(c.FinishReason),
 	}
 
 	if c.Message != nil {

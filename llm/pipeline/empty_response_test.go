@@ -30,6 +30,28 @@ func TestHasResponseContent(t *testing.T) {
 		require.False(t, hasResponseContent(&llm.Response{}))
 	})
 
+	t.Run("moderation terminal without content", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Choices: []llm.Choice{{
+				Index:        0,
+				Message:      &llm.Message{Role: "assistant"},
+				FinishReason: lo.ToPtr("content_filter"),
+			}},
+		}))
+	})
+
+	t.Run("unknown finish reason without content stays empty", func(t *testing.T) {
+		for _, reason := range []string{"sensitive", "safety", "stop", "length", ""} {
+			require.False(t, hasResponseContent(&llm.Response{
+				Choices: []llm.Choice{{
+					Index:        0,
+					Message:      &llm.Message{Role: "assistant"},
+					FinishReason: lo.ToPtr(reason),
+				}},
+			}), "reason %q must not be treated as content", reason)
+		}
+	})
+
 	t.Run("decisions answers", func(t *testing.T) {
 		require.True(t, hasResponseContent(&llm.Response{
 			Decisions: &llm.DecisionsResponse{Answers: []json.RawMessage{json.RawMessage(`{"type":"refusal"}`)}},
