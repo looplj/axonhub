@@ -52,6 +52,19 @@
           "axonhubVersion": "^1.0.0"
         }
       ]
+    },
+    {
+      "id": "jinyuliu.bucket-rotate",
+      "name": "载荷存储切桶",
+      "description": "自动读取 AxonHub 已配置的 S3 数据存储，当前默认桶接近阈值（如 Cloudflare R2 免费 10G）时按指定顺序切到下一个桶；历史请求仍从原桶读取，无需迁移。附状态页。",
+      "versions": [
+        {
+          "version": "0.2.0",
+          "url": "https://github.com/jin-yu-liu/axonhub-bucket-rotate/releases/download/v0.2.0/bucket-rotate-0.2.0.axplugin",
+          "sha256": "8bf785f4bc274b33c2278dc7d44e2460b4cd0dae98ba4df4bf8b1c49dcd9a5bd",
+          "axonhubVersion": "^1.0.0"
+        }
+      ]
     }
   ]
 }
