@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { type NavLink, type NavModule } from '@/components/layout/types';
 
 interface MenuCustomizeDialogProps {
@@ -49,7 +48,7 @@ export function MenuCustomizeDialog({ open, onOpenChange }: MenuCustomizeDialogP
         </DialogHeader>
 
         {hasItems ? (
-          <ScrollArea className='max-h-[60vh] pr-2'>
+          <div className='max-h-[60vh] overflow-y-auto pr-2'>
             <div className='space-y-5'>
               {modules.map((module) => (
                 <div key={module.id} className='space-y-3'>
@@ -97,7 +96,7 @@ export function MenuCustomizeDialog({ open, onOpenChange }: MenuCustomizeDialogP
                 </div>
               ))}
             </div>
-          </ScrollArea>
+          </div>
         ) : (
           <p className='text-muted-foreground py-6 text-center text-sm'>{t('sidebar.menuCustomize.empty')}</p>
         )}
