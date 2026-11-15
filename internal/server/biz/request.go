@@ -107,9 +107,14 @@ var _InvalidRequestBodyJSON = objects.JSONRawMessage(`{"message":"invalid text"}
 // (SQLSTATE 22P05), which would otherwise lose the whole payload.
 var jsonNulEscape = []byte(`\u0000`)
 
-// stripJSONNul removes U+0000 escapes from a JSON document so it can be stored
-// in a jsonb column. An escaped backslash followed by "u0000" is plain text and
-// is kept. Documents without the escape are returned as is.
+// stripJSONNul removes U+0000 escapes from a JSON document. An escaped
+// backslash followed by "u0000" is plain text and is kept. Documents without
+// the escape are returned as is.
+//
+// The CDC chunk path keeps using this instead of sanitizeJSONForStorage: chunks
+// are archived as raw bytes, so replacing surrogate escapes here would make a
+// continuation restored from the archive differ from the hot session that
+// produced the same body.
 func stripJSONNul(body objects.JSONRawMessage) objects.JSONRawMessage {
 	if !bytes.Contains(body, jsonNulEscape) {
 		return body
@@ -121,6 +126,7 @@ func stripJSONNul(body objects.JSONRawMessage) objects.JSONRawMessage {
 		if body[i] == '\\' && i+1 < len(body) {
 			if bytes.HasPrefix(body[i:], jsonNulEscape) {
 				i += len(jsonNulEscape)
+
 				continue
 			}
 
@@ -136,6 +142,130 @@ func stripJSONNul(body objects.JSONRawMessage) objects.JSONRawMessage {
 	}
 
 	return out
+}
+
+// Surrogate escapes only use these prefixes, so bodies without them skip the
+// scan entirely.
+var jsonSurrogateEscapePrefixes = [][]byte{[]byte(`\ud`), []byte(`\uD`)}
+
+// jsonUnpairedSurrogateEscape replaces an unpaired UTF-16 surrogate. jsonb
+// rejects those as well, and U+FFFD is what encoding/json decodes the same
+// input to, so the stored copy keeps one character per code unit.
+var jsonUnpairedSurrogateEscape = []byte(`\ufffd`)
+
+// sanitizeJSONForStorage makes a JSON document storable in a jsonb column.
+// JSON escapes let a document carry U+0000 and unpaired UTF-16 surrogates,
+// which jsonb rejects (SQLSTATE 22P05); both would otherwise cost the whole
+// payload. NUL escapes are dropped, unpaired surrogates become U+FFFD, and
+// every other byte is copied unchanged. An escaped backslash followed by
+// "u0000" is plain text and is kept. Documents without either escape are
+// returned as is; this never decodes and re-encodes, so number precision, key
+// order, and formatting are untouched.
+func sanitizeJSONForStorage(body objects.JSONRawMessage) objects.JSONRawMessage {
+	if !bytes.Contains(body, jsonNulEscape) && !containsJSONSurrogateEscape(body) {
+		return body
+	}
+
+	out := make(objects.JSONRawMessage, 0, len(body))
+
+	for i := 0; i < len(body); {
+		if body[i] != '\\' || i+1 >= len(body) {
+			out = append(out, body[i])
+			i++
+
+			continue
+		}
+
+		if bytes.HasPrefix(body[i:], jsonNulEscape) {
+			i += len(jsonNulEscape)
+
+			continue
+		}
+
+		code, next, ok := jsonUnicodeEscapeAt(body, i)
+		if ok && isJSONSurrogate(code) {
+			if isJSONHighSurrogate(code) {
+				if low, lowEnd, lowOK := jsonUnicodeEscapeAt(body, next); lowOK && isJSONLowSurrogate(low) {
+					out = append(out, body[i:lowEnd]...)
+					i = lowEnd
+
+					continue
+				}
+			}
+
+			out = append(out, jsonUnpairedSurrogateEscape...)
+			i = next
+
+			continue
+		}
+
+		// Copy the escape pair as a unit so `\\u0000` is not mistaken for a NUL.
+		out = append(out, body[i], body[i+1])
+		i += 2
+	}
+
+	return out
+}
+
+func containsJSONSurrogateEscape(body []byte) bool {
+	for _, prefix := range jsonSurrogateEscapePrefixes {
+		if bytes.Contains(body, prefix) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// jsonUnicodeEscapeAt decodes the \uXXXX escape starting at start and returns
+// the code unit with the offset just past it. Surrogate halves are valid JSON
+// escapes on their own; pairing is decided by the caller.
+func jsonUnicodeEscapeAt(body []byte, start int) (rune, int, bool) {
+	if start+6 > len(body) || body[start] != '\\' || body[start+1] != 'u' {
+		return 0, 0, false
+	}
+
+	value, ok := jsonHex4(body[start+2 : start+6])
+	if !ok {
+		return 0, 0, false
+	}
+
+	return value, start + 6, true
+}
+
+func jsonHex4(hex []byte) (rune, bool) {
+	var value rune
+
+	for _, c := range hex {
+		var digit rune
+
+		switch {
+		case c >= '0' && c <= '9':
+			digit = rune(c - '0')
+		case c >= 'a' && c <= 'f':
+			digit = rune(c-'a') + 10
+		case c >= 'A' && c <= 'F':
+			digit = rune(c-'A') + 10
+		default:
+			return 0, false
+		}
+
+		value = value<<4 | digit
+	}
+
+	return value, true
+}
+
+func isJSONSurrogate(code rune) bool {
+	return isJSONHighSurrogate(code) || isJSONLowSurrogate(code)
+}
+
+func isJSONHighSurrogate(code rune) bool {
+	return code >= 0xd800 && code <= 0xdbff
+}
+
+func isJSONLowSurrogate(code rune) bool {
+	return code >= 0xdc00 && code <= 0xdfff
 }
 
 // External payload markers live in the DB when the real JSON is in object storage.
@@ -305,6 +435,8 @@ func (s *RequestService) CreateRequest(
 	useExternalStorage := storeRequestBody && s.shouldUseExternalStorage(ctx, dataStorage)
 	var chunked *ChunkedRequestBody
 	if projectID > 0 && storeRequestBody && !useExternalStorage && json.Valid(requestBodyBytes) {
+		// CDC chunks are archived raw, so they keep the legacy NUL-only cleanup;
+		// replacing surrogates here would drift from the hot session on restore.
 		chunked = PrepareChunkedRequestBody(stripJSONNul(requestBodyBytes))
 	}
 	var req *ent.Request
@@ -336,7 +468,7 @@ func (s *RequestService) CreateRequest(
 			mut = mut.SetRequestBody(chunked.Manifest).SetRequestBodyChunked(true)
 		} else {
 			// Store in database
-			mut = mut.SetRequestBody(stripJSONNul(requestBodyBytes))
+			mut = mut.SetRequestBody(sanitizeJSONForStorage(requestBodyBytes))
 		}
 
 		if dataStorage != nil {
@@ -489,12 +621,13 @@ func (s *RequestService) CreateRequestExecution(
 		requestBodyForDB = []byte("{}")
 	} else {
 		// Store in database
-		requestBodyForDB = stripJSONNul(requestBodyBytes)
+		requestBodyForDB = sanitizeJSONForStorage(requestBodyBytes)
 	}
 
 	var chunked *ChunkedRequestBody
-	if request.ProjectID > 0 && storeRequestBody && !useExternalStorage && json.Valid(requestBodyForDB) {
-		chunked = PrepareChunkedRequestBody(requestBodyForDB)
+	if request.ProjectID > 0 && storeRequestBody && !useExternalStorage && json.Valid(requestBodyBytes) {
+		// Same reason as CreateRequest: the archive keeps legacy NUL-only cleanup.
+		chunked = PrepareChunkedRequestBody(stripJSONNul(requestBodyBytes))
 	}
 	var execution *ent.RequestExecution
 	create := func(ctx context.Context) error {
@@ -790,7 +923,7 @@ func (s *RequestService) UpdateRequestFinalized(
 			}
 		} else {
 			// Store in database
-			upd = upd.SetResponseBody(stripJSONNul(responseBodyBytes))
+			upd = upd.SetResponseBody(sanitizeJSONForStorage(responseBodyBytes))
 		}
 	}
 
@@ -979,7 +1112,7 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 				upd = upd.SetResponseBody(ExternalResponseBodyMarker)
 			}
 		} else {
-			upd = upd.SetResponseBody(stripJSONNul(responseBodyBytes))
+			upd = upd.SetResponseBody(sanitizeJSONForStorage(responseBodyBytes))
 		}
 	}
 
@@ -1075,7 +1208,7 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 			}
 		} else {
 			// Store in database
-			upd = upd.SetResponseBody(stripJSONNul(responseBodyBytes))
+			upd = upd.SetResponseBody(sanitizeJSONForStorage(responseBodyBytes))
 		}
 	}
 
@@ -1171,7 +1304,7 @@ func (s *RequestService) UpdateRequestExecutionFinalized(
 			}
 		} else {
 			// Store in database
-			upd = upd.SetResponseBody(stripJSONNul(responseBodyBytes))
+			upd = upd.SetResponseBody(sanitizeJSONForStorage(responseBodyBytes))
 		}
 	}
 
@@ -1399,17 +1532,25 @@ func (s *RequestService) prepareResponseChunks(ctx context.Context, dataStorage 
 		}
 		chunkBytes = append(chunkBytes, b)
 	}
-	if len(chunkBytes) == 0 || !s.shouldUseExternalStorage(ctx, dataStorage) {
-		return chunkBytes, "", nil
+	if len(chunkBytes) == 0 {
+		return nil, "", nil
 	}
-	payload, err := json.Marshal(chunkBytes)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to marshal all chunks: %w", err)
+	if s.shouldUseExternalStorage(ctx, dataStorage) {
+		// External storage keeps the exact marshaled bytes; only the jsonb column
+		// needs the escape repair below.
+		payload, err := json.Marshal(chunkBytes)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to marshal all chunks: %w", err)
+		}
+		if err := s.DataStorageService.SaveData(ctx, dataStorage, key, payload); err != nil {
+			return nil, "", fmt.Errorf("failed to save chunks to external storage: %w", err)
+		}
+		return ExternalResponseChunksMarker, key, nil
 	}
-	if err := s.DataStorageService.SaveData(ctx, dataStorage, key, payload); err != nil {
-		return nil, "", fmt.Errorf("failed to save chunks to external storage: %w", err)
+	for i, b := range chunkBytes {
+		chunkBytes[i] = sanitizeJSONForStorage(b)
 	}
-	return ExternalResponseChunksMarker, key, nil
+	return chunkBytes, "", nil
 }
 
 // MarkRequestCanceled updates request status to canceled.

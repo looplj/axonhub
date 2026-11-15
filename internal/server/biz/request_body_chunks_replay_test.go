@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -282,8 +283,6 @@ func runPayloadReplay(t *testing.T, input io.Reader, source, pgDSN string) paylo
 		previousInput, previousChanged := metrics.input, metrics.changed
 		previousUnique, previousInline := metrics.unique, metrics.inline
 		for lane, raw := range [][]byte{pair.RequestBody, pair.ExecutionBody} {
-			body := stripJSONNul(raw)
-			metrics.sanitized += int64(len(raw) - len(body))
 			var loaded objects.JSONRawMessage
 			var loadErr error
 			var chunked bool
@@ -300,6 +299,12 @@ func runPayloadReplay(t *testing.T, input io.Reader, source, pgDSN string) paylo
 				chunked, storedBytes = fresh.RequestBodyChunked, len(fresh.RequestBody)
 			}
 			require.True(t, loadErr == nil, "roundtrip load failed turn=%d lane=%d", turn, lane)
+
+			// The stored copy depends on the lane's storage path, so the expected
+			// bytes must follow the same rule: CDC chunks keep surrogates, inline
+			// jsonb replaces them.
+			body := payloadReplayExpectedBody(raw, chunked)
+			metrics.sanitized += int64(len(raw) - len(body))
 			if !chunked && !bytes.Equal(body, loaded) {
 				if backend == dialect.Postgres {
 					var equivalent bool
@@ -419,4 +424,54 @@ func payloadReplayAllocatedBytes(t *testing.T, ctx context.Context, db *sql.DB, 
 	require.NoError(t, db.QueryRowContext(ctx, "PRAGMA page_count").Scan(&pages))
 	require.NoError(t, db.QueryRowContext(ctx, "PRAGMA page_size").Scan(&size))
 	return pages * size
+}
+
+// payloadReplayExpectedBody mirrors how one lane stores its copy: CDC chunks
+// keep raw bytes apart from the legacy NUL cleanup, while inline jsonb also
+// replaces unpaired surrogate escapes.
+func payloadReplayExpectedBody(raw []byte, chunked bool) objects.JSONRawMessage {
+	if chunked {
+		return stripJSONNul(raw)
+	}
+
+	return sanitizeJSONForStorage(raw)
+}
+
+// TestPayloadReplayExpectedBodyFollowsStoragePath locks the replay runner's
+// per-lane expectation: a chunked body keeps its surrogate escape, a small
+// inline body gets the replacement, and the two must not be unified.
+func TestPayloadReplayExpectedBodyFollowsStoragePath(t *testing.T) {
+	t.Parallel()
+
+	chunkedRaw := []byte(`{"model":"test","input":[{"role":"user","content":"` +
+		strings.Repeat("x", 40000) + `\ud800\u0000"}]}`)
+	chunkedBody := payloadReplayExpectedBody(chunkedRaw, true)
+	require.NotNil(t, PrepareChunkedRequestBody(chunkedBody), "synthetic body must cross the chunk threshold")
+	require.Contains(t, string(chunkedBody), `\ud800`)
+	require.NotContains(t, string(chunkedBody), `\ufffd`)
+	require.NotContains(t, string(chunkedBody), `\u0000`)
+
+	inlineRaw := []byte(`{"model":"test","input":"\ud800"}`)
+	inlineBody := payloadReplayExpectedBody(inlineRaw, false)
+	require.Equal(t, `{"model":"test","input":"\ufffd"}`, string(inlineBody))
+	require.Nil(t, PrepareChunkedRequestBody(inlineBody), "small inline body must stay inline")
+}
+
+// TestRequestBodyPayloadReplayStoragePathMixed runs two synthetic turns with the
+// large and small bodies swapped, so one lane is chunked while the other stays
+// inline in each turn and the runner must not apply one expectation to both.
+func TestRequestBodyPayloadReplayStoragePathMixed(t *testing.T) {
+	large := `{"model":"test","input":[{"role":"user","content":"` +
+		strings.Repeat("x", 40000) + `a\ud800\u0000"}]}`
+	small := `{"model":"test","input":"\ud800"}`
+
+	input := strings.NewReader(
+		`{"request_body":` + large + `,"execution_body":` + small + "}\n" +
+			`{"request_body":` + small + `,"execution_body":` + large + "}\n",
+	)
+
+	metrics := runPayloadReplay(t, input, "synthetic_mixed", "")
+	require.Equal(t, int64(2), metrics.chunked, "one chunked lane per turn")
+	require.NotZero(t, metrics.inline, "inline bytes accounted on the other lane")
+	require.NotZero(t, metrics.sanitized, "NUL escapes must be accounted on both lanes")
 }
