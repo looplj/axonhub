@@ -70,7 +70,7 @@
     "driver.js": "^1.10.2",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^14.10.1",
-    "i18next": "^26.7.2",
+    "i18next": "^27.1.1",
     "i18next-browser-languagedetector": "^8.3.0",
     "js-cookie": "^3.0.8",
     "lucide-react": "^1.70.0",
