@@ -109,6 +109,39 @@ func TestOutboundTransformer_TransformResponse_IncompleteFinishReason(t *testing
 	}
 }
 
+func TestOutboundTransformer_TransformResponse_AbnormalStatusWithToolCall(t *testing.T) {
+	const toolItem = `{"type":"function_call","id":"fc_1","call_id":"call_1","name":"get_weather","arguments":"{\"city\":"}`
+
+	tests := []struct {
+		name     string
+		status   string
+		details  string
+		expected string
+	}{
+		{name: "incomplete", status: "incomplete", details: `,"incomplete_details":{"reason":"max_output_tokens"}`, expected: "length"},
+		{name: "content_filter", status: "incomplete", details: `,"incomplete_details":{"reason":"content_filter"}`, expected: "content_filter"},
+		{name: "failed", status: "failed", expected: "error"},
+		{name: "canceled", status: "canceled", expected: "cancelled"},
+		{name: "completed", status: "completed", expected: "tool_calls"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+			require.NoError(t, err)
+
+			result, err := transformer.TransformResponse(context.Background(), &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body:       []byte(`{"id":"resp_x","object":"response","created_at":1700000000,"status":"` + tt.status + `","model":"gpt-5","output":[` + toolItem + `]` + tt.details + `}`),
+			})
+			require.NoError(t, err)
+			require.Len(t, result.Choices, 1)
+			require.NotNil(t, result.Choices[0].FinishReason)
+			require.Equal(t, tt.expected, *result.Choices[0].FinishReason)
+		})
+	}
+}
+
 func TestOutboundTransformer_buildFullRequestURL(t *testing.T) {
 	tests := []struct {
 		name     string
