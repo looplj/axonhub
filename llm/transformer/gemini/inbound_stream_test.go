@@ -393,6 +393,71 @@ func TestInboundTransformer_TransformStream_AggregatesToolCallArguments(t *testi
 	require.Equal(t, "15 * 23", fc.Args["expression"])
 }
 
+func TestInboundTransformer_TransformStream_CarriesReasoningOpaqueOntoToolCall(t *testing.T) {
+	transformer := NewInboundTransformer()
+	opaque := "V+l5RhjeGPTC"
+
+	responses := []*llm.Response{
+		{
+			ID:     "chatcmpl-opaque-1",
+			Model:  "gemini-3.8-flash",
+			Object: "chat.completion.chunk",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role:             "assistant",
+					ReasoningContent: lo.ToPtr("thinking"),
+				},
+			}},
+		},
+		{
+			ID:     "chatcmpl-opaque-1",
+			Model:  "gemini-3.8-flash",
+			Object: "chat.completion.chunk",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					ReasoningSignature: lo.ToPtr(opaque),
+					ToolCalls: []llm.ToolCall{{
+						Index: 0,
+						ID:    "call_1",
+						Type:  "function",
+						Function: llm.FunctionCall{
+							Name:      "Read",
+							Arguments: `{"path":"a"}`,
+						},
+					}},
+				},
+				FinishReason: lo.ToPtr("tool_calls"),
+			}},
+		},
+	}
+
+	outputStream, err := transformer.TransformStream(context.Background(), streams.SliceStream(responses))
+	require.NoError(t, err)
+
+	var toolCallResp GenerateContentResponse
+	for outputStream.Next() {
+		var resp GenerateContentResponse
+		require.NoError(t, json.Unmarshal(outputStream.Current().Data, &resp))
+		for _, part := range resp.Candidates[0].Content.Parts {
+			if part.FunctionCall != nil {
+				toolCallResp = resp
+			}
+		}
+	}
+	require.NoError(t, outputStream.Err())
+
+	var functionPart *Part
+	for _, part := range toolCallResp.Candidates[0].Content.Parts {
+		if part.FunctionCall != nil {
+			functionPart = part
+		}
+	}
+	require.NotNil(t, functionPart)
+	require.Equal(t, opaque, functionPart.ThoughtSignature)
+}
+
 func TestInboundTransformer_TransformStream_FinishOnlyChunkWithReasoningSignature(t *testing.T) {
 	transformer := NewInboundTransformer()
 
@@ -457,7 +522,9 @@ func TestInboundTransformer_TransformStream_FinishOnlyChunkWithReasoningSignatur
 	require.Len(t, finishResp.Candidates, 1)
 	require.Equal(t, "STOP", finishResp.Candidates[0].FinishReason)
 	require.NotNil(t, finishResp.Candidates[0].Content)
-	require.Empty(t, finishResp.Candidates[0].Content.Parts)
+	require.Len(t, finishResp.Candidates[0].Content.Parts, 1)
+	require.Equal(t, "finish_only_signature", finishResp.Candidates[0].Content.Parts[0].ThoughtSignature)
+	require.Contains(t, string(results[1].Data), `"text":""`)
 }
 
 func TestInboundTransformer_AggregateStreamChunks(t *testing.T) {

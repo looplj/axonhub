@@ -122,6 +122,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	oaiReq := openai.RequestFromLLM(ctx, llmReq, openai.ReasoningFieldAll)
+	applyCopilotReasoningOpaque(llmReq.Messages, oaiReq.Messages)
 
 	body, err := json.Marshal(oaiReq)
 	if err != nil {
@@ -250,6 +251,39 @@ func hasVisionContent(llmReq *llm.Request) bool {
 
 func isImageDataURL(content string) bool {
 	return strings.HasPrefix(content, "data:image/")
+}
+
+// applyCopilotReasoningOpaque copies Copilot reasoning state onto assistant messages.
+// RequestFromLLM drops system messages after merging them, so non-system messages stay aligned.
+func applyCopilotReasoningOpaque(src []llm.Message, dst []openai.Message) {
+	dstIndex := 0
+	for i := range src {
+		if src[i].Role == "system" {
+			continue
+		}
+
+		for dstIndex < len(dst) && dst[dstIndex].Role == "system" {
+			dstIndex++
+		}
+
+		if dstIndex >= len(dst) {
+			return
+		}
+
+		if opaque := reasoningOpaqueForReplay(src[i].ReasoningSignature); opaque != nil && dst[dstIndex].Role == "assistant" {
+			dst[dstIndex].ReasoningOpaque = opaque
+			// Gemini clients carry opaque state in thoughtSignature. Do not
+			// replay that carrier as a Google tool-call extension as well.
+			for j := range dst[dstIndex].ToolCalls {
+				extra := dst[dstIndex].ToolCalls[j].ExtraContent
+				if extra != nil && extra.Google != nil && reasoningOpaqueForReplay(&extra.Google.ThoughtSignature) != nil {
+					dst[dstIndex].ToolCalls[j].ExtraContent = nil
+				}
+			}
+		}
+
+		dstIndex++
+	}
 }
 
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
@@ -691,11 +725,7 @@ func (s *prependedStream) Next() bool {
 }
 
 func (s *prependedStream) Current() *httpclient.StreamEvent {
-	if s.firstYielded && s.firstEvent != nil && s.current == s.firstEvent {
-		return s.current
-	}
-
-	return s.upstream.Current()
+	return s.current
 }
 
 func (s *prependedStream) Err() error {

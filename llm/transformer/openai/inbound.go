@@ -152,8 +152,8 @@ func (t *InboundTransformer) TransformStreamChunk(
 // This is a helper function to filter out reasoning signature events when transforming
 // to OpenAI format, since OpenAI format doesn't support ReasoningSignature in streaming.
 // If the response contains ONLY ReasoningSignature (pure signature event), we skip it.
-// If the chunk also contains other content (text, reasoning_content, tool_calls, etc.),
-// we should NOT skip it (e.g., thinking chunks with both signature and content).
+// Chunks that also carry text, tool calls, a finish reason, or usage stay, because
+// those fields have no other carrier. The signature itself is not written back.
 func isReasoningSignatureEvent(resp *llm.Response) bool {
 	if len(resp.Choices) != 1 {
 		return false
@@ -166,6 +166,16 @@ func isReasoningSignatureEvent(resp *llm.Response) bool {
 
 	// Check if ReasoningSignature is set
 	if delta.ReasoningSignature == nil || *delta.ReasoningSignature == "" {
+		return false
+	}
+
+	// Copilot puts reasoning_opaque on the terminal chunk together with
+	// finish_reason and usage. OpenAI output still omits the signature, but
+	// dropping the chunk would also drop those terminal fields.
+	if resp.Choices[0].FinishReason != nil && *resp.Choices[0].FinishReason != "" {
+		return false
+	}
+	if resp.Usage != nil {
 		return false
 	}
 

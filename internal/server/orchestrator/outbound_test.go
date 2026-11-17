@@ -2183,3 +2183,35 @@ func TestPersistentOutboundTransformer_RetrySelectionCounts(t *testing.T) {
 	require.Error(t, processor.NextChannel(ctx)) // exhausted candidates are not attempts
 	assertCounts(3, 2)
 }
+
+func TestPersistentStreams_RecordOncePerAdvance(t *testing.T) {
+	// Two actual events with identical content must both survive. Repeated Current
+	// calls must not add records, including when the same pointer is reused.
+	event := &httpclient.StreamEvent{Data: []byte(`{"choices":[{"index":0,"delta":{"content":"x"}}]}`)}
+	state := &PersistenceState{}
+	outbound := &OutboundPersistentStream{
+		ctx: t.Context(), stream: streams.SliceStream([]*httpclient.StreamEvent{event, event}),
+		state: state, terminalTracker: NewStreamTerminalTracker(1),
+	}
+	inbound := &InboundPersistentStream{
+		ctx: t.Context(), stream: outbound,
+		state: state, terminalTracker: NewStreamTerminalTracker(1),
+	}
+	require.Nil(t, inbound.Current())
+	require.Nil(t, outbound.Current())
+	for i := 1; i <= 2; i++ {
+		require.True(t, inbound.Next())
+		// Recording happens on advancement, even before the first Current call.
+		require.Len(t, outbound.responseChunks, i)
+		require.Len(t, inbound.responseChunks, i)
+		for range 3 {
+			require.Same(t, event, inbound.Current())
+			require.Same(t, event, outbound.Current())
+		}
+		require.Len(t, outbound.responseChunks, i)
+		require.Len(t, inbound.responseChunks, i)
+	}
+	require.False(t, inbound.Next())
+	require.Nil(t, inbound.Current())
+	require.Nil(t, outbound.Current())
+}

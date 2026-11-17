@@ -1,6 +1,7 @@
 package gemini
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -1413,7 +1414,7 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 			},
 		},
 		{
-			name: "reasoning signature without parts does not panic",
+			name: "reasoning signature without parts is preserved",
 			input: &llm.Choice{
 				Index: 0,
 				Message: &llm.Message{
@@ -1425,7 +1426,8 @@ func TestConvertLLMChoiceToGeminiCandidate_ThoughtSignature(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, result)
 				require.NotNil(t, result.Content)
-				require.Empty(t, result.Content.Parts)
+				require.Len(t, result.Content.Parts, 1)
+				require.Equal(t, "signature_without_parts", result.Content.Parts[0].ThoughtSignature)
 			},
 		},
 	}
@@ -3100,4 +3102,50 @@ func TestConvertLLMToGeminiResponse_GroundingMetadata_Additional(t *testing.T) {
 			tt.validate(t, result)
 		})
 	}
+}
+
+func TestCopilotReasoningOpaqueUsesThoughtSignatureAsCarrier(t *testing.T) {
+	opaque := base64.StdEncoding.EncodeToString([]byte{0x57, 0xe9, 0x79, 0x46, 0x18, 0xde})
+	geminiSignature := base64.StdEncoding.EncodeToString([]byte{0x0a, 0x04, 0x74, 0x65, 0x73, 0x74})
+
+	fromClient, err := convertGeminiContentToLLMMessage(&Content{
+		Role: "model",
+		Parts: []*Part{{
+			FunctionCall: &FunctionCall{
+				ID:   "call_1",
+				Name: "Read",
+				Args: map[string]any{"path": "a"},
+			},
+			ThoughtSignature: opaque,
+		}},
+	}, nil)
+	require.NoError(t, err)
+	require.Equal(t, opaque, lo.FromPtr(fromClient.ReasoningSignature))
+	require.Equal(t, opaque, fromClient.ToolCalls[0].TransformerMetadata[transformerMetadataKeyGoogleThoughtSignature])
+
+	candidate := convertLLMChoiceToGeminiCandidate(&llm.Choice{
+		Message: &llm.Message{
+			Role:               "assistant",
+			ReasoningSignature: lo.ToPtr(opaque),
+			ToolCalls: []llm.ToolCall{{
+				ID:   "call_1",
+				Type: "function",
+				Function: llm.FunctionCall{
+					Name:      "Read",
+					Arguments: `{"path":"a"}`,
+				},
+			}},
+		},
+	}, false)
+	require.Equal(t, opaque, candidate.Content.Parts[0].ThoughtSignature)
+
+	realSignature, err := convertGeminiContentToLLMMessage(&Content{
+		Role: "model",
+		Parts: []*Part{{
+			Text:             "answer",
+			ThoughtSignature: geminiSignature,
+		}},
+	}, nil)
+	require.NoError(t, err)
+	require.Equal(t, geminiSignature, lo.FromPtr(realSignature.ReasoningSignature))
 }
