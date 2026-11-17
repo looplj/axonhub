@@ -707,11 +707,13 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 			}
 		}
 
-		if !hasToolCallThoughtSignature && msg.ReasoningSignature != nil {
+		if !hasToolCallThoughtSignature && msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" {
 			if firstFunctionCallPart != nil {
 				firstFunctionCallPart.ThoughtSignature = *msg.ReasoningSignature
 			} else if lastPart != nil {
 				lastPart.ThoughtSignature = *msg.ReasoningSignature
+			} else {
+				parts = append(parts, &Part{ThoughtSignature: *msg.ReasoningSignature})
 			}
 		}
 

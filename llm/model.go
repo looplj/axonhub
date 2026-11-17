@@ -405,6 +405,7 @@ type Message struct {
 	// 1. Anthropic think signature： https://platform.claude.com/docs/en/build-with-claude/extended-thinking
 	// 2. Gemini thought signature：  https://ai.google.dev/gemini-api/docs/thought-signatures#model-behavior
 	// 3. OpenAI Responses encrypted content： https://platform.openai.com/docs/api-reference/responses/object#responses-object-output-reasoning-encrypted_content
+	// 4. Copilot reasoning_opaque: preserved verbatim.
 	ReasoningSignature *string `json:"reasoning_signature,omitempty"`
 
 	// ReasoningItems preserves item-scoped reasoning data when an upstream

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -649,4 +650,20 @@ func TestAggregateStreamChunks_OmitsReasoningContentWhenAbsent(t *testing.T) {
 	require.Len(t, got.Choices, 1)
 	require.NotNil(t, got.Choices[0].Message)
 	require.Nil(t, got.Choices[0].Message.ReasoningContent)
+}
+
+func TestAggregateStreamChunks_KeepsLatestReasoningOpaque(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{Data: []byte(`{"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gemini-3.8-flash","choices":[{"index":0,"delta":{"role":"assistant","reasoning_text":"first","reasoning_opaque":"b2xk"}}]}`)},
+		{Data: []byte(`{"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gemini-3.8-flash","choices":[{"index":0,"delta":{"reasoning_opaque":"bmV3"}}]}`)},
+		{Data: []byte(`{"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gemini-3.8-flash","choices":[{"index":0,"delta":{"content":"done"},"finish_reason":"stop"}]}`)},
+	}
+
+	gotBytes, _, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+
+	var got llm.Response
+	require.NoError(t, json.Unmarshal(gotBytes, &got))
+	require.Equal(t, "bmV3", lo.FromPtr(got.Choices[0].Message.ReasoningSignature))
+	require.Equal(t, "first", lo.FromPtr(got.Choices[0].Message.ReasoningContent))
 }

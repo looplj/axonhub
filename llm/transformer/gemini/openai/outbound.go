@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Config holds all configuration for the Gemini OpenAI outbound transformer.
@@ -378,6 +379,18 @@ func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *ope
 		return
 	}
 
+	// RequestFromLLM already copies tool metadata into extra_content. Remove
+	// rejected signatures there as well, before applying any message fallback.
+	for i := range dst.Messages {
+		for j := range dst.Messages[i].ToolCalls {
+			tc := &dst.Messages[i].ToolCalls[j]
+			if tc.ExtraContent != nil && tc.ExtraContent.Google != nil &&
+				shared.DecodeGeminiThoughtSignature(&tc.ExtraContent.Google.ThoughtSignature) == nil {
+				tc.ExtraContent = nil
+			}
+		}
+	}
+
 	for i := range src.Messages {
 		if i >= len(dst.Messages) {
 			break
@@ -419,10 +432,11 @@ func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *ope
 				continue
 			}
 
-			// Gemini OpenAI response direction does not encode prefix (it reuses
-			// openai.OutboundTransformer.TransformResponse which stores raw values),
-			// so we passthrough the raw value here without attempting to decode.
-			ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[dstToolCallIndex]).ThoughtSignature = raw
+			signature := shared.DecodeGeminiThoughtSignature(&raw)
+			if signature == nil {
+				continue
+			}
+			ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[dstToolCallIndex]).ThoughtSignature = *signature
 			hasToolCallThoughtSignature = true
 		}
 
@@ -430,8 +444,8 @@ func fillGeminiThoughtSignatureForGeminiOpenAIRequest(src *llm.Request, dst *ope
 			continue
 		}
 
-		if srcMsg.ReasoningSignature != nil && *srcMsg.ReasoningSignature != "" {
-			ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[0]).ThoughtSignature = *srcMsg.ReasoningSignature
+		if signature := shared.DecodeGeminiThoughtSignature(srcMsg.ReasoningSignature); signature != nil {
+			ensureGoogleThoughtSignatureExtraContent(&dst.Messages[i].ToolCalls[0]).ThoughtSignature = *signature
 		}
 	}
 }
