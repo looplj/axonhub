@@ -29,7 +29,7 @@
 
 <table width="100%">
   <tr>
-    <td width="100%" align="center" valign="top">
+    <td width="50%" align="center" valign="top">
       <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
         <img src="docs/sponsors/apikey-fun.png" alt="APIKEY.FUN" height="50"/>
         <br/>
@@ -44,6 +44,24 @@
         APIKEY.FUN は、企業や個人開発者に安定・高効率・低コストな AI モデル API 接続を提供する、専門的なエンタープライズ向け AI API 中継サービスです。<br/>
         Claude、OpenAI、Gemini などの人気モデルに対応し、料金は公式価格の 7% からご利用いただけます。<br/>
         AxonHub ユーザーが<a href="https://apikey.fun/register?aff=axonhub" target="_blank">専用リンクから登録</a>すると、チャージ料金が永久に最大 5% 割引になります。
+      </div>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="https://noonoo.ai/login?aff=Y3u6" target="_blank">
+        <img src="docs/sponsors/noonoo-logo.png" alt="noonoo.ai" height="50"/>
+        <br/>
+        <strong>noonoo.ai</strong>
+      </a>
+      <div align="center">
+        <a href="https://noonoo.ai/login?aff=Y3u6" target="_blank">
+          <img src="docs/sponsors/noonoo-banner.png" alt="noonoo.ai" width="100%"/>
+        </a>
+      </div>
+      <div align="left">
+        noonoo.ai は、コストパフォーマンスに優れた、安定性と信頼性の高い AI API サービスです。1 つのアカウントで Claude、GPT、Gemini などのモデルを利用でき、テキスト・コーディング・画像生成に対応しています。<br/>
+        OpenAI、Anthropic、Gemini の API と互換性があり、既存のアプリケーションや開発ワークフローに組み込みやすく、モデルごとに個別のサブスクリプションを契約する必要はありません。<br/>
+        固定の明確な料金体系を採用し、ネットワーク負荷による価格変動や隠れた料金倍率はありません。複数の支払い方法に対応し、メールアドレスだけで登録できます。<br/>
+        <a href="https://noonoo.ai/login?aff=Y3u6" target="_blank">専用リンクから登録</a>して、ワンストップの AI API サービスをご利用ください。
       </div>
     </td>
   </tr>
