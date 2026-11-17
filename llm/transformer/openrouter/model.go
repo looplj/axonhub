@@ -103,10 +103,11 @@ type Message struct {
 }
 
 type ReasoningDetail struct {
-	Type   string `json:"type"`
-	Text   string `json:"text"`
-	Format string `json:"format"`
-	Index  int    `json:"index"`
+	Type    string `json:"type"`
+	Text    string `json:"text"`
+	Summary string `json:"summary"`
+	Format  string `json:"format"`
+	Index   int    `json:"index"`
 }
 
 func (m *Message) ToOpenAIMessage() openai.Message {
@@ -114,7 +115,11 @@ func (m *Message) ToOpenAIMessage() openai.Message {
 	if len(m.ReasoningDetails) > 0 {
 		var reasoningText strings.Builder
 		for _, detail := range m.ReasoningDetails {
-			reasoningText.WriteString(detail.Text)
+			if detail.Type == "reasoning.summary" {
+				reasoningText.WriteString(detail.Summary)
+			} else {
+				reasoningText.WriteString(detail.Text)
+			}
 		}
 
 		reasoning := reasoningText.String()
