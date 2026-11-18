@@ -201,18 +201,19 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 	// Apply reasoning field configuration
 	switch reasoningField {
 	case ReasoningFieldContent:
-		// Only use reasoning_content field
-		// Prefer ReasoningContent, fallback to Reasoning if ReasoningContent is nil
+		// Only use the reasoning_content field. An empty string must not shadow a
+		// non-empty reasoning: some upstreams return reasoning_content as ""
+		// while the actual thinking text is in reasoning.
 		reasoningContent = m.ReasoningContent
-		if reasoningContent == nil && m.Reasoning != nil {
+		if (reasoningContent == nil || *reasoningContent == "") && lo.FromPtr(m.Reasoning) != "" {
 			reasoningContent = m.Reasoning
 		}
 		reasoning = nil
 	case ReasoningFieldReasoning:
-		// Only use reasoning field
-		// Prefer Reasoning, fallback to ReasoningContent if Reasoning is nil
+		// Only use the reasoning field, with the same empty-string fallback to
+		// reasoning_content in the other direction.
 		reasoning = m.Reasoning
-		if reasoning == nil && m.ReasoningContent != nil {
+		if (reasoning == nil || *reasoning == "") && lo.FromPtr(m.ReasoningContent) != "" {
 			reasoning = m.ReasoningContent
 		}
 		reasoningContent = nil
