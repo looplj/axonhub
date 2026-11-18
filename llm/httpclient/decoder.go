@@ -29,15 +29,6 @@ var globalRegistry = &decoderRegistry{
 	decoders: make(map[string]StreamDecoderFactory),
 }
 
-// apiFormatRegistry holds decoders registered by outbound API format. The
-// Content-Type an upstream reports is advisory: some label a stream with a
-// type that does not describe its framing (ollama.com sends NDJSON as
-// application/json), so the protocol the transformer speaks is the reliable
-// signal for how to decode it.
-var apiFormatRegistry = &decoderRegistry{
-	decoders: make(map[string]StreamDecoderFactory),
-}
-
 // RegisterDecoder registers a stream decoder for a specific content type.
 func RegisterDecoder(contentType string, factory StreamDecoderFactory) {
 	globalRegistry.mu.Lock()
@@ -52,33 +43,6 @@ func GetDecoder(contentType string) (StreamDecoderFactory, bool) {
 	defer globalRegistry.mu.RUnlock()
 
 	factory, exists := globalRegistry.decoders[contentType]
-
-	return factory, exists
-}
-
-// RegisterAPIFormatDecoder registers a stream decoder for an outbound API
-// format. DoStream prefers it over the response Content-Type.
-func RegisterAPIFormatDecoder(apiFormat string, factory StreamDecoderFactory) {
-	if apiFormat == "" {
-		return
-	}
-
-	apiFormatRegistry.mu.Lock()
-	defer apiFormatRegistry.mu.Unlock()
-
-	apiFormatRegistry.decoders[apiFormat] = factory
-}
-
-// GetAPIFormatDecoder returns the decoder registered for an outbound API format.
-func GetAPIFormatDecoder(apiFormat string) (StreamDecoderFactory, bool) {
-	if apiFormat == "" {
-		return nil, false
-	}
-
-	apiFormatRegistry.mu.RLock()
-	defer apiFormatRegistry.mu.RUnlock()
-
-	factory, exists := apiFormatRegistry.decoders[apiFormat]
 
 	return factory, exists
 }

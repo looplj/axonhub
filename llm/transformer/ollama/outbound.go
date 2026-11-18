@@ -194,14 +194,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
-	// Streaming /api/chat answers NDJSON, not SSE. DoStream only rewrites a
-	// missing or "application/json" Accept, so say it here to keep the
-	// request honest.
-	accept := "application/json"
-	if stream != nil && *stream {
-		accept = "application/x-ndjson"
-	}
-	headers.Set("Accept", accept)
 
 	var authConfig *httpclient.AuthConfig
 
@@ -225,14 +217,23 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	url := base + path
 
-	return &httpclient.Request{
+	req := &httpclient.Request{
 		Method:    http.MethodPost,
 		URL:       url,
 		Headers:   headers,
 		Body:      body,
 		Auth:      authConfig,
 		APIFormat: string(llm.APIFormatOllamaChat),
-	}, nil
+	}
+	if *stream {
+		// ollama.com serves NDJSON even when the response is labeled application/json.
+		headers.Set("Accept", "application/x-ndjson")
+		req.StreamDecoder = NewNDJSONDecoder
+	} else {
+		headers.Set("Accept", "application/json")
+	}
+
+	return req, nil
 }
 
 func getContentString(content llm.MessageContent) string {
@@ -332,17 +333,26 @@ func (t *OutboundTransformer) buildOptions(llmReq *llm.Request) *Options {
 	return opts
 }
 
+func decodeChatResponse(data []byte) (*ChatResponse, error) {
+	var ollamaResp ChatResponse
+	if err := json.Unmarshal(data, &ollamaResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal ollama response: %w", err)
+	}
+	if ollamaResp.Error != "" {
+		return nil, fmt.Errorf("ollama upstream error: %s", ollamaResp.Error)
+	}
+
+	return &ollamaResp, nil
+}
+
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
 	if httpResp == nil {
 		return nil, fmt.Errorf("response is nil")
 	}
 
-	var ollamaResp ChatResponse
-	if err := json.Unmarshal(httpResp.Body, &ollamaResp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal ollama response: %w", err)
-	}
-	if ollamaResp.Error != "" {
-		return nil, fmt.Errorf("ollama upstream error: %s", ollamaResp.Error)
+	ollamaResp, err := decodeChatResponse(httpResp.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	content := ""
@@ -434,12 +444,9 @@ func (t *OutboundTransformer) transformStreamChunk(_ context.Context, event *htt
 		return nil, nil
 	}
 
-	var ollamaResp ChatResponse
-	if err := json.Unmarshal(event.Data, &ollamaResp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal ollama stream chunk: %w", err)
-	}
-	if ollamaResp.Error != "" {
-		return nil, fmt.Errorf("ollama upstream error: %s", ollamaResp.Error)
+	ollamaResp, err := decodeChatResponse(event.Data)
+	if err != nil {
+		return nil, err
 	}
 
 	// Extract content and thinking from the message
@@ -551,9 +558,9 @@ func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *http
 	var allToolCalls []ollamaToolCall
 
 	for _, chunk := range chunks {
-		var ollamaResp ChatResponse
-		if err := json.Unmarshal(chunk.Data, &ollamaResp); err != nil {
-			return nil, llm.ResponseMeta{}, fmt.Errorf("failed to unmarshal ollama chunk: %w", err)
+		ollamaResp, err := decodeChatResponse(chunk.Data)
+		if err != nil {
+			return nil, llm.ResponseMeta{}, err
 		}
 
 		if ollamaResp.Model != "" {
