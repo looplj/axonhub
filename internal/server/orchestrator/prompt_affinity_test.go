@@ -181,6 +181,23 @@ func TestPromptAffinityCache(t *testing.T) {
 		require.False(t, ok)
 	})
 
+	t.Run("an expired entry is revived by a refresh", func(t *testing.T) {
+		cache := newPromptAffinityCache(0, time.Minute)
+		now := time.Now()
+		cache.now = func() time.Time { return now }
+
+		cache.set("key", 7)
+
+		// The entry is stale here. A refresh must win over the lazy expiry
+		// delete, otherwise the mapping just learned is thrown away.
+		now = now.Add(2 * time.Minute)
+		cache.set("key", 9)
+
+		channelID, ok := cache.get("key")
+		require.True(t, ok)
+		require.Equal(t, 9, channelID)
+	})
+
 	t.Run("least recently used entries are evicted beyond capacity", func(t *testing.T) {
 		cache := newPromptAffinityCache(2, time.Hour)
 		cache.set("a", 1)

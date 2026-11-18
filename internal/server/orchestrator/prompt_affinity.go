@@ -15,6 +15,7 @@
 //
 //	缓存只保留 SHA-256 摘要派生的 key，原始 prompt_cache_key 与提示词内容不得进入缓存、日志或数据库。
 //	只在请求成功终态学习；失败、取消、处理中的请求不得改写映射。
+//	get 的读-判-删必须与 set 同锁：否则一个读到过期条目的 goroutine 会删掉另一个刚刷新的映射。
 package orchestrator
 
 import (
@@ -25,6 +26,7 @@ import (
 	"fmt"
 	"hash"
 	"strings"
+	"sync"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -64,6 +66,10 @@ type promptAffinityEntry struct {
 // promptAffinityCache is a process-wide, goroutine-safe LRU with per-entry
 // TTL. It never persists; a restart simply relearns affinities.
 type promptAffinityCache struct {
+	// mu serializes lookups, lazy expiry deletes, and refreshes, so a stale
+	// entry observed by one goroutine cannot remove a mapping that a
+	// concurrent set just renewed.
+	mu  sync.Mutex
 	lru *lru.Cache[string, promptAffinityEntry]
 	ttl time.Duration
 	now func() time.Time
@@ -91,6 +97,9 @@ func (c *promptAffinityCache) get(key string) (int, bool) {
 		return 0, false
 	}
 
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	entry, ok := c.lru.Get(key)
 	if !ok {
 		return 0, false
@@ -109,6 +118,9 @@ func (c *promptAffinityCache) set(key string, channelID int) {
 	if c == nil || key == "" || channelID == 0 {
 		return
 	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	c.lru.Add(key, promptAffinityEntry{
 		channelID: channelID,
