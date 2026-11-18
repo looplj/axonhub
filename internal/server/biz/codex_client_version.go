@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -40,9 +39,8 @@ const (
 	codexReleaseKey            = "codex_client_release"
 	codexRegistryURL           = "https://registry.npmjs.org/@openai%2Fcodex/latest"
 	codexVersionRefreshTimeout = 8 * time.Second
+	codexReleaseSaveAttempts   = 5
 )
-
-var codexUserAgentProduct = regexp.MustCompile(`(?i)^codex(?:[_-][a-z0-9][a-z0-9._-]*)?$`)
 
 type CodexCatalogVersion struct {
 	Version string
@@ -78,14 +76,21 @@ func parseStableCodexVersion(value string) *semver.Version {
 }
 
 func codexVersionFromUserAgent(value string) string {
-	for product := range strings.FieldsSeq(value) {
-		name, version, ok := strings.Cut(product, "/")
-		if ok && codexUserAgentProduct.MatchString(name) {
-			return normalizeCodexClientVersion(version)
-		}
-		break
+	name, version, ok := strings.Cut(strings.TrimSpace(value), "/")
+	if !ok {
+		return ""
 	}
-	return ""
+	switch strings.ToLower(name) {
+	case "codex", "codex_cli_rs", "codex-tui", "codex_tui", "codex_exec", "codex_vscode",
+		"codex desktop", "codex_atlas", "codex_chatgpt_desktop", "codex_sdk_ts",
+		"codex_mcp_server", "codex-app-server":
+		if end := strings.IndexAny(version, " \t\r\n"); end >= 0 {
+			version = version[:end]
+		}
+		return normalizeCodexClientVersion(version)
+	default:
+		return ""
+	}
 }
 
 func (svc *ChannelService) resolveCodexClientVersion(ops []objects.OverrideOperation) CodexCatalogVersion {
@@ -225,7 +230,7 @@ func (svc *ChannelService) persistCodexRelease(ctx context.Context, release code
 func (svc *ChannelService) saveCodexRelease(ctx context.Context, candidate codexRelease) (codexRelease, error) {
 	return authz.RunAsHost(ctx, svc.db, "codex-release-save", func(ctx context.Context) (codexRelease, error) {
 		store := ent.FromContext(ctx).System
-		for ctx.Err() == nil {
+		for attempt := 0; attempt < codexReleaseSaveAttempts && ctx.Err() == nil; attempt++ {
 			row, err := store.Query().Where(system.KeyEQ(codexReleaseKey)).Only(ctx)
 			if ent.IsNotFound(err) {
 				value, err := json.Marshal(candidate)
@@ -271,7 +276,10 @@ func (svc *ChannelService) saveCodexRelease(ctx context.Context, candidate codex
 				return next, nil
 			}
 		}
-		return codexRelease{}, ctx.Err()
+		if err := ctx.Err(); err != nil {
+			return codexRelease{}, err
+		}
+		return codexRelease{}, fmt.Errorf("could not save Codex release after %d attempts", codexReleaseSaveAttempts)
 	})
 }
 

@@ -42,10 +42,18 @@ func TestCodexVersionFromUserAgent(t *testing.T) {
 		{"codex-tui/0.171.0", "0.171.0"},
 		{"codex_exec/0.171.0", "0.171.0"},
 		{"codex_vscode/0.171.0", "0.171.0"},
-		{"Codex_Future/0.172.0", "0.172.0"},
+		{"Codex Desktop/0.170.0 (Macintosh)", "0.170.0"},
+		{"codex_atlas/0.171.0", "0.171.0"},
+		{"codex_chatgpt_desktop/0.171.0", "0.171.0"},
+		{"codex_sdk_ts/0.171.0", "0.171.0"},
+		{"codex_mcp_server/0.171.0", "0.171.0"},
+		{"codex-app-server/0.171.0", "0.171.0"},
+		{"codex_relay/2.0.0", ""},
+		{"Codex_Future/0.172.0", ""},
 		{"CodexProxy/2.0.0", ""},
 		{"MyRelay/2.0.0 codex_cli_rs/0.171.0", ""},
 		{"codex_exec/invalid", ""},
+		{"Codex Desktop/ 0.170.0", ""},
 	} {
 		require.Equal(t, tc.version, codexVersionFromUserAgent(tc.ua), tc.ua)
 	}
@@ -86,6 +94,30 @@ func TestCodexClientRelease_ContinuesAfterConcurrentFirstInsert(t *testing.T) {
 	var stored codexRelease
 	require.NoError(t, json.Unmarshal([]byte(row.Value), &stored))
 	require.Equal(t, saved, stored)
+}
+
+func TestCodexClientRelease_StopsAfterFiveAttemptsWithSoftDeletedKey(t *testing.T) {
+	db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	t.Cleanup(func() { db.Close() })
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	row := db.System.Create().SetKey(codexReleaseKey).SetValue(`{"version":"0.199.0"}`).SaveX(ctx)
+	require.NoError(t, db.System.DeleteOne(row).Exec(ctx))
+	require.False(t, db.System.Query().Where(system.KeyEQ(codexReleaseKey)).ExistX(ctx))
+
+	attempts := 0
+	db.System.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			attempts++
+			return next.Mutate(ctx, m)
+		})
+	})
+
+	svc := &ChannelService{AbstractService: &AbstractService{db: db}}
+	saveCtx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	_, err := svc.saveCodexRelease(saveCtx, codexRelease{Version: "0.200.0", LastChecked: time.Now().UTC()})
+	require.ErrorContains(t, err, "after 5 attempts")
+	require.Equal(t, 5, attempts)
 }
 
 func TestCodexClientVersion_FetchModelsRefreshesBeforeDiscovery(t *testing.T) {
