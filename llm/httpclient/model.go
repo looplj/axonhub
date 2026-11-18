@@ -44,6 +44,9 @@ type Request struct {
 	// APIFormat is the format of the API response,ref to llm.APIFormat.
 	APIFormat string `json:"api_format"`
 
+	// StreamDecoder overrides Content-Type based decoding for this outbound request.
+	StreamDecoder StreamDecoderFactory `json:"-"`
+
 	// Raw HTTP request for advanced use cases
 	RawRequest *http.Request `json:"-"`
 
