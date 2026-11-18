@@ -37,6 +37,19 @@ flowchart TD
 
 ## Stage Overview
 
+### Upstream timeouts
+
+Configure these server settings in the YAML configuration (values are durations):
+
+```yaml
+server:
+  llm_stream_idle_timeout: 600s
+  llm_request_timeout: 600s
+  llm_stream_request_timeout: 1800s
+```
+
+`llm_stream_idle_timeout` limits inactivity on streaming upstream requests. It starts when the upstream request begins and resets whenever upstream bytes arrive, including upstream heartbeats; gateway-generated pings do not reset it. The idle timer pauses while the gateway is not reading upstream data, so downstream processing and slow clients do not count as upstream inactivity. `llm_request_timeout` limits the total duration of non-streaming LLM requests. `llm_stream_request_timeout` separately limits the total duration of streaming LLM requests. The first applicable deadline to expire wins. Set any value to `0` to disable that limit; disabling the total timeout leaves the idle timeout active. With the total timeout disabled, individual downstream writes still have a 30-second deadline to release resources held by stalled clients. Restart AxonHub after changing these settings. Existing `llm_request_timeout` overrides now apply only to non-streaming requests; set `llm_stream_request_timeout` explicitly to customize streaming totals.
+
 ### 1. Protocol Transform
 
 AxonHub supports multiple API formats, such as OpenAI, Anthropic, and Gemini. It first converts them into one internal format.
