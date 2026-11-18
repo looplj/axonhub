@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -238,7 +239,7 @@ func TestChannelService_UpdateChannelModelPriceEntityKeepsOneActiveVersion(t *te
 				ItemCode: objects.PriceItemCodeUsage,
 				Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr(value)},
 			}}}
-			if _, err := svc.updateChannelModelPriceEntity(txCtx, created[0], newPrice, true, now.Add(time.Duration(index+1)*time.Second)); err != nil {
+			if _, err := svc.updateChannelModelPriceEntity(txCtx, created[0], newPrice, true, nil, now.Add(time.Duration(index+1)*time.Second)); err != nil {
 				return err
 			}
 		}
@@ -326,7 +327,7 @@ func TestChannelService_UpdateChannelModelPriceEntityMergesAgainstLockedRow(t *t
 
 		// Sync now commits; it only reported item X, and the merge must run
 		// against the row state the sync sees under the lock, not the snapshot.
-		_, err = svc.updateChannelModelPriceEntity(txCtx, created[0], syncPrice, false, time.Now().UTC())
+		_, err = svc.updateChannelModelPriceEntity(txCtx, created[0], syncPrice, false, nil, time.Now().UTC())
 		return err
 	})
 	require.NoError(t, err)
@@ -380,7 +381,7 @@ func TestChannelService_UpdateChannelModelPriceEntityPreservesUnreportedItems(t 
 
 		// Sync reports only item Y; the locked row's item X must be preserved.
 		syncPrice := objects.ModelPrice{Items: []objects.ModelPriceItem{completionItem("5")}}
-		_, err = svc.updateChannelModelPriceEntity(txCtx, created[0], syncPrice, false, time.Now().UTC())
+		_, err = svc.updateChannelModelPriceEntity(txCtx, created[0], syncPrice, false, nil, time.Now().UTC())
 		return err
 	})
 	require.NoError(t, err)
@@ -396,6 +397,51 @@ func TestChannelService_UpdateChannelModelPriceEntityPreservesUnreportedItems(t 
 	require.Len(t, items, 2)
 	require.Equal(t, "7", items[objects.PriceItemCodeUsage].Pricing.UsagePerUnit.String())
 	require.Equal(t, "5", items[objects.PriceItemCodeCompletion].Pricing.UsagePerUnit.String())
+}
+
+// Regression: the endpoint-sync update path must also fill library gaps for
+// codes the endpoint did not report. A row with only a prompt rate, plus a
+// prompt-only endpoint quote, must gain the library's completion rate (billing
+// would otherwise charge zero for completion tokens).
+func TestChannelService_EnsureChannelModelPrices_UpdateFillsLibraryGaps(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := channelAutoPriceTestContext(client)
+	ch := createAutoPriceTestChannel(t, ctx, client, "Library gap fill", []string{"gap-model"})
+
+	createModelLibraryEntry(t, ctx, client, "gap-model", model.StatusEnabled, objects.ModelCardCost{
+		Input:  1,
+		Output: 2,
+	})
+
+	// Existing row carries only the prompt rate.
+	created, err := svc.SaveChannelModelPrices(ctx, ch.ID, []SaveChannelModelPriceInput{{
+		ModelID: "gap-model",
+		Price:   objects.ModelPrice{Items: []objects.ModelPriceItem{usageItem("1")}},
+	}})
+	require.NoError(t, err)
+	require.Len(t, created, 1)
+
+	endpointTemplates := []channelModelPriceTemplate{{
+		ModelID: "gap-model",
+		Price:   objects.ModelPrice{Items: []objects.ModelPriceItem{usageItem("1")}},
+	}}
+	_, err = svc.ensureChannelModelPrices(ctx, ch.ID, []string{"gap-model"}, endpointTemplates)
+	require.NoError(t, err)
+
+	updated, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("gap-model"),
+	).Only(ctx)
+	require.NoError(t, err)
+
+	items := lo.KeyBy(updated.Price.Items, func(item objects.ModelPriceItem) objects.PriceItemCode {
+		return item.ItemCode
+	})
+	// The endpoint value wins for the reported code; the library fills the gap.
+	require.Equal(t, "1", items[objects.PriceItemCodeUsage].Pricing.UsagePerUnit.String())
+	require.Equal(t, "2", items[objects.PriceItemCodeCompletion].Pricing.UsagePerUnit.String())
 }
 
 func loToDecimalPtr(s string) *decimal.Decimal {

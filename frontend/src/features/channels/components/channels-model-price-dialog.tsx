@@ -123,7 +123,11 @@ const createPriceFormSchema = (t: (key: string) => string) =>
                       z.object({
                         itemCode: z.enum(priceItemCodes),
                         pricing: z.object({
-                          mode: z.enum(pricingModes),
+                          // An empty mode is legal on cache-write items whose 5m/1h variants carry the rates.
+                          mode: z
+                            .union([z.enum(pricingModes), z.literal('')])
+                            .optional()
+                            .nullable(),
                           flatFee: z.string().optional().nullable(),
                           usagePerUnit: z.string().optional().nullable(),
                           usageTiered: z
@@ -387,7 +391,7 @@ function mapPriceToForm(price: ModelPrice): PriceFormData['prices'][number]['pri
             items: o.items.map((item) => ({
               itemCode: item.itemCode,
               pricing: {
-                mode: item.pricing.mode,
+                mode: item.pricing.mode ?? '',
                 flatFee: item.pricing.flatFee?.toString() || '',
                 usagePerUnit: item.pricing.usagePerUnit?.toString() || '',
                 usageTiered: item.pricing.usageTiered

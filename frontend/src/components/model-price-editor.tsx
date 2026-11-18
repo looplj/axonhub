@@ -21,7 +21,7 @@ type PriceEditorFormValues = {
       items: Array<{
         itemCode: (typeof priceItemCodes)[number];
         pricing: {
-          mode: PricingMode;
+          mode?: PricingMode | null;
           flatFee?: string | null;
           usagePerUnit?: string | null;
           usageTiered?: {
@@ -34,7 +34,8 @@ type PriceEditorFormValues = {
         promptWriteCacheVariants?: Array<{
           variantCode: (typeof promptWriteCacheVariantCodes)[number];
           pricing: {
-            mode: PricingMode;
+            // Variants must always carry a real mode; the empty mode is aggregate-only.
+            mode: Exclude<PricingMode, ''>;
             flatFee?: string | null;
             usagePerUnit?: string | null;
             usageTiered?: {
