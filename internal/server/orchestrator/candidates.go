@@ -690,6 +690,9 @@ type LoadBalancedSelector struct {
 	apiKey                  *ent.APIKey
 	effectiveRoutingPolicy  *EffectiveRoutingPolicy
 	quotaGate               *QuotaRoutingGate
+	// promptAffinity is the process-wide prompt-prefix affinity cache shared
+	// across requests; nil disables prompt affinity routing.
+	promptAffinity *promptAffinityCache
 }
 
 // WithLoadBalancedSelector creates a selector that applies load balancing to sort candidates.
@@ -729,6 +732,7 @@ func WithRoutingPolicyLoadBalancedSelector(
 	apiKey *ent.APIKey,
 	effectiveRoutingPolicy *EffectiveRoutingPolicy,
 	quotaGate *QuotaRoutingGate,
+	promptAffinity *promptAffinityCache,
 ) *LoadBalancedSelector {
 	return &LoadBalancedSelector{
 		wrapped:                 wrapped,
@@ -738,6 +742,7 @@ func WithRoutingPolicyLoadBalancedSelector(
 		apiKey:                  apiKey,
 		effectiveRoutingPolicy:  effectiveRoutingPolicy,
 		quotaGate:               quotaGate,
+		promptAffinity:          promptAffinity,
 	}
 }
 
@@ -778,6 +783,12 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	stickyID, stickyOK := 0, false
 	if traceStickyMode == biz.TraceStickyPreferPreviousChannel {
 		stickyID, stickyOK = s.resolveStickyChannelID(ctx, req, candidates)
+		if !stickyOK {
+			// Chat Completions mints a fresh trace per request, so trace and
+			// thread affinity rarely span user turns; the prompt prefix
+			// affinity carries the same intent across turns.
+			stickyID, stickyOK = s.resolvePromptAffinityChannelID(ctx, req, candidates)
+		}
 	}
 
 	var quotaFallback []*ChannelModelsCandidate
@@ -888,6 +899,61 @@ func (s *LoadBalancedSelector) resolveStickyChannelID(
 	}
 
 	return channelID, true
+}
+
+// resolvePromptAffinityChannelID returns the channel that last succeeded for
+// this request's prompt identity. The hit is honored only when the channel is
+// still in the current candidate set; disabled or otherwise unavailable
+// channels are ignored and normal load balancing proceeds.
+func (s *LoadBalancedSelector) resolvePromptAffinityChannelID(
+	ctx context.Context,
+	req *llm.Request,
+	candidates []*ChannelModelsCandidate,
+) (int, bool) {
+	if s.promptAffinity == nil || len(candidates) == 0 {
+		return 0, false
+	}
+
+	apiKeyID := 0
+	if s.apiKey != nil {
+		apiKeyID = s.apiKey.ID
+	}
+
+	key, source, ok := computePromptAffinityKey(apiKeyID, req)
+	if !ok {
+		return 0, false
+	}
+
+	channelID, hit := s.promptAffinity.get(key)
+	if !hit {
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "prompt affinity miss", log.String("source", source))
+		}
+
+		return 0, false
+	}
+
+	for _, candidate := range candidates {
+		if candidate != nil && candidate.Channel != nil && candidate.Channel.ID == channelID {
+			if log.DebugEnabled(ctx) {
+				log.Debug(ctx, "prompt affinity hit",
+					log.String("source", source),
+					log.Int("channel_id", channelID),
+				)
+			}
+
+			return channelID, true
+		}
+	}
+
+	if log.DebugEnabled(ctx) {
+		log.Debug(ctx, "prompt affinity channel not in candidates, ignoring affinity",
+			log.String("source", source),
+			log.Int("channel_id", channelID),
+		)
+	}
+
+	return 0, false
 }
 
 func (s *LoadBalancedSelector) pinStickyCandidate(

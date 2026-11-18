@@ -102,6 +102,7 @@ func NewChatCompletionOrchestrator(
 		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
 		roundRobinLoadBalancer:     roundRobinLoadBalancer,
 		modelCircuitBreaker:        modelCircuitBreaker,
+		promptAffinityCache:        newPromptAffinityCache(promptAffinityCacheCapacity, promptAffinityCacheTTL),
 		quotaProvider:              quotaProvider,
 		Plugins:                    plugins,
 		proxy:                      nil,
@@ -133,6 +134,9 @@ type ChatCompletionOrchestrator struct {
 	failoverLoadBalancer       *LoadBalancer
 	circuitBreakerLoadBalancer *LoadBalancer
 	roundRobinLoadBalancer     *LoadBalancer
+	// promptAffinityCache is the process-wide prompt-prefix affinity cache
+	// shared by every request this orchestrator serves.
+	promptAffinityCache *promptAffinityCache
 	// channelLimiterManager owns per-channel concurrency admission control and
 	// supplies in-flight / queue stats to the rate-limit-aware load-balancer strategy.
 	channelLimiterManager *ChannelLimiterManager
@@ -267,6 +271,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			biz.LoadBalancerStrategyRoundRobin:     processor.roundRobinLoadBalancer,
 		},
 		RoutingPolicy:         deriveRoutingPolicy(retryPolicy, apiKey, nil),
+		PromptAffinityCache:   processor.promptAffinityCache,
 		Settings:              settings,
 		ModelMapper:           processor.ModelMapper,
 		Proxy:                 processor.proxy,

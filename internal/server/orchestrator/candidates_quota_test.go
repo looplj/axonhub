@@ -92,6 +92,7 @@ func newQuotaRoutingSelector(
 		nil,
 		nil,
 		gate,
+		nil,
 	)
 	return selector, gate
 }
