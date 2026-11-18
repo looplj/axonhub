@@ -26,6 +26,16 @@ func TestHasResponseContent_ReasoningSignature(t *testing.T) {
 }
 
 func TestHasResponseContent(t *testing.T) {
+	t.Run("native embeddings and decisions", func(t *testing.T) {
+		cohere := &llm.Response{Embedding: &llm.EmbeddingResponse{Cohere: &llm.CohereEmbeddingResponse{VectorCount: 1}}}
+		require.True(t, hasResponseContent(cohere))
+		cohere.Embedding.Cohere.VectorCount = 0
+		require.False(t, hasResponseContent(cohere))
+		decision := &llm.Response{SystemOne: &llm.SystemOneResponse{AutoTrust: &llm.AutoTrustResponse{Probabilities: []float64{0, 1}}}}
+		require.True(t, hasResponseContent(decision))
+		decision.SystemOne.AutoTrust.Probabilities = nil
+		require.False(t, hasResponseContent(decision))
+	})
 	t.Run("empty response", func(t *testing.T) {
 		require.False(t, hasResponseContent(&llm.Response{}))
 	})

@@ -12,7 +12,52 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/typesafe"
 )
+
+func TestNativeProtocolImageConditions(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		inbound transformer.Inbound
+		body    string
+		image   bool
+	}{
+		{"Cohere image", openai.NewCohereEmbeddingInboundTransformer(), `{"model":"m","input_type":"image","inputs":[{"content":[{"type":"image_url","image_url":{"url":"data:image/png;base64,aGVsbG8="}}]}]}`, true},
+		{"Cohere text", openai.NewCohereEmbeddingInboundTransformer(), `{"model":"m","input_type":"search_document","texts":["image description"]}`, false},
+		{"AutoTrust image", typesafe.NewAutoTrustInboundTransformer(), `{"model":"m","kind":"noul","question":"yes?","state":[{"image":"https://example.com/image.png"}]}`, true},
+		{"AutoTrust object is text", typesafe.NewAutoTrustInboundTransformer(), `{"model":"m","kind":"noul","question":"yes?","state":{"image":"description"}}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := tc.inbound.TransformRequest(t.Context(), &httpclient.Request{Body: []byte(tc.body)})
+			require.NoError(t, err)
+			require.Empty(t, req.Messages)
+			features := detectRequestContentFeatures(req)
+			for _, wantImage := range []bool{true, false} {
+				when := &objects.ModelAssociationWhen{Enabled: true, Condition: &objects.Condition{
+					Type: objects.ConditionTypeCondition, Field: objects.ModelAssociationConditionFieldHasImage, Operator: "eq", Value: wantImage,
+				}}
+				require.Equal(t, tc.image == wantImage, matchesAssociationWhen(0, false, req.APIFormat.String(), "", features, nil, time.Now(), when))
+			}
+			// 插件修改原生正文后，条件必须读取实际生效的内容。
+			if req.Embedding != nil && req.Embedding.Cohere != nil {
+				req.Embedding.Cohere.Body = []byte(`{"model":"m","input_type":"search_document","texts":["text"]}`)
+				require.False(t, detectRequestContentFeatures(req).hasImage)
+				req.Embedding.Cohere.Body = []byte(`{"model":"m","input_type":"image","images":["data:image/png;base64,aGVsbG8="]}`)
+				require.True(t, detectRequestContentFeatures(req).hasImage)
+			}
+			if req.SystemOne != nil && req.SystemOne.AutoTrust != nil {
+				req.SystemOne.AutoTrust.Body = []byte(`{"kind":"noul","question":"yes?","state":"text"}`)
+				require.False(t, detectRequestContentFeatures(req).hasImage)
+				req.SystemOne.AutoTrust.Body = []byte(`{"kind":"noul","question":"yes?","state":[{"image":"image.png"}]}`)
+				require.True(t, detectRequestContentFeatures(req).hasImage)
+			}
+		})
+	}
+}
 
 func TestFilterResolvedCandidatesForRequest_ReasoningEffort(t *testing.T) {
 	ch := &biz.Channel{Channel: &ent.Channel{ID: 1, Type: channel.TypeOpenai}}

@@ -66,6 +66,7 @@ const (
 	APIFormatOpenAIImageEdit         APIFormat = "openai/image_edit"
 	APIFormatOpenAIImageVariation    APIFormat = "openai/image_variation"
 	APIFormatOpenAIEmbedding         APIFormat = "openai/embeddings"
+	APIFormatCohereEmbed             APIFormat = "cohere/embed"
 	APIFormatOpenAIVideo             APIFormat = "openai/video"
 
 	APIFormatOpenAISpeech        APIFormat = "openai/audio_speech"
@@ -84,6 +85,7 @@ const (
 	APIFormatJinaEmbedding APIFormat = "jina/embeddings"
 
 	APIFormatTypeSafeSystemOne APIFormat = "typesafe/systemone"
+	APIFormatAutoTrustDecide   APIFormat = "autotrust/decide"
 	APIFormatOpenAIDecisions   APIFormat = "openai/decisions"
 
 	APIFormatOllamaChat    APIFormat = "ollama/chat"
@@ -111,6 +113,7 @@ func AllAPIFormats() []APIFormat {
 		APIFormatOpenAIImageEdit,
 		APIFormatOpenAIImageVariation,
 		APIFormatOpenAIEmbedding,
+		APIFormatCohereEmbed,
 		APIFormatOpenAIVideo,
 		APIFormatOpenAISpeech,
 		APIFormatOpenAITranscription,
@@ -125,6 +128,7 @@ func AllAPIFormats() []APIFormat {
 		APIFormatJinaRerank,
 		APIFormatJinaEmbedding,
 		APIFormatTypeSafeSystemOne,
+		APIFormatAutoTrustDecide,
 		APIFormatOpenAIDecisions,
 		APIFormatOllamaChat,
 		APIFormatSeedanceVideo,

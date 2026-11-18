@@ -71,3 +71,19 @@ func TestChannelEndpoint_TypesafeStrictness(t *testing.T) {
 	require.Len(t, defaults, 1)
 	require.Equal(t, llm.APIFormatTypeSafeSystemOne.String(), defaults[0].APIFormat)
 }
+
+func TestChannelEndpoint_NativeCustomFormats(t *testing.T) {
+	t.Parallel()
+	for _, format := range []llm.APIFormat{llm.APIFormatCohereEmbed, llm.APIFormatAutoTrustDecide} {
+		t.Run(format.String(), func(t *testing.T) {
+			endpoints := []objects.ChannelEndpoint{{APIFormat: format.String(), Path: "/native"}}
+			require.NoError(t, ValidateEndpoints(endpoints))
+			require.NoError(t, validateEndpointsForChannelType(channel.TypeOpenai, endpoints))
+			require.Error(t, validateEndpointsForChannelType(channel.TypeAnthropic, endpoints))
+			require.Error(t, validateEndpointsForChannelType(channel.TypeCodex, endpoints))
+			for _, endpoint := range DefaultEndpointsForChannelType(channel.TypeOpenai) {
+				require.NotEqual(t, format.String(), endpoint.APIFormat)
+			}
+		})
+	}
+}

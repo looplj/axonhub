@@ -11,7 +11,55 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+func TestNativeChannelTestInputs(t *testing.T) {
+	ctx, client := setupTest(t)
+	protection := biz.NewPromptProtectionRuleService(biz.PromptProtectionRuleServiceParams{Ent: client})
+	t.Cleanup(protection.Stop)
+	processor := &TestChannelOrchestrator{promptProtectionRuleService: protection}
+	for _, format := range []llm.APIFormat{llm.APIFormatCohereEmbed, llm.APIFormatAutoTrustDecide} {
+		t.Run(format.String(), func(t *testing.T) {
+			inbound, body, err := processor.buildChannelTestInput(ctx, "native-model", false, "system", "test", false, format)
+			require.NoError(t, err)
+			req, err := inbound.TransformRequest(ctx, &httpclient.Request{Body: body})
+			require.NoError(t, err)
+			require.Equal(t, format, req.APIFormat)
+			require.Equal(t, "native-model", req.Model)
+			require.Empty(t, req.Messages)
+			if format == llm.APIFormatCohereEmbed {
+				var payload map[string]json.RawMessage
+				require.NoError(t, json.Unmarshal(body, &payload))
+				require.NotContains(t, payload, "input_type", "deployment-specific task instructions belong in channel body overrides")
+			}
+			_, _, err = processor.buildChannelTestInput(ctx, "native-model", true, "system", "test", false, format)
+			require.ErrorContains(t, err, "does not support streaming")
+			ch := &biz.Channel{Channel: &ent.Channel{
+				Type: channel.TypeOpenai, Endpoints: []objects.ChannelEndpoint{{APIFormat: format.String()}},
+				Settings: &objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{{Model: "native-model", APIFormats: []string{format.String()}}}},
+			}}
+			require.Equal(t, format, channelTestAPIFormat(ch, "native-model"))
+		})
+	}
+	message, err := channelTestResponseMessage([]byte(`{"embeddings":{"float":[[0.1,0.2]]}}`), llm.APIFormatCohereEmbed)
+	require.NoError(t, err)
+	require.Equal(t, "Embedding OK: 2 dimensions", *message)
+	message, err = channelTestResponseMessage([]byte(`{"kind":"choice","options":["yes","no"],"probabilities":[1,0],"choice_index":0,"choice":"yes"}`), llm.APIFormatAutoTrustDecide)
+	require.NoError(t, err)
+	require.Equal(t, "yes", *message)
+	_, err = channelTestResponseMessage([]byte(`{}`), llm.APIFormatCohereEmbed)
+	require.Error(t, err)
+	_, err = channelTestResponseMessage([]byte(`{}`), llm.APIFormatAutoTrustDecide)
+	require.Error(t, err)
+}
+
+func TestChannelTestResponseMessageCohereMixedEncodings(t *testing.T) {
+	t.Parallel()
+	message, err := channelTestResponseMessage([]byte(`{"embeddings":{"float":[[1,2]],"base64":["AACAPwAAAEA="]}}`), llm.APIFormatCohereEmbed)
+	require.NoError(t, err)
+	require.Equal(t, "Embedding OK: 2 dimensions", *message)
+}
 
 // TestBuildTestRequestUsesConfiguredPrompts verifies ordinary channel tests retain their configured prompts.
 func TestBuildTestRequestUsesConfiguredPrompts(t *testing.T) {

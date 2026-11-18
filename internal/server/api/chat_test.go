@@ -26,7 +26,10 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
+	"github.com/looplj/axonhub/llm/transformer/typesafe"
 )
 
 func init() {
@@ -994,6 +997,74 @@ func TestApplyUpstreamErrorPolicy_CustomMessage(t *testing.T) {
 	assert.Equal(t, "provider_rate_limit", respErr.Detail.Code)
 	assert.Equal(t, "req_123", respErr.Detail.RequestID)
 	assert.NotContains(t, respErr.Error(), "raw provider secret")
+}
+
+func TestTransformOrchestratorError_NativeProtocolsRespectPolicy(t *testing.T) {
+	protocols := []struct {
+		name     string
+		inbound  transformer.Inbound
+		outbound transformer.Outbound
+	}{
+		{
+			name:     "cohere",
+			inbound:  openai.NewCohereEmbeddingInboundTransformer(),
+			outbound: &openai.CohereEmbeddingOutboundTransformer{},
+		},
+		{
+			name:     "autotrust",
+			inbound:  typesafe.NewAutoTrustInboundTransformer(),
+			outbound: &typesafe.AutoTrustOutboundTransformer{},
+		},
+	}
+	policies := []struct {
+		name    string
+		policy  biz.UpstreamErrorPolicy
+		message string
+	}{
+		{
+			name:   "passthrough",
+			policy: biz.UpstreamErrorPolicy{Mode: biz.UpstreamErrorModePassthrough},
+		},
+		{
+			name:    "hidden",
+			policy:  biz.UpstreamErrorPolicy{Mode: biz.UpstreamErrorModeHidden},
+			message: biz.DefaultUpstreamErrorMessage,
+		},
+		{
+			name:    "custom",
+			policy:  biz.UpstreamErrorPolicy{Mode: biz.UpstreamErrorModeCustom, CustomMessage: "Service unavailable"},
+			message: "Service unavailable",
+		},
+	}
+	for _, protocol := range protocols {
+		for _, policy := range policies {
+			t.Run(protocol.name+"/"+policy.name, func(t *testing.T) {
+				ctx, systemService := setupUpstreamErrorPolicyTest(t, policy.policy)
+				rawErr := &httpclient.Error{
+					StatusCode: http.StatusBadRequest,
+					Body:       []byte(`{"error":{"message":"provider detail","type":"BadRequestError","code":400,"param":null},"provider_extension":true}`),
+				}
+				upstreamErr := pipeline.WrapUpstreamError(protocol.outbound.TransformError(ctx, rawErr))
+				orch := &orchestrator.ChatCompletionOrchestrator{
+					Inbound:       protocol.inbound,
+					SystemService: systemService,
+				}
+				result := transformOrchestratorError(ctx, upstreamErr, orch)
+				require.Equal(t, http.StatusBadRequest, result.StatusCode)
+				if policy.policy.Mode == biz.UpstreamErrorModePassthrough {
+					require.Equal(t, rawErr.Body, result.Body)
+					return
+				}
+				var body struct {
+					Error llm.ErrorDetail `json:"error"`
+				}
+				require.NoError(t, json.Unmarshal(result.Body, &body))
+				require.Equal(t, policy.message, body.Error.Message)
+				require.NotContains(t, string(result.Body), "provider detail")
+				require.NotContains(t, string(result.Body), "provider_extension")
+			})
+		}
+	}
 }
 
 func TestApplyUpstreamErrorPolicy_PassthroughByDefault(t *testing.T) {

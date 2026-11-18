@@ -225,6 +225,28 @@ func usesResponsesWebSocket(channel *biz.Channel) bool {
 }
 
 func (processor *TestChannelOrchestrator) buildChannelTestInput(ctx context.Context, model string, useStream bool, systemPrompt, userPrompt string, responsesWebSocket bool, apiFormat llm.APIFormat) (transformer.Inbound, []byte, error) {
+	if apiFormat == llm.APIFormatCohereEmbed || apiFormat == llm.APIFormatAutoTrustDecide {
+		if useStream {
+			return nil, nil, fmt.Errorf("%s does not support streaming", apiFormat)
+		}
+		prompts := buildChannelTestRequest(model, false, systemPrompt, userPrompt, false, llm.APIFormatOpenAIChatCompletion)
+		protected, err := processor.promptProtectionRuleService.Protect(ctx, prompts)
+		if err != nil {
+			return nil, nil, err
+		}
+		text := lo.FromPtr(protected.Messages[0].Content.Content) + "\n\n" + lo.FromPtr(protected.Messages[1].Content.Content)
+		if apiFormat == llm.APIFormatCohereEmbed {
+			body, err := json.Marshal(map[string]any{
+				"model": model, "texts": []string{text}, "embedding_types": []string{"float"},
+			})
+			return openai.NewCohereEmbeddingInboundTransformer(), body, err
+		}
+		body, err := json.Marshal(map[string]any{
+			"model": model, "kind": "choice", "state": text,
+			"question": "Does the state contain a test prompt?", "options": []string{"yes", "no"},
+		})
+		return typesafe.NewAutoTrustInboundTransformer(), body, err
+	}
 	if apiFormat == llm.APIFormatTypeSafeSystemOne {
 		if useStream {
 			return nil, nil, fmt.Errorf("systemone does not support streaming")
@@ -281,6 +303,31 @@ func (processor *TestChannelOrchestrator) buildChannelTestInput(ctx context.Cont
 }
 
 func channelTestResponseMessage(body []byte, apiFormat llm.APIFormat) (*string, error) {
+	if apiFormat == llm.APIFormatCohereEmbed {
+		var response struct {
+			Embeddings struct {
+				Float [][]float64 `json:"float"`
+			} `json:"embeddings"`
+		}
+		if err := json.Unmarshal(body, &response); err != nil {
+			return nil, err
+		}
+		vectors := response.Embeddings.Float
+		if len(vectors) != 1 || len(vectors[0]) == 0 {
+			return nil, fmt.Errorf("missing vector in Cohere test response")
+		}
+		return lo.ToPtr(fmt.Sprintf("Embedding OK: %d dimensions", len(vectors[0]))), nil
+	}
+	if apiFormat == llm.APIFormatAutoTrustDecide {
+		var response llm.AutoTrustResponse
+		if err := json.Unmarshal(body, &response); err != nil {
+			return nil, err
+		}
+		if len(response.Probabilities) == 0 || response.ChoiceIndex == nil || *response.ChoiceIndex < 0 || *response.ChoiceIndex >= len(response.Options) {
+			return nil, fmt.Errorf("missing decision in AutoTrust test response")
+		}
+		return lo.ToPtr(response.Options[*response.ChoiceIndex]), nil
+	}
 	if apiFormat == llm.APIFormatOpenAIEmbedding {
 		response, err := xjson.To[llm.EmbeddingResponse](body)
 		if err != nil {

@@ -55,6 +55,8 @@ var attemptProtocolControls = map[llm.APIFormat]protocolControls{
 	llm.APIFormatOpenAIImageEdit:       chatControls,
 	llm.APIFormatOpenAIImageVariation:  modelControls,
 	llm.APIFormatOpenAIEmbedding:       modelControls,
+	llm.APIFormatCohereEmbed:           modelControls,
+	llm.APIFormatAutoTrustDecide:       {},
 	llm.APIFormatOpenAIVideo:           modelControls,
 	llm.APIFormatOpenAITranscription:   chatControls,
 	llm.APIFormatOpenAITranslation:     chatControls,

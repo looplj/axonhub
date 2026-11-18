@@ -44,6 +44,8 @@ const requestFormatConditionOptions = [
   'openai/image_edit',
   'openai/image_variation',
   'openai/embeddings',
+  'cohere/embed',
+  'autotrust/decide',
   'openai/video',
   'openai/moderations',
   'openai/alpha_search',
