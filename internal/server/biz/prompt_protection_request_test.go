@@ -293,3 +293,76 @@ func TestPromptProtectionRuleService_ProtectLoadError(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, result)
 }
+
+func toolArgsMaskRule(action objects.PromptProtectionAction) []*ent.PromptProtectionRule {
+	return []*ent.PromptProtectionRule{
+		{
+			Name:    "secret",
+			Pattern: `secret-[0-9]+`,
+			Settings: &objects.PromptProtectionSettings{
+				Action:      action,
+				Replacement: "[MASKED]",
+				Scopes:      []objects.PromptProtectionScope{objects.PromptProtectionScopeAssistant},
+			},
+		},
+	}
+}
+
+func TestApplyPromptProtectionRulesMaskContentAndToolCallArguments(t *testing.T) {
+	content := "calling with secret-1"
+	request := &llm.Request{
+		Messages: []llm.Message{
+			{
+				Role:    "assistant",
+				Content: llm.MessageContent{Content: &content},
+				ToolCalls: []llm.ToolCall{
+					{ID: "call_1", Type: "function", Function: llm.FunctionCall{Name: "run", Arguments: `{"token":"secret-2"}`}},
+				},
+			},
+		},
+	}
+
+	result := ApplyPromptProtectionRules(request, toolArgsMaskRule(objects.PromptProtectionActionMask))
+
+	require.False(t, result.Rejected)
+	require.Len(t, result.MatchedRules, 1)
+	assert.Equal(t, "calling with [MASKED]", *result.Request.Messages[0].Content.Content)
+	assert.Equal(t, `{"token":"[MASKED]"}`, result.Request.Messages[0].ToolCalls[0].Function.Arguments)
+}
+
+func TestApplyPromptProtectionRulesMaskToolCallArgumentsOnly(t *testing.T) {
+	request := &llm.Request{
+		Messages: []llm.Message{
+			{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{ID: "call_1", Type: "function", Function: llm.FunctionCall{Name: "run", Arguments: `{"token":"secret-2"}`}},
+				},
+			},
+		},
+	}
+
+	result := ApplyPromptProtectionRules(request, toolArgsMaskRule(objects.PromptProtectionActionMask))
+
+	require.False(t, result.Rejected)
+	require.Len(t, result.MatchedRules, 1)
+	assert.Equal(t, `{"token":"[MASKED]"}`, result.Request.Messages[0].ToolCalls[0].Function.Arguments)
+}
+
+func TestApplyPromptProtectionRulesRejectToolCallArguments(t *testing.T) {
+	request := &llm.Request{
+		Messages: []llm.Message{
+			{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{ID: "call_1", Type: "function", Function: llm.FunctionCall{Name: "run", Arguments: `{"token":"secret-2"}`}},
+				},
+			},
+		},
+	}
+
+	result := ApplyPromptProtectionRules(request, toolArgsMaskRule(objects.PromptProtectionActionReject))
+
+	require.True(t, result.Rejected)
+	require.Len(t, result.MatchedRules, 1)
+}
