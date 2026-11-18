@@ -136,8 +136,10 @@ func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsIn
 	}
 
 	return &FetchModelsPayload{
-		Models: models,
-		Error:  result.Error,
+		Models:              models,
+		Error:               result.Error,
+		Fallback:            result.Fallback,
+		CodexCatalogVersion: result.CodexCatalogVersion,
 	}, nil
 }
 

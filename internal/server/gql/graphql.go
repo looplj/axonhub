@@ -194,6 +194,9 @@ func newSchemaFromDeps(deps Dependencies) graphql.ExecutableSchema {
 var (
 	skipTestChannelTransaction = entgql.SkipOperations("TestChannel", "TestChannelAPIKeys")
 	skipBulkImportTransaction  = entgql.SkipIfHasFields("bulkImportChannels")
+	// Model sync commits its own channel update after refreshing the shared
+	// release cache. An enclosing transaction can block that cache write on SQLite.
+	skipChannelSyncTransaction = entgql.SkipIfHasFields("syncChannelModels")
 	// checkProviderQuotas and resetChannelQuotaNow resolve into the quota
 	// service, whose channel writes go through its own client and would block
 	// on row locks the enclosing transaction holds. The reconciler uses its own
@@ -203,7 +206,7 @@ var (
 )
 
 func skipGraphqlTransaction(op *ast.OperationDefinition) bool {
-	return skipTestChannelTransaction(op) || skipBulkImportTransaction(op) || skipQuotaMutationsTransaction(op)
+	return skipTestChannelTransaction(op) || skipBulkImportTransaction(op) || skipChannelSyncTransaction(op) || skipQuotaMutationsTransaction(op)
 }
 
 func presentGraphqlError(ctx context.Context, err error) *gqlerror.Error {

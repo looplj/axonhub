@@ -59,6 +59,11 @@ func TestSkipGraphqlTransaction(t *testing.T) {
 			wantSkip: true,
 		},
 		{
+			name:     "syncChannelModels skips under any client-chosen operation name",
+			op:       mutationOp("UpdateModels", "syncChannelModels"),
+			wantSkip: true,
+		},
+		{
 			name:     "empty selection set does not skip",
 			op:       mutationOp("Empty"),
 			wantSkip: false,

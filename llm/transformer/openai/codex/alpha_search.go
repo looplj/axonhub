@@ -72,7 +72,8 @@ func (t *OutboundTransformer) transformAlphaSearchRequest(ctx context.Context, l
 	// The transformer owns the outbound User-Agent (see TransformRequest):
 	// the client UA is never copied, and the orchestrator's user-agent
 	// pass-through middleware overwrites this default when the switch is on.
-	headers.Set("User-Agent", codexDefaultUserAgent)
+	defaultVersion := t.defaultClientVersion()
+	headers.Set("User-Agent", codexUserAgentPrefix+defaultVersion)
 	if headers.Get(SessionHeaderHyphen) == "" {
 		headers.Set(SessionHeaderHyphen, sessionID)
 	}
@@ -111,7 +112,7 @@ func (t *OutboundTransformer) transformAlphaSearchRequest(ctx context.Context, l
 		headers.Set("Chatgpt-Account-Id", accountID)
 	}
 	if headers.Get("Version") == "" {
-		headers.Set("Version", codexDefaultVersion)
+		headers.Set("Version", defaultVersion)
 	}
 
 	baseURL := strings.TrimRight(t.baseURL, "#/")

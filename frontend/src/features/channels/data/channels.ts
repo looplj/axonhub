@@ -1038,6 +1038,11 @@ const FETCH_MODELS_QUERY = `
         id
       }
       error
+      fallback
+      codexCatalogVersion {
+        version
+        source
+      }
     }
   }
 `;
@@ -2307,14 +2312,28 @@ const SYNC_CHANNEL_MODELS_MUTATION = `
       channelID
       supportedModels
       manualModels
+      fallback
+      codexCatalogVersion {
+        version
+        source
+      }
     }
   }
 `;
+
+const codexCatalogVersionSchema = z.object({
+  version: z.string(),
+  source: z.enum(['channel_version', 'channel_user_agent', 'npm', 'cache', 'builtin']),
+});
+
+export type CodexCatalogVersion = z.infer<typeof codexCatalogVersionSchema>;
 
 const syncChannelModelsPayloadSchema = z.object({
   channelID: z.string(),
   supportedModels: z.array(z.string()),
   manualModels: z.array(z.string()),
+  fallback: z.boolean(),
+  codexCatalogVersion: codexCatalogVersionSchema.nullable(),
 });
 
 export function useSyncChannelModels() {
@@ -2332,9 +2351,19 @@ export function useSyncChannelModels() {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: ({ fallback, codexCatalogVersion }) => {
+      const description = codexCatalogVersion
+        ? t('channels.messages.codexCatalogVersion', {
+            version: codexCatalogVersion.version,
+            source: t(`channels.messages.codexCatalogVersionSources.${codexCatalogVersion.source}`),
+          })
+        : undefined;
+      if (fallback) {
+        toast.warning(t('channels.messages.codexCatalogSyncFallback'), { description });
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ['channels'] });
-      toast.success(t('channels.messages.syncModelsSuccess'));
+      toast.success(t('channels.messages.syncModelsSuccess'), { description });
     },
   });
 }
@@ -2357,6 +2386,8 @@ export function useFetchModels() {
           fetchModels: {
             models: Array<{ id: string }>;
             error?: string | null;
+            fallback: boolean;
+            codexCatalogVersion: CodexCatalogVersion | null;
           };
         }>(FETCH_MODELS_QUERY, { input });
         return data.fetchModels;
@@ -2365,10 +2396,10 @@ export function useFetchModels() {
         throw error;
       }
     },
-    onSuccess: (data) => {
+    onSuccess: (data, input) => {
       if (data.error) {
         toast.error(t('common.errors.internalServerError'));
-      } else {
+      } else if (input.channelType !== 'codex' || !data.fallback) {
         const count = data.models.length;
         if (count > 100) {
           toast.success(t('channels.messages.fetchModelsSuccessLarge', { count }));

@@ -40,7 +40,7 @@ func (svc *ChannelService) syncChannelModels(ctx context.Context) {
 	changedCount := 0
 
 	for _, ch := range channels {
-		_, changed, err := svc.syncChannelModelsForChannel(ctx, ch, nil)
+		result, err := svc.syncChannelModelsForChannel(ctx, ch, nil)
 		if err != nil {
 			log.Warn(ctx, "failed to sync models for channel",
 				log.Int("channel_id", ch.ID),
@@ -50,7 +50,7 @@ func (svc *ChannelService) syncChannelModels(ctx context.Context) {
 			failureCount++
 		} else {
 			successCount++
-			if changed {
+			if result.changed {
 				changedCount++
 			}
 		}
@@ -66,8 +66,15 @@ func (svc *ChannelService) syncChannelModels(ctx context.Context) {
 		log.Int("changed", changedCount))
 }
 
+type SyncChannelModelsResult struct {
+	*ent.Channel
+	CodexCatalogVersion *CodexCatalogVersion
+	Fallback            bool
+	changed             bool
+}
+
 // syncChannelModelsForChannel syncs supported models for a single channel.
-func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *ent.Channel, patternOverride *string) (*ent.Channel, bool, error) {
+func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *ent.Channel, patternOverride *string) (*SyncChannelModelsResult, error) {
 	modelFetcher := NewModelFetcher(svc.httpClient, svc)
 
 	result, err := modelFetcher.FetchModels(ctx, FetchModelsInput{
@@ -76,15 +83,17 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 		ChannelID:   lo.ToPtr(ch.ID),
 	})
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to fetch models: %w", err)
+		return nil, fmt.Errorf("failed to fetch models: %w", err)
 	}
 
 	// Check if there was an error in the result
 	if result.Error != nil {
-		return nil, false, fmt.Errorf("model fetch returned error: %s", *result.Error)
+		return nil, fmt.Errorf("model fetch returned error: %s", *result.Error)
 	}
+	syncResult := &SyncChannelModelsResult{Channel: ch, CodexCatalogVersion: result.CodexCatalogVersion}
 	if result.Fallback {
-		return nil, false, fmt.Errorf("model fetch returned fallback models")
+		syncResult.Fallback = true
+		return syncResult, fmt.Errorf("model fetch returned fallback models")
 	}
 
 	// Extract model IDs from fetched models
@@ -184,7 +193,7 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 		return nil
 	})
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	if ent.TxFromContext(ctx) == nil && updatedCh != nil {
 		updatedCh.Unwrap()
@@ -197,23 +206,28 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 		log.Int("manual_count", manualCount),
 		log.Int("total_count", totalCount))
 
-	return updatedCh, changed, nil
+	syncResult.Channel = updatedCh
+	syncResult.changed = changed
+	return syncResult, nil
 }
 
-func (svc *ChannelService) SyncChannelModels(ctx context.Context, channelID int, patternOverride *string) (*ent.Channel, error) {
+func (svc *ChannelService) SyncChannelModels(ctx context.Context, channelID int, patternOverride *string) (*SyncChannelModelsResult, error) {
 	ch, err := svc.entFromContext(ctx).Channel.Get(ctx, channelID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel: %w", err)
 	}
 
-	updated, changed, err := svc.syncChannelModelsForChannel(ctx, ch, patternOverride)
+	if ch.Type == channel.TypeCodex {
+		svc.refreshCodexRelease(ctx)
+	}
+	result, err := svc.syncChannelModelsForChannel(ctx, ch, patternOverride)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
-	if changed {
+	if result.changed {
 		svc.reloadChannelsAfterCommit(ctx)
 	}
 
-	return updated, nil
+	return result, nil
 }

@@ -171,9 +171,10 @@ type FetchModelsInput struct {
 
 // FetchModelsResult represents the result of fetching models.
 type FetchModelsResult struct {
-	Models   []ModelIdentify
-	Error    *string
-	Fallback bool
+	Models              []ModelIdentify
+	Error               *string
+	Fallback            bool
+	CodexCatalogVersion *CodexCatalogVersion
 }
 
 var qiniuFallbackModels = []ModelIdentify{{ID: "deepseek-v3"}}
@@ -422,7 +423,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			if ch.Type == channel.TypeCodex && codex.SupportsModelCatalog(ch.BaseURL) {
 				codexChannel = ch
 			} else if models := f.getDefaultModelsByType(ctx, ch.Type); models != nil {
-				return &FetchModelsResult{Models: models}, nil
+				return &FetchModelsResult{Models: models, Fallback: ch.Type == channel.TypeCodex}, nil
 			}
 		}
 
@@ -459,14 +460,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		if ch.Settings != nil {
 			proxyConfig = ch.Settings.Proxy
 
-			// The new schema field takes precedence; the legacy OverrideHeaders list is
-			// converted when the new field is absent (same precedence as
-			// (*Channel).GetHeaderOverrideOperations).
-			if ch.Settings.HeaderOverrideOperations != nil {
-				headerOverrideOps = ch.Settings.HeaderOverrideOperations
-			} else {
-				headerOverrideOps = objects.HeaderEntriesToOverrideOperations(ch.Settings.OverrideHeaders)
-			}
+			headerOverrideOps = channelHeaderOverrideOperations(ch)
 		}
 	}
 
@@ -481,7 +475,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 		if isOfficialOnlyType(channelType) {
 			if models := f.getDefaultModelsByType(ctx, channelType); models != nil {
-				return &FetchModelsResult{Models: models}, nil
+				return &FetchModelsResult{Models: models, Fallback: channelType == channel.TypeCodex}, nil
 			}
 		}
 		return &FetchModelsResult{
@@ -497,7 +491,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 				Credentials: objects.ChannelCredentials{APIKey: apiKey},
 			}
 		} else if models := f.getDefaultModelsByType(ctx, channelType); models != nil {
-			return &FetchModelsResult{Models: models}, nil
+			return &FetchModelsResult{Models: models, Fallback: channelType == channel.TypeCodex}, nil
 		}
 	}
 
@@ -547,13 +541,18 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		httpClient = httpClient.WithRejectHTTPSDowngrade()
 	}
 
+	var catalogVersion *CodexCatalogVersion
+	if codexChannel != nil || thirdPartyCodexCatalog {
+		version := f.channelService.resolveCodexClientVersion(headerOverrideOps)
+		catalogVersion = &version
+	}
 	parse := f.parseModelsResponse
 	if codexChannel != nil {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, 15*time.Second)
 		defer cancel()
 		var err error
-		req, err = f.prepareCodexModelsRequest(ctx, codexChannel, httpClient)
+		req, err = f.prepareCodexModelsRequest(ctx, codexChannel, httpClient, catalogVersion.Version)
 		if err != nil {
 			return &FetchModelsResult{Models: f.getDefaultModelsByType(ctx, channel.TypeCodex), Fallback: true}, nil
 		}
@@ -570,7 +569,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 		req, err = codex.ModelsRequest(ctx, oauth.NewAPIKeyTokenProvider(func(context.Context) string {
 			return apiKey
-		}), catalogBaseURL)
+		}), catalogBaseURL, catalogVersion.Version)
 		if err != nil {
 			return &FetchModelsResult{Models: []ModelIdentify{}, Error: lo.ToPtr(fmt.Sprintf("failed to prepare Codex models request: %v", err))}, nil
 		}
@@ -592,6 +591,13 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	// Channel header overrides win over the standard auth headers, matching the
 	// chat/completion path.
 	ApplyModelFetchHeaderOverrides(req.Headers, headerOverrideOps)
+	if catalogVersion != nil {
+		// Keep the query and version header aligned, including after copy or rename.
+		// A deleted header remains absent.
+		if _, ok := req.Headers["Version"]; ok {
+			req.Headers.Set("Version", catalogVersion.Version)
+		}
+	}
 
 	if channelType.IsGemini() {
 		models, err := f.fetchGeminiModels(ctx, httpClient, req)
@@ -623,7 +629,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	models, err := fetchModels(ctx, req, execute, parse)
 	if err != nil {
 		if codexChannel != nil {
-			return &FetchModelsResult{Models: f.getDefaultModelsByType(ctx, channel.TypeCodex), Fallback: true}, nil
+			return &FetchModelsResult{Models: f.getDefaultModelsByType(ctx, channel.TypeCodex), Fallback: true, CodexCatalogVersion: catalogVersion}, nil
 		}
 		if isQiniuChannelType(channelType) {
 			return &FetchModelsResult{
@@ -631,8 +637,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			}, nil
 		}
 		return &FetchModelsResult{
-			Models: []ModelIdentify{},
-			Error:  lo.ToPtr(fmt.Sprintf("failed to fetch models: %v", err)),
+			Models:              []ModelIdentify{},
+			Error:               lo.ToPtr(fmt.Sprintf("failed to fetch models: %v", err)),
+			CodexCatalogVersion: catalogVersion,
 		}, nil
 	}
 
@@ -641,8 +648,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	return &FetchModelsResult{
-		Models: models,
-		Error:  nil,
+		Models:              models,
+		Error:               nil,
+		CodexCatalogVersion: catalogVersion,
 	}, nil
 }
 
@@ -666,7 +674,7 @@ func fetchModels(
 	return lo.Uniq(models), nil
 }
 
-func (f *ModelFetcher) prepareCodexModelsRequest(ctx context.Context, ch *ent.Channel, client *httpclient.HttpClient) (*httpclient.Request, error) {
+func (f *ModelFetcher) prepareCodexModelsRequest(ctx context.Context, ch *ent.Channel, client *httpclient.HttpClient, version string) (*httpclient.Request, error) {
 	creds, err := ch.Credentials.ResolveOAuthCredentials()
 	if err != nil {
 		return nil, err
@@ -675,7 +683,7 @@ func (f *ModelFetcher) prepareCodexModelsRequest(ctx context.Context, ch *ent.Ch
 	if ch.ID != 0 {
 		params.OnRefreshed = f.channelService.onTokenRefreshed(ch)
 	}
-	return codex.ModelsRequest(ctx, codex.NewTokenProvider(params), ch.BaseURL)
+	return codex.ModelsRequest(ctx, codex.NewTokenProvider(params), ch.BaseURL, version)
 }
 
 func parseCodexModels(body []byte) ([]ModelIdentify, error) {

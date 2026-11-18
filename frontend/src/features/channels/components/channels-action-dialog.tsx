@@ -50,6 +50,7 @@ import {
   useDisableChannelAPIKey,
   useEnableChannelAPIKey,
   useSyncChannelModels,
+  type CodexCatalogVersion,
 } from '../data/channels';
 import { isSuggestedModel } from '../../models/data/model-suggestions';
 import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
@@ -309,6 +310,7 @@ const FetchedModelItem = memo(
     model,
     isAdded,
     isSelected,
+    disabled,
     onToggle,
     addedLabel,
     willRemoveLabel,
@@ -316,6 +318,7 @@ const FetchedModelItem = memo(
     model: string;
     isAdded: boolean;
     isSelected: boolean;
+    disabled: boolean;
     onToggle: () => void;
     addedLabel: string;
     willRemoveLabel: string;
@@ -329,10 +332,10 @@ const FetchedModelItem = memo(
             : 'hover:bg-accent cursor-pointer'
       }`}
     >
-      <Checkbox checked={isSelected} onCheckedChange={onToggle} />
+      <Checkbox checked={isSelected} disabled={disabled} onCheckedChange={onToggle} />
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className='flex-1 cursor-pointer truncate' onClick={onToggle}>
+          <span className={`flex-1 truncate ${disabled ? '' : 'cursor-pointer'}`} onClick={disabled ? undefined : onToggle}>
             {model}
           </span>
         </TooltipTrigger>
@@ -553,6 +556,7 @@ export function ChannelsActionDialog({
   const [newModel, setNewModel] = useState('');
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([]);
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+  const [codexCatalog, setCodexCatalog] = useState<{ version: CodexCatalogVersion | null; fallback: boolean }>();
   const [useFetchedModels, setUseFetchedModels] = useState(false);
   const providerRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const providerListRef = useRef<HTMLDivElement | null>(null);
@@ -817,6 +821,7 @@ export function ChannelsActionDialog({
       setConfirmDisableKey(null);
       setPatternError(null);
       setFetchedModels([]);
+      setCodexCatalog(undefined);
       setUseFetchedModels(false);
       setShowFetchedModelsPanel(false);
       setShowSupportedModelsPanel(false);
@@ -1951,6 +1956,7 @@ export function ChannelsActionDialog({
 
       const models = result.models.map((m) => m.id);
       if (models?.length) {
+        setCodexCatalog(channelType === 'codex' ? { version: result.codexCatalogVersion, fallback: result.fallback } : undefined);
         setFetchedModels(models);
         setUseFetchedModels(true);
         setShowFetchedModelsPanel(true);
@@ -1979,6 +1985,7 @@ export function ChannelsActionDialog({
       channelID: channelId,
       pattern: formPattern.trim() ? formPattern : undefined,
     });
+    if (result.fallback) return [];
 
     // Sync is authoritative for both lists; refreshing only supportedModels
     // leaves manualModels stale and makes the header count drift from the badges.
@@ -2048,8 +2055,10 @@ export function ChannelsActionDialog({
 
   // Select all filtered models
   const selectAllFilteredModels = useCallback(() => {
-    setSelectedFetchedModels(filteredFetchedModels);
-  }, [filteredFetchedModels]);
+    setSelectedFetchedModels(
+      codexCatalog?.fallback ? filteredFetchedModels.filter((model) => !supportedModels.includes(model)) : filteredFetchedModels
+    );
+  }, [codexCatalog, filteredFetchedModels, supportedModels]);
 
   // Deselect all
   const deselectAllFetchedModels = useCallback(() => {
@@ -2065,7 +2074,7 @@ export function ChannelsActionDialog({
 
       selectedFetchedModels.forEach((model) => {
         if (prev.includes(model)) {
-          modelsToRemove.push(model);
+          if (!codexCatalog?.fallback) modelsToRemove.push(model);
         } else {
           modelsToAdd.push(model);
         }
@@ -2081,7 +2090,7 @@ export function ChannelsActionDialog({
     }
 
     setSelectedFetchedModels([]);
-  }, [selectedFetchedModels]);
+  }, [codexCatalog, selectedFetchedModels]);
 
   // Close panel handler
   const closeFetchedModelsPanel = useCallback(() => {
@@ -2129,6 +2138,7 @@ export function ChannelsActionDialog({
 
   // Remove deprecated models (models in supportedModels but not in fetchedModels and not manual)
   const removeDeprecatedModels = useCallback(() => {
+    if (codexCatalog?.fallback) return;
     const fetchedModelsSet = new Set(fetchedModels);
     const manualModelsSet = new Set(manualModels);
     // Deprecated = not fetched AND not manual
@@ -2137,7 +2147,7 @@ export function ChannelsActionDialog({
     setSupportedModels((prev) => prev.filter((model) => fetchedModelsSet.has(model) || manualModelsSet.has(model)));
     // Remove deprecated models from manualModels (should be none, but for consistency)
     setManualModels((prev) => prev.filter((model) => !deprecatedModels.includes(model)));
-  }, [fetchedModels, supportedModels, manualModels]);
+  }, [codexCatalog, fetchedModels, supportedModels, manualModels]);
 
   // Count of deprecated models
   const deprecatedModelsCount = useMemo(() => {
@@ -2189,6 +2199,7 @@ export function ChannelsActionDialog({
     setManualModels(initialRow?.manualModels || []);
     setSelectedDefaultModels([]);
     setFetchedModels([]);
+    setCodexCatalog(undefined);
     setUseFetchedModels(false);
     // Reset expandable panel states
     setShowFetchedModelsPanel(false);
@@ -3735,6 +3746,20 @@ export function ChannelsActionDialog({
                   </Button>
                 </div>
 
+                {codexCatalog?.version && (
+                  <p className='text-muted-foreground mb-2 text-xs'>
+                    {t('channels.messages.codexCatalogVersion', {
+                      version: codexCatalog.version.version,
+                      source: t(`channels.messages.codexCatalogVersionSources.${codexCatalog.version.source}`),
+                    })}
+                  </p>
+                )}
+                {codexCatalog?.fallback && (
+                  <p role='status' className='text-muted-foreground mb-2 text-xs'>
+                    {t('channels.messages.codexCatalogFetchFallback')}
+                  </p>
+                )}
+
                 {/* Search */}
                 <div className='relative mb-3'>
                   <Search className='text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2' />
@@ -3802,6 +3827,7 @@ export function ChannelsActionDialog({
                             model={model}
                             isAdded={isAdded}
                             isSelected={isSelected}
+                            disabled={isAdded && codexCatalog?.fallback === true}
                             onToggle={() => toggleFetchedModelSelection(model)}
                             addedLabel={t('channels.dialogs.fields.supportedModels.added')}
                             willRemoveLabel={t('channels.dialogs.fields.supportedModels.willRemove')}
@@ -3831,7 +3857,7 @@ export function ChannelsActionDialog({
                     className='flex-1'
                     size='sm'
                     onClick={removeDeprecatedModels}
-                    disabled={deprecatedModelsCount === 0}
+                    disabled={codexCatalog?.fallback || deprecatedModelsCount === 0}
                   >
                     <Trash2 className='mr-1 h-4 w-4' />
                     {t('channels.dialogs.buttons.removeDeprecated', { count: deprecatedModelsCount })}

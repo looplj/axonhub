@@ -2579,7 +2579,7 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 
 			// Execute middleware
 			rawRequest := &httpclient.Request{
-				Headers: make(http.Header),
+				Headers: http.Header{"Version": {"0.160.0"}},
 			}
 			if tt.outboundUA != "" {
 				rawRequest.Headers.Set("User-Agent", tt.outboundUA)
@@ -2588,6 +2588,7 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 
 			require.NoError(t, err)
 			require.NotNil(t, processedRequest)
+			require.Equal(t, "0.160.0", processedRequest.Headers.Get("Version"))
 
 			// Verify User-Agent header is set correctly
 			if tt.wantUAHeader != "" {

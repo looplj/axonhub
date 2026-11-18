@@ -216,6 +216,7 @@ type ChannelService struct {
 	apiKeyStatesLock sync.Mutex
 
 	modelSyncMu            sync.Mutex
+	codexVersions          codexVersionCache
 	codexCatalogSF         singleflight.Group
 	codexCatalogProviderSF singleflight.Group
 	codexCatalogOutbounds  sync.Map
