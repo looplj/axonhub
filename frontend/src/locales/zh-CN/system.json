@@ -396,7 +396,7 @@
   "quota.label.show_key_details": "显示各密钥额度 ({{count}})",
   "quota.label.hide_key_details": "收起各密钥额度",
   "quota.label.key_usage": "{{key}} 的{{window}}用量",
-  "quota.label.channel_capacity": "{{count}} 个密钥的{{window}}可用容量",
+  "quota.label.channel_capacity": "{{count}} 个密钥的{{window}}平均用量",
   "quota.label.show_disabled_accounts": "展开已禁用 ({{count}})",
   "quota.label.hide_disabled_accounts": "收起已禁用 ({{count}})",
   "quota.label.days": "天",
