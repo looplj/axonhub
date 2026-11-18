@@ -98,6 +98,14 @@ func mergeChannelModelPriceItems(base, overlay objects.ModelPrice, replaceExisti
 	return objects.ModelPrice{Items: items, Schedule: schedule}
 }
 
+// endpointChanged reports whether overlaying the endpoint price onto the row
+// changes the row: any item code the endpoint reported with a different value,
+// or a schedule the row does not have yet.
+func endpointChanged(existing *ent.ChannelModelPrice, endpointPrice objects.ModelPrice) bool {
+	merged := mergeChannelModelPriceItems(existing.Price, endpointPrice, true)
+	return !existing.Price.Equals(merged)
+}
+
 func modelCardToChannelModelPrice(card *objects.ModelCard) (objects.ModelPrice, bool) {
 	if card == nil {
 		return objects.ModelPrice{}, false
@@ -443,12 +451,16 @@ func (svc *ChannelService) createChannelModelPriceVersion(
 }
 
 // updateChannelModelPriceEntity replaces the current channel price and its active version.
+// With replaceExisting it replaces every item; without it, newPrice only overrides the item
+// codes it reports and the locked row's other items are preserved. Merging against the
+// locked row keeps concurrent edits to unreported items from being lost.
 // The caller must run it inside the logical channel mutation transaction so
 // the price and version history commit together.
 func (svc *ChannelService) updateChannelModelPriceEntity(
 	ctx context.Context,
 	price *ent.ChannelModelPrice,
 	newPrice objects.ModelPrice,
+	replaceExisting bool,
 	now time.Time,
 ) (*ent.ChannelModelPrice, error) {
 	db := svc.entFromContext(ctx)
@@ -479,6 +491,10 @@ func (svc *ChannelService) updateChannelModelPriceEntity(
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to load channel model price for update: %w", err)
+	}
+
+	if !replaceExisting {
+		newPrice = mergeChannelModelPriceItems(lockedPrice.Price, newPrice, true)
 	}
 
 	_, err = db.ChannelModelPriceVersion.Update().
@@ -602,33 +618,33 @@ func (svc *ChannelService) ensureChannelModelPrices(
 			existing := existingPrices[modelID]
 			endpointPrice, hasEndpointPrice := endpointTemplates[modelID]
 			libraryPrice, hasLibraryPrice := libraryPrices[modelID]
-			if existing != nil && !hasEndpointPrice {
-				continue
-			}
 			if existing == nil && !hasEndpointPrice && !hasLibraryPrice {
 				continue
 			}
 
-			mergedPrice := objects.ModelPrice{}
 			if existing != nil {
-				mergedPrice = existing.Price
+				if !hasEndpointPrice {
+					// The row is current; library gaps are filled at creation only.
+					continue
+				}
+				// updateChannelModelPriceEntity merges the endpoint items against the
+				// locked row, so concurrent edits to unreported items survive.
+				if !endpointChanged(existing, endpointPrice) {
+					continue
+				}
+				if _, err := svc.updateChannelModelPriceEntity(ctx, existing, endpointPrice, false, now); err != nil {
+					return err
+				}
+				changed = true
+				continue
 			}
+
+			mergedPrice := objects.ModelPrice{}
 			if hasEndpointPrice {
 				mergedPrice = mergeChannelModelPriceItems(mergedPrice, endpointPrice, true)
 			}
 			if hasLibraryPrice {
 				mergedPrice = mergeChannelModelPriceItems(mergedPrice, libraryPrice, false)
-			}
-
-			if existing != nil {
-				if existing.Price.Equals(mergedPrice) {
-					continue
-				}
-				if _, err := svc.updateChannelModelPriceEntity(ctx, existing, mergedPrice, now); err != nil {
-					return err
-				}
-				changed = true
-				continue
 			}
 
 			if len(mergedPrice.Items) == 0 && mergedPrice.Schedule == nil {
@@ -786,7 +802,8 @@ func (svc *ChannelService) SaveChannelModelPrices(
 				continue
 
 			case ActionTypeUpdate:
-				entity, err = svc.updateChannelModelPriceEntity(ctx, action.ExistingPrice, action.Price, now)
+				// Editor prices are authoritative for the whole row.
+				entity, err = svc.updateChannelModelPriceEntity(ctx, action.ExistingPrice, action.Price, true, now)
 				if err != nil {
 					return err
 				}

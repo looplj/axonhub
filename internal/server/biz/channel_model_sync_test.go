@@ -249,6 +249,84 @@ func TestChannelService_SyncChannelModelsPreservesUnreportedEndpointPriceItems(t
 	require.Len(t, versions, 2)
 }
 
+// A manual save that lands between the sync's unlocked snapshot read and its
+// write must not be reverted by the endpoint sync: the merge has to run
+// against the locked row, so only the endpoint-reported item (usage) changes.
+func TestChannelService_SyncChannelModelsPreservesConcurrentManualPriceSave(t *testing.T) {
+	var (
+		svc    *ChannelService
+		client *ent.Client
+		ctx    context.Context
+	)
+	channelIDs := make(chan int, 1)
+	saveResult := make(chan error, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		id := <-channelIDs
+		_, saveErr := svc.SaveChannelModelPrices(ctx, id, []SaveChannelModelPriceInput{{
+			ModelID: "race-model",
+			Price: objects.ModelPrice{Items: []objects.ModelPriceItem{
+				{ItemCode: objects.PriceItemCodeUsage, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("1")}},
+				{ItemCode: objects.PriceItemCodeCompletion, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("20")}},
+				{ItemCode: objects.PriceItemCodePromptCachedToken, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("3")}},
+			}},
+		}})
+		saveResult <- saveErr
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"race-model","pricing":{"prompt":"0.0000004"}}]}`))
+	}))
+	defer server.Close()
+
+	svc, client = setupTestChannelService(t)
+	defer client.Close()
+	ctx = authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc.httpClient = httpclient.NewHttpClientWithClient(server.Client())
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Concurrent manual save during sync").
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetStatus(channel.StatusEnabled).
+		SetSupportedModels([]string{"race-model"}).
+		SetDefaultTestModel("race-model").
+		SetSettings(&objects.ChannelSettings{SyncModelPrices: true}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Baseline row before the sync starts.
+	_, err = svc.SaveChannelModelPrices(ctx, ch.ID, []SaveChannelModelPriceInput{{
+		ModelID: "race-model",
+		Price: objects.ModelPrice{Items: []objects.ModelPriceItem{
+			{ItemCode: objects.PriceItemCodeUsage, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("1")}},
+			{ItemCode: objects.PriceItemCodeCompletion, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("2")}},
+			{ItemCode: objects.PriceItemCodePromptCachedToken, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("3")}},
+		}},
+	}})
+	require.NoError(t, err)
+	channelIDs <- ch.ID
+
+	_, err = svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	require.NoError(t, <-saveResult)
+
+	updated, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("race-model"),
+	).Only(ctx)
+	require.NoError(t, err)
+	updatedItems := lo.KeyBy(updated.Price.Items, func(item objects.ModelPriceItem) objects.PriceItemCode {
+		return item.ItemCode
+	})
+	require.Len(t, updatedItems, 3)
+	require.Equal(t, "0.4", updatedItems[objects.PriceItemCodeUsage].Pricing.UsagePerUnit.String())
+	// Completion was changed by the manual save during the sync and the endpoint
+	// did not report it, so the manual value must survive.
+	require.Equal(t, "20", updatedItems[objects.PriceItemCodeCompletion].Pricing.UsagePerUnit.String())
+	require.Equal(t, "3", updatedItems[objects.PriceItemCodePromptCachedToken].Pricing.UsagePerUnit.String())
+	versions, err := updated.QueryVersions().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, versions, 3)
+}
+
 func TestChannelService_SyncChannelModelsMergesEndpointAndLibraryPriceItems(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

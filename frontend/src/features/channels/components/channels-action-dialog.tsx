@@ -38,7 +38,7 @@ import {
   useUserAgentPassThroughSettings,
 } from '@/features/system/data/system';
 import { isSuggestedModel } from '../../models/data/model-suggestions';
-import { ANTIGRAVITY_BASE_URL_DAILY, ANTIGRAVITY_BASE_URLS, antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
+import { ANTIGRAVITY_BASE_URLS, antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
 import { filterChannelModelGroups, groupChannelModelEntries } from '../data/channel-model-aliases';
 import {
   useCreateChannel,
@@ -1965,18 +1965,18 @@ export function ChannelsActionDialog({
           nextFetchedModelPrices[model.id] = model.pricing;
         }
       }
-      if (models?.length) {
-        setFetchedModels(models);
-        setFetchedModelPrices(nextFetchedModelPrices);
-        setUseFetchedModels(true);
-        setShowFetchedModelsPanel(true);
-        setShowSupportedModelsPanel(false);
-        setShowApiKeysPanel(false);
-        setSelectedFetchedModels([]);
-        setFetchedModelsSearch('');
-        setShowNotAddedModelsOnly(false);
-        setApplyPatternFilter(false);
-      }
+      // Reflect the fetch result even when empty: a successful empty response must clear
+      // the previous fetch's models/prices instead of leaving stale data in the open panel.
+      setFetchedModels(models);
+      setFetchedModelPrices(nextFetchedModelPrices);
+      setUseFetchedModels(true);
+      setShowFetchedModelsPanel(true);
+      setShowSupportedModelsPanel(false);
+      setShowApiKeysPanel(false);
+      setSelectedFetchedModels([]);
+      setFetchedModelsSearch('');
+      setShowNotAddedModelsOnly(false);
+      setApplyPatternFilter(false);
     } catch (_error) {
       // Error is already handled by the mutation
     }
@@ -3807,6 +3807,9 @@ export function ChannelsActionDialog({
 
                 {/* Model List */}
                 <div ref={fetchedModelsParentRef} className='min-h-0 flex-1 overflow-auto pr-3'>
+                  {fetchedModels.length === 0 && (
+                    <p className='text-muted-foreground py-6 text-center text-xs'>{t('channels.dialogs.fetchModels.noModels')}</p>
+                  )}
                   <div
                     style={{
                       height: `${fetchedModelsVirtualizer.getTotalSize()}px`,

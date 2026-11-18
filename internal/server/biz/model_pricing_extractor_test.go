@@ -148,7 +148,12 @@ func TestExtractModelPricingCacheWriteMixedTTLLeavesGenericEmpty(t *testing.T) {
 		"cost":{"text":{"input":{"cache":{"write":{"5m":2.5,"1h":3.5}}}}}
 	}]}`))
 	require.NoError(t, err)
-	writeItem := findModelPriceItem(t, prices["mixed-ttl"], objects.PriceItemCodeWriteCachedTokens)
+	price := prices["mixed-ttl"]
+	require.NotNil(t, price)
+	// The variants-only price (empty aggregate) must be persistable through the
+	// ent validator, which is what the sync path relies on.
+	require.NoError(t, price.Validate())
+	writeItem := findModelPriceItem(t, price, objects.PriceItemCodeWriteCachedTokens)
 	require.Equal(t, objects.Pricing{}, writeItem.Pricing)
 	require.Equal(t, []objects.PromptWriteCacheVariantCode{
 		objects.PromptWriteCacheVariantCode5Min,

@@ -238,7 +238,7 @@ func TestChannelService_UpdateChannelModelPriceEntityKeepsOneActiveVersion(t *te
 				ItemCode: objects.PriceItemCodeUsage,
 				Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr(value)},
 			}}}
-			if _, err := svc.updateChannelModelPriceEntity(txCtx, created[0], newPrice, now.Add(time.Duration(index+1)*time.Second)); err != nil {
+			if _, err := svc.updateChannelModelPriceEntity(txCtx, created[0], newPrice, true, now.Add(time.Duration(index+1)*time.Second)); err != nil {
 				return err
 			}
 		}
@@ -262,6 +262,140 @@ func TestChannelService_UpdateChannelModelPriceEntityKeepsOneActiveVersion(t *te
 	}
 	require.Equal(t, 1, activeCount)
 	require.Equal(t, "3", price.Price.Items[0].Pricing.UsagePerUnit.String())
+}
+
+func usageItem(value string) objects.ModelPriceItem {
+	return objects.ModelPriceItem{
+		ItemCode: objects.PriceItemCodeUsage,
+		Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr(value)},
+	}
+}
+
+func completionItem(value string) objects.ModelPriceItem {
+	return objects.ModelPriceItem{
+		ItemCode: objects.PriceItemCodeCompletion,
+		Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr(value)},
+	}
+}
+
+// Simulates the endpoint-sync vs manual-save race: the sync snapshot is taken
+// before a concurrent manual save changes item X to "7"; the sync then updates
+// the row reporting only item X. The merge must run against the locked row
+// (which also carries the concurrent manual edit to item Y), so Y is not lost.
+func TestChannelService_UpdateChannelModelPriceEntityMergesAgainstLockedRow(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Locked row merge").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"race-model"}).
+		SetDefaultTestModel("race-model").
+		Save(ctx)
+	require.NoError(t, err)
+
+	initialPrice := objects.ModelPrice{Items: []objects.ModelPriceItem{
+		usageItem("1"),
+		completionItem("2"),
+	}}
+	created, err := svc.SaveChannelModelPrices(ctx, ch.ID, []SaveChannelModelPriceInput{{
+		ModelID: "race-model",
+		Price:   initialPrice,
+	}})
+	require.NoError(t, err)
+	require.Len(t, created, 1)
+
+	err = svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Sync snapshot taken here, before the concurrent manual save.
+		syncPrice := objects.ModelPrice{Items: []objects.ModelPriceItem{usageItem("1")}}
+
+		// Concurrent manual save: whole-row price with X changed to 7.
+		manualPrice := objects.ModelPrice{Items: []objects.ModelPriceItem{
+			usageItem("7"),
+			completionItem("2"),
+		}}
+		_, err := svc.SaveChannelModelPrices(txCtx, ch.ID, []SaveChannelModelPriceInput{{
+			ModelID: "race-model",
+			Price:   manualPrice,
+		}})
+		if err != nil {
+			return err
+		}
+
+		// Sync now commits; it only reported item X, and the merge must run
+		// against the row state the sync sees under the lock, not the snapshot.
+		_, err = svc.updateChannelModelPriceEntity(txCtx, created[0], syncPrice, false, time.Now().UTC())
+		return err
+	})
+	require.NoError(t, err)
+
+	price, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("race-model"),
+	).Only(ctx)
+	require.NoError(t, err)
+	items := lo.KeyBy(price.Price.Items, func(item objects.ModelPriceItem) objects.PriceItemCode {
+		return item.ItemCode
+	})
+	// Item X is the reported code, so the sync value wins over the manual "7".
+	require.Equal(t, "1", items[objects.PriceItemCodeUsage].Pricing.UsagePerUnit.String())
+	// Item Y was not reported, so the concurrent manual save survives.
+	require.Equal(t, "2", items[objects.PriceItemCodeCompletion].Pricing.UsagePerUnit.String())
+}
+
+// Same race but where the sync only reports item Y: the concurrent manual edit
+// to item X must survive untouched.
+func TestChannelService_UpdateChannelModelPriceEntityPreservesUnreportedItems(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Unreported item merge").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"race-model-2"}).
+		SetDefaultTestModel("race-model-2").
+		Save(ctx)
+	require.NoError(t, err)
+
+	created, err := svc.SaveChannelModelPrices(ctx, ch.ID, []SaveChannelModelPriceInput{{
+		ModelID: "race-model-2",
+		Price:   objects.ModelPrice{Items: []objects.ModelPriceItem{usageItem("1")}},
+	}})
+	require.NoError(t, err)
+	require.Len(t, created, 1)
+
+	err = svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Concurrent manual save changes item X to 7 before the sync update.
+		_, err := svc.SaveChannelModelPrices(txCtx, ch.ID, []SaveChannelModelPriceInput{{
+			ModelID: "race-model-2",
+			Price:   objects.ModelPrice{Items: []objects.ModelPriceItem{usageItem("7")}},
+		}})
+		if err != nil {
+			return err
+		}
+
+		// Sync reports only item Y; the locked row's item X must be preserved.
+		syncPrice := objects.ModelPrice{Items: []objects.ModelPriceItem{completionItem("5")}}
+		_, err = svc.updateChannelModelPriceEntity(txCtx, created[0], syncPrice, false, time.Now().UTC())
+		return err
+	})
+	require.NoError(t, err)
+
+	price, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("race-model-2"),
+	).Only(ctx)
+	require.NoError(t, err)
+	items := lo.KeyBy(price.Price.Items, func(item objects.ModelPriceItem) objects.PriceItemCode {
+		return item.ItemCode
+	})
+	require.Len(t, items, 2)
+	require.Equal(t, "7", items[objects.PriceItemCodeUsage].Pricing.UsagePerUnit.String())
+	require.Equal(t, "5", items[objects.PriceItemCodeCompletion].Pricing.UsagePerUnit.String())
 }
 
 func loToDecimalPtr(s string) *decimal.Decimal {

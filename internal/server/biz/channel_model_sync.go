@@ -6,14 +6,11 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
-	"github.com/looplj/axonhub/internal/scopes"
 )
 
 // syncChannelModels syncs supported models for all channels with auto_sync_supported_models enabled.
@@ -187,20 +184,14 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 			updatedCh = updated
 		}
 
-		var (
-			endpointPricesChanged bool
-			endpointTemplates     []channelModelPriceTemplate
-		)
+		var endpointTemplates []channelModelPriceTemplate
 		if current.Type != fetchType || current.BaseURL != fetchBaseURL {
 			log.Info(ctx, "endpoint price sync skipped, provider identity changed",
 				log.Int("channel_id", ch.ID),
 				log.String("channel_name", current.Name),
 			)
 		} else {
-			endpointPricesChanged, endpointTemplates, err = svc.syncChannelModelPricesFromEndpoint(ctx, current, pricedModels, mergedModels)
-			if err != nil {
-				return err
-			}
+			endpointTemplates = svc.syncChannelModelPricesFromEndpoint(ctx, current, pricedModels, mergedModels)
 		}
 
 		pricesChanged, err := svc.ensureChannelModelPrices(ctx, ch.ID, mergedModels, endpointTemplates)
@@ -208,7 +199,7 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 			return err
 		}
 
-		changed = modelsChanged || modelProtocolsChanged || pricesChanged || endpointPricesChanged
+		changed = modelsChanged || modelProtocolsChanged || pricesChanged
 
 		return nil
 	})
@@ -229,81 +220,37 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 	return updatedCh, changed, nil
 }
 
+// syncChannelModelPricesFromEndpoint returns the endpoint-reported prices as
+// templates. It must not read or merge the current rows: ensureChannelModelPrices
+// merges them against the locked row, so items the endpoint did not report
+// survive concurrent edits.
 func (svc *ChannelService) syncChannelModelPricesFromEndpoint(
 	ctx context.Context,
 	ch *ent.Channel,
 	pricedModels map[string]*objects.ModelPrice,
 	mergedModels []string,
-) (bool, []channelModelPriceTemplate, error) {
+) []channelModelPriceTemplate {
 	if !supportsEndpointPricing(ch.Type) || len(pricedModels) == 0 || ch.Settings == nil || !ch.Settings.SyncModelPrices {
-		return false, nil, nil
+		return nil
 	}
 
-	modelIDs := make([]string, 0, len(pricedModels))
+	templates := make([]channelModelPriceTemplate, 0, len(pricedModels))
 	for _, modelID := range uniqueNonEmptyModelIDs(mergedModels) {
-		if pricedModels[modelID] != nil {
-			modelIDs = append(modelIDs, modelID)
-		}
-	}
-	if len(modelIDs) == 0 {
-		return false, nil, nil
-	}
-
-	db := svc.entFromContext(ctx)
-	existingPrices := make(map[string]*ent.ChannelModelPrice, len(modelIDs))
-	for start := 0; start < len(modelIDs); start += channelModelPriceQueryBatchSize {
-		end := min(start+channelModelPriceQueryBatchSize, len(modelIDs))
-		prices, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) ([]*ent.ChannelModelPrice, error) {
-			return db.ChannelModelPrice.Query().
-				Where(
-					channelmodelprice.ChannelID(ch.ID),
-					channelmodelprice.ModelIDIn(modelIDs[start:end]...),
-				).
-				All(queryCtx)
-		})
-		if err != nil {
-			return false, nil, fmt.Errorf("failed to query existing channel model prices: %w", err)
-		}
-		for _, price := range prices {
-			existingPrices[price.ModelID] = price
-		}
-	}
-
-	var (
-		created   int
-		updated   int
-		skipped   int
-		changed   bool
-		templates = make([]channelModelPriceTemplate, 0, len(modelIDs))
-	)
-	for _, modelID := range modelIDs {
-		endpointPrice := *pricedModels[modelID]
-		existing, ok := existingPrices[modelID]
+		endpointPrice, ok := pricedModels[modelID]
 		if !ok {
-			templates = append(templates, channelModelPriceTemplate{ModelID: modelID, Price: endpointPrice})
-			created++
-			changed = true
 			continue
 		}
-
-		mergedPrice := mergeChannelModelPriceItems(existing.Price, endpointPrice, true)
-		templates = append(templates, channelModelPriceTemplate{ModelID: modelID, Price: mergedPrice})
-		if existing.Price.Equals(mergedPrice) {
-			skipped++
-			continue
-		}
-		updated++
-		changed = true
+		templates = append(templates, channelModelPriceTemplate{ModelID: modelID, Price: *endpointPrice})
 	}
 
-	log.Info(ctx, "synced endpoint model prices",
-		log.Int("channel_id", ch.ID),
-		log.String("channel_name", ch.Name),
-		log.Int("created", created),
-		log.Int("updated", updated),
-		log.Int("skipped", skipped))
+	if len(templates) > 0 {
+		log.Info(ctx, "collected endpoint model prices",
+			log.Int("channel_id", ch.ID),
+			log.String("channel_name", ch.Name),
+			log.Int("count", len(templates)))
+	}
 
-	return changed, templates, nil
+	return templates
 }
 
 func (svc *ChannelService) SyncChannelModels(ctx context.Context, channelID int, patternOverride *string) (*ent.Channel, error) {

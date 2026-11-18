@@ -513,6 +513,7 @@
   "channels.dialogs.fetchModels.oneHour": "1 hour",
   "channels.dialogs.fetchModels.perMillion": " / 1M tokens",
   "channels.dialogs.fetchModels.noPricing": "No pricing",
+  "channels.dialogs.fetchModels.noModels": "The endpoint returned no models",
   "channels.dialogs.settings.extraModelPrefix.placeholder": "e.g., deepseek",
   "channels.dialogs.settings.lowercaseModelId.title": "Lowercase Model Name",
   "channels.dialogs.settings.lowercaseModelId.description": "Convert model names to lowercase. Enable when channel-provided model names contain uppercase letters, to balance load with other lowercase model names. For example, converts 'GLM-5.1' to 'glm-5.1'",

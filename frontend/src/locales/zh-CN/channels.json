@@ -510,6 +510,7 @@
   "channels.dialogs.fetchModels.oneHour": "1 小时",
   "channels.dialogs.fetchModels.perMillion": " / 百万 Token",
   "channels.dialogs.fetchModels.noPricing": "无价格信息",
+  "channels.dialogs.fetchModels.noModels": "端点未返回任何模型",
   "channels.dialogs.settings.extraModelPrefix.placeholder": "例如: deepseek",
   "channels.dialogs.settings.lowercaseModelId.title": "模型名称转小写",
   "channels.dialogs.settings.lowercaseModelId.description": "将模型名称转换为小写，在渠道下发模型名包含大写字母时开启，可实现与其他小写模型名共同负载均衡。例如将'GLM-5.1'转换成'glm-5.1'",
