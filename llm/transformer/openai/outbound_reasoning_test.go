@@ -59,7 +59,7 @@ func TestMessageFromLLMWithConfig_ReasoningFieldNone(t *testing.T) {
 	assert.Nil(t, msg.Reasoning, "Reasoning field should be nil when using ReasoningFieldNone")
 }
 
-func TestMessageFromLLMWithConfig_DefaultAll(t *testing.T) {
+func TestMessageFromLLMWithConfig_DefaultContent(t *testing.T) {
 	reasoningContentText := "reasoning_content value"
 	reasoningText := "reasoning value"
 	llmMsg := llm.Message{
@@ -71,10 +71,9 @@ func TestMessageFromLLMWithConfig_DefaultAll(t *testing.T) {
 	msg := MessageFromLLM(llmMsg)
 
 	assert.Equal(t, "assistant", msg.Role)
-	assert.NotNil(t, msg.ReasoningContent, "ReasoningContent should be preserved by default (ReasoningFieldAll)")
+	assert.NotNil(t, msg.ReasoningContent, "ReasoningContent should be preserved by default (ReasoningFieldContent)")
 	assert.Equal(t, reasoningContentText, *msg.ReasoningContent)
-	assert.NotNil(t, msg.Reasoning, "Reasoning should be preserved by default (ReasoningFieldAll)")
-	assert.Equal(t, reasoningText, *msg.Reasoning)
+	assert.Nil(t, msg.Reasoning, "Reasoning alias should not be duplicated by default")
 }
 
 func TestMessageFromLLMWithConfig_ReasoningFieldAll_SyncFromReasoning(t *testing.T) {

@@ -174,9 +174,9 @@ func messageTextParts(m Message) []string {
 }
 
 // MessageFromLLM creates OpenAI Message from unified llm.Message.
-// Defaults to ReasoningFieldAll to preserve both reasoning fields.
+// Defaults to ReasoningFieldContent to avoid emitting duplicate reasoning aliases.
 func MessageFromLLM(m llm.Message) Message {
-	return MessageFromLLMWithConfig(m, ReasoningFieldAll)
+	return MessageFromLLMWithConfig(m, ReasoningFieldContent)
 }
 
 // IsCodexBootstrapToolName reports whether name is a standalone tool-output
