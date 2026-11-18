@@ -101,6 +101,10 @@ type ChatResponse struct {
 	PromptEvalDuration int64 `json:"prompt_eval_duration,omitempty"`
 	EvalCount          int64 `json:"eval_count,omitempty"`
 	EvalDuration       int64 `json:"eval_duration,omitempty"`
+
+	// Error is set when Ollama reports a failure as a JSON body (or as a
+	// line of a streaming response) instead of an HTTP error status.
+	Error string `json:"error,omitempty"`
 }
 
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
@@ -190,7 +194,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
-	headers.Set("Accept", "application/json")
+	// Streaming /api/chat answers NDJSON, not SSE. DoStream only rewrites a
+	// missing or "application/json" Accept, so say it here to keep the
+	// request honest.
+	accept := "application/json"
+	if stream != nil && *stream {
+		accept = "application/x-ndjson"
+	}
+	headers.Set("Accept", accept)
 
 	var authConfig *httpclient.AuthConfig
 
@@ -330,6 +341,9 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 	if err := json.Unmarshal(httpResp.Body, &ollamaResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal ollama response: %w", err)
 	}
+	if ollamaResp.Error != "" {
+		return nil, fmt.Errorf("ollama upstream error: %s", ollamaResp.Error)
+	}
 
 	content := ""
 
@@ -423,6 +437,9 @@ func (t *OutboundTransformer) transformStreamChunk(_ context.Context, event *htt
 	var ollamaResp ChatResponse
 	if err := json.Unmarshal(event.Data, &ollamaResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal ollama stream chunk: %w", err)
+	}
+	if ollamaResp.Error != "" {
+		return nil, fmt.Errorf("ollama upstream error: %s", ollamaResp.Error)
 	}
 
 	// Extract content and thinking from the message
