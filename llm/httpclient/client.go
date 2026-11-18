@@ -419,17 +419,25 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		}
 	}
 
+	// Prefer the decoder registered for the outbound protocol. An upstream
+	// may label a stream with a Content-Type that does not describe its
+	// framing (ollama.com streams NDJSON as application/json), which would
+	// otherwise fall through to the SSE decoder and yield no events at all.
+	decoderFactory, exists := GetAPIFormatDecoder(request.APIFormat)
+
 	// Determine content type and select appropriate decoder
 	contentType := rawResp.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "text/event-stream" // Default to SSE
-	}
-
-	// Try to get a registered decoder for the content type
-	decoderFactory, exists := GetDecoder(contentType)
 	if !exists {
-		if mediaType, _, err := mime.ParseMediaType(contentType); err == nil {
-			decoderFactory, exists = GetDecoder(mediaType)
+		if contentType == "" {
+			contentType = "text/event-stream" // Default to SSE
+		}
+
+		// Try to get a registered decoder for the content type
+		decoderFactory, exists = GetDecoder(contentType)
+		if !exists {
+			if mediaType, _, err := mime.ParseMediaType(contentType); err == nil {
+				decoderFactory, exists = GetDecoder(mediaType)
+			}
 		}
 	}
 	if !exists {

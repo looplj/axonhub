@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -13,6 +14,11 @@ import (
 func init() {
 	httpclient.RegisterDecoder("application/x-ndjson", NewNDJSONDecoder)
 	httpclient.RegisterDecoder("application/x-ndjson; charset=utf-8", NewNDJSONDecoder)
+
+	// ollama.com answers a streaming /api/chat with NDJSON but labels the
+	// response application/json. Select the decoder by the protocol this
+	// transformer speaks rather than by that header.
+	httpclient.RegisterAPIFormatDecoder(llm.APIFormatOllamaChat.String(), NewNDJSONDecoder)
 }
 
 // NewNDJSONDecoder creates a new NDJSON (Newline Delimited JSON) decoder.
