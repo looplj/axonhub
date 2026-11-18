@@ -693,6 +693,9 @@ type LoadBalancedSelector struct {
 	// promptAffinity is the process-wide prompt-prefix affinity cache shared
 	// across requests; nil disables prompt affinity routing.
 	promptAffinity *promptAffinityCache
+	// rateLimitStrategy tells prompt affinity whether the learned channel can
+	// currently serve traffic; nil skips the check, as in test selections.
+	rateLimitStrategy *RateLimitAwareStrategy
 }
 
 // WithLoadBalancedSelector creates a selector that applies load balancing to sort candidates.
@@ -733,6 +736,7 @@ func WithRoutingPolicyLoadBalancedSelector(
 	effectiveRoutingPolicy *EffectiveRoutingPolicy,
 	quotaGate *QuotaRoutingGate,
 	promptAffinity *promptAffinityCache,
+	rateLimitStrategy *RateLimitAwareStrategy,
 ) *LoadBalancedSelector {
 	return &LoadBalancedSelector{
 		wrapped:                 wrapped,
@@ -743,6 +747,7 @@ func WithRoutingPolicyLoadBalancedSelector(
 		effectiveRoutingPolicy:  effectiveRoutingPolicy,
 		quotaGate:               quotaGate,
 		promptAffinity:          promptAffinity,
+		rateLimitStrategy:       rateLimitStrategy,
 	}
 }
 
@@ -903,8 +908,10 @@ func (s *LoadBalancedSelector) resolveStickyChannelID(
 
 // resolvePromptAffinityChannelID returns the channel that last succeeded for
 // this request's prompt identity. The hit is honored only when the channel is
-// still in the current candidate set; disabled or otherwise unavailable
-// channels are ignored and normal load balancing proceeds.
+// still in the current candidate set and can serve traffic right now; a channel
+// that hit a hard rate limit (cooldown, RPM/TPM, or concurrency) is treated like
+// a missing one. It stays in the candidate set as a fallback and normal load
+// balancing ranks it last.
 func (s *LoadBalancedSelector) resolvePromptAffinityChannelID(
 	ctx context.Context,
 	req *llm.Request,
@@ -935,6 +942,22 @@ func (s *LoadBalancedSelector) resolvePromptAffinityChannelID(
 
 	for _, candidate := range candidates {
 		if candidate != nil && candidate.Channel != nil && candidate.Channel.ID == channelID {
+			// Pinning a rate limited channel would bypass the cooldown, RPM/TPM
+			// and concurrency limits that the load balancer enforces.
+			if s.rateLimitStrategy != nil {
+				if exhausted, reason := s.rateLimitStrategy.IsExhausted(candidate.Channel); exhausted {
+					if log.DebugEnabled(ctx) {
+						log.Debug(ctx, "prompt affinity channel is rate limited, deferring to load balancing",
+							log.String("source", source),
+							log.Int("channel_id", channelID),
+							log.String("exhausted_by", reason),
+						)
+					}
+
+					return 0, false
+				}
+			}
+
 			if log.DebugEnabled(ctx) {
 				log.Debug(ctx, "prompt affinity hit",
 					log.String("source", source),

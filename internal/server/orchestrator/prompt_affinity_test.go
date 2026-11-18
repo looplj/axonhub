@@ -30,6 +30,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 )
@@ -253,6 +254,51 @@ func TestLoadBalancedSelector_PromptAffinity(t *testing.T) {
 		require.Equal(t, 2, result[0].Channel.ID)
 		require.True(t, result[0].TraceSticky)
 		require.Equal(t, 1, result[1].Channel.ID)
+	})
+
+	t.Run("a rate limited affinity channel defers to load balancing", func(t *testing.T) {
+		rpm := int64(1)
+		tracker := NewChannelRequestTracker()
+		strategy := NewRateLimitAwareStrategy(tracker, nil)
+		require.True(t, tracker.TryAcquireRequest(2, rpm))
+
+		cache := newPromptAffinityCache(0, 0)
+		cache.set(mustAffinityKey(t, 0, req), 2)
+
+		exhausted := stickyTestCandidate(2, 0)
+		exhausted.Channel.Settings = &objects.ChannelSettings{
+			RateLimit: &objects.ChannelRateLimit{RPM: &rpm},
+		}
+
+		candidates := []*ChannelModelsCandidate{stickyTestCandidate(1, 0), exhausted}
+		selector := newAffinityTestSelector(candidates, biz.TraceStickyPreferPreviousChannel, nil, nil, cache)
+		selector.loadBalancer = NewLoadBalancer(nil, nil, strategy)
+		selector.rateLimitStrategy = strategy
+
+		result, err := selector.Select(context.Background(), req)
+		require.NoError(t, err)
+		require.Equal(t, 1, result[0].Channel.ID)
+		require.False(t, result[0].TraceSticky)
+		// The rate limited channel stays in the candidate set as a fallback.
+		require.Len(t, result, 2)
+		require.Equal(t, 2, result[1].Channel.ID)
+	})
+
+	t.Run("an available affinity channel still pins with the limit check enabled", func(t *testing.T) {
+		strategy := NewRateLimitAwareStrategy(NewChannelRequestTracker(), nil)
+
+		cache := newPromptAffinityCache(0, 0)
+		cache.set(mustAffinityKey(t, 0, req), 2)
+
+		candidates := []*ChannelModelsCandidate{stickyTestCandidate(1, 0), stickyTestCandidate(2, 0)}
+		selector := newAffinityTestSelector(candidates, biz.TraceStickyPreferPreviousChannel, nil, nil, cache)
+		selector.loadBalancer = NewLoadBalancer(nil, nil, strategy)
+		selector.rateLimitStrategy = strategy
+
+		result, err := selector.Select(context.Background(), req)
+		require.NoError(t, err)
+		require.Equal(t, 2, result[0].Channel.ID)
+		require.True(t, result[0].TraceSticky)
 	})
 
 	t.Run("a new prefix falls back to normal load balancing", func(t *testing.T) {

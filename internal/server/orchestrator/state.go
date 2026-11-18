@@ -26,6 +26,9 @@ type PersistenceState struct {
 	// PromptAffinityCache is the process-wide prompt-prefix affinity cache
 	// shared by every request; nil disables prompt affinity routing.
 	PromptAffinityCache *promptAffinityCache
+	// RateLimitStrategy tells prompt affinity whether the learned channel can
+	// currently serve traffic; nil skips the check.
+	RateLimitStrategy *RateLimitAwareStrategy
 	// Settings is the system settings snapshot taken when the request started.
 	Settings *RequestSettings
 

@@ -97,6 +97,7 @@ func NewChatCompletionOrchestrator(
 		channelLimiterManager:      channelLimiterManager,
 		channelLimiterMetrics:      channelLimiterMetrics,
 		rateLimitTracker:           rateLimitTracker,
+		rateLimitStrategy:          rateLimitStrategy,
 		adaptiveLoadBalancer:       adaptiveLoadBalancer,
 		failoverLoadBalancer:       failoverLoadBalancer,
 		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
@@ -145,6 +146,9 @@ type ChatCompletionOrchestrator struct {
 	channelLimiterMetrics *ChannelLimiterMetrics
 	// The rate limit tracker for rate limit aware load balancing.
 	rateLimitTracker *ChannelRequestTracker
+	// rateLimitStrategy is shared by every load balancer and by prompt affinity
+	// routing, which must not pin a channel that is currently rate limited.
+	rateLimitStrategy *RateLimitAwareStrategy
 	// The model circuit breaker for circuit-breaker load balancing.
 	modelCircuitBreaker *biz.ModelCircuitBreaker
 	// The provider quota status provider for quota-aware load balancing and selection.
@@ -272,6 +276,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		},
 		RoutingPolicy:         deriveRoutingPolicy(retryPolicy, apiKey, nil),
 		PromptAffinityCache:   processor.promptAffinityCache,
+		RateLimitStrategy:     processor.rateLimitStrategy,
 		Settings:              settings,
 		ModelMapper:           processor.ModelMapper,
 		Proxy:                 processor.proxy,

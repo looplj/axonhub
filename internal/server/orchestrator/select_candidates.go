@@ -75,6 +75,7 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 				&inbound.state.RoutingPolicy,
 				gate,
 				inbound.state.PromptAffinityCache,
+				inbound.state.RateLimitStrategy,
 			)
 		} else {
 			selector = WithQuotaRoutingSelector(selector, gate)
