@@ -14,10 +14,13 @@ package biz
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -38,6 +41,8 @@ const (
 	codexRegistryURL           = "https://registry.npmjs.org/@openai%2Fcodex/latest"
 	codexVersionRefreshTimeout = 8 * time.Second
 )
+
+var codexUserAgentProduct = regexp.MustCompile(`(?i)^codex(?:[_-][a-z0-9][a-z0-9._-]*)?$`)
 
 type CodexCatalogVersion struct {
 	Version string
@@ -74,8 +79,8 @@ func parseStableCodexVersion(value string) *semver.Version {
 
 func codexVersionFromUserAgent(value string) string {
 	for product := range strings.FieldsSeq(value) {
-		version, ok := strings.CutPrefix(product, "codex_cli_rs/")
-		if ok {
+		name, version, ok := strings.Cut(product, "/")
+		if ok && codexUserAgentProduct.MatchString(name) {
 			return normalizeCodexClientVersion(version)
 		}
 		break
@@ -119,32 +124,48 @@ func (svc *ChannelService) loadCodexRelease(ctx context.Context) {
 		log.Warn(ctx, "failed to read cached Codex release", log.Cause(err))
 		return
 	}
-	svc.publishCodexRelease(release.Version, "cache")
+	svc.publishCodexRelease(release.Version, "cache", false)
 }
 
-func (svc *ChannelService) publishCodexRelease(value, source string) {
+// Registry checks can update the source for the same version. A delayed database
+// write can only publish a newer version.
+func (svc *ChannelService) publishCodexRelease(value, source string, updateSource bool) {
 	version := parseStableCodexVersion(value)
 	builtin := parseStableCodexVersion(codex.DefaultClientVersion)
 	if version == nil || version.LessThan(builtin) {
 		return
 	}
-	svc.codexVersions.current.Store(&CodexCatalogVersion{Version: normalizeCodexClientVersion(value), Source: source})
+	next := &CodexCatalogVersion{Version: normalizeCodexClientVersion(value), Source: source}
+	for {
+		current := svc.codexVersions.current.Load()
+		if current != nil {
+			order := version.Compare(parseStableCodexVersion(current.Version))
+			if order < 0 || (order == 0 && (!updateSource || current.Source == source)) {
+				return
+			}
+		}
+		if svc.codexVersions.current.CompareAndSwap(current, next) {
+			return
+		}
+	}
 }
 
 func (svc *ChannelService) refreshCodexRelease(ctx context.Context) {
 	result := svc.codexVersions.refresh.DoChan("latest", func() (any, error) {
 		refreshCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), codexVersionRefreshTimeout)
 		defer cancel()
-		svc.checkCodexRelease(refreshCtx)
-		return nil, nil
+		return svc.checkCodexRelease(refreshCtx)
 	})
 	select {
 	case <-ctx.Done():
-	case <-result:
+	case checked := <-result:
+		if checked.Err == nil && svc.db != nil {
+			svc.persistCodexRelease(ctx, checked.Val.(codexRelease))
+		}
 	}
 }
 
-func (svc *ChannelService) checkCodexRelease(ctx context.Context) {
+func (svc *ChannelService) checkCodexRelease(ctx context.Context) (codexRelease, error) {
 	registryURL := svc.codexVersions.registryURL
 	if registryURL == "" {
 		registryURL = codexRegistryURL
@@ -156,29 +177,49 @@ func (svc *ChannelService) checkCodexRelease(ctx context.Context) {
 	current := svc.codexVersions.current.Load()
 	if err != nil {
 		if current != nil {
-			svc.publishCodexRelease(current.Version, "cache")
+			svc.publishCodexRelease(current.Version, "cache", true)
 		}
 		log.Warn(ctx, "failed to check the latest stable Codex release", log.Cause(err))
-		return
+		return codexRelease{}, err
 	}
 
 	release := codexRelease{Version: normalizeCodexClientVersion(latest), LastChecked: time.Now().UTC()}
+	source := "npm"
 	if current != nil && parseStableCodexVersion(latest).LessThan(parseStableCodexVersion(current.Version)) {
 		release.Version = current.Version
+		source = "cache"
 	}
-	if svc.db != nil {
-		persisted, err := svc.saveCodexRelease(ctx, release)
+	svc.publishCodexRelease(release.Version, source, true)
+	return release, nil
+}
+
+func (svc *ChannelService) persistCodexRelease(ctx context.Context, release codexRelease) {
+	persist := func(ctx context.Context) {
+		saveCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), codexVersionRefreshTimeout)
+		defer cancel()
+		persisted, err := svc.saveCodexRelease(saveCtx, release)
 		if err != nil {
-			log.Warn(ctx, "failed to save the latest stable Codex release", log.Cause(err))
-		} else {
-			release = persisted
+			log.Warn(saveCtx, "failed to save the latest stable Codex release", log.Cause(err))
+			return
 		}
+		svc.publishCodexRelease(persisted.Version, "cache", false)
 	}
-	source := "cache"
-	if release.Version == normalizeCodexClientVersion(latest) {
-		source = "npm"
+
+	// A GraphQL mutation can hold SQLite locks until it finishes. The fetched
+	// version is already usable in memory. Its persistence is independent of
+	// whether the channel changes are committed or rolled back.
+	if tx := ent.TxFromContext(ctx); tx != nil {
+		tx.OnRollback(func(next ent.Rollbacker) ent.Rollbacker {
+			return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
+				if err := next.Rollback(ctx, tx); err != nil {
+					return err
+				}
+				persist(ctx)
+				return nil
+			})
+		})
 	}
-	svc.publishCodexRelease(release.Version, source)
+	runAfterCommit(ctx, persist)
 }
 
 func (svc *ChannelService) saveCodexRelease(ctx context.Context, candidate codexRelease) (codexRelease, error) {
@@ -192,7 +233,7 @@ func (svc *ChannelService) saveCodexRelease(ctx context.Context, candidate codex
 					return codexRelease{}, err
 				}
 				if err := store.Create().SetKey(codexReleaseKey).SetValue(string(value)).
-					OnConflictColumns(system.FieldKey).DoNothing().Exec(ctx); err != nil {
+					OnConflictColumns(system.FieldKey).DoNothing().Exec(ctx); err != nil && !errors.Is(err, sql.ErrNoRows) {
 					return codexRelease{}, err
 				}
 				// Read again in case a different instance inserted the row first.

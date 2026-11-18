@@ -826,10 +826,11 @@ type ComplexityRoot struct {
 	}
 
 	FetchModelsPayload struct {
-		CodexCatalogVersion func(childComplexity int) int
-		Error               func(childComplexity int) int
-		Fallback            func(childComplexity int) int
-		Models              func(childComplexity int) int
+		CodexCatalogSkippedReason func(childComplexity int) int
+		CodexCatalogVersion       func(childComplexity int) int
+		Error                     func(childComplexity int) int
+		Fallback                  func(childComplexity int) int
+		Models                    func(childComplexity int) int
 	}
 
 	FilterCondition struct {
@@ -1976,11 +1977,12 @@ type ComplexityRoot struct {
 	}
 
 	SyncChannelModelsPayload struct {
-		ChannelID           func(childComplexity int) int
-		CodexCatalogVersion func(childComplexity int) int
-		Fallback            func(childComplexity int) int
-		ManualModels        func(childComplexity int) int
-		SupportedModels     func(childComplexity int) int
+		ChannelID                 func(childComplexity int) int
+		CodexCatalogSkippedReason func(childComplexity int) int
+		CodexCatalogVersion       func(childComplexity int) int
+		Fallback                  func(childComplexity int) int
+		ManualModels              func(childComplexity int) int
+		SupportedModels           func(childComplexity int) int
 	}
 
 	System struct {
@@ -5574,6 +5576,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.FastestModel.TokensCount(childComplexity), true
 
+	case "FetchModelsPayload.codexCatalogSkippedReason":
+		if e.complexity.FetchModelsPayload.CodexCatalogSkippedReason == nil {
+			break
+		}
+
+		return e.complexity.FetchModelsPayload.CodexCatalogSkippedReason(childComplexity), true
 	case "FetchModelsPayload.codexCatalogVersion":
 		if e.complexity.FetchModelsPayload.CodexCatalogVersion == nil {
 			break
@@ -11370,6 +11378,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SyncChannelModelsPayload.ChannelID(childComplexity), true
+	case "SyncChannelModelsPayload.codexCatalogSkippedReason":
+		if e.complexity.SyncChannelModelsPayload.CodexCatalogSkippedReason == nil {
+			break
+		}
+
+		return e.complexity.SyncChannelModelsPayload.CodexCatalogSkippedReason(childComplexity), true
 	case "SyncChannelModelsPayload.codexCatalogVersion":
 		if e.complexity.SyncChannelModelsPayload.CodexCatalogVersion == nil {
 			break
@@ -31656,6 +31670,35 @@ func (ec *executionContext) fieldContext_FetchModelsPayload_codexCatalogVersion(
 	return fc, nil
 }
 
+func (ec *executionContext) _FetchModelsPayload_codexCatalogSkippedReason(ctx context.Context, field graphql.CollectedField, obj *FetchModelsPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FetchModelsPayload_codexCatalogSkippedReason,
+		func(ctx context.Context) (any, error) {
+			return obj.CodexCatalogSkippedReason, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_FetchModelsPayload_codexCatalogSkippedReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FetchModelsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _FilterCondition_type(ctx context.Context, field graphql.CollectedField, obj *objects.Condition) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -38769,6 +38812,8 @@ func (ec *executionContext) fieldContext_Mutation_syncChannelModels(ctx context.
 				return ec.fieldContext_SyncChannelModelsPayload_fallback(ctx, field)
 			case "codexCatalogVersion":
 				return ec.fieldContext_SyncChannelModelsPayload_codexCatalogVersion(ctx, field)
+			case "codexCatalogSkippedReason":
+				return ec.fieldContext_SyncChannelModelsPayload_codexCatalogSkippedReason(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SyncChannelModelsPayload", field.Name)
 		},
@@ -54093,6 +54138,8 @@ func (ec *executionContext) fieldContext_Query_fetchModels(ctx context.Context, 
 				return ec.fieldContext_FetchModelsPayload_fallback(ctx, field)
 			case "codexCatalogVersion":
 				return ec.fieldContext_FetchModelsPayload_codexCatalogVersion(ctx, field)
+			case "codexCatalogSkippedReason":
+				return ec.fieldContext_FetchModelsPayload_codexCatalogSkippedReason(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type FetchModelsPayload", field.Name)
 		},
@@ -61209,6 +61256,35 @@ func (ec *executionContext) fieldContext_SyncChannelModelsPayload_codexCatalogVe
 				return ec.fieldContext_CodexCatalogVersion_source(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CodexCatalogVersion", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncChannelModelsPayload_codexCatalogSkippedReason(ctx context.Context, field graphql.CollectedField, obj *SyncChannelModelsPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncChannelModelsPayload_codexCatalogSkippedReason,
+		func(ctx context.Context) (any, error) {
+			return obj.CodexCatalogSkippedReason, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncChannelModelsPayload_codexCatalogSkippedReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncChannelModelsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -105487,6 +105563,8 @@ func (ec *executionContext) _FetchModelsPayload(ctx context.Context, sel ast.Sel
 			}
 		case "codexCatalogVersion":
 			out.Values[i] = ec._FetchModelsPayload_codexCatalogVersion(ctx, field, obj)
+		case "codexCatalogSkippedReason":
+			out.Values[i] = ec._FetchModelsPayload_codexCatalogSkippedReason(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -116797,6 +116875,8 @@ func (ec *executionContext) _SyncChannelModelsPayload(ctx context.Context, sel a
 			}
 		case "codexCatalogVersion":
 			out.Values[i] = ec._SyncChannelModelsPayload_codexCatalogVersion(ctx, field, obj)
+		case "codexCatalogSkippedReason":
+			out.Values[i] = ec._SyncChannelModelsPayload_codexCatalogSkippedReason(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

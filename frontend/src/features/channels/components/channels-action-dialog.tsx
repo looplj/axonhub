@@ -50,6 +50,7 @@ import {
   useDisableChannelAPIKey,
   useEnableChannelAPIKey,
   useSyncChannelModels,
+  type CodexCatalogSkippedReason,
   type CodexCatalogVersion,
 } from '../data/channels';
 import { isSuggestedModel } from '../../models/data/model-suggestions';
@@ -556,7 +557,11 @@ export function ChannelsActionDialog({
   const [newModel, setNewModel] = useState('');
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([]);
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
-  const [codexCatalog, setCodexCatalog] = useState<{ version: CodexCatalogVersion | null; fallback: boolean }>();
+  const [codexCatalog, setCodexCatalog] = useState<{
+    version: CodexCatalogVersion | null;
+    fallback: boolean;
+    skippedReason: CodexCatalogSkippedReason | null;
+  }>();
   const [useFetchedModels, setUseFetchedModels] = useState(false);
   const providerRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const providerListRef = useRef<HTMLDivElement | null>(null);
@@ -1956,7 +1961,15 @@ export function ChannelsActionDialog({
 
       const models = result.models.map((m) => m.id);
       if (models?.length) {
-        setCodexCatalog(channelType === 'codex' ? { version: result.codexCatalogVersion, fallback: result.fallback } : undefined);
+        setCodexCatalog(
+          channelType === 'codex'
+            ? {
+                version: result.codexCatalogVersion,
+                fallback: result.fallback,
+                skippedReason: result.codexCatalogSkippedReason,
+              }
+            : undefined
+        );
         setFetchedModels(models);
         setUseFetchedModels(true);
         setShowFetchedModelsPanel(true);
@@ -3756,7 +3769,9 @@ export function ChannelsActionDialog({
                 )}
                 {codexCatalog?.fallback && (
                   <p role='status' className='text-muted-foreground mb-2 text-xs'>
-                    {t('channels.messages.codexCatalogFetchFallback')}
+                    {codexCatalog.skippedReason
+                      ? t(`channels.messages.codexCatalogFetchSkipped.${codexCatalog.skippedReason}`)
+                      : t('channels.messages.codexCatalogFetchFallback')}
                   </p>
                 )}
 

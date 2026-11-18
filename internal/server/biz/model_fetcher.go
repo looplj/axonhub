@@ -171,10 +171,25 @@ type FetchModelsInput struct {
 
 // FetchModelsResult represents the result of fetching models.
 type FetchModelsResult struct {
-	Models              []ModelIdentify
-	Error               *string
-	Fallback            bool
-	CodexCatalogVersion *CodexCatalogVersion
+	Models                    []ModelIdentify
+	Error                     *string
+	Fallback                  bool
+	CodexCatalogVersion       *CodexCatalogVersion
+	CodexCatalogSkippedReason *string
+}
+
+const (
+	codexCatalogNoCredentials  = "no_credentials"
+	codexCatalogUnsupportedURL = "unsupported_url"
+)
+
+func staticModelResult(models []ModelIdentify, typ channel.Type, codexSkippedReason string) *FetchModelsResult {
+	result := &FetchModelsResult{Models: models}
+	if typ == channel.TypeCodex {
+		result.Fallback = true
+		result.CodexCatalogSkippedReason = &codexSkippedReason
+	}
+	return result
 }
 
 var qiniuFallbackModels = []ModelIdentify{{ID: "deepseek-v3"}}
@@ -362,6 +377,10 @@ func fetchModelsInputMatchesChannel(input FetchModelsInput, ch *ent.Channel) boo
 }
 
 func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsResult, error) {
+	return f.fetchModels(ctx, input, true)
+}
+
+func (f *ModelFetcher) fetchModels(ctx context.Context, input FetchModelsInput, refreshCodexVersion bool) (*FetchModelsResult, error) {
 	if input.ChannelType == channel.TypeAntigravity.String() {
 		models, err := f.fetchAntigravityModels(ctx, input)
 		if err != nil {
@@ -423,7 +442,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			if ch.Type == channel.TypeCodex && codex.SupportsModelCatalog(ch.BaseURL) {
 				codexChannel = ch
 			} else if models := f.getDefaultModelsByType(ctx, ch.Type); models != nil {
-				return &FetchModelsResult{Models: models, Fallback: ch.Type == channel.TypeCodex}, nil
+				return staticModelResult(models, ch.Type, codexCatalogUnsupportedURL), nil
 			}
 		}
 
@@ -475,7 +494,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 		if isOfficialOnlyType(channelType) {
 			if models := f.getDefaultModelsByType(ctx, channelType); models != nil {
-				return &FetchModelsResult{Models: models, Fallback: channelType == channel.TypeCodex}, nil
+				return staticModelResult(models, channelType, codexCatalogNoCredentials), nil
 			}
 		}
 		return &FetchModelsResult{
@@ -491,7 +510,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 				Credentials: objects.ChannelCredentials{APIKey: apiKey},
 			}
 		} else if models := f.getDefaultModelsByType(ctx, channelType); models != nil {
-			return &FetchModelsResult{Models: models, Fallback: channelType == channel.TypeCodex}, nil
+			return staticModelResult(models, channelType, codexCatalogUnsupportedURL), nil
 		}
 	}
 
@@ -541,8 +560,24 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		httpClient = httpClient.WithRejectHTTPSDowngrade()
 	}
 
+	var catalogBaseURL string
+	if thirdPartyCodexCatalog {
+		httpClient = httpClient.WithRejectRedirects()
+		catalogBaseURL = httpModelsBaseURL(input.BaseURL)
+		parsedCatalogURL, err := url.Parse(strings.TrimRight(catalogBaseURL, "/#"))
+		if err != nil || (parsedCatalogURL.Scheme != "http" && parsedCatalogURL.Scheme != "https") || parsedCatalogURL.Host == "" {
+			return &FetchModelsResult{
+				Models: []ModelIdentify{},
+				Error:  lo.ToPtr("failed to prepare Codex models request: Codex catalog URL must use HTTP or HTTPS"),
+			}, nil
+		}
+	}
+
 	var catalogVersion *CodexCatalogVersion
 	if codexChannel != nil || thirdPartyCodexCatalog {
+		if refreshCodexVersion && f.channelService != nil {
+			f.channelService.refreshCodexRelease(ctx)
+		}
 		version := f.channelService.resolveCodexClientVersion(headerOverrideOps)
 		catalogVersion = &version
 	}
@@ -558,15 +593,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 		parse = parseCodexModels
 	} else if thirdPartyCodexCatalog {
-		httpClient = httpClient.WithRejectRedirects()
-		catalogBaseURL := httpModelsBaseURL(input.BaseURL)
-		parsedCatalogURL, err := url.Parse(strings.TrimRight(catalogBaseURL, "/#"))
-		if err != nil || (parsedCatalogURL.Scheme != "http" && parsedCatalogURL.Scheme != "https") || parsedCatalogURL.Host == "" {
-			return &FetchModelsResult{
-				Models: []ModelIdentify{},
-				Error:  lo.ToPtr("failed to prepare Codex models request: Codex catalog URL must use HTTP or HTTPS"),
-			}, nil
-		}
+		var err error
 		req, err = codex.ModelsRequest(ctx, oauth.NewAPIKeyTokenProvider(func(context.Context) string {
 			return apiKey
 		}), catalogBaseURL, catalogVersion.Version)

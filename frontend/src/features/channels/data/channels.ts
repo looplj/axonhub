@@ -1043,6 +1043,7 @@ const FETCH_MODELS_QUERY = `
         version
         source
       }
+      codexCatalogSkippedReason
     }
   }
 `;
@@ -2317,6 +2318,7 @@ const SYNC_CHANNEL_MODELS_MUTATION = `
         version
         source
       }
+      codexCatalogSkippedReason
     }
   }
 `;
@@ -2328,12 +2330,16 @@ const codexCatalogVersionSchema = z.object({
 
 export type CodexCatalogVersion = z.infer<typeof codexCatalogVersionSchema>;
 
+const codexCatalogSkippedReasonSchema = z.enum(['no_credentials', 'unsupported_url']);
+export type CodexCatalogSkippedReason = z.infer<typeof codexCatalogSkippedReasonSchema>;
+
 const syncChannelModelsPayloadSchema = z.object({
   channelID: z.string(),
   supportedModels: z.array(z.string()),
   manualModels: z.array(z.string()),
   fallback: z.boolean(),
   codexCatalogVersion: codexCatalogVersionSchema.nullable(),
+  codexCatalogSkippedReason: codexCatalogSkippedReasonSchema.nullable(),
 });
 
 export function useSyncChannelModels() {
@@ -2351,7 +2357,11 @@ export function useSyncChannelModels() {
         throw error;
       }
     },
-    onSuccess: ({ fallback, codexCatalogVersion }) => {
+    onSuccess: ({ fallback, codexCatalogVersion, codexCatalogSkippedReason }) => {
+      if (codexCatalogSkippedReason) {
+        toast.info(t(`channels.messages.codexCatalogSyncSkipped.${codexCatalogSkippedReason}`));
+        return;
+      }
       const description = codexCatalogVersion
         ? t('channels.messages.codexCatalogVersion', {
             version: codexCatalogVersion.version,
@@ -2388,6 +2398,7 @@ export function useFetchModels() {
             error?: string | null;
             fallback: boolean;
             codexCatalogVersion: CodexCatalogVersion | null;
+            codexCatalogSkippedReason: CodexCatalogSkippedReason | null;
           };
         }>(FETCH_MODELS_QUERY, { input });
         return data.fetchModels;

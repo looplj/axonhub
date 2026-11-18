@@ -756,11 +756,12 @@ func (r *mutationResolver) SyncChannelModels(ctx context.Context, channelID obje
 	}
 
 	return &SyncChannelModelsPayload{
-		ChannelID:           channelID,
-		SupportedModels:     result.SupportedModels,
-		ManualModels:        manualModels,
-		Fallback:            result.Fallback,
-		CodexCatalogVersion: result.CodexCatalogVersion,
+		ChannelID:                 channelID,
+		SupportedModels:           result.SupportedModels,
+		ManualModels:              manualModels,
+		Fallback:                  result.Fallback,
+		CodexCatalogVersion:       result.CodexCatalogVersion,
+		CodexCatalogSkippedReason: result.CodexCatalogSkippedReason,
 	}, nil
 }
 

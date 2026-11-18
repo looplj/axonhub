@@ -7,6 +7,7 @@
 package biz
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -30,6 +31,180 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
+
+func TestCodexVersionFromUserAgent(t *testing.T) {
+	for _, tc := range []struct {
+		ua, version string
+	}{
+		{"codex/0.170.0", "0.170.0"},
+		{"codex_cli_rs/0.171.0-alpha.12 (test)", "0.171.0"},
+		{"codex_tui/0.171.0", "0.171.0"},
+		{"codex-tui/0.171.0", "0.171.0"},
+		{"codex_exec/0.171.0", "0.171.0"},
+		{"codex_vscode/0.171.0", "0.171.0"},
+		{"Codex_Future/0.172.0", "0.172.0"},
+		{"CodexProxy/2.0.0", ""},
+		{"MyRelay/2.0.0 codex_cli_rs/0.171.0", ""},
+		{"codex_exec/invalid", ""},
+	} {
+		require.Equal(t, tc.version, codexVersionFromUserAgent(tc.ua), tc.ua)
+	}
+}
+
+func TestCodexClientRelease_ContinuesAfterConcurrentFirstInsert(t *testing.T) {
+	db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	t.Cleanup(func() { db.Close() })
+	svc := &ChannelService{AbstractService: &AbstractService{db: db}}
+	candidate := codexRelease{Version: "0.200.0", LastChecked: time.Now().UTC()}
+	other := codexRelease{Version: "0.199.0", LastChecked: candidate.LastChecked.Add(time.Second)}
+	otherValue, err := json.Marshal(other)
+	require.NoError(t, err)
+
+	// Insert the competing row after saveCodexRelease reads the empty table.
+	inserted := false
+	db.System.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if !inserted {
+				inserted = true
+				if err := db.System.Create().SetKey(codexReleaseKey).SetValue(string(otherValue)).Exec(ctx); err != nil {
+					return nil, err
+				}
+			}
+			return next.Mutate(ctx, m)
+		})
+	})
+
+	saved, err := svc.saveCodexRelease(t.Context(), candidate)
+	require.NoError(t, err)
+	require.True(t, inserted)
+	require.Equal(t, candidate.Version, saved.Version)
+	require.Equal(t, other.LastChecked, saved.LastChecked)
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	row, err := db.System.Query().Where(system.KeyEQ(codexReleaseKey)).Only(ctx)
+	require.NoError(t, err)
+	var stored codexRelease
+	require.NoError(t, json.Unmarshal([]byte(row.Value), &stored))
+	require.Equal(t, saved, stored)
+}
+
+func TestCodexClientVersion_FetchModelsRefreshesBeforeDiscovery(t *testing.T) {
+	var checks atomic.Int32
+	registry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Empty(t, r.Header.Get("Authorization"))
+		switch checks.Add(1) {
+		case 1:
+			_, _ = io.WriteString(w, `{"version":"0.200.0"}`)
+		case 2:
+			_, _ = io.WriteString(w, `{"version":"0.201.0"}`)
+		default:
+			w.WriteHeader(http.StatusTooManyRequests)
+		}
+	}))
+	defer registry.Close()
+	svc := &ChannelService{AbstractService: &AbstractService{}}
+	svc.codexVersions.registryURL = registry.URL
+	client := httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		require.Equal(t, "Bearer synthetic-token", r.Header.Get("Authorization"))
+		version := r.URL.Query().Get("client_version")
+		require.Equal(t, version, r.Header.Get("Version"))
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header),
+			Body: io.NopCloser(strings.NewReader(fmt.Sprintf(`{"models":[{"slug":%q,"visibility":"list"}]}`, version)))}, nil
+	})})
+	fetcher := NewModelFetcher(client, svc)
+	input := FetchModelsInput{ChannelType: "codex", BaseURL: "https://chatgpt.com/backend-api/codex"}
+	result, err := fetcher.FetchModels(t.Context(), input)
+	require.NoError(t, err)
+	require.True(t, result.Fallback)
+	require.Equal(t, codexCatalogNoCredentials, *result.CodexCatalogSkippedReason)
+	require.Nil(t, result.CodexCatalogVersion)
+	require.Zero(t, checks.Load())
+
+	key := `{"access_token":"synthetic-token","token_type":"bearer","expires_at":"2099-01-01T00:00:00Z"}`
+	input.APIKey = &key
+	for _, expected := range []CodexCatalogVersion{{"0.200.0", "npm"}, {"0.201.0", "npm"}, {"0.201.0", "cache"}} {
+		result, err := fetcher.FetchModels(t.Context(), input)
+		require.NoError(t, err)
+		require.False(t, result.Fallback)
+		require.Nil(t, result.CodexCatalogSkippedReason)
+		require.Equal(t, &expected, result.CodexCatalogVersion)
+		require.Contains(t, result.Models, ModelIdentify{ID: expected.Version})
+	}
+	require.EqualValues(t, 3, checks.Load())
+}
+
+func TestCodexClientVersion_StaticOAuthCatalogSkipsSync(t *testing.T) {
+	svc, db := setupTestChannelService(t)
+	t.Cleanup(func() { db.Close() })
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	ch := db.Channel.Create().SetName("custom-codex-oauth").SetType(channel.TypeCodex).
+		SetBaseURL("https://relay.example.com/codex").SetDefaultTestModel("existing").
+		SetSupportedModels([]string{"existing"}).
+		SetCredentials(objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{AccessToken: "synthetic-token"}}).SaveX(ctx)
+	registry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("static catalog should not trigger an npm check")
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer registry.Close()
+	svc.codexVersions.registryURL = registry.URL
+
+	result, err := svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	require.True(t, result.Fallback)
+	require.Equal(t, codexCatalogUnsupportedURL, *result.CodexCatalogSkippedReason)
+	require.Nil(t, result.CodexCatalogVersion)
+	require.Equal(t, ch.SupportedModels, db.Channel.GetX(ctx, ch.ID).SupportedModels)
+}
+
+func TestCodexClientRelease_PersistsAfterModelSyncTransaction(t *testing.T) {
+	for _, commit := range []bool{true, false} {
+		t.Run(fmt.Sprintf("commit=%t", commit), func(t *testing.T) {
+			svc, db := setupTestChannelService(t)
+			t.Cleanup(func() { db.Close() })
+			ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+			registry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = io.WriteString(w, `{"version":"0.201.0"}`)
+			}))
+			defer registry.Close()
+			svc.codexVersions.registryURL = registry.URL
+			svc.httpClient = httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+				require.Equal(t, "0.201.0", r.URL.Query().Get("client_version"))
+				return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header),
+					Body: io.NopCloser(strings.NewReader(`{"models":[{"slug":"new-model","visibility":"list"}]}`))}, nil
+			})})
+			ch := db.Channel.Create().SetName("transactional-codex").SetType(channel.TypeCodex).
+				SetBaseURL("https://chatgpt.com/backend-api/codex").SetDefaultTestModel("existing").
+				SetSupportedModels([]string{"existing"}).SetCredentials(objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{
+				AccessToken: "synthetic-token", ExpiresAt: time.Now().Add(time.Hour),
+			}}).SaveX(ctx)
+
+			tx, err := db.Tx(ctx)
+			require.NoError(t, err)
+			defer tx.Rollback()
+			txCtx := ent.NewContext(ent.NewTxContext(ctx, tx), tx.Client())
+			// Hold a SQLite write lock before model sync, as an earlier mutation can.
+			require.NoError(t, tx.System.Create().SetKey("other-mutation").SetValue("pending").Exec(txCtx))
+			result, err := svc.SyncChannelModels(txCtx, ch.ID, nil)
+			require.NoError(t, err)
+			require.Equal(t, &CodexCatalogVersion{"0.201.0", "npm"}, result.CodexCatalogVersion)
+			require.Contains(t, result.SupportedModels, "new-model")
+			require.False(t, tx.System.Query().Where(system.KeyEQ(codexReleaseKey)).ExistX(txCtx))
+			if commit {
+				require.NoError(t, tx.Commit())
+				require.Contains(t, db.Channel.GetX(ctx, ch.ID).SupportedModels, "new-model")
+			} else {
+				require.NoError(t, tx.Rollback())
+				require.Equal(t, []string{"existing"}, db.Channel.GetX(ctx, ch.ID).SupportedModels)
+				require.False(t, db.System.Query().Where(system.KeyEQ("other-mutation")).ExistX(ctx))
+			}
+			row, err := db.System.Query().Where(system.KeyEQ(codexReleaseKey)).Only(ctx)
+			require.NoError(t, err)
+			var saved codexRelease
+			require.NoError(t, json.Unmarshal([]byte(row.Value), &saved))
+			require.Equal(t, "0.201.0", saved.Version)
+		})
+	}
+}
 
 func TestCodexClientRelease_PersistsLatestStableVersion(t *testing.T) {
 	ctx := t.Context()

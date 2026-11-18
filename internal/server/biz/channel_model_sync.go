@@ -38,9 +38,10 @@ func (svc *ChannelService) syncChannelModels(ctx context.Context) {
 	successCount := 0
 	failureCount := 0
 	changedCount := 0
+	skippedCount := 0
 
 	for _, ch := range channels {
-		result, err := svc.syncChannelModelsForChannel(ctx, ch, nil)
+		result, err := svc.syncChannelModelsForChannel(ctx, ch, nil, false)
 		if err != nil {
 			log.Warn(ctx, "failed to sync models for channel",
 				log.Int("channel_id", ch.ID),
@@ -48,6 +49,8 @@ func (svc *ChannelService) syncChannelModels(ctx context.Context) {
 				log.Cause(err))
 
 			failureCount++
+		} else if result.CodexCatalogSkippedReason != nil {
+			skippedCount++
 		} else {
 			successCount++
 			if result.changed {
@@ -63,25 +66,27 @@ func (svc *ChannelService) syncChannelModels(ctx context.Context) {
 	log.Info(ctx, "completed model sync for channels",
 		log.Int("success", successCount),
 		log.Int("failure", failureCount),
+		log.Int("skipped", skippedCount),
 		log.Int("changed", changedCount))
 }
 
 type SyncChannelModelsResult struct {
 	*ent.Channel
-	CodexCatalogVersion *CodexCatalogVersion
-	Fallback            bool
-	changed             bool
+	CodexCatalogVersion       *CodexCatalogVersion
+	CodexCatalogSkippedReason *string
+	Fallback                  bool
+	changed                   bool
 }
 
 // syncChannelModelsForChannel syncs supported models for a single channel.
-func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *ent.Channel, patternOverride *string) (*SyncChannelModelsResult, error) {
+func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *ent.Channel, patternOverride *string, refreshCodexVersion bool) (*SyncChannelModelsResult, error) {
 	modelFetcher := NewModelFetcher(svc.httpClient, svc)
 
-	result, err := modelFetcher.FetchModels(ctx, FetchModelsInput{
+	result, err := modelFetcher.fetchModels(ctx, FetchModelsInput{
 		ChannelType: ch.Type.String(),
 		BaseURL:     ch.BaseURL,
 		ChannelID:   lo.ToPtr(ch.ID),
-	})
+	}, refreshCodexVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch models: %w", err)
 	}
@@ -90,9 +95,16 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 	if result.Error != nil {
 		return nil, fmt.Errorf("model fetch returned error: %s", *result.Error)
 	}
-	syncResult := &SyncChannelModelsResult{Channel: ch, CodexCatalogVersion: result.CodexCatalogVersion}
+	syncResult := &SyncChannelModelsResult{
+		Channel:                   ch,
+		CodexCatalogVersion:       result.CodexCatalogVersion,
+		CodexCatalogSkippedReason: result.CodexCatalogSkippedReason,
+		Fallback:                  result.Fallback,
+	}
+	if result.CodexCatalogSkippedReason != nil {
+		return syncResult, nil
+	}
 	if result.Fallback {
-		syncResult.Fallback = true
 		return syncResult, fmt.Errorf("model fetch returned fallback models")
 	}
 
@@ -217,10 +229,7 @@ func (svc *ChannelService) SyncChannelModels(ctx context.Context, channelID int,
 		return nil, fmt.Errorf("failed to get channel: %w", err)
 	}
 
-	if ch.Type == channel.TypeCodex {
-		svc.refreshCodexRelease(ctx)
-	}
-	result, err := svc.syncChannelModelsForChannel(ctx, ch, patternOverride)
+	result, err := svc.syncChannelModelsForChannel(ctx, ch, patternOverride, true)
 	if err != nil {
 		return result, err
 	}

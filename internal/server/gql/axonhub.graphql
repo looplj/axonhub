@@ -71,6 +71,7 @@ type SyncChannelModelsPayload {
   manualModels: [String!]!
   fallback: Boolean!
   codexCatalogVersion: CodexCatalogVersion
+  codexCatalogSkippedReason: String
 }
 
 input ReasoningEffortMappingInput {
@@ -728,6 +729,7 @@ type FetchModelsPayload {
   error: String
   fallback: Boolean!
   codexCatalogVersion: CodexCatalogVersion
+  codexCatalogSkippedReason: String
 }
 
 type CodexCatalogVersion {
