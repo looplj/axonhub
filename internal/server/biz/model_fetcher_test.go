@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -197,6 +198,55 @@ func TestExtractJSONArrayWithGeminiModels(t *testing.T) {
 			t.Errorf("model.Name = %q, want %q", models[0].Name, "models/gemini-pro")
 		}
 	})
+}
+
+func TestModelFetcher_ParseModelPricingResponseRawShapes(t *testing.T) {
+	fetcher := NewModelFetcher(nil, nil)
+	tests := []struct {
+		name string
+		body string
+		want []string
+	}{
+		{
+			name: "direct array",
+			body: `[{"id":"direct-model"}]`,
+			want: []string{"direct-model"},
+		},
+		{
+			name: "data and gemini models wrapper",
+			body: `{"data":[{"id":"data-model"}],"models":[{"name":"models/gemini-model"}]}`,
+			want: []string{"data-model", "gemini-model"},
+		},
+		{
+			name: "regex array fallback",
+			body: `invalid envelope: [{"id":"fallback-model"}] trailing content`,
+			want: []string{"fallback-model"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			models, err := fetcher.parseModelsResponse(channel.TypeOpenai, []byte(tt.body))
+			require.NoError(t, err)
+			ids := make([]string, 0, len(models))
+			for _, model := range models {
+				ids = append(ids, model.ID)
+			}
+			require.Equal(t, tt.want, ids)
+		})
+	}
+}
+
+func TestModelFetcher_ParseModelPricingResponseSharesDuplicatePricePointer(t *testing.T) {
+	fetcher := NewModelFetcher(nil, nil)
+	models, err := fetcher.parseModelsResponse(channel.TypeOpenai, []byte(`[
+		{"id":"same-model","pricing":{"prompt":"0.0000006"}},
+		{"id":"same-model","pricing":{"prompt":"0.0000006"}}
+	]`))
+	require.NoError(t, err)
+	require.Len(t, models, 2)
+	require.Same(t, models[0].Pricing, models[1].Pricing)
+	require.Len(t, lo.Uniq(models), 1)
 }
 
 func TestPrepareModelsEndpoint(t *testing.T) {

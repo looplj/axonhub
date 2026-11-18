@@ -206,6 +206,64 @@ func TestChannelService_SaveChannelModelPrices(t *testing.T) {
 	})
 }
 
+func TestChannelService_UpdateChannelModelPriceEntityKeepsOneActiveVersion(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Version transition lock").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"locked-model"}).
+		SetDefaultTestModel("locked-model").
+		Save(ctx)
+	require.NoError(t, err)
+
+	initialPrice := objects.ModelPrice{Items: []objects.ModelPriceItem{{
+		ItemCode: objects.PriceItemCodeUsage,
+		Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("1")},
+	}}}
+	created, err := svc.SaveChannelModelPrices(ctx, ch.ID, []SaveChannelModelPriceInput{{
+		ModelID: "locked-model",
+		Price:   initialPrice,
+	}})
+	require.NoError(t, err)
+	require.Len(t, created, 1)
+
+	now := time.Now().UTC()
+	err = svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		for index, value := range []string{"2", "3"} {
+			newPrice := objects.ModelPrice{Items: []objects.ModelPriceItem{{
+				ItemCode: objects.PriceItemCodeUsage,
+				Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr(value)},
+			}}}
+			if _, err := svc.updateChannelModelPriceEntity(txCtx, created[0], newPrice, now.Add(time.Duration(index+1)*time.Second)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	require.NoError(t, err)
+
+	price, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("locked-model"),
+	).Only(ctx)
+	require.NoError(t, err)
+	versions, err := price.QueryVersions().All(ctx)
+	require.NoError(t, err)
+	activeCount := 0
+	for _, version := range versions {
+		if version.Status == channelmodelpriceversion.StatusActive {
+			activeCount++
+			require.Equal(t, price.ReferenceID, version.ReferenceID)
+		}
+	}
+	require.Equal(t, 1, activeCount)
+	require.Equal(t, "3", price.Price.Items[0].Pricing.UsagePerUnit.String())
+}
+
 func loToDecimalPtr(s string) *decimal.Decimal {
 	d, _ := decimal.NewFromString(s)
 	return &d
