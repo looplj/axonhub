@@ -1311,7 +1311,7 @@ function keyAccount(index, overrides = {}) {
   };
 }
 
-function keyWindow(window, usageRatio, status) {
+function keyWindow(window, usageRatio, status, nextResetAt = API_KEY_RESET) {
   return {
     type: 'token',
     window,
@@ -1319,9 +1319,15 @@ function keyWindow(window, usageRatio, status) {
     status: status ?? (usageRatio === 1 ? 'exhausted' : usageRatio >= 0.8 ? 'warning' : 'available'),
     ready: (status ?? (usageRatio === 1 ? 'exhausted' : 'available')) !== 'exhausted',
     periodStart: API_KEY_START,
-    nextResetAt: API_KEY_RESET,
+    nextResetAt,
   };
 }
+
+// One window per offset day, so collapsed-meter assertions can distinguish
+// which window's reset marker was rendered.
+const RESET_5H = new Date(API_KEY_NOW + 3 * 60 * 60 * 1000).toISOString();
+const RESET_WEEKLY = new Date(API_KEY_NOW + 4 * 24 * 60 * 60 * 1000).toISOString();
+const RESET_MONTHLY = new Date(API_KEY_NOW + 23 * 24 * 60 * 60 * 1000).toISOString();
 
 function perKeyChannel(
   accounts,
@@ -1359,11 +1365,17 @@ test('the collapsed per-key view shows one capacity meter per window and hides k
       quotaDisabled: true,
       limits: [keyWindow('5h', 1), keyWindow('weekly', 0.21), keyWindow('monthly', 0.31)],
     }),
-    keyAccount(2, { limits: [keyWindow('5h', 0.12), keyWindow('weekly', 0.3), keyWindow('monthly', 0.35)] }),
+    keyAccount(2, {
+      limits: [
+        keyWindow('5h', 0.12, undefined, RESET_5H),
+        keyWindow('weekly', 0.3, undefined, RESET_WEEKLY),
+        keyWindow('monthly', 0.35, undefined, RESET_MONTHLY),
+      ],
+    }),
   ];
   const html = renderKeyDetails(perKeyChannel(accounts));
 
-  // A parked key cannot serve, so channel capacity comes from the healthy key
+  // A parked key cannot serve, so channel usage comes from the healthy key
   // alone: three meters, one per rate window, and no per-key rows until asked.
   assert.equal((html.match(/cursor-default pb-1\.5/g) || []).length, 3, 'one capacity meter per window in the collapsed view');
   assert.doesNotMatch(html, /Key #/, 'per-key rows mount only when the disclosure opens');
@@ -1380,10 +1392,39 @@ test('the collapsed per-key view shows one capacity meter per window and hides k
     ['Monthly window', 35],
   ]) {
     const row = `${window}</span><span class="shrink-0 font-normal tabular-nums [^"]*">${percent}%`;
-    assert.match(html, new RegExp(row), `capacity shows the least-used healthy key for ${window}`);
+    assert.match(html, new RegExp(row), `usage is the serviceable keys' average for ${window}`);
   }
-  assert.doesNotMatch(html, /100%/, 'the parked key cannot set channel capacity');
+  assert.doesNotMatch(html, /100%/, 'the parked key cannot set channel usage');
   assert.doesNotMatch(html, /opaque-key-ref-/, 'opaque references are React keys, not visible identifiers');
+});
+
+test('a fresh zero-usage key cannot hide the pool average in the collapsed view', () => {
+  // Mirrors the field report: one unused account among working ones. Averaging
+  // the serviceable keys keeps the meter at the pool's real usage instead of
+  // the fresh key's zero.
+  const accounts = [
+    keyAccount(1, { limits: [keyWindow('5h', 0.03), keyWindow('weekly', 0.14), keyWindow('monthly', 0.57)] }),
+    keyAccount(2, { limits: [keyWindow('5h', 0.03), keyWindow('weekly', 0.21), keyWindow('monthly', 0.35)] }),
+    keyAccount(3, { limits: [keyWindow('5h', 0.02), keyWindow('weekly', 0.16), keyWindow('monthly', 0.31)] }),
+    keyAccount(4, { limits: [keyWindow('5h', 0.03), keyWindow('weekly', 0.13), keyWindow('monthly', 0.29)] }),
+    keyAccount(5, { limits: [keyWindow('5h', 0), keyWindow('weekly', 0), keyWindow('monthly', 0)] }),
+  ];
+  const html = renderKeyDetails(perKeyChannel(accounts));
+
+  assert.match(html, /5 of 5 accounts usable/);
+  for (const [window, percent] of [
+    ['5h window', 2],
+    ['Weekly window', 13],
+    ['Monthly window', 30],
+  ]) {
+    const row = `${window}</span><span class="shrink-0 font-normal tabular-nums [^"]*">${percent}%`;
+    assert.match(html, new RegExp(row), `the ${window} meter averages the pool, not the fresh key`);
+  }
+  assert.doesNotMatch(
+    html,
+    /window<\/span><span class="shrink-0 font-normal tabular-nums [^"]*">0%/,
+    "no window reads the fresh key's zero"
+  );
 });
 
 test('expanded details show every key with all of its window bars aligned across keys', () => {

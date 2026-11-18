@@ -5,7 +5,7 @@
 //   frontend/src/locales/en/system.json
 //   frontend/src/locales/zh-CN/system.json
 // 注意事项:
-//   多密钥渠道折叠时按窗口展示渠道可用容量（取可服务 key 的最小用量），
+//   多密钥渠道折叠时按窗口展示可服务 key 的平均用量（最省 key 只决定重置标记），
 //   限流窗口不能相加；逐 key 明细只在展开后挂载。
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { format } from 'date-fns';
@@ -669,7 +669,7 @@ function APIKeyQuotaDetails({
 
 // APIKeyQuotaList renders one channel whose API keys are independent quota
 // accounts. Collapsed, it answers the routing question: one meter per window for
-// the channel's effective capacity (the key that can still serve), plus how many
+// the channel's window usage (the serviceable keys' average), plus how many
 // keys are usable and how many are spent. The per-key breakdown is one click
 // away, because it is several windows' worth of detail most checks do not need.
 function APIKeyQuotaList({
@@ -692,9 +692,10 @@ function APIKeyQuotaList({
   const visibleBalanceAccounts = accounts.filter((account) => showDisabledAccounts || !(account.disabled && !account.quotaDisabled));
   const hasKeyWindows = accounts.some((account) => account.limits.some((limit) => limit.type === 'token'));
 
-  // Channel capacity per window: rate windows are not pooled, so the channel can
-  // use the least-used key that still has quota. Unreadable and unconfigured keys
-  // contribute nothing rather than a fabricated zero.
+  // Channel usage per window: rate windows are not pooled, so the meter averages
+  // what the serviceable keys have used — the least-used key alone would let one
+  // fresh, zero-usage account hide everyone else's spend. Unreadable and
+  // unconfigured keys contribute nothing rather than a fabricated zero.
   const capacity = (() => {
     const order: string[] = [];
     const byWindow = new Map<string, { account: ProviderAPIKeyQuota; limit: ProviderQuotaLimit }[]>();
@@ -715,9 +716,16 @@ function APIKeyQuotaList({
 
     return order.map((window) => {
       const candidates = byWindow.get(window)!;
-      const best = candidates.reduce((chosen, candidate) => (candidate.limit.usageRatio < chosen.limit.usageRatio ? candidate : chosen));
+      const leastUsed = candidates.reduce((chosen, candidate) =>
+        candidate.limit.usageRatio < chosen.limit.usageRatio ? candidate : chosen
+      );
+      // The meter reports the window's average usage across the serviceable keys:
+      // the least-used key would let one fresh, zero-usage account hide everyone
+      // else's spend. The least-used key still supplies the reset marker, since
+      // its window lasts longest.
+      const usageRatio = candidates.reduce((sum, candidate) => sum + candidate.limit.usageRatio, 0) / candidates.length;
 
-      return { window, limit: best.limit, keysWithWindow: candidates.length };
+      return { window, limit: leastUsed.limit, usageRatio, keysWithWindow: candidates.length };
     });
   })();
 
@@ -746,8 +754,8 @@ function APIKeyQuotaList({
 
       {capacity.length > 0 && (
         <div className='space-y-1.5'>
-          {capacity.map(({ window, limit, keysWithWindow }) => {
-            const percent = limit.usageRatio * 100;
+          {capacity.map(({ window, limit, usageRatio, keysWithWindow }) => {
+            const percent = usageRatio * 100;
             const detail =
               keysWithWindow < accounts.length
                 ? t('quota.label.channel_capacity', { window: quotaWindowLabel(t, window), count: keysWithWindow })
