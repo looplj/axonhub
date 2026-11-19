@@ -3,6 +3,7 @@ package gemini
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -61,6 +62,13 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 		return llm.DoneResponse, nil
 	}
 
+	// Gemini may report a mid-stream failure as a {"error":{...}} chunk instead of
+	// closing the HTTP stream with a non-2xx status. Surface it as an error rather
+	// than converting it to an empty response chunk.
+	if respErr := parseStreamErrorChunk(event.Data); respErr != nil {
+		return nil, respErr
+	}
+
 	// Parse the Gemini response chunk
 	var resp GenerateContentResponse
 	if err := json.Unmarshal(event.Data, &resp); err != nil {
@@ -94,6 +102,32 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 	}
 
 	return llmResp, nil
+}
+
+// parseStreamErrorChunk returns a ResponseError when the chunk is a Gemini error
+// payload ({"error":{"code":...,"message":...,"status":...}}), and nil otherwise.
+func parseStreamErrorChunk(data []byte) *llm.ResponseError {
+	var chunk GeminiError
+	if err := json.Unmarshal(data, &chunk); err != nil {
+		return nil
+	}
+
+	if chunk.Error.Code == 0 && chunk.Error.Message == "" && chunk.Error.Status == "" {
+		return nil
+	}
+
+	respErr := &llm.ResponseError{
+		StatusCode: chunk.Error.Code,
+		Detail: llm.ErrorDetail{
+			Message: chunk.Error.Message,
+			Type:    chunk.Error.Status,
+		},
+	}
+	if chunk.Error.Code != 0 {
+		respErr.Detail.Code = strconv.Itoa(chunk.Error.Code)
+	}
+
+	return respErr
 }
 
 // AggregateStreamChunks aggregates Gemini streaming response chunks into a complete response.
