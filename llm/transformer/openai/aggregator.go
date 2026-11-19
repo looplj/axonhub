@@ -31,6 +31,7 @@ type choiceAggregator struct {
 	finishReason        *string
 	role                string
 	annotations         map[string]llm.Annotation // Map to track unique annotations by stable annotation key
+	reasoningOpaque     string                    // Latest non-empty Copilot reasoning_opaque. Later values replace earlier ones.
 }
 
 func buildAnnotationKey(annotation Annotation) string {
@@ -213,6 +214,22 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				if choice.Delta.Reasoning != nil {
 					choiceAgg.hasReasoning = true
 					choiceAgg.reasoning.WriteString(*choice.Delta.Reasoning)
+				}
+
+				// Match ToLLMMessage: reasoning_text is a fallback when neither
+				// of the other reasoning fields is present.
+				if choice.Delta.ReasoningContent == nil && choice.Delta.Reasoning == nil && choice.Delta.ReasoningText != nil {
+					choiceAgg.hasReasoningContent = true
+					choiceAgg.reasoningContent.WriteString(*choice.Delta.ReasoningText)
+					if *choice.Delta.ReasoningText != "" {
+						choiceAgg.hasReasoning = true
+						choiceAgg.reasoning.WriteString(*choice.Delta.ReasoningText)
+					}
+				}
+
+				// Opaque updates are complete state blobs, not text fragments.
+				if opaque := lo.FromPtr(choice.Delta.ReasoningOpaque); strings.TrimSpace(opaque) != "" {
+					choiceAgg.reasoningOpaque = opaque
 				}
 
 				// Handle refusal streamed as delta.refusal chunks.
@@ -420,6 +437,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		if choiceAgg.hasReasoning {
 			reasoning := choiceAgg.reasoning.String()
 			message.Reasoning = &reasoning
+		}
+
+		if choiceAgg.reasoningOpaque != "" {
+			message.ReasoningSignature = lo.ToPtr(choiceAgg.reasoningOpaque)
 		}
 
 		// Set refusal if any delta carried refusal text.

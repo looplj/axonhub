@@ -597,6 +597,60 @@ func TestInboundTransformer_TransformStream_SkipsPureReasoningSignatureChunk(t *
 	require.Equal(t, "[DONE]", string(events[1].Data))
 }
 
+func TestInboundTransformer_TransformStream_KeepsTerminalChunkWithReasoningSignature(t *testing.T) {
+	transformer := NewInboundTransformer()
+	signature := "V+l5Rhje"
+
+	stream, err := transformer.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			ID:      "chatcmpl-123",
+			Object:  "chat.completion.chunk",
+			Created: 1677652288,
+			Model:   "gemini-3.8-flash",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role:    "assistant",
+					Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+				},
+			}},
+		},
+		{
+			ID:      "chatcmpl-123",
+			Object:  "chat.completion.chunk",
+			Created: 1677652289,
+			Model:   "gemini-3.8-flash",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role:               "assistant",
+					ReasoningSignature: &signature,
+				},
+				FinishReason: lo.ToPtr("stop"),
+			}},
+			Usage: &llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15},
+		},
+		{Object: "[DONE]"},
+	}))
+	require.NoError(t, err)
+
+	var events []*httpclient.StreamEvent
+	for stream.Next() {
+		events = append(events, stream.Current())
+	}
+	require.NoError(t, stream.Err())
+	require.Len(t, events, 3)
+
+	var finish Response
+	require.NoError(t, json.Unmarshal(events[1].Data, &finish))
+	require.Equal(t, "stop", lo.FromPtr(finish.Choices[0].FinishReason))
+	require.NotNil(t, finish.Usage)
+	require.Equal(t, int64(15), finish.Usage.TotalTokens)
+	require.NotContains(t, string(events[1].Data), signature)
+	require.NotContains(t, string(events[1].Data), "reasoning_opaque")
+	require.Equal(t, "[DONE]", string(events[2].Data))
+}
+
 func TestInboundTransformer_TransformResponse(t *testing.T) {
 	transformer := NewInboundTransformer()
 

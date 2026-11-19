@@ -753,28 +753,18 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 }
 
 // convertToolToLLM converts an Anthropic Tool to llm.Tool.
-// For web_search_20250305 native tools, it converts to llm.ToolTypeWebSearch type.
-// For regular function tools, it converts to llm.ToolTypeFunction type.
+// Known native web_search versions convert to llm.ToolTypeWebSearch while keeping
+// their version. For regular function tools, it converts to llm.ToolTypeFunction type.
 func convertToolToLLM(tool Tool) (llm.Tool, bool) {
+	if isNativeWebSearchToolType(tool.Type) {
+		return convertNativeWebSearchToolToLLM(tool, tool.Type), true
+	}
+
 	switch tool.Type {
-	case ToolTypeWebSearch20250305, WebSearchFunctionName:
-		return llm.Tool{
-			Type:         llm.ToolTypeWebSearch,
-			CacheControl: convertToLLMCacheControl(tool.CacheControl),
-			WebSearch: &llm.WebSearch{
-				MaxUses:        tool.MaxUses,
-				Strict:         tool.Strict,
-				AllowedDomains: tool.AllowedDomains,
-				BlockedDomains: tool.BlockedDomains,
-				UserLocation: llm.WebSearchToolUserLocation{
-					City:     tool.UserLocation.City,
-					Country:  tool.UserLocation.Country,
-					Region:   tool.UserLocation.Region,
-					Timezone: tool.UserLocation.Timezone,
-					Type:     tool.UserLocation.Type,
-				},
-			},
-		}, true
+	case WebSearchFunctionName:
+		// Legacy function-style declaration without a version keeps the version
+		// empty; the outbound transformer decides the concrete wire version.
+		return convertNativeWebSearchToolToLLM(tool, ""), true
 	case "", "custom":
 		return llm.Tool{
 			Type: llm.ToolTypeFunction,
@@ -788,7 +778,33 @@ func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 			CacheControl: convertToLLMCacheControl(tool.CacheControl),
 		}, true
 	default:
-		// Ignore other native tools (image_generation, google_*, etc.)
+		// Ignore other native tools (image_generation, google_*, web_search versions
+		// this package does not know, etc.). An unknown version must not be guessed
+		// from its prefix, nor degraded into a function tool.
 		return llm.Tool{}, false
+	}
+}
+
+// convertNativeWebSearchToolToLLM maps a native web search tool and its
+// provider-level options onto the unified representation.
+func convertNativeWebSearchToolToLLM(tool Tool, version string) llm.Tool {
+	return llm.Tool{
+		Type:         llm.ToolTypeWebSearch,
+		CacheControl: convertToLLMCacheControl(tool.CacheControl),
+		WebSearch: &llm.WebSearch{
+			Version:        version,
+			MaxUses:        tool.MaxUses,
+			Strict:         tool.Strict,
+			AllowedDomains: tool.AllowedDomains,
+			BlockedDomains: tool.BlockedDomains,
+			UserLocation: llm.WebSearchToolUserLocation{
+				City:     tool.UserLocation.City,
+				Country:  tool.UserLocation.Country,
+				Region:   tool.UserLocation.Region,
+				Timezone: tool.UserLocation.Timezone,
+				Type:     tool.UserLocation.Type,
+			},
+			AllowedCallers: tool.AllowedCallers,
+		},
 	}
 }

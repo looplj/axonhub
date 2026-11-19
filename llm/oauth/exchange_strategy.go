@@ -159,6 +159,18 @@ func (s *JSONStrategy) BuildRefreshRequest(creds *OAuthCredentials, tokenURL str
 	}, nil
 }
 
+// tokenResponseError is an OAuth error payload returned by a token endpoint.
+// It keeps the error code typed so callers can distinguish credential
+// rejections from transient failures without matching error strings.
+type tokenResponseError struct {
+	Code        string
+	Description string
+}
+
+func (e *tokenResponseError) Error() string {
+	return fmt.Sprintf("token request failed: %s - %s", e.Code, e.Description)
+}
+
 // ParseTokenResponse parses the OAuth token response and returns credentials.
 func ParseTokenResponse(respBody []byte, clientID string) (*OAuthCredentials, error) {
 	var tokenResp TokenResponse
@@ -169,7 +181,7 @@ func ParseTokenResponse(respBody []byte, clientID string) (*OAuthCredentials, er
 	if tokenResp.AccessToken == "" {
 		var tokenErr TokenError
 		if err := json.Unmarshal(respBody, &tokenErr); err == nil && tokenErr.Error != "" {
-			return nil, fmt.Errorf("token request failed: %s - %s", tokenErr.Error, tokenErr.ErrorDescription)
+			return nil, &tokenResponseError{Code: tokenErr.Error, Description: tokenErr.ErrorDescription}
 		}
 
 		return nil, errors.New("token response missing access_token")

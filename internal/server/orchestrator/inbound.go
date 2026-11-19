@@ -39,6 +39,8 @@ const (
 //
 //nolint:containedctx // Checked.
 type InboundPersistentStream struct {
+	current *httpclient.StreamEvent
+
 	ctx             context.Context
 	stream          streams.Stream[*httpclient.StreamEvent]
 	request         *ent.Request
@@ -90,15 +92,26 @@ func NewInboundPersistentStream(
 }
 
 func (ts *InboundPersistentStream) Next() bool {
-	return ts.stream.Next()
+	ts.current = nil
+	if !ts.stream.Next() {
+		return false
+	}
+	ts.recordCurrent()
+	return true
 }
 
 func (ts *InboundPersistentStream) ExpectedStreamChoices() int {
 	return ts.terminalTracker.expectedChoices
 }
 
+// Current is a cached read; repeated reads must not duplicate persisted chunks.
 func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
+	return ts.current
+}
+
+func (ts *InboundPersistentStream) recordCurrent() {
 	event := ts.stream.Current()
+	ts.current = event
 	if event != nil {
 		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
 		// summary to avoid buffering the full audio payload in memory.
@@ -117,8 +130,6 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 			}
 		}
 	}
-
-	return event
 }
 
 // IsTerminalStreamEvent classifies one event with the default single-choice

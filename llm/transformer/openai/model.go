@@ -182,6 +182,10 @@ type Message struct {
 	// It is only read from responses and normalized into the unified reasoning fields.
 	ReasoningText *string `json:"reasoning_text,omitempty"`
 
+	// ReasoningOpaque is GitHub Copilot's opaque reasoning state.
+	// It is replayed as reasoning_opaque and is not a Gemini thoughtSignature.
+	ReasoningOpaque *string `json:"reasoning_opaque,omitempty"`
+
 	// Annotations contains citation information for the message.
 	// This is used by providers like Perplexity to provide source URLs.
 	Annotations []Annotation `json:"annotations,omitempty"`

@@ -16,7 +16,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useApiKeyProfileTemplates, useLoadApiKeyProfileTemplate, useDeleteApiKeyProfileTemplate } from '../data/apikeys';
 import type { ApiKeyProfileTemplate, ApiKeyProfile } from '../data/schema';
 
@@ -172,7 +171,7 @@ export function ApiKeyLoadTemplatePopover({
           )}
 
           {!isEmpty && !isLoadingTemplates && (
-            <ScrollArea className='max-h-[280px]'>
+            <div className='max-h-[280px] overflow-y-auto'>
               <div className='py-1'>
                 {templateList.map((template) => (
                   <TemplateItem
@@ -185,7 +184,7 @@ export function ApiKeyLoadTemplatePopover({
                   />
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           )}
         </PopoverContent>
       </Popover>

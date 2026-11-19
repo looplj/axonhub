@@ -1,0 +1,28 @@
+{
+  "id": "gen-1763270400-Rk2Yq8cWm3TnLp4ZsVb1",
+  "provider": "OpenAI",
+  "model": "openai/gpt-5-mini",
+  "object": "chat.completion.chunk",
+  "created": 1763270400,
+  "choices": [
+    {
+      "index": 0,
+      "delta": {
+        "role": "assistant",
+        "content": "",
+        "reasoning": "**Planning** the",
+        "reasoning_details": [
+          {
+            "type": "reasoning.summary",
+            "summary": "**Planning** the",
+            "format": "openai-responses-v1",
+            "index": 0
+          }
+        ]
+      },
+      "finish_reason": null,
+      "native_finish_reason": null,
+      "logprobs": null
+    }
+  ]
+}

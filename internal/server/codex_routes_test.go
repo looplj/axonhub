@@ -77,7 +77,7 @@ func newCodexRouteHarness(t *testing.T) *codexRouteHarness {
 	if os.Getenv("AXONHUB_CODEX_LIVE_QA") == "1" {
 		timeout = 90 * time.Second
 	}
-	registerCodexRoutes(&Server{Engine: router, Config: Config{LLMRequestTimeout: timeout}}, Handlers{CodexCompatibility: compatibility, OpenAI: openAI}, Services{AuthService: auth, SystemService: system, RequestService: requests})
+	registerCodexRoutes(&Server{Engine: router, Config: Config{LLMRequestTimeout: timeout, LLMStreamRequestTimeout: 2 * timeout}}, Handlers{CodexCompatibility: compatibility, OpenAI: openAI}, Services{AuthService: auth, SystemService: system, RequestService: requests})
 	legacy := router.Group("/v1", middleware.WithAPIKeyConfig(auth, nil), middleware.WithTimeout(timeout))
 	legacy.POST("/responses", openAI.CreateResponse)
 	legacy.GET("/models", openAI.ListModels)

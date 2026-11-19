@@ -152,7 +152,14 @@ func (i *ModelPriceItem) Validate() error {
 		return fmt.Errorf("modelPriceItem is nil")
 	}
 
-	if err := i.Pricing.Validate(); err != nil {
+	if i.Pricing.Mode == "" {
+		// An empty aggregate pricing is only legal on cache-write items that carry
+		// TTL variants: when both the 5m and 1h rates exist, no single aggregate
+		// rate is a safe fallback, so the variants are the only source of truth.
+		if i.ItemCode != PriceItemCodeWriteCachedTokens || len(i.PromptWriteCacheVariants) == 0 {
+			return fmt.Errorf("pricing: mode is required")
+		}
+	} else if err := i.Pricing.Validate(); err != nil {
 		return fmt.Errorf("pricing: %w", err)
 	}
 

@@ -7,7 +7,7 @@ import "context"
 type Stream[T any] interface {
 	// Next indicate if there's a next item.
 	Next() bool
-	// Current returns the current event
+	// Current returns the current event. Calls must be idempotent between Next calls.
 	Current() T
 	// Err returns any error that occurred
 	Err() error

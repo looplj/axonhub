@@ -3,6 +3,7 @@ package openai
 import (
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/looplj/axonhub/llm"
@@ -167,6 +168,35 @@ func TestIsReasoningSignatureEvent(t *testing.T) {
 						},
 					},
 				},
+			},
+			want: false,
+		},
+		{
+			name: "Copilot terminal chunk with signature and finish reason - should NOT be skipped",
+			response: &llm.Response{
+				Choices: []llm.Choice{
+					{
+						Delta: &llm.Message{
+							Role:               "assistant",
+							ReasoningSignature: &signature,
+						},
+						FinishReason: lo.ToPtr("stop"),
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Copilot terminal chunk with signature and usage - should NOT be skipped",
+			response: &llm.Response{
+				Choices: []llm.Choice{
+					{
+						Delta: &llm.Message{
+							ReasoningSignature: &signature,
+						},
+					},
+				},
+				Usage: &llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15},
 			},
 			want: false,
 		},

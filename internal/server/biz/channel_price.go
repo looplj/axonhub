@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 
@@ -67,6 +69,46 @@ func uniqueNonEmptyModelIDs(modelIDs []string) []string {
 	return lo.Uniq(lo.Filter(modelIDs, func(modelID string, _ int) bool {
 		return modelID != ""
 	}))
+}
+
+func mergeChannelModelPriceItems(base, overlay objects.ModelPrice, replaceExisting bool) objects.ModelPrice {
+	positions := make(map[objects.PriceItemCode]int, len(base.Items)+len(overlay.Items))
+	items := make([]objects.ModelPriceItem, 0, len(base.Items)+len(overlay.Items))
+	for _, item := range base.Items {
+		positions[item.ItemCode] = len(items)
+		items = append(items, item)
+	}
+	for _, item := range overlay.Items {
+		position, exists := positions[item.ItemCode]
+		if exists {
+			if replaceExisting {
+				items[position] = item
+			}
+			continue
+		}
+		positions[item.ItemCode] = len(items)
+		items = append(items, item)
+	}
+
+	schedule := base.Schedule
+	if schedule == nil {
+		schedule = overlay.Schedule
+	}
+
+	return objects.ModelPrice{Items: items, Schedule: schedule}
+}
+
+// endpointChanged reports whether the endpoint overlay plus the library gap
+// overlay change the row: any item code the endpoint reported with a different
+// value, a schedule the row does not have yet, or a library code the row still
+// lacks. It must mirror the merge order of updateChannelModelPriceEntity so the
+// skip guard and the write cannot disagree.
+func endpointChanged(existing *ent.ChannelModelPrice, endpointPrice objects.ModelPrice, libraryPrice *objects.ModelPrice) bool {
+	merged := mergeChannelModelPriceItems(existing.Price, endpointPrice, true)
+	if libraryPrice != nil {
+		merged = mergeChannelModelPriceItems(merged, *libraryPrice, false)
+	}
+	return !existing.Price.Equals(merged)
 }
 
 func modelCardToChannelModelPrice(card *objects.ModelCard) (objects.ModelPrice, bool) {
@@ -413,6 +455,88 @@ func (svc *ChannelService) createChannelModelPriceVersion(
 	return nil
 }
 
+// updateChannelModelPriceEntity replaces the current channel price and its active version.
+// With replaceExisting it replaces every item; without it, newPrice only overrides the item
+// codes it reports and the locked row's other items are preserved. Merging against the
+// locked row keeps concurrent edits to unreported items from being lost. When
+// libraryPrice is non-nil, it is merged last with no-overwrite semantics, filling the
+// item codes the endpoint did not report; it fills library gaps for endpoint-priced
+// models and is nil on the manual-save path.
+// The caller must run it inside the logical channel mutation transaction so
+// the price and version history commit together.
+func (svc *ChannelService) updateChannelModelPriceEntity(
+	ctx context.Context,
+	price *ent.ChannelModelPrice,
+	newPrice objects.ModelPrice,
+	replaceExisting bool,
+	libraryPrice *objects.ModelPrice,
+	now time.Time,
+) (*ent.ChannelModelPrice, error) {
+	db := svc.entFromContext(ctx)
+	if db.Driver().Dialect() != dialect.SQLite {
+		var lockedIDs []int
+		_, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (struct{}, error) {
+			err := db.ChannelModelPrice.Query().
+				Where(channelmodelprice.IDEQ(price.ID)).
+				Modify(func(selector *sql.Selector) {
+					selector.Select(selector.C(channelmodelprice.FieldID)).ForUpdate()
+				}).
+				Scan(queryCtx, &lockedIDs)
+			return struct{}{}, err
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to lock channel model price: %w", err)
+		}
+		if len(lockedIDs) == 0 {
+			return nil, fmt.Errorf("channel model price %d no longer exists", price.ID)
+		}
+	}
+
+	lockedPrice, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.ChannelModelPrice, error) {
+		return db.ChannelModelPrice.Query().Where(channelmodelprice.IDEQ(price.ID)).Only(queryCtx)
+	})
+	if ent.IsNotFound(err) {
+		return nil, fmt.Errorf("channel model price %d no longer exists", price.ID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to load channel model price for update: %w", err)
+	}
+
+	if !replaceExisting {
+		newPrice = mergeChannelModelPriceItems(lockedPrice.Price, newPrice, true)
+	}
+	if libraryPrice != nil {
+		newPrice = mergeChannelModelPriceItems(newPrice, *libraryPrice, false)
+	}
+
+	_, err = db.ChannelModelPriceVersion.Update().
+		Where(
+			channelmodelpriceversion.ChannelModelPriceIDEQ(lockedPrice.ID),
+			channelmodelpriceversion.StatusEQ(channelmodelpriceversion.StatusActive),
+		).
+		SetStatus(channelmodelpriceversion.StatusArchived).
+		SetEffectiveEndAt(now).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to archive old channel model price versions: %w", err)
+	}
+
+	updated, err := db.ChannelModelPrice.UpdateOneID(lockedPrice.ID).
+		SetPrice(newPrice).
+		SetReferenceID(generateReferenceID()).
+		SetUpdatedAt(now).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update channel model price: %w", err)
+	}
+
+	if err := svc.createChannelModelPriceVersion(ctx, updated, now); err != nil {
+		return nil, err
+	}
+
+	return updated, nil
+}
+
 // createChannelModelPrice creates the current price and its initial active
 // version. The caller must run it inside the logical channel mutation
 // transaction so the two records cannot be committed independently.
@@ -440,56 +564,120 @@ func (svc *ChannelService) createChannelModelPrice(
 	return entity, nil
 }
 
-// ensureChannelModelPrices fills prices only for the supplied model IDs that
-// do not already have a current channel price. Repeated calls preserve all
-// existing prices and version history.
-func (svc *ChannelService) ensureChannelModelPrices(ctx context.Context, channelID int, modelIDs []string) (bool, error) {
+// ensureChannelModelPrices creates missing prices and fills library gaps for endpoint-priced models.
+// Existing item codes are preserved unless the endpoint reported that code.
+func (svc *ChannelService) ensureChannelModelPrices(
+	ctx context.Context,
+	channelID int,
+	modelIDs []string,
+	endpointTemplateSets ...[]channelModelPriceTemplate,
+) (bool, error) {
 	modelIDs = uniqueNonEmptyModelIDs(modelIDs)
 	if len(modelIDs) == 0 {
 		return false, nil
 	}
 
+	endpointTemplates := make(map[string]objects.ModelPrice)
+	for _, templates := range endpointTemplateSets {
+		for _, template := range templates {
+			endpointTemplates[template.ModelID] = template.Price
+		}
+	}
+
 	changed := false
 	err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		db := svc.entFromContext(ctx)
-		existingModelIDs := make(map[string]struct{}, len(modelIDs))
+		existingPrices := make(map[string]*ent.ChannelModelPrice, len(modelIDs))
 		for start := 0; start < len(modelIDs); start += channelModelPriceQueryBatchSize {
 			end := min(start+channelModelPriceQueryBatchSize, len(modelIDs))
-			existingPrices, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) ([]*ent.ChannelModelPrice, error) {
+			prices, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) ([]*ent.ChannelModelPrice, error) {
 				return db.ChannelModelPrice.Query().
 					Where(
 						channelmodelprice.ChannelID(channelID),
 						channelmodelprice.ModelIDIn(modelIDs[start:end]...),
 					).
-					Select(channelmodelprice.FieldModelID).
 					All(queryCtx)
 			})
 			if err != nil {
 				return fmt.Errorf("failed to query existing channel model prices: %w", err)
 			}
 
-			for _, existingPrice := range existingPrices {
-				existingModelIDs[existingPrice.ModelID] = struct{}{}
+			for _, price := range prices {
+				existingPrices[price.ModelID] = price
 			}
 		}
 
-		missingModelIDs := lo.Filter(modelIDs, func(modelID string, _ int) bool {
-			_, exists := existingModelIDs[modelID]
-
-			return !exists
-		})
-		if len(missingModelIDs) == 0 {
-			return nil
+		fallbackModelIDs := make([]string, 0, len(modelIDs))
+		for _, modelID := range modelIDs {
+			_, hasEndpointPrice := endpointTemplates[modelID]
+			_, hasExistingPrice := existingPrices[modelID]
+			if hasEndpointPrice || !hasExistingPrice {
+				fallbackModelIDs = append(fallbackModelIDs, modelID)
+			}
 		}
 
-		templates, err := svc.resolveChannelModelPriceTemplates(ctx, missingModelIDs)
+		libraryTemplates, err := svc.resolveChannelModelPriceTemplates(ctx, fallbackModelIDs)
 		if err != nil {
 			return err
 		}
+		libraryPrices := make(map[string]objects.ModelPrice, len(libraryTemplates))
+		for _, template := range libraryTemplates {
+			libraryPrices[template.ModelID] = template.Price
+		}
 
-		changed, err = svc.applyChannelModelPriceTemplates(ctx, channelID, templates)
+		now := xtime.UTCNow()
+		for _, modelID := range modelIDs {
+			existing := existingPrices[modelID]
+			endpointPrice, hasEndpointPrice := endpointTemplates[modelID]
+			libraryPrice, hasLibraryPrice := libraryPrices[modelID]
+			if existing == nil && !hasEndpointPrice && !hasLibraryPrice {
+				continue
+			}
 
-		return err
+			if existing != nil {
+				if !hasEndpointPrice {
+					// The row is current; library gaps are filled at creation only.
+					continue
+				}
+				// updateChannelModelPriceEntity merges the endpoint items against the
+				// locked row, so concurrent edits to unreported items survive, and then
+				// fills the library gap for codes neither source reports.
+				var libraryOverlay *objects.ModelPrice
+				if hasLibraryPrice {
+					libraryOverlay = &libraryPrice
+				}
+				if !endpointChanged(existing, endpointPrice, libraryOverlay) {
+					continue
+				}
+				if _, err := svc.updateChannelModelPriceEntity(ctx, existing, endpointPrice, false, libraryOverlay, now); err != nil {
+					return err
+				}
+				changed = true
+				continue
+			}
+
+			mergedPrice := objects.ModelPrice{}
+			if hasEndpointPrice {
+				mergedPrice = mergeChannelModelPriceItems(mergedPrice, endpointPrice, true)
+			}
+			if hasLibraryPrice {
+				mergedPrice = mergeChannelModelPriceItems(mergedPrice, libraryPrice, false)
+			}
+
+			if len(mergedPrice.Items) == 0 && mergedPrice.Schedule == nil {
+				continue
+			}
+			created, err := svc.createChannelModelPriceIfMissing(ctx, channelID, channelModelPriceTemplate{
+				ModelID: modelID,
+				Price:   mergedPrice,
+			}, now)
+			if err != nil {
+				return fmt.Errorf("failed to auto-configure channel model price: model_id=%s: %w", modelID, err)
+			}
+			changed = changed || created
+		}
+
+		return nil
 	})
 
 	return changed, err
@@ -592,7 +780,6 @@ func (svc *ChannelService) SaveChannelModelPrices(
 		for _, action := range actions {
 			var (
 				entity *ent.ChannelModelPrice
-				refID  string
 				err    error
 			)
 
@@ -632,36 +819,15 @@ func (svc *ChannelService) SaveChannelModelPrices(
 				continue
 
 			case ActionTypeUpdate:
-				entity = action.ExistingPrice
-				// Archive old versions
-				_, err = db.ChannelModelPriceVersion.Update().
-					Where(
-						channelmodelpriceversion.ChannelModelPriceIDEQ(entity.ID),
-						channelmodelpriceversion.StatusEQ(channelmodelpriceversion.StatusActive),
-					).
-					SetStatus(channelmodelpriceversion.StatusArchived).
-					SetEffectiveEndAt(now).
-					Save(ctx)
+				// Editor prices are authoritative for the whole row.
+				entity, err = svc.updateChannelModelPriceEntity(ctx, action.ExistingPrice, action.Price, true, nil, now)
 				if err != nil {
-					return fmt.Errorf("failed to archive old channel model price versions: %w", err)
+					return err
 				}
 
-				refID = generateReferenceID()
-
-				entity, err = db.ChannelModelPrice.UpdateOneID(entity.ID).
-					SetPrice(action.Price).
-					SetReferenceID(refID).
-					Save(ctx)
-				if err != nil {
-					return fmt.Errorf("failed to update channel model price: %w", err)
-				}
+				results = append(results, entity)
+				continue
 			}
-
-			if err = svc.createChannelModelPriceVersion(ctx, entity, now); err != nil {
-				return err
-			}
-
-			results = append(results, entity)
 		}
 
 		// Force update channel updated_at to trigger reload cache.¬

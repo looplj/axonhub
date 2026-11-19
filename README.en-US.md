@@ -47,26 +47,21 @@
       </div>
     </td>
     <td width="50%" align="center" valign="top">
-      <a href="https://lj.s.gy/DUq59H" target="_blank">
-        <img src="https://www.infistar.cc/logo.png" alt="无限星河 Infistar.cc" height="50"/>
+      <a href="https://noonoo.ai/login?aff=Y3u6" target="_blank">
+        <img src="docs/sponsors/noonoo-logo.png" alt="noonoo.ai" height="50"/>
         <br/>
-        <strong>无限星河 Infistar.cc</strong>
+        <strong>noonoo.ai</strong>
       </a>
       <div align="center">
-        <a href="https://lj.s.gy/DUq59H" target="_blank">
-          <img src="docs/sponsors/infistar-banner.png" alt="Infistar.cc 无限星河" width="100%"/>
+        <a href="https://noonoo.ai/login?aff=Y3u6" target="_blank">
+          <img src="docs/sponsors/noonoo-banner.png" alt="noonoo.ai" width="100%"/>
         </a>
       </div>
       <div align="left">
-        <strong>AxonHub × Infistar.cc | High-Availability AI API</strong>
-      </div>
-      <div align="left">
-        ⚡ Stable routing | 10% rates · Transparent · Failover<br/>
-        🧠 Top models | ChatGPT · Claude · Gemini · Kimi · GLM · DeepSeek<br/>
-        🎨 Multimodal | Text · Image · Video · Embedding / Rerank
-      </div>
-      <div align="left">
-        AxonHub users: bonus credits via the <a href="https://lj.s.gy/DUq59H" target="_blank">exclusive link</a>.
+        noonoo.ai provides cost-effective, stable, and reliable AI API services, with one account for Claude, GPT, Gemini, and other models across text, coding, and image generation.<br/>
+        Compatible with OpenAI, Anthropic, and Gemini APIs, it fits into existing applications and development workflows without separate subscriptions for each model.<br/>
+        Fixed, transparent pricing means no load-based price changes or hidden billing multipliers. Multiple payment methods are supported, and signup requires only an email address.<br/>
+        <a href="https://noonoo.ai/login?aff=Y3u6" target="_blank">Register through the dedicated link</a> to get started with one-stop AI API access.
       </div>
     </td>
   </tr>

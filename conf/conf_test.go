@@ -343,3 +343,49 @@ func TestSafeguardsEscalationYAML(t *testing.T) {
 		t.Fatal("YAML escalation toggle ignored")
 	}
 }
+
+func TestLLMTimeoutConfig(t *testing.T) {
+	for _, tt := range []struct {
+		name, config          string
+		request, stream, idle time.Duration
+		invalid               bool
+	}{
+		{"defaults", "", 600 * time.Second, 1800 * time.Second, 600 * time.Second, false},
+		{"disabled", "server:\n  llm_request_timeout: 0s\n  llm_stream_request_timeout: 0s\n  llm_stream_idle_timeout: 0s\n", 0, 0, 0, false},
+		{"custom", "server:\n  llm_request_timeout: 5m\n  llm_stream_request_timeout: 40m\n  llm_stream_idle_timeout: 20s\n", 5 * time.Minute, 40 * time.Minute, 20 * time.Second, false},
+		{"negative total", "server:\n  llm_request_timeout: -1s\n", 0, 0, 0, true},
+		{"negative streaming total", "server:\n  llm_stream_request_timeout: -1s\n", 0, 0, 0, true},
+		{"independent streaming disable", "server:\n  llm_stream_request_timeout: 0s\n", 600 * time.Second, 0, 600 * time.Second, false},
+		{"independent non-streaming disable", "server:\n  llm_request_timeout: 0s\n", 0, 1800 * time.Second, 600 * time.Second, false},
+		{"negative idle", "server:\n  llm_stream_idle_timeout: -1s\n", 0, 0, 0, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, _, err := loadConfig(writeTestConfig(t, tt.config))
+			if tt.invalid {
+				if err == nil {
+					t.Fatal("expected invalid timeout error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("loadConfig() error = %v", err)
+			}
+			if cfg.APIServer.LLMRequestTimeout != tt.request || cfg.APIServer.LLMStreamRequestTimeout != tt.stream || cfg.APIServer.LLMStreamIdleTimeout != tt.idle {
+				t.Fatalf("LLM timeouts = (%s, %s, %s), want (%s, %s, %s)", cfg.APIServer.LLMRequestTimeout, cfg.APIServer.LLMStreamRequestTimeout, cfg.APIServer.LLMStreamIdleTimeout, tt.request, tt.stream, tt.idle)
+			}
+		})
+	}
+}
+
+func TestLLMTimeoutConfigFromEnvironment(t *testing.T) {
+	t.Setenv("AXONHUB_SERVER_LLM_REQUEST_TIMEOUT", "0s")
+	t.Setenv("AXONHUB_SERVER_LLM_STREAM_IDLE_TIMEOUT", "45s")
+	t.Setenv("AXONHUB_SERVER_LLM_STREAM_REQUEST_TIMEOUT", "25m")
+	cfg, _, err := loadConfig(writeTestConfig(t, ""))
+	if err != nil {
+		t.Fatalf("loadConfig() error = %v", err)
+	}
+	if cfg.APIServer.LLMRequestTimeout != 0 || cfg.APIServer.LLMStreamRequestTimeout != 25*time.Minute || cfg.APIServer.LLMStreamIdleTimeout != 45*time.Second {
+		t.Fatalf("LLM timeouts = (%s, %s, %s), want (0s, 25m, 45s)", cfg.APIServer.LLMRequestTimeout, cfg.APIServer.LLMStreamRequestTimeout, cfg.APIServer.LLMStreamIdleTimeout)
+	}
+}

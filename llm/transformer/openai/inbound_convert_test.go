@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"testing"
 
@@ -147,5 +148,51 @@ func TestMessageContent_VideoURLRoundTrip(t *testing.T) {
 	roundTrip := MessageContentFromLLM(llmContent)
 	if assert.NotNil(t, roundTrip.MultipleContent[0].VideoURL) {
 		assert.Equal(t, "https://example.com/example.mp4", roundTrip.MultipleContent[0].VideoURL.URL)
+	}
+}
+
+func TestCopilotReasoningOpaqueToLLM(t *testing.T) {
+	opaque := base64.StdEncoding.EncodeToString([]byte{0x57, 0xe9, 0x79, 0x46})
+	source := Message{
+		Role:            "assistant",
+		ReasoningText:   lo.ToPtr("thinking"),
+		ReasoningOpaque: lo.ToPtr(opaque),
+	}
+
+	got := source.ToLLMMessage()
+	assert.Equal(t, opaque, lo.FromPtr(got.ReasoningSignature))
+	assert.Equal(t, "thinking", lo.FromPtr(got.ReasoningContent))
+
+	// Generic Chat Completions upstreams do not receive Copilot's field.
+	req := RequestFromLLM(t.Context(), &llm.Request{
+		Model:    "gpt-4o",
+		Messages: []llm.Message{got},
+	}, ReasoningFieldAll)
+	assert.Nil(t, req.Messages[0].ReasoningOpaque)
+}
+
+func TestReasoningOpaqueGoogleSignatureFallback(t *testing.T) {
+	const googleSignature = "CgR0ZXN0"
+	for _, tt := range []struct {
+		name   string
+		opaque *string
+		want   string
+	}{
+		{"absent", nil, googleSignature},
+		{"empty", lo.ToPtr(""), googleSignature},
+		{"whitespace", lo.ToPtr(" \t\n"), googleSignature},
+		{"nonempty stays unchanged", lo.ToPtr("  V+l5RhjeGPTC  "), "  V+l5RhjeGPTC  "},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			source := Message{
+				Role: "assistant", ReasoningOpaque: tt.opaque,
+				ToolCalls: []ToolCall{{ID: "call_1", Type: "function", Function: FunctionCall{Name: "Read", Arguments: "{}"},
+					ExtraContent: &ToolCallExtraContent{Google: &ToolCallGoogleExtraContent{ThoughtSignature: googleSignature}},
+				}},
+			}
+			got := source.ToLLMMessage()
+			assert.Equal(t, tt.want, lo.FromPtr(got.ReasoningSignature))
+			assert.Equal(t, googleSignature, got.ToolCalls[0].TransformerMetadata[TransformerMetadataKeyGoogleThoughtSignature])
+		})
 	}
 }

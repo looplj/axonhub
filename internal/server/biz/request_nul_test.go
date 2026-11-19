@@ -8,7 +8,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 )
 
-func TestStripJSONNul(t *testing.T) {
+func TestSanitizeJSONForStorageNUL(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -29,7 +29,7 @@ func TestStripJSONNul(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			require.Equal(t, tt.want, string(stripJSONNul(objects.JSONRawMessage(tt.in))))
+			require.Equal(t, tt.want, string(sanitizeJSONForStorage(objects.JSONRawMessage(tt.in))))
 		})
 	}
 }

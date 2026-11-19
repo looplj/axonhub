@@ -47,26 +47,21 @@
       </div>
     </td>
     <td width="50%" align="center" valign="top">
-      <a href="https://lj.s.gy/DUq59H" target="_blank">
-        <img src="https://www.infistar.cc/logo.png" alt="無限星河 Infistar.cc" height="50"/>
+      <a href="https://noonoo.ai/login?aff=Y3u6" target="_blank">
+        <img src="docs/sponsors/noonoo-logo.png" alt="noonoo.ai" height="50"/>
         <br/>
-        <strong>無限星河 Infistar.cc</strong>
+        <strong>noonoo.ai</strong>
       </a>
       <div align="center">
-        <a href="https://lj.s.gy/DUq59H" target="_blank">
-          <img src="docs/sponsors/infistar-banner.png" alt="Infistar.cc 無限星河" width="100%"/>
+        <a href="https://noonoo.ai/login?aff=Y3u6" target="_blank">
+          <img src="docs/sponsors/noonoo-banner.png" alt="noonoo.ai" width="100%"/>
         </a>
       </div>
       <div align="left">
-        <strong>AxonHub × Infistar.cc 無限星河｜高可用 AI API</strong>
-      </div>
-      <div align="left">
-        ⚡ 安定ルーティング｜公式 1 割 · 透明料金 · フェイルオーバー<br/>
-        🧠 主要モデル｜ChatGPT · Claude · Gemini · Kimi · GLM · DeepSeek<br/>
-        🎨 マルチモーダル｜テキスト · 画像 · 動画 · Embedding / Rerank
-      </div>
-      <div align="left">
-        AxonHub ユーザーは<a href="https://lj.s.gy/DUq59H" target="_blank">専用リンク</a>から特典を利用できます。
+        noonoo.ai は、コストパフォーマンスに優れた、安定性と信頼性の高い AI API サービスです。1 つのアカウントで Claude、GPT、Gemini などのモデルを利用でき、テキスト・コーディング・画像生成に対応しています。<br/>
+        OpenAI、Anthropic、Gemini の API と互換性があり、既存のアプリケーションや開発ワークフローに組み込みやすく、モデルごとに個別のサブスクリプションを契約する必要はありません。<br/>
+        固定の明確な料金体系を採用し、ネットワーク負荷による価格変動や隠れた料金倍率はありません。複数の支払い方法に対応し、メールアドレスだけで登録できます。<br/>
+        <a href="https://noonoo.ai/login?aff=Y3u6" target="_blank">専用リンクから登録</a>して、ワンストップの AI API サービスをご利用ください。
       </div>
     </td>
   </tr>

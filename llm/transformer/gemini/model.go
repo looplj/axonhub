@@ -79,6 +79,24 @@ type Part struct {
 	ThoughtSignature string `json:"thoughtSignature,omitempty"`
 }
 
+func (p Part) isSignatureOnly() bool {
+	return p.ThoughtSignature != "" && p.Text == "" && p.InlineData == nil &&
+		p.FileData == nil && p.FunctionCall == nil && p.FunctionResponse == nil
+}
+
+// MarshalJSON keeps the empty text payload of a standalone thought signature.
+// Gemini streaming can return this part in the final chunk of a text response.
+func (p Part) MarshalJSON() ([]byte, error) {
+	type partAlias Part
+	if p.isSignatureOnly() {
+		return json.Marshal(struct {
+			partAlias
+			Text string `json:"text"`
+		}{partAlias: partAlias(p)})
+	}
+	return json.Marshal(partAlias(p))
+}
+
 // UnmarshalJSON accepts inline_data as a fallback for inlineData.
 func (p *Part) UnmarshalJSON(data []byte) error {
 	type partAlias Part

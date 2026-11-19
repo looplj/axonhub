@@ -34,6 +34,8 @@ import (
 //
 //nolint:containedctx // Checked.
 type OutboundPersistentStream struct {
+	current *httpclient.StreamEvent
+
 	ctx context.Context
 
 	RequestService  *biz.RequestService
@@ -116,7 +118,9 @@ func (ts *OutboundPersistentStream) consumeTailEvent(event *httpclient.StreamEve
 }
 
 func (ts *OutboundPersistentStream) Next() bool {
+	ts.current = nil
 	if ts.stream.Next() {
+		ts.recordCurrent()
 		return true
 	}
 	if err := ts.stream.Err(); err != nil && !errors.Is(err, io.EOF) {
@@ -131,8 +135,14 @@ func (ts *OutboundPersistentStream) Next() bool {
 	return false
 }
 
+// Current is a cached read; repeated reads must not duplicate persisted chunks.
 func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
+	return ts.current
+}
+
+func (ts *OutboundPersistentStream) recordCurrent() {
 	event := ts.stream.Current()
+	ts.current = event
 	if event != nil {
 		if string(event.Data) == "[DONE]" && isNonChoiceTerminalEvent(event) {
 			ts.sourceEnd = llm.SourceEndSemantic
@@ -158,8 +168,6 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 			}
 		}
 	}
-
-	return event
 }
 
 func (ts *OutboundPersistentStream) Err() error {
