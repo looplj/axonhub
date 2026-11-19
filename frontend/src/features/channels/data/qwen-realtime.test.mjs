@@ -91,9 +91,9 @@ test('is only configurable on a Bailian channel', () => {
   }
 });
 
-test('filters the realtime endpoint option by channel type', () => {
+test('never offers realtime as a custom endpoint, including Bailian', () => {
   const formats = ['openai/chat_completions', 'qwen/realtime-ws'];
-  assert.deepEqual(getConfigurableApiFormatsForChannelType('bailian', formats), formats);
+  assert.deepEqual(getConfigurableApiFormatsForChannelType('bailian', formats), ['openai/chat_completions']);
   for (const channelType of ['bailian_responses', 'bailian_anthropic', 'openai', 'zenmux']) {
     assert.deepEqual(getConfigurableApiFormatsForChannelType(channelType, formats), ['openai/chat_completions'], channelType);
   }

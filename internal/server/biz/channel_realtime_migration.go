@@ -1,0 +1,112 @@
+// 职责: 将历史 Realtime 端点原子搬迁到渠道设置，保留 HTTP 端点及其他渠道数据。
+// 关联文件:
+//
+//	internal/server/biz/channel_realtime.go
+//	internal/ent/migrate/datamigrate/migrator.go
+//	internal/objects/channel.go
+//	internal/objects/channel_realtime.go
+//	internal/ent/schema/schematype/soft_delete.go
+//
+// 注意事项: 包括软删除渠道但不恢复其状态；无历史实时端点时不写入，重复执行不改变配置或更新时间。
+package biz
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/schema/schematype"
+	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm"
+)
+
+func MigrateChannelRealtime(ctx context.Context, db *ent.Client) error {
+	_, err := authz.RunAsHost(ctx, db, "channel-realtime-migration", func(host context.Context) (struct{}, error) {
+		service := &AbstractService{db: db}
+		for attempt := 0; attempt < 3; attempt++ {
+			err := service.RunInTransaction(host, func(txctx context.Context) error {
+				return migrateChannelRealtimeRows(txctx, service.entFromContext(txctx))
+			})
+			if err == nil {
+				return struct{}{}, nil
+			}
+			message := strings.ToLower(err.Error())
+			retryable := errors.Is(err, ErrChannelUpdatedConcurrently) || strings.Contains(message, "database is locked") || strings.Contains(message, "database table is locked") || strings.Contains(message, "could not serialize") || strings.Contains(message, "serialization failure") || strings.Contains(message, "deadlock detected")
+			if !retryable || attempt == 2 {
+				return struct{}{}, err
+			}
+			timer := time.NewTimer(time.Duration(attempt+1) * 20 * time.Millisecond)
+			select {
+			case <-host.Done():
+				timer.Stop()
+				return struct{}{}, host.Err()
+			case <-timer.C:
+			}
+		}
+		return struct{}{}, errors.New("Realtime migration retries exhausted")
+	})
+	return err
+}
+
+func migrateChannelRealtimeRows(ctx context.Context, db *ent.Client) error {
+	ctx = schematype.SkipSoftDelete(ctx)
+	rows, err := db.Channel.Query().Order(ent.Asc(channel.FieldID)).All(ctx)
+	if err != nil {
+		return fmt.Errorf("load channels for Realtime migration: %w", err)
+	}
+	for _, row := range rows {
+		legacy := make([]objects.ChannelEndpoint, 0, 1)
+		ordinary := make([]objects.ChannelEndpoint, 0, len(row.Endpoints))
+		for _, ep := range row.Endpoints {
+			if ep.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() || ep.APIFormat == llm.APIFormatQwenRealtimeWebSocket.String() {
+				legacy = append(legacy, ep)
+			} else {
+				ordinary = append(ordinary, ep)
+			}
+		}
+		if len(legacy) == 0 {
+			continue
+		}
+		migrated, err := realtimeConfigFromLegacy(row.Type, legacy)
+		if err != nil {
+			return fmt.Errorf("channel %d Realtime migration: %w", row.ID, err)
+		}
+		settings := objects.ChannelSettings{}
+		if row.Settings != nil {
+			settings = *row.Settings
+		}
+		// An explicitly saved channel setting wins over the stale endpoint, including
+		// a deliberate disabled setting. Never reactivate an operator-disabled channel.
+		if settings.Realtime == nil {
+			settings.Realtime = migrated
+		}
+		if err := ValidateChannelRealtime(row.Type, settings.Realtime); err != nil {
+			return fmt.Errorf("channel %d Realtime setting: %w", row.ID, err)
+		}
+		_, err = db.Channel.UpdateOneID(row.ID).Where(channel.UpdatedAtEQ(row.UpdatedAt)).SetSettings(&settings).SetEndpoints(ordinary).Save(ctx)
+		if ent.IsNotFound(err) {
+			return ErrChannelUpdatedConcurrently
+		}
+		if err != nil {
+			return fmt.Errorf("save channel %d Realtime migration: %w", row.ID, err)
+		}
+	}
+	return nil
+}
+
+func realtimeConfigFromLegacy(kind channel.Type, legacy []objects.ChannelEndpoint) (*objects.ChannelRealtimeConfig, error) {
+	if len(legacy) != 1 {
+		return nil, errors.New("exactly one legacy Realtime endpoint is required")
+	}
+	ep := legacy[0]
+	cfg := &objects.ChannelRealtimeConfig{Enabled: true, Protocol: ep.APIFormat, BaseURL: ep.BaseURL, Path: ep.Path, HandshakeTimeoutMs: ep.HandshakeTimeoutMs}
+	if err := ValidateChannelRealtime(kind, cfg); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}

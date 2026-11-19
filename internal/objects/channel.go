@@ -160,6 +160,9 @@ func (m ModelProtocol) IsEnabled() bool {
 }
 
 type ChannelSettings struct {
+	// Realtime owns the provider's persistent realtime protocol independently
+	// from the generic, user-editable endpoint list.
+	Realtime *ChannelRealtimeConfig `json:"realtime,omitempty"`
 	// ExtraModelPrefix sets the channel accept the model with the extra prefix.
 	// e.g. a channel
 	// supported_modles is ["deepseek-chat", "deepseek-reasoner"]

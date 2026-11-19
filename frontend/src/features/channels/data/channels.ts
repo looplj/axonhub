@@ -107,6 +107,7 @@ const CREATE_CHANNEL_MUTATION = `
       tags
       defaultTestModel
       settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs }
         extraModelPrefix
         modelMappings {
           from
@@ -211,6 +212,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
       tags
       defaultTestModel
       settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs }
         extraModelPrefix
         modelMappings {
           from
@@ -315,6 +317,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       tags
       defaultTestModel
       settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs }
         extraModelPrefix
         modelMappings {
           from
@@ -418,6 +421,7 @@ const CHANNEL_FIELDS_FRAGMENT = `
       tags
       defaultTestModel
       settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs }
         extraModelPrefix
         modelMappings {
           from
@@ -675,6 +679,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           handshakeTimeoutMs
         }
         settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs }
           extraModelPrefix
           modelMappings {
             from
@@ -927,6 +932,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           handshakeTimeoutMs
         }
         settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs }
           extraModelPrefix
           modelMappings {
             from
@@ -1179,6 +1185,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
           tags
           defaultTestModel
           settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs }
             extraModelPrefix
             modelMappings {
               from
@@ -1331,6 +1338,7 @@ const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
 
 const CHANNEL_QUERY_ROUTING_STATUS_SELECTION = `
            settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs }
              quotaRoutingMode
              syncModelPrices
            }
@@ -1352,6 +1360,7 @@ const CHANNEL_QUERY_TAGS_SELECTION = `
 
 const CHANNEL_QUERY_PROXY_SELECTION = `
           settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs }
             quotaRoutingMode
             syncModelPrices
             proxy {

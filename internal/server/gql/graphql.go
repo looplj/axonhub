@@ -137,6 +137,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	})
 	gqlSrv.Use(&loggingTracer{})
 	gqlSrv.AroundOperations(apiKeyReadOnly)
+	gqlSrv.AroundResponses(endpointProtocolErrorStatus)
 	gqlSrv.Use(entgql.Transactioner{
 		TxOpener: deps.Ent,
 		// TestChannel performs long-running parallel provider requests whose database
@@ -147,7 +148,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.SetErrorPresenter(presentGraphqlError)
 
 	return &GraphqlHandler{
-		Graphql:       gqlSrv,
+		Graphql:       withEndpointHTTPStatus(gqlSrv),
 		Playground:    playground.Handler("AxonHub", "/admin/graphql"),
 		PluginGraphql: newPluginGraphqlHandler(schema, deps.Ent, deps.PluginManager),
 		PluginFetch:   newPluginFetchHandler(deps.PluginManager),
@@ -253,13 +254,14 @@ func newPluginGraphqlHandler(schema graphql.ExecutableSchema, client *ent.Client
 	srv.Use(extension.FixedComplexityLimit(pluginGraphqlComplexityLimit))
 	srv.Use(&loggingTracer{})
 	srv.AroundOperations(rejectPluginGraphqlOperation)
+	srv.AroundResponses(endpointProtocolErrorStatus)
 	srv.Use(entgql.Transactioner{
 		TxOpener:   client,
 		SkipTxFunc: skipGraphqlTransaction,
 	})
 	srv.SetErrorPresenter(presentGraphqlError)
 	return &pluginGraphqlHTTPHandler{
-		handler: srv,
+		handler: withEndpointHTTPStatus(srv),
 		manager: manager,
 	}
 }

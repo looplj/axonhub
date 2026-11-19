@@ -28,6 +28,7 @@ import { useDetectChannelEndpoints, useUpdateChannelSettings } from '../data/cha
 import {
   buildCodexResponsesEndpoints,
   getAvailableProtocolFormats,
+  getModelProtocolValidationFormats,
   getCodexResponsesWebSocketState,
   getCodexResponsesWebSocketURL,
   hasCodexResponsesWebSocketOverrideReplacement,
@@ -62,6 +63,7 @@ import {
   parseQwenRealtimeBaseURL,
   type QwenRealtimeRegion,
 } from '../data/qwen-realtime';
+import { hasLegacyRealtimeEndpoints, isRealtimeProtocol } from '../data/channel-realtime';
 import { ChatProtocolIcon, MessagesProtocolIcon, ResponsesProtocolIcon } from './endpoint-protocol-icons';
 
 const RELAY_PROTOCOL_ICONS: Record<RelayProtocol, React.ComponentType<{ size?: number | string; className?: string }>> = {
@@ -262,6 +264,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   }, [channel.defaultEndpoints, channel.type]);
 
   const [endpoints, setEndpoints] = useState<ChannelEndpoint[]>(() => channel.endpoints ?? []);
+  const legacyRealtimeEndpoints = hasLegacyRealtimeEndpoints(channel.endpoints ?? []);
   const [newApiFormat, setNewApiFormat] = useState('');
   const [newPath, setNewPath] = useState('');
   const [newBaseURL, setNewBaseURL] = useState('');
@@ -347,6 +350,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   }, [isQwenRealtimeFormat, newQwenRegion, newQwenWorkspace]);
 
   const handleNewApiFormatChange = useCallback((format: string) => {
+    if (isRealtimeProtocol(format)) { setError(t('channels.realtime.legacyEndpoint')); return; }
     setNewApiFormat(format);
     setError(null);
     if (format === OPENAI_REALTIME_WEBSOCKET) {
@@ -359,11 +363,12 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     if (format !== QWEN_REALTIME_API_FORMAT && format !== OPENAI_REALTIME_WEBSOCKET) {
       setEditingQwenIndex(null);
     }
-  }, []);
+  }, [t]);
 
   const handleAddEndpoint = useCallback(() => {
     setError(null);
     if (!newApiFormat) return;
+    if (isRealtimeProtocol(newApiFormat)) { setError(t('channels.realtime.legacyEndpoint')); return; }
 
     if (endpoints.some((ep, index) => ep.apiFormat === newApiFormat && index !== editingQwenIndex)) {
       setError(t('channels.endpoints.duplicateError'));
@@ -454,6 +459,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   }, [newApiFormat, newPath, newBaseURL, newHandshakeTimeout, t, channel.type, newQwenRegion, newQwenWorkspace, editingQwenIndex, endpoints]);
 
   const handleEditQwenEndpoint = useCallback((index: number, apiFormat: string) => {
+    if (isRealtimeProtocol(apiFormat)) { setError(t('channels.realtime.legacyEndpoint')); return; }
     setError(null);
     setEditingQwenIndex(index);
     setNewHandshakeTimeout(String(endpoints[index]?.handshakeTimeoutMs ?? ''));
@@ -469,7 +475,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     } else if (apiFormat === OPENAI_REALTIME_WEBSOCKET) {
       setNewApiFormat(OPENAI_REALTIME_WEBSOCKET);
     }
-  }, [endpoints]);
+  }, [endpoints, t]);
 
   const handleRemoveEndpoint = useCallback((apiFormat: string) => {
     setEndpoints((prev) => prev.filter((ep) => ep.apiFormat !== apiFormat));
@@ -616,6 +622,10 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
 
   const handleSave = useCallback(async () => {
     setError(null);
+    if (legacyRealtimeEndpoints || hasLegacyRealtimeEndpoints(savedEndpoints)) {
+      setError(t('channels.realtime.legacyEndpoint'));
+      return;
+    }
 
     const apiFormats = savedEndpoints.map((ep) => ep.apiFormat);
     const duplicates = apiFormats.filter((f, i) => apiFormats.indexOf(f) !== i);
@@ -649,7 +659,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     // Every model protocol must reference an endpoint that exists after this save.
     // The backend validates against resolved endpoints (type defaults + custom), so
     // the check here must include the default endpoints too.
-    const savedFormats = new Set([...defaultEndpoints.map((ep) => ep.apiFormat), ...apiFormats]);
+    const savedFormats = getModelProtocolValidationFormats(defaultEndpoints, savedEndpoints, channel.settings?.realtime);
     const invalidProtocolFormat = modelProtocols.find((mp) => mp.enabled !== false && mp.apiFormats.some((f) => !savedFormats.has(f)));
     if (invalidProtocolFormat) {
       setError(t('channels.endpoints.modelProtocols.formatsRequired'));
@@ -686,7 +696,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     } catch {
       // error handled by hook
     }
-  }, [channel, defaultEndpoints, isCodexChannel, savedEndpoints, modelProtocols, onOpenChange, updateChannelSettings, t]);
+  }, [channel, defaultEndpoints, isCodexChannel, legacyRealtimeEndpoints, savedEndpoints, modelProtocols, onOpenChange, updateChannelSettings, t]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -708,6 +718,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
         </DialogHeader>
 
         <div className='min-h-0 flex-1 space-y-6 overflow-y-auto py-4'>
+          {legacyRealtimeEndpoints && <div role='alert' className='text-destructive bg-destructive/10 rounded-md p-3 text-sm'>{t('channels.realtime.legacyEndpoint')}</div>}
           {isCodexChannel && (
             <div className='space-y-3'>
               <label className='text-sm font-medium'>{t('channels.dialogs.fields.apiFormat.label')}</label>
@@ -1042,6 +1053,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                   >
                     <div className='flex min-w-0 items-center gap-2'>
                       <Switch
+                        disabled={mp.apiFormats.some(isRealtimeProtocol)}
                         checked={mp.enabled !== false}
                         onCheckedChange={(checked) => handleToggleModelProtocol(mp.model, checked)}
                         aria-label={t('channels.endpoints.modelProtocols.toggle', { model: mp.model })}
@@ -1060,6 +1072,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                         size='sm'
                         className='hover:bg-accent h-7 w-7 p-0'
                         onClick={() => handleStartEditModelProtocol(mp)}
+                        disabled={mp.apiFormats.some(isRealtimeProtocol)}
                         aria-label={t('channels.endpoints.modelProtocols.edit', { model: mp.model })}
                       >
                         <Pencil className='h-3.5 w-3.5' />
@@ -1070,6 +1083,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                         size='sm'
                         className='hover:text-destructive hover:bg-destructive/10 h-7 w-7 p-0'
                         onClick={() => handleRemoveModelProtocol(mp.model)}
+                        disabled={mp.apiFormats.some(isRealtimeProtocol)}
                         aria-label={t('channels.endpoints.modelProtocols.remove', { model: mp.model })}
                       >
                         <X className='h-3.5 w-3.5' />
@@ -1093,7 +1107,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             {t('common.buttons.cancel')}
           </Button>
-          <Button onClick={handleSave} disabled={updateChannelSettings.isPending}>
+          <Button onClick={handleSave} disabled={updateChannelSettings.isPending || legacyRealtimeEndpoints}>
             {updateChannelSettings.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
           </Button>
         </DialogFooter>

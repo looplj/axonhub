@@ -1,4 +1,8 @@
 {
+  "channels.realtime.channelOnly": "Realtime 在渠道层配置，WebSocket 地址独立于 HTTP Base URL；选择其他协议可停用 Realtime。",
+  "channels.realtime.host": "Realtime API Host（WSS）",
+  "channels.realtime.invalidHost": "请填写 OpenAI 官方 WSS Host，或百炼控制台提供的对应地域 Workspace 专属 WSS Host；不要附加路径或查询参数。",
+  "channels.realtime.legacyEndpoint": "该渠道包含历史 Realtime 端点。Realtime 必须在渠道主表单配置；请等待服务端迁移后刷新，端点管理不能保存此配置。",
   "channels.endpoints.realtime.handshakeTimeout": "握手超时（毫秒，可选）",
   "channels.endpoints.realtime.handshakeTimeoutHint": "留空使用服务配置",
   "channels.endpoints.realtime.invalidTimeout": "握手超时必须为 1000–60000 毫秒的整数。",

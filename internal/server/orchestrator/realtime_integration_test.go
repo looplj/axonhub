@@ -56,7 +56,7 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 			ctx = contexts.WithProjectID(ctx, project.ID)
 			key := db.APIKey.Create().SetName("Realtime").SetKey("synthetic-client-key").SetUserID(1).SetProjectID(project.ID).SetType(apikey.TypeUser).SetScopes([]string{"read_channels", "write_requests"}).SetStatus(apikey.StatusEnabled).SaveX(ctx)
 			ctx = contexts.WithAPIKey(ctx, key)
-			row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("Realtime").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream-key"}).SetSupportedModels([]string{model}).SetDefaultTestModel(model).SetStatus(channel.StatusEnabled).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}).SaveX(ctx)
+			row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("Realtime").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream-key"}).SetSupportedModels([]string{model}).SetDefaultTestModel(model).SetStatus(channel.StatusEnabled).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}).SaveX(ctx)
 			channels := newTestChannelServiceForChannels(db)
 			ch, err := channels.GetChannel(ctx, row.ID)
 			require.NoError(t, err)

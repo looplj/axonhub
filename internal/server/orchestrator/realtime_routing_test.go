@@ -26,7 +26,7 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	project := db.Project.Create().SetName("route-project").SaveX(ctx)
 	ctx = contexts.WithProjectID(ctx, project.ID)
 	actual := "gpt-realtime-2.1-mini"
-	row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("route-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream"}).SetSupportedModels([]string{actual}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime", HandshakeTimeoutMs: lo.ToPtr(int64(30000))}}).SaveX(ctx)
+	row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("route-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream"}).SetSupportedModels([]string{actual}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime", HandshakeTimeoutMs: lo.ToPtr(int64(30000))}}).SaveX(ctx)
 	price := objects.ModelPrice{}
 	for _, code := range objects.AllRealtimePriceItemCodes() {
 		rate := decimal.NewFromInt(1)
@@ -63,7 +63,7 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	_, err = service.Prepare(ctx, "voice", false)
 	require.Error(t, err, "channel permissions cannot be bypassed")
 	key.Profiles.Profiles[0].ChannelIDs = nil
-	broken := db.Channel.Create().SetType(channel.TypeOpenai).SetName("incomplete-price-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic"}).SetSupportedModels([]string{actual}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}).SaveX(ctx)
+	broken := db.Channel.Create().SetType(channel.TypeOpenai).SetName("incomplete-price-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic"}).SetSupportedModels([]string{actual}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}).SaveX(ctx)
 	brokenBuilt, err := channels.GetChannel(ctx, broken.ID)
 	require.NoError(t, err)
 	channels.SetEnabledChannelsForTest([]*biz.Channel{brokenBuilt, built})

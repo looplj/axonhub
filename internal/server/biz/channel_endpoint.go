@@ -8,15 +8,11 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/realtime"
 	"github.com/looplj/axonhub/llm/transformer/gemini"
-	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 )
 
 // SupportedAPIFormats lists the API formats that are recognized as valid endpoint api_format values.
 var SupportedAPIFormats = map[string]struct{}{
-	llm.APIFormatOpenAIRealtimeWebSocket.String(): {},
-	llm.APIFormatQwenRealtimeWebSocket.String():   {},
 	llm.APIFormatOpenAIChatCompletion.String():    {},
 	llm.APIFormatOpenAICompletion.String():        {},
 	llm.APIFormatOpenAIResponse.String():          {},
@@ -52,6 +48,9 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint, baseURL ...string) e
 	}
 	seen := make(map[string]bool, len(endpoints))
 	for i, ep := range endpoints {
+		if objects.IsRealtimeAPIFormat(ep.APIFormat) {
+			return objects.RealtimeEndpointInputError()
+		}
 		if ep.HandshakeTimeoutMs != nil && (*ep.HandshakeTimeoutMs < 1000 || *ep.HandshakeTimeoutMs > 60000) {
 			return fmt.Errorf("endpoint[%d]: handshake timeout must be between 1000 and 60000 ms", i)
 		}
@@ -72,22 +71,6 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint, baseURL ...string) e
 		}
 
 		seen[ep.APIFormat] = true
-		if ep.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() {
-			if ep.Transport != "" && ep.Transport != objects.ChannelEndpointTransportWebSocket {
-				return fmt.Errorf("endpoint[%d]: OpenAI Realtime requires websocket transport", i)
-			}
-			if err := openairt.ValidateEndpoint(ep.BaseURL, ep.Path); err != nil {
-				return fmt.Errorf("endpoint[%d]: %w", i, err)
-			}
-		}
-		if ep.APIFormat == llm.APIFormatQwenRealtimeWebSocket.String() {
-			if ep.Transport != "" && ep.Transport != objects.ChannelEndpointTransportWebSocket {
-				return fmt.Errorf("endpoint[%d]: Qwen Realtime requires websocket transport", i)
-			}
-			if err := realtime.ValidateEndpoint(ep.BaseURL, ep.Path); err != nil {
-				return fmt.Errorf("endpoint[%d]: %w", i, err)
-			}
-		}
 
 		if endpointTransport(ep) == objects.ChannelEndpointTransportWebSocket && !supportsWebSocketTransport(ep.APIFormat) {
 			return fmt.Errorf("endpoint[%d]: websocket transport only supports api_format %q", i, llm.APIFormatOpenAIResponse.String())
@@ -108,7 +91,7 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint, baseURL ...string) e
 }
 
 func supportsWebSocketTransport(apiFormat string) bool {
-	return apiFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() || isResponsesEndpoint(apiFormat) || apiFormat == llm.APIFormatQwenRealtimeWebSocket.String()
+	return isResponsesEndpoint(apiFormat)
 }
 
 // ValidateModelProtocols validates the channel settings' per-model protocol overrides.
@@ -118,7 +101,7 @@ func supportsWebSocketTransport(apiFormat string) bool {
 // user-configured endpoints. A manually disabled entry for a model that still
 // exists may keep its protocol choices while inactive.
 func ValidateModelProtocols(settings *objects.ChannelSettings, channelType channel.Type, endpoints []objects.ChannelEndpoint) error {
-	source := &ent.Channel{Type: channelType, Endpoints: endpoints}
+	source := &ent.Channel{Type: channelType, Endpoints: endpoints, Settings: settings}
 	return validateModelProtocols(normalizeModelProtocols(settings, source), source)
 }
 
@@ -128,6 +111,11 @@ func validateModelProtocols(settings *objects.ChannelSettings, source *ent.Chann
 	}
 
 	available := make(map[string]struct{})
+	if settings.Realtime != nil && settings.Realtime.Protocol != "" {
+		// An explicit channel protocol may remain selected for a model while
+		// the channel's realtime capability is temporarily disabled.
+		available[settings.Realtime.Protocol] = struct{}{}
+	}
 	for _, ep := range (&Channel{Channel: source}).ResolveEndpoints() {
 		available[ep.APIFormat] = struct{}{}
 	}
@@ -382,14 +370,6 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 		return err
 	}
 
-	for _, endpoint := range endpoints {
-		if endpoint.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() && channelType != channel.TypeOpenai {
-			return fmt.Errorf("OpenAI Realtime endpoints require the openai channel type")
-		}
-		if endpoint.APIFormat == llm.APIFormatQwenRealtimeWebSocket.String() && channelType != channel.TypeBailian {
-			return fmt.Errorf("Qwen Realtime endpoints require the bailian channel type")
-		}
-	}
 	if channelType == channel.TypeTypesafe {
 		for _, endpoint := range endpoints {
 			if endpoint.APIFormat != llm.APIFormatTypeSafeSystemOne.String() {
@@ -505,7 +485,18 @@ func (c *Channel) ResolveEndpoints() []objects.ChannelEndpoint {
 		return nil
 	}
 
-	return mergeEndpoints(c.DefaultEndpoints(), NormalizeEndpoints(c.Endpoints, c.BaseURL))
+	userEndpoints := NormalizeEndpoints(c.Endpoints, c.BaseURL)
+	ordinary := userEndpoints[:0]
+	for _, ep := range userEndpoints {
+		if !objects.IsRealtimeAPIFormat(ep.APIFormat) {
+			ordinary = append(ordinary, ep)
+		}
+	}
+	endpoints := mergeEndpoints(c.DefaultEndpoints(), ordinary)
+	if realtime := c.RealtimeEndpoint(); realtime != nil {
+		endpoints = append(endpoints, *realtime)
+	}
+	return endpoints
 }
 
 // ForcedAPIFormats returns the api formats force-specified for the given request

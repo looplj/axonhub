@@ -11,18 +11,24 @@ The environment's OpenAI credential belongs to a third-party relay and must not 
 ## Configure through the admin UI
 
 1. Use the existing `openai` or `bailian` channel and its credential manager.
-2. Add an explicit `openai/realtime-ws` or `qwen/realtime-ws` endpoint. Each endpoint may set a 1000–60000 ms handshake timeout; leave it empty to inherit the server setting. Removing this endpoint disables new Realtime sessions. Keep the channel's HTTP Base URL intact.
+2. In the channel's main form, select `openai/realtime-ws` for OpenAI or `qwen/realtime-ws` for Bailian. The channel stores this independently in `settings.realtime`: `enabled`, `protocol`, `baseURL`, `path`, and optional `handshakeTimeoutMs`. Set a 1000–60000 ms handshake timeout or leave it empty to inherit the server setting. Keep the channel's HTTP Base URL intact; the Realtime WS address has its own field.
 3. OpenAI uses `wss://api.openai.com` with `/v1/realtime`. The initial model set is `gpt-realtime-2.1` and `gpt-realtime-2.1-mini`; deprecated models are not new defaults.
-4. Bailian uses `wss://{WorkspaceId}.{region}.maas.aliyuncs.com` and `/api-ws/v1/realtime`. Select `cn-beijing` or `ap-southeast-1`; Workspace, key and region must match. Supported models are `qwen3.8-omni-flash-realtime`, `qwen3.5-omni-plus-realtime` and `qwen3.5-omni-flash-realtime`.
-5. Configure supported models, mappings, model associations and API Key Profile permissions. A per-model protocol override can pin the model to the realtime endpoint for channel testing.
+4. For Bailian, copy the trusted API Host for the selected business workspace from the provider console and use its WSS address with `/api-ws/v1/realtime`. Hosts are limited to `cn-beijing` and `ap-southeast-1` under `maas.aliyuncs.com`; preserve the console's host label, including an `llm-` prefix when present. Workspace, key and region must match. Supported models are `qwen3.8-omni-flash-realtime`, `qwen3.5-omni-plus-realtime` and `qwen3.5-omni-flash-realtime`.
+5. Configure the channel's supported-model whitelist, mappings, model associations and API Key Profile permissions. Realtime protocol selection belongs to the channel form, not endpoint management.
 6. Configure the independent realtime price items using the current official rate and the installation's currency. Do not substitute historical text-model price codes or mix USD and CNY.
 7. Channel testing verifies an actual WebSocket handshake, configuration acknowledgement and a lightweight conversation-item acknowledgement, without starting model generation. It does not certify audio or invoices.
+
+Endpoint management does not offer Realtime protocols. Sending `openai/realtime-ws` or `qwen/realtime-ws` through `saveChannelEndpoints` or another endpoint-writing input is rejected with HTTP `422` and code `ENDPOINT_REALTIME_NOT_ALLOWED`; the server does not ignore or persist it. Set `settings.realtime.enabled` to `false`, or switch the main form to a non-Realtime protocol, to stop new Realtime sessions without deleting HTTP endpoints.
+
+The existing startup data-migration pipeline moves legacy Realtime entries from `endpoints` to `settings.realtime` before the channel cache loads. Each channel update moves the configuration and removes the legacy entries atomically, while preserving ordinary endpoints and unrelated settings. An existing channel-owned Realtime setting wins, including an explicit disabled setting. Re-running the migration makes no further channel writes. This changes the JSON configuration shape and adds no database table or column.
+
+This follows the existing database auto-migration setting: if it is disabled, run a controlled startup with migration enabled before serving migrated Realtime channels. Drain Realtime traffic during a mixed-version deployment and finish upgrading all instances before reopening it; older binaries cannot read the new channel configuration.
 
 ## Client contract
 
 Connect to `GET /v1/realtime?model={gateway-model-or-alias}` using WebSocket Upgrade and `Authorization: Bearer {AxonHub API Key}`. The first release supports server clients only. Browser Origin headers, URL credentials and client-selected upstream hosts are rejected. Authentication never falls back to No-Auth.
 
-The optional `/v1/realtime/qwen?model={model}` entry uses Qwen event names and the same authentication, routing, quota, price and connection checks. It can only select Bailian realtime endpoints and still validates the implemented safe capability subset.
+The optional `/v1/realtime/qwen?model={model}` entry uses Qwen event names and the same authentication, routing, quota, price and connection checks. It can only select Bailian channels with enabled Realtime configuration and still validates the implemented safe capability subset.
 
 For OpenAI, valid GA events, extension fields and event order are forwarded without unnecessary JSON rewriting or resampling. No `OpenAI-Beta: realtime=v1` header is sent. When `session.created` contains the complete effective GA audio configuration, its confirmed defaults can be used directly. Configuration changes require `session.update` and its `session.updated` acknowledgement before using the new parameters. Session model changes, credential overrides and caller-supplied safety identity are prohibited. The upstream Safety Identifier is a one-way digest derived from the authenticated Gateway key and user/project identity.
 
@@ -85,7 +91,7 @@ server:
       connections_per_minute: 20
 ```
 
-Use the existing YAML/environment configuration loader, for example `AXONHUB_SERVER_REALTIME_MAX_DURATION=15m` with the prefix used by your deployment. No separate hidden feature flag is required; the explicit endpoint enables the capability.
+Use the existing YAML/environment configuration loader, for example `AXONHUB_SERVER_REALTIME_MAX_DURATION=15m` with the prefix used by your deployment. No separate hidden feature flag is required; the channel's explicit `settings.realtime.enabled` setting enables the capability.
 
 The existing `cache.redis` configuration enables shared admission, connected lazily on the first realtime request. One same-slot Lua script atomically acquires global/project/key/channel concurrency and per-key connection-rate admission. Leases outlive the session hard deadline and expire after a crash. Unavailable Redis rejects new sessions. Without Redis, limits apply to one process only; multiple instances must share Redis and identical limits. Redis persistence and failover write-loss risk are deployment acceptance concerns.
 
@@ -134,7 +140,7 @@ go run ./scripts/realtime-smoke -qwen-native -model qwen3.8-omni-flash-realtime 
 
 The recording must be headerless mono PCM16 LE at 24 kHz. The script tests configuration, text, audio input/output, continuous turns, function result submission and continuation, printing confirmed usage only. It does not play or save generated audio. Intelligibility, duration, VAD, cancellation and hostile networks require separate acceptance.
 
-Back up the database and channel configuration. Enable one restricted project with low concurrency, short duration and small quotas, then compare provider invoices before expanding. To roll back, remove realtime endpoints or disable the relevant channels, wait for bounded sessions or stop the server to cancel them, then revert the application. No database table migration is introduced, but remove new endpoint/price configuration before running older code that may not understand the new price enums. Retain confirmed invoice audit records.
+Back up the database and channel configuration. Enable the channel's Realtime configuration for one restricted project with low concurrency, short duration and small quotas, then compare provider invoices before expanding. To roll back, disable `settings.realtime.enabled` or the relevant channel, wait for bounded sessions or stop the server to cancel them, then revert the application. There is no table or column migration, but the JSON configuration shape changes: an older application that reads only Realtime endpoints will not use `settings.realtime`. If that older version must continue serving Realtime, restore its matching channel-configuration backup after switching versions; do not write Realtime back through the current endpoint API. Check price-enum compatibility before running older code, and retain confirmed invoice audit records.
 
 ## Official sources
 
@@ -168,7 +174,7 @@ Processing reservations left by a crash or failed database finalization remain a
 
 If a Qwen3.5 response mixes speech and function-call text but provides only aggregate text tokens, the free-transcript/tool-argument split cannot be proven. Observed tokens are retained for reconciliation rather than guessed. Configure tool turns for text output, or prefer Qwen3.8/OpenAI for this case.
 
-A channel retains one credential pool. Its HTTP and realtime endpoints must use matching official credentials and regions; use separate channels across regions or credential domains. Relay credentials are not official OpenAI credentials. Both channel and per-key tests perform actual WebSocket probes.
+A channel retains one credential pool. Its HTTP configuration and channel-owned Realtime configuration must use matching official credentials and regions; use separate channels across regions or credential domains. Relay credentials are not official OpenAI credentials. Both channel and per-key tests perform actual WebSocket probes.
 
 ## Native fidelity and the safety boundary
 

@@ -36,7 +36,6 @@ export type ApiFormat = z.infer<typeof apiFormatSchema>;
 export const configurableChannelEndpointApiFormats = [
   'openai/chat_completions',
   'openai/responses',
-  'openai/realtime-ws',
   'openai/image_generation',
   'openai/image_edit',
   'openai/image_variation',
@@ -54,7 +53,6 @@ export const configurableChannelEndpointApiFormats = [
   'jina/rerank',
   'jina/embeddings',
   'typesafe/systemone',
-  'qwen/realtime-ws',
 ] as const;
 
 export const configurableChannelEndpointApiFormatSchema = z.enum(configurableChannelEndpointApiFormats);
@@ -367,7 +365,17 @@ export const channelResponseTimeoutSchema = z.object({
 export type ChannelResponseTimeout = z.infer<typeof channelResponseTimeoutSchema>;
 
 // Channel Settings
+export const channelRealtimeSchema = z.union([z.object({
+  enabled: z.boolean(),
+  protocol: z.enum(['openai/realtime-ws', 'qwen/realtime-ws']),
+  baseURL: z.string(),
+  path: z.string(),
+  handshakeTimeoutMs: z.number().int().min(1000).max(60000).optional().nullable(),
+}), z.object({ enabled: z.literal(false), protocol: z.literal(''), baseURL: z.literal(''), path: z.literal(''), handshakeTimeoutMs: z.null().optional() })]);
+export type ChannelRealtime = z.infer<typeof channelRealtimeSchema>;
+
 export const channelSettingsSchema = z.object({
+  realtime: channelRealtimeSchema.optional().nullable(),
   extraModelPrefix: z.string().optional(),
   modelMappings: z.array(modelMappingSchema).optional().nullable(),
   autoTrimedModelPrefixes: z.array(z.string()).optional().nullable(),
