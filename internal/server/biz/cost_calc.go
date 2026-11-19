@@ -150,7 +150,102 @@ func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice, now time.Time)
 		}
 	}
 
+	if hasRealtimeItem(effectiveItems) {
+		return computeRealtimeUsageCost(usage, effectiveItems)
+	}
+
 	return computeUsageCostWithItems(usage, effectiveItems)
+}
+
+// hasRealtimeItem reports whether the item set carries any of the realtime
+// billing codes. A realtime price set is billed exclusively through those codes
+// and never shares legacy prompt/completion items.
+func hasRealtimeItem(items []objects.ModelPriceItem) bool {
+	for _, it := range items {
+		if objects.IsRealtimePriceItemCode(it.ItemCode) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// computeRealtimeUsageCost bills a realtime session by input/output modality.
+// The four realtime codes are computed independently from the historical
+// prompt_tokens/completion_tokens codes, which are untouched.
+func computeRealtimeUsageCost(usage *llm.Usage, priceItems []objects.ModelPriceItem) ([]objects.CostItem, decimal.Decimal) {
+	if usage == nil {
+		return nil, decimal.Zero
+	}
+
+	var (
+		items []objects.CostItem
+		total decimal.Decimal
+	)
+
+	// Saturating text total = reported total - audio portion, clamped to the
+	// reported total so text + audio can never exceed it. Missing details and
+	// provider bugs are absorbed here rather than rejecting a confirmed usage.
+	inputAudio := int64(0)
+	outputAudio := int64(0)
+
+	if usage.PromptTokensDetails != nil {
+		inputAudio = realtimeAudioTokens(usage.PromptTokens, usage.PromptTokensDetails.AudioTokens)
+	}
+
+	if usage.CompletionTokensDetails != nil {
+		outputAudio = realtimeAudioTokens(usage.CompletionTokens, usage.CompletionTokensDetails.AudioTokens)
+	}
+
+	inputText := max(usage.PromptTokens-inputAudio, 0)
+	outputText := max(usage.CompletionTokens-outputAudio, 0)
+
+	quantities := map[objects.PriceItemCode]int64{
+		objects.PriceItemCodeRealtimeInputText:   inputText,
+		objects.PriceItemCodeRealtimeInputAudio:  inputAudio,
+		objects.PriceItemCodeRealtimeOutputText:  outputText,
+		objects.PriceItemCodeRealtimeOutputAudio: outputAudio,
+	}
+
+	if details := usage.Realtime; details != nil {
+		quantities[objects.PriceItemCodeRealtimeInputText] = max(details.InputTextTokens-details.CachedInputTextTokens, 0)
+		quantities[objects.PriceItemCodeRealtimeInputAudio] = max(details.InputAudioTokens-details.CachedInputAudioTokens, 0)
+		quantities[objects.PriceItemCodeRealtimeInputImage] = max(details.InputImageTokens-details.CachedInputImageTokens, 0)
+		quantities[objects.PriceItemCodeRealtimeCachedInputText] = details.CachedInputTextTokens
+		quantities[objects.PriceItemCodeRealtimeCachedInputAudio] = details.CachedInputAudioTokens
+		quantities[objects.PriceItemCodeRealtimeCachedInputImage] = details.CachedInputImageTokens
+		quantities[objects.PriceItemCodeRealtimeOutputText] = max(details.OutputTextTokens-details.UnbilledOutputTextTokens, 0)
+		quantities[objects.PriceItemCodeRealtimeOutputAudio] = details.OutputAudioTokens
+	}
+	for _, it := range priceItems {
+		quantity, ok := quantities[it.ItemCode]
+		if !ok {
+			// Real-time calls ignore legacy prompt/completion codes.
+			continue
+		}
+
+		item, sub := objects.CostItem{Quantity: quantity}, decimal.Zero
+		if quantity > 0 {
+			item, sub = computeItemSubtotal(quantity, it.Pricing)
+		}
+		item.ItemCode = it.ItemCode
+		items = append(items, item)
+		total = total.Add(sub)
+	}
+
+	return items, total
+}
+
+// realtimeAudioTokens clamps the audio breakdown into [0, total]. A negative
+// breakdown or one larger than the reported total would otherwise let the text
+// quantity go negative or double-count audio, so the audio portion is bounded
+// by the reported total.
+func realtimeAudioTokens(total, audio int64) int64 {
+	if audio <= 0 {
+		return 0
+	}
+
+	return min(audio, total)
 }
 
 func computeUsageCostWithItems(usage *llm.Usage, priceItems []objects.ModelPriceItem) ([]objects.CostItem, decimal.Decimal) {

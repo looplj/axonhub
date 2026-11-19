@@ -34,10 +34,15 @@ var (
 // Keep this table aligned with the outbound wire encoders in llm/transformer.
 // Controls absent from a protocol are intentionally not reserved globally.
 var attemptProtocolControls = map[llm.APIFormat]protocolControls{
-	llm.APIFormatOpenAIChatCompletion: chatControls,
-	llm.APIFormatOpenAICompletion:     chatControls,
-	llm.APIFormatOpenAIResponse:       chatControls,
-	llm.APIFormatAnthropicMessage:     chatControls,
+	// Realtime currently bypasses request/attempt rewriting. Reserve control
+	// envelopes explicitly so a future hook cannot change routing or session type.
+	llm.APIFormatOpenAIRealtime:          {exact: []string{"model", "type", "session", "response"}},
+	llm.APIFormatOpenAIRealtimeWebSocket: {exact: []string{"model", "type", "session", "response"}},
+	llm.APIFormatQwenRealtimeWebSocket:   {exact: []string{"model", "type", "session", "response"}},
+	llm.APIFormatOpenAIChatCompletion:    chatControls,
+	llm.APIFormatOpenAICompletion:        chatControls,
+	llm.APIFormatOpenAIResponse:          chatControls,
+	llm.APIFormatAnthropicMessage:        chatControls,
 	// ollama/outbound.go explicitly writes false because Ollama defaults to true.
 	llm.APIFormatOllamaChat: {exact: []string{"model"}, defaults: map[string]json.RawMessage{"stream": json.RawMessage("true")}},
 	// responses/protocol_codec.go and buildWebSocketCreatePayload normalize the frame.

@@ -24,10 +24,12 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/pipeline/stream"
+	protocol "github.com/looplj/axonhub/llm/realtime"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/decisions"
+	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 	"github.com/looplj/axonhub/llm/transformer/typesafe"
 )
 
@@ -150,6 +152,21 @@ func channelTestAPIFormat(channel *biz.Channel, model string) llm.APIFormat {
 		for _, endpoint := range endpoints {
 			if endpoint.APIFormat == llm.APIFormatOpenAIDecisions.String() {
 				return llm.APIFormatOpenAIDecisions
+			}
+		}
+
+		if _, err := openairt.NewAdapter(entry.ActualModel); err == nil {
+			for _, endpoint := range endpoints {
+				if endpoint.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() {
+					return llm.APIFormatOpenAIRealtimeWebSocket
+				}
+			}
+		}
+		if _, err := protocol.NewAdapter(entry.ActualModel, false); err == nil {
+			for _, endpoint := range endpoints {
+				if endpoint.APIFormat == llm.APIFormatQwenRealtimeWebSocket.String() {
+					return llm.APIFormatQwenRealtimeWebSocket
+				}
 			}
 		}
 
@@ -353,6 +370,9 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	testModel := lo.FromPtr(modelID)
 	if testModel == "" {
 		testModel = channel.DefaultTestModel
+	}
+	if testFormat := channelTestAPIFormat(channel, testModel); testFormat == llm.APIFormatQwenRealtimeWebSocket || testFormat == llm.APIFormatOpenAIRealtimeWebSocket {
+		return processor.testRealtimeChannel(ctx, channel, testModel, proxy)
 	}
 	systemPrompt, userPrompt, err := processor.systemService.ChannelTestPrompts(ctx)
 	if err != nil {
@@ -744,6 +764,18 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 	apiFormat llm.APIFormat,
 ) *TestAPIKeyResult {
 	keyPrefix := xsecret.MaskAPIKey(key)
+
+	if apiFormat == llm.APIFormatQwenRealtimeWebSocket || apiFormat == llm.APIFormatOpenAIRealtimeWebSocket {
+		ch, err := processor.channelService.GetChannelWithKey(ctx, channelID.ID, key)
+		if err != nil {
+			return &TestAPIKeyResult{KeyPrefix: keyPrefix, Error: lo.ToPtr("Realtime channel key is unavailable")}
+		}
+		result, err := processor.testRealtimeChannel(ctx, ch, testModel, proxy)
+		if err != nil {
+			return &TestAPIKeyResult{KeyPrefix: keyPrefix, Error: lo.ToPtr("Realtime key or endpoint test failed")}
+		}
+		return &TestAPIKeyResult{KeyPrefix: keyPrefix, Success: result.Success, Latency: result.Latency, Error: result.Error}
+	}
 
 	inbound, body, err := processor.buildChannelTestInput(ctx, testModel, useStream, systemPrompt, userPrompt, responsesWebSocket, apiFormat)
 	if err != nil {

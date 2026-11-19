@@ -1,0 +1,96 @@
+// 职责: 验证实时模型权限、两级映射、渠道权限与供应商协议隔离。
+// 关联文件:
+//
+//	internal/server/orchestrator/realtime.go
+//	internal/server/orchestrator/candidates.go
+package orchestrator
+
+import (
+	"context"
+	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
+	rt "github.com/looplj/axonhub/internal/server/realtime"
+	"github.com/looplj/axonhub/llm"
+	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/require"
+	"testing"
+	"time"
+)
+
+func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
+	ctx, db := setupTest(t)
+	project := db.Project.Create().SetName("route-project").SaveX(ctx)
+	ctx = contexts.WithProjectID(ctx, project.ID)
+	actual := "gpt-realtime-2.1-mini"
+	row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("route-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream"}).SetSupportedModels([]string{actual}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime", HandshakeTimeoutMs: lo.ToPtr(int64(30000))}}).SaveX(ctx)
+	price := objects.ModelPrice{}
+	for _, code := range objects.AllRealtimePriceItemCodes() {
+		rate := decimal.NewFromInt(1)
+		price.Items = append(price.Items, objects.ModelPriceItem{ItemCode: code, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: &rate}})
+	}
+	db.ChannelModelPrice.Create().SetChannelID(row.ID).SetModelID(actual).SetReferenceID("route-price").SetPrice(price).SaveX(ctx)
+	db.Model.Create().SetModelID("route-model").SetName("route-model").SetDeveloper("openai").SetIcon("openai").SetGroup("openai").SetModelCard(&objects.ModelCard{}).SetType("chat").SetStatus("enabled").SetSettings(&objects.ModelSettings{Associations: []*objects.ModelAssociation{{Type: "channel_model", ChannelModel: &objects.ChannelModelAssociation{ChannelID: row.ID, ModelID: actual}}}}).SaveX(ctx)
+	key := db.APIKey.Create().SetName("route-key").SetKey("synthetic-client").SetProjectID(project.ID).SetType(apikey.TypeUser).SetScopes([]string{"read_channels", "write_requests"}).SetProfiles(&objects.APIKeyProfiles{ActiveProfile: "restricted", Profiles: []objects.APIKeyProfile{{Name: "restricted", ModelIDs: []string{"voice"}, ModelMappings: []objects.ModelMapping{{From: "voice", To: "route-model"}}, ChannelIDs: []int{row.ID}}}}).SaveX(ctx)
+	key.Edges.Project = project
+	channels := newTestChannelServiceForChannels(db)
+	built, err := channels.GetChannel(ctx, row.ID)
+	require.NoError(t, err)
+	channels.PreloadModelPricesForTest(ctx, built)
+	channels.SetEnabledChannelsForTest([]*biz.Channel{built})
+	system := newTestSystemService(db)
+	service := &RealtimeService{Channels: channels, Selector: NewDefaultSelector(channels, newTestModelService(db), system), Usage: biz.NewUsageLogService(db, system, channels)}
+	_, err = service.Prepare(context.Background(), "voice", false)
+	require.Error(t, err)
+	ctx = contexts.WithAPIKey(ctx, key)
+	_, err = service.Prepare(ctx, "unauthorized", false)
+	require.ErrorIs(t, err, biz.ErrInvalidModel)
+	target, err := service.Prepare(ctx, "voice", false)
+	require.NoError(t, err)
+	require.Equal(t, 30*time.Second, target.HandshakeTimeout)
+	require.Equal(t, actual, target.Model)
+	require.Equal(t, "voice", target.ClientModel)
+	require.Equal(t, llm.APIFormatOpenAIRealtimeWebSocket, target.APIFormat)
+	require.Equal(t, "wss://api.openai.com/v1/realtime?model="+actual, target.URL)
+	require.NotContains(t, target.SafetyIdentifier, key.Key)
+	require.Len(t, target.SafetyIdentifier, 64)
+	_, err = service.Prepare(ctx, "voice", true)
+	require.Error(t, err, "native Qwen entry must not select official OpenAI")
+	key.Profiles.Profiles[0].ChannelIDs = []int{999}
+	_, err = service.Prepare(ctx, "voice", false)
+	require.Error(t, err, "channel permissions cannot be bypassed")
+	key.Profiles.Profiles[0].ChannelIDs = nil
+	broken := db.Channel.Create().SetType(channel.TypeOpenai).SetName("incomplete-price-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic"}).SetSupportedModels([]string{actual}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}).SaveX(ctx)
+	brokenBuilt, err := channels.GetChannel(ctx, broken.ID)
+	require.NoError(t, err)
+	channels.SetEnabledChannelsForTest([]*biz.Channel{brokenBuilt, built})
+	library := db.Model.Query().OnlyX(ctx)
+	db.Model.UpdateOne(library).SetSettings(&objects.ModelSettings{Associations: []*objects.ModelAssociation{{Type: "channel_model", Priority: 0, ChannelModel: &objects.ChannelModelAssociation{ChannelID: broken.ID, ModelID: actual}}, {Type: "channel_model", Priority: 10, ChannelModel: &objects.ChannelModelAssociation{ChannelID: row.ID, ModelID: actual}}}}).SaveX(ctx)
+	service.Selector = NewDefaultSelector(channels, newTestModelService(db), system)
+	target, err = service.Prepare(ctx, "voice", false)
+	require.NoError(t, err)
+	require.Equal(t, row.ID, target.Channel.ID, "an incomplete candidate must not hide the healthy one")
+
+}
+
+func TestRealtimeReservedRequestDoesNotCancelItsOwnQuotaSlot(t *testing.T) {
+	ctx, db := setupTest(t)
+	project := db.Project.Create().SetName("request-quota").SaveX(ctx)
+	ctx = contexts.WithProjectID(ctx, project.ID)
+	key := db.APIKey.Create().SetName("quota").SetKey("synthetic-quota").SetProjectID(project.ID).SetType("user").SetProfiles(&objects.APIKeyProfiles{ActiveProfile: "one", Profiles: []objects.APIKeyProfile{{Name: "one", Quota: &objects.APIKeyQuota{Requests: lo.ToPtr(int64(1)), Period: objects.APIKeyQuotaPeriod{Type: objects.APIKeyQuotaPeriodTypeAllTime}}}}}).SaveX(ctx)
+	ctx = contexts.WithAPIKey(ctx, key)
+	system := newTestSystemService(db)
+	service := &RealtimeService{Quota: biz.NewQuotaService(db, system)}
+	require.NoError(t, service.checkQuota(ctx, key))
+	requests := newTestRequestServiceForChannels(db, system)
+	record, err := requests.CreateRealtimeRequest(ctx, "voice", 1, "rt-session-quota", objects.JSONRawMessage(`{}`))
+	require.NoError(t, err)
+	require.NoError(t, service.checkQuota(ctx, key, false), "runtime checks must allow the already admitted request to finish")
+	require.NoError(t, service.checkQuota(ctx, key), "existing request quotas count confirmed usage, not in-flight metadata")
+	db.UsageLog.Create().SetRequestID(record.ID).SetProjectID(project.ID).SetAPIKeyID(key.ID).SetChannelID(1).SetModelID("voice").SetPromptTokens(1).SetCompletionTokens(1).SetTotalTokens(2).SetFormat("openai/realtime").SetSource("api").SaveX(ctx)
+	require.NoError(t, service.checkQuota(ctx, key, false))
+	require.ErrorIs(t, service.checkQuota(ctx, key), rt.ErrQuotaExceeded, "the next reservation after confirmed usage must be refused")
+}

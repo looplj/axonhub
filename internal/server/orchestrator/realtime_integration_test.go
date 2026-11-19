@@ -1,0 +1,171 @@
+// 职责: 使用真实本地 WebSocket 和数据库验证实时协议、多轮、工具关联与恰好一次账单。
+// 关联文件:
+//
+//	internal/server/orchestrator/realtime.go
+//	internal/server/biz/realtime_billing.go
+//	internal/server/realtime/session.go
+package orchestrator
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
+	rt "github.com/looplj/axonhub/internal/server/realtime"
+	"github.com/looplj/axonhub/llm"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/require"
+)
+
+func realtimeSocketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
+	t.Helper()
+	accepted := make(chan *websocket.Conn, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		if err == nil {
+			accepted <- conn
+		}
+	}))
+	t.Cleanup(srv.Close)
+	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	require.NoError(t, err)
+	peer := <-accepted
+	t.Cleanup(func() { conn.Close(); peer.Close() })
+	return conn, peer
+}
+func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
+	for _, model := range []string{"gpt-realtime-2.1", "gpt-realtime-2.1-mini"} {
+		t.Run(model, func(t *testing.T) {
+			ctx, db := setupTest(t)
+			project := db.Project.Create().SetName("Realtime").SaveX(ctx)
+			ctx = contexts.WithProjectID(ctx, project.ID)
+			key := db.APIKey.Create().SetName("Realtime").SetKey("synthetic-client-key").SetUserID(1).SetProjectID(project.ID).SetType(apikey.TypeUser).SetStatus(apikey.StatusEnabled).SaveX(ctx)
+			ctx = contexts.WithAPIKey(ctx, key)
+			row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("Realtime").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream-key"}).SetSupportedModels([]string{model}).SetDefaultTestModel(model).SetStatus(channel.StatusEnabled).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}).SaveX(ctx)
+			channels := newTestChannelServiceForChannels(db)
+			ch, err := channels.GetChannel(ctx, row.ID)
+			require.NoError(t, err)
+			channels.SetEnabledChannelsForTest([]*biz.Channel{ch})
+			system := newTestSystemService(db)
+			usage := biz.NewUsageLogService(db, system, channels)
+			requests := newTestRequestServiceForChannels(db, system)
+			price := objects.ModelPrice{}
+			for _, code := range []string{"realtime_input_text_tokens", "realtime_input_audio_tokens", "realtime_output_text_tokens", "realtime_output_audio_tokens", "realtime_input_image_tokens", "realtime_cached_input_text_tokens", "realtime_cached_input_audio_tokens", "realtime_cached_input_image_tokens"} {
+				rate := decimal.NewFromInt(1)
+				price.Items = append(price.Items, objects.ModelPriceItem{ItemCode: objects.PriceItemCode(code), Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: &rate}})
+			}
+			service := &RealtimeService{Channels: channels, Usage: usage, Requests: requests}
+			upstream, provider := realtimeSocketPair(t)
+			require.NoError(t, provider.WriteJSON(map[string]any{"type": "session.created", "session": map[string]any{"id": "s1", "type": "realtime", "model": model}}))
+			c, initial, err := service.configure(ctx, upstream, &RealtimeTarget{Channel: ch, Model: model, ClientModel: "voice", APIFormat: llm.APIFormatOpenAIRealtimeWebSocket, APIKey: key, Price: &biz.RealtimePriceSnapshot{Price: price, ReferenceID: "test-price-v1"}}, rt.Config{}.Defaults())
+			require.NoError(t, err)
+			require.Len(t, initial, 1)
+			defer c.Close()
+			// Drive the actual downstream socket; expensive authorization was tested at Prepare separately.
+			client, downstream := realtimeSocketPair(t)
+			sessionCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			done := make(chan error, 1)
+			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						done <- fmt.Errorf("panic: %T", r)
+					}
+				}()
+				done <- rt.Run(sessionCtx, downstream, upstream, rt.Options{IdleTimeout: time.Second}, rt.Hooks{Client: func(data []byte) ([]byte, error) {
+					wire, err := c.adapter.Client(data)
+					if err == nil && strings.Contains(string(data), "session.update") {
+						err = c.state.Update()
+					}
+					return wire, err
+				}, Server: c.Server})
+			}()
+			require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.update","session":{"type":"realtime","output_modalities":["text"],"future_official_field":true}}`)))
+			_ = provider.SetReadDeadline(time.Now().Add(time.Second))
+			_, wire, err := provider.ReadMessage()
+			require.NoError(t, err)
+			require.Contains(t, string(wire), "future_official_field")
+			require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.updated","session":{"id":"s1","type":"realtime"}}`)))
+			_, _, err = client.ReadMessage()
+			require.NoError(t, err)
+			read := func(expected string) {
+				t.Helper()
+				_ = client.SetReadDeadline(time.Now().Add(5 * time.Second))
+				_, raw, err := client.ReadMessage()
+				require.NoError(t, err)
+				require.JSONEq(t, expected, string(raw))
+			}
+			require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
+			_ = provider.SetReadDeadline(time.Now().Add(5 * time.Second))
+			_, initialCreate, err := provider.ReadMessage()
+			require.NoError(t, err)
+			require.JSONEq(t, `{"type":"response.create"}`, string(initialCreate))
+			for turn := 1; turn <= 2; turn++ {
+				created := fmt.Sprintf(`{"type":"response.created","response":{"id":"r%d","status":"in_progress"}}`, turn)
+				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(created)))
+				read(created)
+				events := []string{fmt.Sprintf(`{"type":"response.output_text.delta","response_id":"r%d","item_id":"item1","delta":"private transcript","future":true}`, turn), fmt.Sprintf(`{"type":"response.function_call_arguments.delta","response_id":"r%d","item_id":"item1","call_id":"call1","delta":"{}"}`, turn), fmt.Sprintf(`{"type":"response.function_call_arguments.done","response_id":"r%d","item_id":"item1","call_id":"call1","arguments":"{}"}`, turn)}
+				if turn == 2 {
+					events = events[:1]
+				}
+				for _, event := range events {
+					require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(event)))
+					read(event)
+				}
+				terminal := fmt.Sprintf(`{"type":"response.done","response":{"id":"r%d","status":"completed","usage":{"input_tokens":100,"output_tokens":30,"total_tokens":130,"input_token_details":{"text_tokens":40,"audio_tokens":50,"image_tokens":10,"cached_tokens":30,"cached_tokens_details":{"text_tokens":10,"audio_tokens":15,"image_tokens":5}},"output_token_details":{"text_tokens":10,"audio_tokens":20}}}}`, turn)
+				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(terminal)))
+				read(terminal)
+				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(terminal)))
+				if turn == 1 {
+					executeTool := func(arguments string) string { require.JSONEq(t, "{}", arguments); return `{"ok":true}` }
+					result := map[string]any{"type": "conversation.item.create", "item": map[string]any{"type": "function_call_output", "call_id": "call1", "output": executeTool("{}")}}
+					require.NoError(t, client.WriteJSON(result))
+					_ = provider.SetReadDeadline(time.Now().Add(5 * time.Second))
+					_, raw, err := provider.ReadMessage()
+					require.NoError(t, err)
+					var forwarded map[string]any
+					require.NoError(t, json.Unmarshal(raw, &forwarded))
+					require.Equal(t, "call1", forwarded["item"].(map[string]any)["call_id"])
+					require.Equal(t, `{"ok":true}`, forwarded["item"].(map[string]any)["output"])
+					require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
+					_, raw, err = provider.ReadMessage()
+					require.NoError(t, err)
+					require.JSONEq(t, `{"type":"response.create"}`, string(raw))
+				}
+			}
+			// Duplicate completion frames must not produce an extra downstream event or ledger entry.
+			require.Eventually(t, func() bool { return db.UsageLog.Query().CountX(ctx) == 2 }, time.Second, 10*time.Millisecond)
+			for _, log := range db.UsageLog.Query().AllX(ctx) {
+				require.EqualValues(t, 130, log.TotalTokens)
+				require.Len(t, log.CostItems, 8)
+				require.Equal(t, "test-price-v1", log.CostPriceReferenceID)
+				require.NotNil(t, log.TotalCost)
+				require.InDelta(t, 0.00013, *log.TotalCost, 0.000000001)
+			}
+			for _, r := range db.Request.Query().AllX(ctx) {
+				require.Equal(t, request.StatusCompleted, r.Status)
+				body, _ := json.Marshal(r.ResponseBody)
+				require.NotContains(t, string(body), "private transcript")
+				require.Equal(t, row.ID, r.ChannelID)
+			}
+			cancel()
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+				t.Fatal("session workers did not exit")
+			}
+		})
+	}
+}

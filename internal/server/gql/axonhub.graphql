@@ -106,6 +106,7 @@ type ChannelEndpoint {
   path: String
   baseURL: String
   transport: String
+  handshakeTimeoutMs: Int
 }
 
 input ChannelEndpointInput {
@@ -113,6 +114,7 @@ input ChannelEndpointInput {
   path: String
   baseURL: String
   transport: String
+  handshakeTimeoutMs: Int
 }
 
 input SaveChannelEndpointsInput {

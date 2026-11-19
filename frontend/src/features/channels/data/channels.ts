@@ -175,12 +175,14 @@ const CREATE_CHANNEL_MUTATION = `
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
     }
   }
@@ -284,12 +286,14 @@ const DUPLICATE_CHANNEL_MUTATION = `
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
     }
   }
@@ -393,12 +397,14 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
     }
   }
@@ -502,12 +508,14 @@ const CHANNEL_FIELDS_FRAGMENT = `
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
   }
 `;
@@ -592,12 +600,14 @@ const SAVE_CHANNEL_ENDPOINTS_MUTATION = `
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
     }
   }
@@ -683,12 +693,14 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           path
           baseURL
           transport
+          handshakeTimeoutMs
         }
         endpoints {
           apiFormat
           path
           baseURL
           transport
+          handshakeTimeoutMs
         }
         settings {
           extraModelPrefix
@@ -933,12 +945,14 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           path
           baseURL
           transport
+          handshakeTimeoutMs
         }
         endpoints {
           apiFormat
           path
           baseURL
           transport
+          handshakeTimeoutMs
         }
         settings {
           extraModelPrefix
@@ -1008,6 +1022,7 @@ const ALL_CHANNEL_SUMMARYS_QUERY = `
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
       allModelEntries {
         requestModel
@@ -1316,12 +1331,14 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             path
             baseURL
             transport
+            handshakeTimeoutMs
           }
           endpoints {
             apiFormat
             path
             baseURL
             transport
+            handshakeTimeoutMs
           }
           disabledAPIKeys {
             key
@@ -1432,12 +1449,14 @@ const CHANNEL_QUERY_ENDPOINTS_SELECTION = `
             path
             baseURL
             transport
+            handshakeTimeoutMs
           }
           endpoints {
             apiFormat
             path
             baseURL
             transport
+            handshakeTimeoutMs
           }
 `;
 
@@ -1861,7 +1880,7 @@ export function useUpdateChannelSettings() {
 
 export interface SaveChannelEndpointsInput {
   channelID: string;
-  endpoints: Array<{ apiFormat: string; path?: string; baseURL?: string; transport?: string }>;
+  endpoints: Array<{ apiFormat: string; path?: string; baseURL?: string; transport?: string; handshakeTimeoutMs?: number | null }>;
 }
 
 export function useSaveChannelEndpoints() {

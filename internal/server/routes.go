@@ -29,6 +29,7 @@ type Handlers struct {
 	Graphql            *gql.GraphqlHandler
 	OpenAPIGraphql     *openapi.GraphqlHandler
 	OpenAI             *api.OpenAIHandlers
+	Realtime           *api.RealtimeHandlers
 	Doubao             *api.DoubaoHandlers
 	Anthropic          *api.AnthropicHandlers
 	Gemini             *api.GeminiHandlers
@@ -244,6 +245,13 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	// single-request timeout from apiGroup.
 	responsesWebSocketGroup := server.Group("/", apiMiddlewares...)
 	responsesWebSocketGroup.GET("/v1/responses", handlers.OpenAI.CreateResponseWebSocket(server.Config.LLMStreamRequestTimeout))
+
+	// Realtime owns its lifetime and never inherits no-auth fallback, body capture or HTTP LLM timeouts.
+	realtimeGroup := server.Group("/", api.RealtimeBoundary(), middleware.WithIPBlocklist(services.SystemService),
+		middleware.WithStrictAPIKeyConfig(services.AuthService, &middleware.APIKeyConfig{Headers: []string{"Authorization"}, RequireBearer: true}),
+		middleware.WithSource(request.SourceAPI))
+	realtimeGroup.GET("/v1/realtime", handlers.Realtime.Handler(server.Config.Realtime, false))
+	realtimeGroup.GET("/v1/realtime/qwen", handlers.Realtime.Handler(server.Config.Realtime, true))
 
 	{
 		openaiGroup := apiGroup.Group("/v1")

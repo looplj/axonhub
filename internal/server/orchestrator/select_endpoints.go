@@ -109,7 +109,8 @@ func compatibleResponsesAPIFormat(format llm.APIFormat) string {
 }
 
 func requiresExplicitEndpoint(requestType llm.RequestType) bool {
-	return requestType == llm.RequestTypeAlphaSearch ||
+	return requestType == llm.RequestTypeRealtime ||
+		requestType == llm.RequestTypeAlphaSearch ||
 		requestType == llm.RequestTypeDecisions ||
 		requestType == llm.RequestTypeSystemOne
 }
