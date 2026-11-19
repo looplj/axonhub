@@ -30,6 +30,7 @@ import (
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xredis"
+	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/lifecycle"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
@@ -46,6 +47,29 @@ type RealtimeHandlers struct {
 	nextSession uint64
 	drained     chan struct{}
 	stopping    bool
+}
+
+// ReconcileAudit is an owner-only acknowledgement, not a usage or balance edit.
+func (h *RealtimeHandlers) ReconcileAudit(c *gin.Context) {
+	if !scopes.IsDirectOwner(c.Request.Context()) {
+		JSONError(c, http.StatusForbidden, errors.New("direct owner required"))
+		return
+	}
+	var input struct {
+		APIKeyID   int    `json:"apiKeyID" binding:"required,gt=0"`
+		RequestIDs []int  `json:"requestIDs"`
+		Note       string `json:"note" binding:"required,max=1024"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil || len(input.RequestIDs) > 500 {
+		JSONError(c, http.StatusBadRequest, errors.New("invalid reconciliation input"))
+		return
+	}
+	count, err := h.service.Usage.ReconcileRealtimeAudits(c.Request.Context(), input.APIKeyID, input.RequestIDs, input.Note)
+	if err != nil {
+		JSONError(c, http.StatusBadRequest, errors.New("realtime audit reconciliation failed"))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"reviewedCount": count, "usageOrBalanceChanged": false})
 }
 
 func NewRealtimeHandlers(service *orchestrator.RealtimeService, cache xcache.Config, lc fx.Lifecycle) *RealtimeHandlers {
@@ -144,10 +168,6 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 				status = http.StatusNotFound
 			}
 			message := "Realtime model unavailable, permission denied, quota exceeded, or required prices not configured"
-			if errors.Is(err, biz.ErrRealtimeUsageUnreconciled) {
-				status = http.StatusConflict
-				message = "Realtime usage is pending reconciliation; additional realtime sessions are blocked"
-			}
 			JSONError(c, status, errors.New(message))
 			return
 		}
@@ -166,10 +186,10 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 		}
 		defer release()
 		accountingCtx, accountingCancel := context.WithTimeout(ctx, 5*time.Second)
-		err = h.service.Usage.EnsureRealtimeUsageReconciled(accountingCtx, target.APIKey.ID, limiter.IsActive)
+		err = h.service.Usage.EnsureRealtimeUsageReconciled(accountingCtx, target.APIKey.ID)
 		accountingCancel()
 		if err != nil {
-			JSONError(c, http.StatusConflict, errors.New("Realtime accounting is pending reconciliation or session ownership is unavailable"))
+			JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime accounting storage is unavailable"))
 			return
 		}
 		connectionConfig := config

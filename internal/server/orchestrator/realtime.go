@@ -612,6 +612,12 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if c.target.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket {
+		converted, err = applyRealtimeErrorPolicy(converted)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return c.aliasModel(converted), nil
 }
 func (c *RealtimeConversation) createResponse(id string) (*realtimeResponse, error) {

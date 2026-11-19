@@ -93,7 +93,7 @@ func TestRealtimeAuditRetryDoesNotRepeatUsage(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, interrupted.pendingResponses, 1)
 	interrupted.Close()
-	require.ErrorIs(t, usage.EnsureRealtimeUsageReconciled(ctx, key.ID), biz.ErrRealtimeUsageUnreconciled)
+	require.NoError(t, usage.EnsureRealtimeUsageReconciled(ctx, key.ID), "an interrupted response must not permanently lock the key")
 	require.Equal(t, 1, db.UsageLog.Query().CountX(ctx), "pending requests must never become fabricated zero-cost usage")
 
 }

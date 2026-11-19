@@ -64,3 +64,13 @@ func TestNativeRejectsSeparatelyBilledTranscription(t *testing.T) {
 	_, err = a.Client([]byte(`{"type":"session.update","session":{"type":"realtime","audio":{"input":{"transcription":{"model":"gpt-4o-transcribe"}}}}}`))
 	require.Error(t, err)
 }
+
+func TestNativeAdapterDoesNotSilentlyRewriteErrorBytes(t *testing.T) {
+	a, err := NewAdapter("gpt-realtime-2.1-mini")
+	require.NoError(t, err)
+	for _, raw := range []string{`{ "type":"error", "event_id":"e1", "error":{"type":"invalid_request_error","message":"details"}, "extension":true }`, `{ "type":"response.done", "response":{"id":"r1","status":"failed","status_details":{"error":{"message":"details"}}}}`} {
+		actual, err := a.Server([]byte(raw))
+		require.NoError(t, err)
+		require.Equal(t, raw, string(actual))
+	}
+}

@@ -133,6 +133,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithTimeout(server.Config.RequestTimeout),
 			gin.WrapH(playground.Handler("AxonHub", server.Config.BasePath+adminGroupPath+"/graphql")),
 		)
+		adminGroup.POST("/realtime/reconcile", middleware.WithTimeout(server.Config.RequestTimeout), handlers.Realtime.ReconcileAudit)
 		adminGroup.POST("/invitations", handlers.Invitation.Create)
 
 		adminGroup.POST("/codex/oauth/start", handlers.Codex.StartOAuth)

@@ -148,7 +148,9 @@ Run `go run ./scripts/realtime-proxy-check` for a reproducible Nginx check (Dock
 
 ## Accounting policy and explicit limits
 
-Unknown usage is never estimated by modality ratios or billed as ordinary text. Interrupted input/generation retains `usage_confirmed: false`, the model, price reference and exact price snapshot. New realtime sessions for that API key return HTTP 409 until an administrator reconciles provider consumption and records confirmed UsageLog data. There is no automated reconciliation or dedicated reconciliation editor in this release. Unknown consumption is not a zero-cost invoice.
+Unknown usage is never estimated by modality ratios or billed as ordinary text. Interrupted input/generation retains `usage_confirmed: false`, the model, price reference and exact price snapshot. An absent UsageLog records uncertainty, not confirmed debt: it does not permanently prevent the key from starting another session. New connections remain subject to concurrency admission and confirmed-consumption quotas. Unknown consumption is not a zero-cost invoice.
+
+A directly authenticated instance owner can mark terminal, unpriced audit records as reviewed through `POST /admin/realtime/reconcile`, using the normal admin JWT in the Authorization header. Send `{"apiKeyID":123,"requestIDs":[456],"note":"Provider consumption checked; no confirmed billable usage available"}`. Omit `requestIDs` to review up to 500 matching records for the specified key. The response contains `reviewedCount` and `usageOrBalanceChanged: false`; this operation adds reviewer/time/note metadata only, and never creates a UsageLog, fabricates zero consumption, or changes a balance. It is safe to retry. API keys, plugins and non-owner users cannot perform this operation. Automated provider reconciliation and a dedicated editor remain unavailable.
 
 Before closing a continuously streaming VAD client, stop capture, send `input_audio_buffer.clear`, and wait for `input_audio_buffer.cleared`. Only provider-confirmed clearing of unused input cancels that pending reservation; closing the socket does not erase unknown consumption.
 
@@ -156,10 +158,14 @@ OpenAI independent input transcription (`session.audio.input.transcription`) has
 
 Request-count quotas are checked against the existing confirmed UsageLog count when reserving a new audit record. Running token/cost checks exclude the already-reserved request count, so reaching that count does not cancel its own in-flight response. Missing cache breakdowns or a used modality without a rate stop the session for reconciliation. Cost enforcement uses confirmed consumption rather than a provider-side hard prepaid spending lock.
 
-Future work: independent transcription billing, automated/manual reconciliation tooling, scoped browser ephemeral tokens, and verified MCP/search/video/multichannel support. These are not part of the verified first-release capability set.
+Future work: independent transcription billing, automated provider reconciliation and a reconciliation management page, scoped browser ephemeral tokens, and verified MCP/search/video/multichannel support. These are not part of the verified first-release capability set.
 
-Processing reservations left by a crash or failed database finalization are checked against their owning session lease. Orphaned reservations require reconciliation. Audit metadata is written atomically to Request, independently of media/body storage switches. Ownership checks are shared across instances when Redis is configured and local otherwise.
+Processing reservations left by a crash or failed database finalization remain available for investigation; an orphaned audit is not proof of debt and does not permanently block the key. Session concurrency is bounded by admission leases, shared across instances when Redis is configured and local otherwise. Audit metadata is written atomically to Request, independently of media/body storage switches.
 
 If a Qwen3.5 response mixes speech and function-call text but provides only aggregate text tokens, the free-transcript/tool-argument split cannot be proven. Observed tokens are retained for reconciliation rather than guessed. Configure tool turns for text output, or prefer Qwen3.8/OpenAI for this case.
 
 A channel retains one credential pool. Its HTTP and realtime endpoints must use matching official credentials and regions; use separate channels across regions or credential domains. Relay credentials are not official OpenAI credentials. Both channel and per-key tests perform actual WebSocket probes.
+
+## Native fidelity and the safety boundary
+
+The OpenAI native adapter returns each valid JSON message byte for byte, including error messages. A separate Gateway safety policy then redacts upstream error and status_details.error details. This is an explicit end-to-end error-message exception, not an all-path raw relay. WebSocket transport preserves JSON message boundaries, not physical RFC6455 fragmentation or TCP packet boundaries.

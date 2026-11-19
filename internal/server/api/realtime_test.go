@@ -1,4 +1,4 @@
-// 职责: 验证实时入口在连接升级之前拒绝 URL 凭证与浏览器 Origin。
+// 职责: 验证实时入口安全边界、对账管理员权限与优雅关闭。
 // 关联文件:
 //
 //	internal/server/api/realtime.go
@@ -7,6 +7,8 @@ package api
 import (
 	"context"
 	"github.com/gin-gonic/gin"
+	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/stretchr/testify/require"
@@ -16,6 +18,22 @@ import (
 	"testing"
 	"time"
 )
+
+func TestRealtimeReconcileBoundaryRejectsNonOwner(t *testing.T) {
+	for _, authenticated := range []bool{false, true} {
+		router := gin.New()
+		h := &RealtimeHandlers{}
+		router.POST("/admin/realtime/reconcile", func(c *gin.Context) {
+			if authenticated {
+				c.Request = c.Request.WithContext(contexts.WithUser(c.Request.Context(), &ent.User{ID: 42, IsOwner: false}))
+			}
+			h.ReconcileAudit(c)
+		})
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/admin/realtime/reconcile", nil))
+		require.Equal(t, http.StatusForbidden, w.Code, "unprivileged requests must stop before accessing accounting")
+	}
+}
 
 func TestRealtimeBoundaryRejectsCredentialsInQueryAndOrigin(t *testing.T) {
 	for _, tc := range []struct {
