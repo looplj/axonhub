@@ -8,6 +8,7 @@
 //
 //	每个连接只有一个数据写入协程；队列满时关闭会话，不丢弃音频或无限缓存。
 //	钩子只能返回经过脱敏的错误；音视频消息不得记录到日志或追踪。
+//	关闭握手有界等待写出与对端确认；等待期间只排空输入，不再转换或转发媒体。
 package realtime
 
 import (
@@ -112,6 +113,16 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 	last.Store(time.Now().UnixNano())
 	errs := make(chan error, 4)
 	var wg sync.WaitGroup
+	var closing atomic.Bool
+	closeACK := make(chan struct{})
+	var closeOnce sync.Once
+	downstreamReaderDone := make(chan struct{})
+	// The session owner sends the classified reply. Gorilla's default handler
+	// would send a close before that owner can serialize shutdown.
+	downstream.SetCloseHandler(func(int, string) error {
+		closeOnce.Do(func() { close(closeACK) })
+		return nil
+	})
 	launch := func(side string, fn func() error) {
 		wg.Add(1)
 		go func() {
@@ -151,6 +162,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 				if err != nil {
 					return err
 				}
+				if client && (closing.Load() || ctx.Err() != nil) {
+					continue // Drain unread input through the peer's Close ACK; avoid TCP RST.
+				}
 				last.Store(time.Now().UnixNano())
 				if client {
 					if time.Since(window) >= time.Second {
@@ -172,6 +186,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 						return ErrInvalidEvent
 					}
 					if err := toClient.enqueue(ctx, clientError(data, err)); err != nil {
+						if ctx.Err() != nil {
+							continue
+						}
 						return err
 					}
 					continue
@@ -180,6 +197,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 					original := data
 					data, err = transform(data)
 					if err != nil {
+						if client && ctx.Err() != nil {
+							continue
+						}
 						if !client || errors.Is(err, ErrAccountingUnavailable) || errors.Is(err, ErrBackpressure) {
 							return err
 						}
@@ -190,6 +210,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 					}
 				}
 				if err := q.enqueue(ctx, data); err != nil {
+					if client && ctx.Err() != nil {
+						continue
+					}
 					return err
 				}
 			}
@@ -200,6 +223,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 			ticker := time.NewTicker(o.PingInterval)
 			defer ticker.Stop()
 			for {
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
@@ -218,7 +244,8 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 			}
 		}
 	}
-	launch("downstream", read(downstream, toProvider, hooks.Client, true))
+	readDownstream := read(downstream, toProvider, hooks.Client, true)
+	launch("downstream", func() error { defer close(downstreamReaderDone); return readDownstream() })
 	launch("upstream", read(upstream, toClient, hooks.Server, false))
 	launch("downstream", write(downstream, toClient.frames))
 	launch("upstream", write(upstream, toProvider.frames))
@@ -252,17 +279,20 @@ loop:
 		}
 	}
 	code := websocket.CloseInternalServerErr
+	reason := "internal_error"
 	if !IsAbnormal(result) {
 		code = websocket.CloseNormalClosure
+		reason = "normal_closure"
 	}
 	if errors.Is(result, ErrBackpressure) {
 		code = websocket.CloseTryAgainLater
+		reason = "backpressure"
 	}
-	// WriteControl uses Gorilla's internal writer lock and is safe alongside the data writer.
-	_ = downstream.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(code, "Realtime session ended"), time.Now().Add(100*time.Millisecond))
+	closing.Store(true)
 	cancel()
+	upstream.Close() // Stop provider work while the downstream completes its close handshake.
+	flushDownstreamClose(ctx, downstream, code, reason, closeACK, downstreamReaderDone)
 	downstream.Close()
-	upstream.Close()
 	wg.Wait()
 	return result
 }

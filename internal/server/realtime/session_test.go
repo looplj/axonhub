@@ -19,6 +19,122 @@ import (
 	"time"
 )
 
+func TestSessionSlowConsumerReceivesBackpressureCloseAndFlushes(t *testing.T) {
+	client, downstream := socketPair(t)
+	require.NoError(t, client.UnderlyingConn().(*net.TCPConn).SetReadBuffer(1024))
+	require.NoError(t, downstream.UnderlyingConn().(*net.TCPConn).SetWriteBuffer(1024))
+	upstream, provider := socketPair(t)
+	full := make(chan struct{})
+	var observed atomic.Int32
+	done := make(chan error, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("session panic: %T", r)
+				done <- fmt.Errorf("session panic")
+			}
+		}()
+		done <- Run(context.Background(), downstream, upstream, Options{QueueSize: 1, WriteTimeout: 4 * time.Second}, Hooks{Server: func(b []byte) ([]byte, error) {
+			if observed.Add(1) == 3 {
+				close(full)
+			}
+			return b, nil
+		}})
+	}()
+	// One frame in flight, one queued, the third blocks the production queue.
+	payload := []byte(strings.Repeat("x", 64<<10))
+	for i := 0; i < 3; i++ {
+		require.NoError(t, provider.WriteMessage(websocket.TextMessage, payload))
+	}
+	select {
+	case <-full:
+	case <-time.After(time.Second):
+		t.Fatal("queue did not fill")
+	}
+	time.Sleep(1200 * time.Millisecond) // unchanged 1s backpressure wait, then resume within close flush grace
+	require.NoError(t, client.UnderlyingConn().(*net.TCPConn).SetReadBuffer(4<<20))
+	client.SetCloseHandler(func(int, string) error { return nil }) // real peer deliberately delays Close ACK
+	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
+	for {
+		_, _, err := client.ReadMessage()
+		if err == nil {
+			continue
+		}
+		var closed *websocket.CloseError
+		require.ErrorAs(t, err, &closed)
+		require.Equal(t, 1013, closed.Code)
+		require.Equal(t, "backpressure", closed.Text)
+		break
+	}
+	select {
+	case err := <-done:
+		t.Fatalf("TCP closed before peer Close ACK: %v", err)
+	case <-time.After(40 * time.Millisecond):
+	}
+	require.NoError(t, client.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(1013, ""), time.Now().Add(time.Second)))
+	select {
+	case err := <-done:
+		require.ErrorIs(t, err, ErrBackpressure)
+	case <-time.After(time.Second):
+		t.Fatal("close ACK did not release workers")
+	}
+}
+
+func TestSessionNormalCloseFrame(t *testing.T) {
+	client, downstream := socketPair(t)
+	upstream, _ := socketPair(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("session panic: %T", r)
+				done <- fmt.Errorf("session panic")
+			}
+		}()
+		done <- Run(ctx, downstream, upstream, Options{}, Hooks{})
+	}()
+	cancel()
+	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
+	_, _, err := client.ReadMessage()
+	var closed *websocket.CloseError
+	require.ErrorAs(t, err, &closed)
+	require.Equal(t, 1000, closed.Code)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("normal close did not finish")
+	}
+}
+
+func TestSessionInternalErrorCloseFrame(t *testing.T) {
+	client, downstream := socketPair(t)
+	upstream, provider := socketPair(t)
+	done := make(chan error, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("session panic: %T", r)
+				done <- fmt.Errorf("session panic")
+			}
+		}()
+		done <- Run(context.Background(), downstream, upstream, Options{}, Hooks{Server: func([]byte) ([]byte, error) { return nil, ErrAccountingUnavailable }})
+	}()
+	require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"error"}`)))
+	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
+	_, _, err := client.ReadMessage()
+	var closed *websocket.CloseError
+	require.ErrorAs(t, err, &closed)
+	require.Equal(t, 1011, closed.Code)
+	select {
+	case err := <-done:
+		require.ErrorIs(t, err, ErrAccountingUnavailable)
+	case <-time.After(time.Second):
+		t.Fatal("internal error close did not finish")
+	}
+}
+
 func socketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
 	t.Helper()
 	accepted := make(chan *websocket.Conn, 1)

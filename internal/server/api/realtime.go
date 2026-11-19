@@ -4,12 +4,14 @@
 //	internal/server/routes.go
 //	internal/server/orchestrator/realtime.go
 //	internal/server/realtime/session.go
+//	internal/server/realtime/admission.go
 //	internal/pkg/xredis/client.go
 //
 // 注意事项:
 //
 //	首期仅支持带 Authorization 的服务端客户端，拒绝 Origin 和查询凭证。
 //	Redis 按首次实时调用延迟初始化；无实时端点使用时不建立额外连接或后台任务。
+//	传输退出后先释放连接租约，再收尾审计；握手等待交接不提高并发上限。
 package api
 
 import (
@@ -178,7 +180,7 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 		}
 		project, _ := contexts.GetProjectID(ctx)
 		target.SessionID = "rt-session-" + uuid.NewString()
-		release, err := limiter.Acquire(ctx, target.APIKey.ID, project, target.Channel.ID, target.SessionID)
+		release, err := limiter.AcquireForReconnect(ctx, target.APIKey.ID, project, target.Channel.ID, target.SessionID)
 		if err != nil {
 			metrics.Metrics.RealtimeEvent(ctx, "admission_rejected")
 			JSONError(c, http.StatusTooManyRequests, errors.New("Realtime admission denied"))
@@ -210,8 +212,10 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 			JSONError(c, http.StatusBadGateway, errors.New("Realtime upstream handshake or configuration failed"))
 			return
 		}
-		defer upstream.Close()
 		defer conversation.Close()
+		// Connection admission ends after both sockets/workers stop, before audit
+		// finalization, which may wait on storage. Keep the outer release for dial failures.
+		defer func() { _ = upstream.Close(); release() }()
 		// Conversation accounting must inherit the session, not the short dialing deadline.
 		conversation.WithContext(ctx)
 		controller := http.NewResponseController(c.Writer)
@@ -235,6 +239,7 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 		defer metrics.Metrics.RealtimeActive(context.WithoutCancel(ctx), -1)
 		started := time.Now()
 		err = rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: config.IdleTimeout, MaxDuration: config.MaxDuration}, rt.Hooks{Client: conversation.Client, Server: conversation.Server, Check: conversation.Check})
+		release() // Run has closed both peers and joined every worker.
 		metrics.Metrics.RealtimeDuration(context.WithoutCancel(ctx), time.Since(started).Seconds())
 		if err != nil {
 			metrics.Metrics.RealtimeEvent(context.WithoutCancel(ctx), "session_ended")
