@@ -84,6 +84,15 @@ models:
   CodexCatalogVersion:
     model:
       - github.com/looplj/axonhub/internal/server/biz.CodexCatalogVersion
+  EndpointAPIFormat:
+    model:
+      - github.com/looplj/axonhub/internal/objects.EndpointAPIFormat
+  ChannelRealtimeConfig:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelRealtimeConfig
+  ChannelRealtimeConfigInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelRealtimeConfig
   ClaudeCodeSafeguardsSettings:
     model: github.com/looplj/axonhub/internal/server/biz.ClaudeCodeSafeguardsSettings
   ClaudeCodeSafeguardsConfig:

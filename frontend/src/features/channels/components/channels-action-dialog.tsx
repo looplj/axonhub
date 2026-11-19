@@ -102,6 +102,9 @@ import { ChannelModelAliases } from './channel-model-preview';
 import { ProxyType } from './channels-proxy-dialog';
 import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ManualModelBadge } from './manual-model-badge';
+import { filterChannelModelGroups, groupChannelModelEntries } from '../data/channel-model-aliases';
+import { useChannelModelPreview } from '../data/use-channel-model-preview';
+import { isRealtimeProtocol, realtimeForSelection, withoutRealtimeModelProtocols } from '../data/channel-realtime';
 
 interface Props {
   currentRow?: Channel;
@@ -764,11 +767,14 @@ export function ChannelsActionDialog({
       return getInitialApiFormatForChannel(
         initialRow.type,
         CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS,
-        initialRow.settings?.modelProtocols
+        initialRow.settings?.modelProtocols,
+        initialRow.settings?.realtime
       );
     }
     return OPENAI_CHAT_COMPLETIONS;
   });
+  const [realtimeHost, setRealtimeHost] = useState(initialRow?.settings?.realtime?.baseURL ?? '');
+  const [realtimeTimeout, setRealtimeTimeout] = useState(String(initialRow?.settings?.realtime?.handshakeTimeoutMs ?? ''));
   const [responsesTransport, setResponsesTransport] = useState<ResponsesTransport>(() => getResponsesTransportFromChannel(initialRow));
   const initialCodexResponses = useMemo(() => getCodexResponsesWebSocketState(initialRow), [initialRow]);
   const [codexResponsesWebSocket, setCodexResponsesWebSocket] = useState(initialCodexResponses.enabled);
@@ -799,10 +805,13 @@ export function ChannelsActionDialog({
     const apiFormat = getInitialApiFormatForChannel(
       initialRow.type,
       CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS,
-      initialRow.settings?.modelProtocols
+      initialRow.settings?.modelProtocols,
+      initialRow.settings?.realtime
     );
     setSelectedApiFormat(apiFormat);
     setResponsesTransport(getResponsesTransportFromChannel(initialRow));
+    setRealtimeHost(initialRow.settings?.realtime?.baseURL ?? '');
+    setRealtimeTimeout(String(initialRow.settings?.realtime?.handshakeTimeoutMs ?? ''));
     setCodexResponsesWebSocket(getCodexResponsesWebSocketState(initialRow).enabled);
     setUseGeminiVertex(initialRow.type === 'gemini_vertex');
     setUseAnthropicAws(initialRow.type === 'anthropic_aws');
@@ -1188,6 +1197,8 @@ export function ChannelsActionDialog({
       if (isOAuthChannel) return;
       if (isEdit && alwaysOAuthProviderKeys.includes(provider)) return;
       setSelectedProvider(provider);
+      setRealtimeHost('');
+      setRealtimeTimeout('');
       setAuthMode(isEdit && ['codex', 'claudecode'].includes(provider) ? 'third-party' : 'official');
 
       if (provider !== 'gemini') {
@@ -1620,6 +1631,17 @@ export function ChannelsActionDialog({
             }
           : null;
 
+      const currentRealtime = values.settings?.realtime;
+      const realtimeChannelType = values.type ?? derivedChannelType;
+      const matchingRealtime = (realtimeChannelType === 'openai' && currentRealtime?.protocol === 'openai/realtime-ws') || (realtimeChannelType === 'bailian' && currentRealtime?.protocol === 'qwen/realtime-ws') ? currentRealtime : undefined;
+      let realtime: ChannelSettings['realtime'];
+      try {
+        realtime = realtimeForSelection(selectedApiFormat, matchingRealtime, realtimeHost, realtimeTimeout) ?? null;
+      } catch (error) {
+        toast.error(t(error instanceof Error ? error.message : 'channels.realtime.invalidHost'));
+        return;
+      }
+
       const valuesForSubmit = isEdit
         ? values
         : {
@@ -1728,6 +1750,7 @@ export function ChannelsActionDialog({
           selectedApiFormat === 'zenmux/video' ||
           existingModelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video')) === true;
         const settingsPatch: Partial<ChannelSettings> = {
+          realtime,
           passThroughUserAgent,
           passThroughBody,
           retryableStatusCodes,
@@ -1748,6 +1771,7 @@ export function ChannelsActionDialog({
             : {}),
           ...(codexModelProtocols ? { modelProtocols: codexModelProtocols } : {}),
         };
+        if (currentRealtime && !matchingRealtime) settingsPatch.modelProtocols = withoutRealtimeModelProtocols(settingsPatch.modelProtocols ?? existingModelProtocols);
 
         const updateInput = {
           ...dataWithModels,
@@ -1799,6 +1823,7 @@ export function ChannelsActionDialog({
         };
 
         const nextSettings = mergeChannelSettingsForUpdate(settingsForSubmit, {
+          realtime,
           proxy: proxyConfig,
           passThroughUserAgent,
           passThroughBody,
@@ -1824,6 +1849,7 @@ export function ChannelsActionDialog({
           ...(dataWithModels as z.infer<typeof createChannelInputSchema>),
           settings: nextSettings,
         } as z.infer<typeof createChannelInputSchema>;
+        if (currentRealtime && !matchingRealtime && createInput.settings) createInput.settings.modelProtocols = withoutRealtimeModelProtocols(createInput.settings.modelProtocols);
 
         if (isDuplicate && duplicateFromRow) {
           await duplicateChannel.mutateAsync({
@@ -2257,6 +2283,8 @@ export function ChannelsActionDialog({
     setProxyUrl(initialRow?.settings?.proxy?.url || '');
     setProxyUsername(initialRow?.settings?.proxy?.username || '');
     setProxyPassword(initialRow?.settings?.proxy?.password || '');
+    setRealtimeHost(initialRow?.settings?.realtime?.baseURL ?? '');
+    setRealtimeTimeout(String(initialRow?.settings?.realtime?.handshakeTimeoutMs ?? ''));
     setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
     setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
     setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
@@ -2276,7 +2304,8 @@ export function ChannelsActionDialog({
         getInitialApiFormatForChannel(
           initialRow.type,
           CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS,
-          initialRow.settings?.modelProtocols
+          initialRow.settings?.modelProtocols,
+          initialRow.settings?.realtime
         )
       );
       setResponsesTransport(getResponsesTransportFromChannel(initialRow));
@@ -2488,6 +2517,24 @@ export function ChannelsActionDialog({
                               )}
                           </div>
                         </FormItem>
+                      )}
+
+                      {isRealtimeProtocol(selectedApiFormat) && (
+                        <div className='space-y-3 rounded-md border p-3' data-testid='channel-realtime-config'>
+                          <p className='text-muted-foreground text-sm'>{t('channels.realtime.channelOnly')}</p>
+                          <label className='block space-y-1 text-sm'>
+                            <span>{t('channels.realtime.host')}</span>
+                            <Input value={realtimeHost || (selectedApiFormat === 'openai/realtime-ws' ? 'wss://api.openai.com' : '')} onChange={(event) => setRealtimeHost(event.target.value)} readOnly={selectedApiFormat === 'openai/realtime-ws'} placeholder='wss://llm-workspace.cn-beijing.maas.aliyuncs.com' data-testid='channel-realtime-host' />
+                          </label>
+                          <label className='block space-y-1 text-sm'>
+                            <span>{t('channels.endpoints.path')}</span>
+                            <Input value={selectedApiFormat === 'openai/realtime-ws' ? '/v1/realtime' : '/api-ws/v1/realtime'} readOnly />
+                          </label>
+                          <label className='block space-y-1 text-sm'>
+                            <span>{t('channels.endpoints.realtime.handshakeTimeout')}</span>
+                            <Input type='number' min={1000} max={60000} value={realtimeTimeout} onChange={(event) => setRealtimeTimeout(event.target.value)} placeholder={t('channels.endpoints.realtime.handshakeTimeoutHint')} />
+                          </label>
+                        </div>
                       )}
 
                       {selectedProvider === 'claudecode' && (

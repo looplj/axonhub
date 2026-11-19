@@ -710,11 +710,30 @@ func (svc *BackupService) restoreChannelModelPrices(
 
 func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, channels []*BackupChannel, opts RestoreOptions) error {
 	for _, chData := range channels {
+		if chData == nil {
+			continue
+		}
+		// Backup JSON does not pass through GraphQL's endpoint input scalar.
+		// Apply that same boundary here instead of silently dropping legacy RT.
+		for _, endpoint := range chData.Endpoints {
+			if _, err := objects.UnmarshalEndpointAPIFormat(endpoint.APIFormat); err != nil {
+				return fmt.Errorf("invalid restored endpoint protocol: %w", err)
+			}
+		}
 		existing, err := db.Channel.Query().
 			Where(channel.Name(chData.Name)).
 			First(ctx)
 		if err != nil && !ent.IsNotFound(err) {
 			return err
+		}
+		kind := chData.Type
+		if existing != nil {
+			kind = existing.Type // Overwrite preserves the existing channel's provider.
+		}
+		if chData.Settings != nil {
+			if err := biz.ValidateChannelRealtime(kind, chData.Settings.Realtime); err != nil {
+				return fmt.Errorf("invalid restored channel Realtime configuration: %w", err)
+			}
 		}
 
 		credentials := chData.Credentials

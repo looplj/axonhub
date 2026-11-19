@@ -600,6 +600,11 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	if err := validateEndpointsForChannelType(input.Type, input.Endpoints, baseURL); err != nil {
 		return nil, fmt.Errorf("invalid endpoints: %w", err)
 	}
+	if input.Settings != nil {
+		if err := ValidateChannelRealtime(input.Type, input.Settings.Realtime); err != nil {
+			return nil, err
+		}
+	}
 	input.Settings = normalizeModelProtocols(input.Settings, &ent.Channel{Type: input.Type, BaseURL: baseURL, Endpoints: input.Endpoints})
 	input.Endpoints = NormalizeEndpoints(input.Endpoints, baseURL)
 
@@ -925,6 +930,11 @@ func normalizeAutoDisableRules(rules []objects.APIKeyAutoDisableRule, allowDelet
 // the update is then optimistic-locked against that version and fails with
 // ErrChannelUpdatedConcurrently when the channel was updated concurrently.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
+	// Explicitly validate append payloads as well: SetInput must never silently
+	// swallow a forbidden realtime protocol at an endpoint boundary.
+	if err := ValidateEndpoints(input.AppendEndpoints); err != nil {
+		return nil, err
+	}
 	log.Debug(ctx, "UpdateChannel", log.Int("id", id))
 	expectedUpdatedAt, _ := ctx.Value(channelExpectedVersionKey{}).(*time.Time)
 	// Snapshot the provider identity before normalizing Command Code settings.
@@ -1088,6 +1098,15 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		channelType := existing.Type
 		if input.Type != nil {
 			channelType = *input.Type
+		}
+		realtimeSettings := input.Settings
+		if realtimeSettings == nil {
+			realtimeSettings = existing.Settings
+		}
+		if realtimeSettings != nil {
+			if err := ValidateChannelRealtime(channelType, realtimeSettings.Realtime); err != nil {
+				return nil, err
+			}
 		}
 		baseURL := existing.BaseURL
 		if input.BaseURL != nil {

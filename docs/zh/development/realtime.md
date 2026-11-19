@@ -12,18 +12,24 @@
 ## 管理界面配置
 
 1. 保留现有 `openai` 或 `bailian` 渠道，不新建服务商类型。在渠道密钥管理中加入对应官方 API Key。
-2. 在端点管理中显式添加 `openai/realtime-ws` 或 `qwen/realtime-ws`。可为端点单独设置 1000–60000 毫秒握手超时；留空继承服务配置。删除该显式端点即可停止新会话；不修改渠道原有 HTTP Base URL。
+2. 在渠道主表单中为 OpenAI 选择 `openai/realtime-ws`，为百炼选择 `qwen/realtime-ws`。独立保存在渠道的 `settings.realtime`，包含 `enabled`、`protocol`、`baseURL`、`path` 和可选的 `handshakeTimeoutMs`。握手超时可设为 1000–60000 毫秒，留空继承服务配置。Realtime WS 地址使用独立字段，不修改渠道原有 HTTP Base URL。
 3. OpenAI 官方使用 `wss://api.openai.com` 和 `/v1/realtime`。首批支持 `gpt-realtime-2.1`、`gpt-realtime-2.1-mini`，不自动选择已弃用型号。
-4. 百炼选择地域与 Workspace，生成 `wss://{WorkspaceId}.{region}.maas.aliyuncs.com`，路径为 `/api-ws/v1/realtime`。地域只接受 `cn-beijing` 和 `ap-southeast-1`。Workspace、地域、密钥必须属于同一官方资源配置。
-5. 加入上游支持模型并配置模型映射、模型关联和 API Key Profile 授权。Qwen 首批型号为 `qwen3.8-omni-flash-realtime`、`qwen3.5-omni-plus-realtime`、`qwen3.5-omni-flash-realtime`。如需单独测试，使用模型协议覆盖将该模型固定到实时协议。
+4. 百炼应从控制台复制所选业务空间的可信 API Host，使用其 WSS 地址，路径为 `/api-ws/v1/realtime`。Host 仅接受 `maas.aliyuncs.com` 下的 `cn-beijing` 和 `ap-southeast-1` 地域；保留控制台提供的完整主机标签，包括实际存在的 `llm-` 前缀。Workspace、地域、密钥必须属于同一官方资源配置。
+5. 在渠道层配置支持模型白名单、模型映射、模型关联和 API Key Profile 授权。Qwen 首批型号为 `qwen3.8-omni-flash-realtime`、`qwen3.5-omni-plus-realtime`、`qwen3.5-omni-flash-realtime`。Realtime 协议选择属于渠道主表单，不通过端点管理设置。
 6. 配置分项价格，不能用普通文本模型的 `prompt_tokens`/`completion_tokens` 代替实时价格。使用管理员维护的官方当前费率与币种，不能混合人民币与美元。
 7. 渠道连接测试执行真实 WS 握手、会话配置确认及轻量 conversation item 确认，不触发生成。此探测成功不代表真实语音或账单验收通过。
+
+端点管理不提供 Realtime 协议。通过 `saveChannelEndpoints` 或其他端点写入输入传入 `openai/realtime-ws`、`qwen/realtime-ws`，服务端会返回 HTTP `422` 和错误码 `ENDPOINT_REALTIME_NOT_ALLOWED`，不会忽略或保存。将 `settings.realtime.enabled` 设为 `false`，或在渠道主表单切换到非 Realtime 协议，即可停止新实时会话，无需删除 HTTP 端点。
+
+现有启动数据迁移流程会在渠道缓存加载之前，把历史 `endpoints` 中的 Realtime 配置搬到 `settings.realtime`。每个渠道的配置搬迁与旧条目清理原子完成，保留普通端点及其他设置。已有渠道级 Realtime 设置优先，包括显式禁用状态；重复执行不再写入渠道。该迁移只改变 JSON 配置结构，不新增数据库表或列。
+
+迁移遵循现有数据库自动迁移开关；若已关闭，需要先受控启用迁移启动一次，再开放迁移后的 Realtime 渠道。混合版本发布时先排空 Realtime 流量，完成全部实例升级后再开放，旧二进制不能读取新的渠道配置。
 
 ## 客户端契约
 
 统一入口为 `GET /v1/realtime?model={网关模型或别名}`，使用标准 WebSocket Upgrade 和 `Authorization: Bearer {AxonHub API Key}`。只支持服务端客户端；浏览器 Origin、URL 凭证及客户端指定的上游 Host 均被拒绝。入口使用严格鉴权，不回退到 No-Auth。
 
-原生 Qwen 调试入口为 `/v1/realtime/qwen?model={模型}`，同样经过权限、配额、价格与连接限制，仅能选择百炼实时端点；它也只暴露已实现且通过校验的安全能力子集。
+原生 Qwen 调试入口为 `/v1/realtime/qwen?model={模型}`，同样经过权限、配额、价格与连接限制，仅能选择已启用 Realtime 配置的百炼渠道；它也只暴露已实现且通过校验的安全能力子集。
 
 OpenAI 上游使用原生 GA 事件，保留合法未知扩展字段和事件顺序，不发送 `OpenAI-Beta: realtime=v1`，不经 Qwen 转换，不对音频重采样。OpenAI 在 `session.created` 提供完整有效音频配置时可直接使用已确认的默认值；修改参数时应发送 `session.update` 并等待 `session.updated`，再按新参数发送媒体。禁止在会话中修改模型、覆盖凭证或身份安全字段。Safety Identifier 由已鉴权的网关密钥及用户/项目生成不可逆摘要，不接受客户端覆盖。
 
@@ -88,7 +94,7 @@ server:
       connections_per_minute: 20
 ```
 
-配置使用现有 YAML 与环境变量加载机制，例如 `AXONHUB_SERVER_REALTIME_MAX_DURATION=15m`（具体前缀以现有部署配置为准）。没有另一个必填 Feature Flag；显式端点就是启用条件。
+配置使用现有 YAML 与环境变量加载机制，例如 `AXONHUB_SERVER_REALTIME_MAX_DURATION=15m`（具体前缀以现有部署配置为准）。没有另一个必填 Feature Flag；渠道中显式设置 `settings.realtime.enabled` 即为启用条件。
 
 共享 Redis 从现有 `cache.redis` 配置读取，在第一次实时会话时延迟连接。四个维度的并发与每密钥建连频率在单槽 Lua 中原子获取，租约超过会话硬时限，崩溃自动到期；Redis 不可用时拒绝新会话。没有 Redis 时计数仅适用于单进程；多实例部署必须使用相同 Redis 和相同限制，不可称本地计数为集群配额。Redis 的数据持久化、主从切换丢写风险必须纳入部署验收。
 
@@ -132,7 +138,7 @@ go run ./scripts/realtime-smoke -qwen-native -model qwen3.8-omni-flash-realtime 
 
 需设置 `AXONHUB_API_KEY`。脚本覆盖配置、文本、音频输入/输出、多轮和工具结果继续生成，打印确认 usage；它不播放或保存音频，音质和时长需单独验收，VAD、取消和异常网络还需按测试清单验证。
 
-先备份数据库和渠道配置，在单个受限项目启用端点，设低并发/短时长/小配额，核对供应商账单再扩大。回滚先移除实时端点或禁用相应渠道，等待有界会话结束或停止服务取消连接，再回滚应用版本。此实现不引入数据库表迁移，但新价格码与端点应在回滚旧应用前删除；备份并保留新版本确认的账单审计数据，旧应用可能不认识新价格枚举。
+先备份数据库和渠道配置，在单个受限项目启用渠道的 Realtime 配置，设低并发/短时长/小配额，核对供应商账单再扩大。回滚先关闭 `settings.realtime.enabled` 或禁用相应渠道，等待有界会话结束或停止服务取消连接，再回滚应用版本。迁移不新增表或列，但 JSON 配置结构已变化：只读取旧实时端点的应用不会使用 `settings.realtime`。若旧版本仍需提供 Realtime，切换版本后恢复与其匹配的渠道配置备份，不要通过当前端点 API 写回实时协议。运行旧代码前检查价格枚举兼容性，保留已经确认的账单审计记录。
 
 ## 官方资料
 
@@ -166,7 +172,7 @@ OpenAI 的独立输入转录（`session.audio.input.transcription`）有单独�
 
 Qwen3.5 的一个响应若同时包含音频和 Function Calling 文本，而上游只有聚合文本 Token，无法证明哪些属于免费转录、哪些属于工具参数。该情况保留已观察到的 Token 并进入核对流程，不猜测拆分；可将工具调用阶段配置为纯文本输出，或优先使用 Qwen3.8/OpenAI。
 
-同一渠道沿用一个凭证池。HTTP 和 Realtime 端点必须使用相匹配的官方密钥与地域；跨地域或跨凭证域应配置不同渠道，不能把中转服务密钥当成 OpenAI 官方密钥。端点测试及逐密钥测试均走实际 WebSocket 探测。
+同一渠道沿用一个凭证池。HTTP 配置和渠道级 Realtime 配置必须使用相匹配的官方密钥与地域；跨地域或跨凭证域应配置不同渠道，不能把中转服务密钥当成 OpenAI 官方密钥。渠道连接测试及逐密钥测试均走实际 WebSocket 探测。
 
 ## 原生保真与安全边界
 

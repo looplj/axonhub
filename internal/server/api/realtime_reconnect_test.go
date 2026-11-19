@@ -56,7 +56,7 @@ func newRealtimeReconnectFixture(t *testing.T, configureKey ...func(*ent.APIKeyC
 	}
 	key := createKey.SaveX(seed)
 	const model = "gpt-realtime-2.1-mini"
-	row := db.Channel.Create().SetName("reconnect").SetType(channel.TypeOpenai).SetStatus(channel.StatusEnabled).SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-provider"}).SetSupportedModels([]string{model}).SetDefaultTestModel(model).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}).SaveX(seed)
+	row := db.Channel.Create().SetName("reconnect").SetType(channel.TypeOpenai).SetStatus(channel.StatusEnabled).SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-provider"}).SetSupportedModels([]string{model}).SetDefaultTestModel(model).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}).SaveX(seed)
 	price := objects.ModelPrice{}
 	for _, code := range objects.AllRealtimePriceItemCodes() {
 		rate := decimal.NewFromInt(1)
