@@ -16,6 +16,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Workflow, GitBranch, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { appPath } from '@/lib/app-path';
 import { buildGUID, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -199,7 +200,7 @@ function SegmentNode({ data, selected }: NodeProps<SegmentFlowNode>) {
   const handleViewRequest = (e: React.MouseEvent) => {
     e.stopPropagation();
     const url = `/project/requests/${encodeURIComponent(buildGUID('Request', seg.id))}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.open(appPath(url), '_blank', 'noopener,noreferrer');
   };
 
   const inputTokens = seg.metadata?.inputTokens;

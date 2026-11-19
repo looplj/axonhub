@@ -1,6 +1,7 @@
 // 职责: 启动前端应用，并在查询缓存收到 401 时决定是否离开当前页。
 // 关联文件:
 //   frontend/src/lib/auth-redirect.ts
+//   frontend/src/lib/app-path.ts
 //   frontend/src/gql/graphql.ts
 //   frontend/src/routes/__root.tsx
 //   frontend/src/locales/en.json
@@ -16,7 +17,8 @@ import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-qu
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
-import { shouldRedirectUnauthorizedToSignIn } from '@/lib/auth-redirect';
+import { getBasePath } from '@/lib/app-path';
+import { getSafeRedirect, shouldRedirectUnauthorizedToSignIn } from '@/lib/auth-redirect';
 import { handleServerError } from '@/utils/handle-server-error';
 import { FontProvider } from './context/font-context';
 import { SearchProvider } from './context/search-context';
@@ -101,7 +103,7 @@ const queryClient = new QueryClient({
         }
         toast.error(i18n.t('common.errors.sessionExpired'));
         useAuthStore.getState().auth.reset();
-        const redirect = `${router.history.location.href}`;
+        const redirect = getSafeRedirect(router.history.location.href);
         router.navigate({ to: '/sign-in', search: { redirect } });
       }
       if (status === 500) {
@@ -115,6 +117,7 @@ const queryClient = new QueryClient({
 // Create a new router instance
 const router = createRouter({
   routeTree,
+  basepath: getBasePath() || '/',
   context: { queryClient },
   defaultPreload: 'intent',
   defaultPreloadStaleTime: 0,

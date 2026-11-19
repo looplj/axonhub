@@ -6,6 +6,7 @@ import { IconCheck, IconCopy, IconMailPlus } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api-client';
+import { appPath } from '@/lib/app-path';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { extractNumberIDAsNumber } from '@/lib/utils';
 import { useSelectedProjectId } from '@/stores/projectStore';
@@ -75,7 +76,7 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
           roleID: extractNumberIDAsNumber(values.roleID),
         },
       });
-      const url = new URL('/sign-up', window.location.origin);
+      const url = new URL(appPath('/sign-up'), window.location.origin);
       url.searchParams.set('invite', response.token);
       setInviteLink(url.toString());
       toast.success(t('users.messages.invitationCreated'));

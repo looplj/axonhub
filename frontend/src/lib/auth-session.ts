@@ -1,4 +1,5 @@
 import { getTokenFromStorage, useAuthStore } from '@/stores/authStore';
+import { appPath } from '@/lib/app-path';
 
 const SESSION_RENEWAL_SECONDS = 7 * 24 * 60 * 60;
 
@@ -40,7 +41,7 @@ const refreshAccessToken = async (token: string): Promise<string | null> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5_000);
   try {
-    const response = await fetch('/admin/auth/refresh', {
+    const response = await fetch(appPath('/admin/auth/refresh'), {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       signal: controller.signal,

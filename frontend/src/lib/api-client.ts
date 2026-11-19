@@ -1,8 +1,6 @@
+import { appPath } from '@/lib/app-path';
 import { ensureFreshAccessToken } from '@/lib/auth-session';
 import type { AuthUser } from '@/stores/authStore';
-
-// Same domain, no need to add baseURL.
-export const API_BASE_URL = '';
 
 type ErrorResponseBody = {
   message?: string;
@@ -50,7 +48,7 @@ class ApiError extends Error {
 export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
   const { method = 'GET', headers = {}, body, requireAuth = false } = options;
 
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = appPath(endpoint);
 
   const requestHeaders: Record<string, string> = {
     'Content-Type': 'application/json',

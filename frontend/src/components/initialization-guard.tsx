@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useState } from 'react';
-import { useRouter } from '@tanstack/react-router';
+import { useLocation, useRouter } from '@tanstack/react-router';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSystemStatus } from '@/features/auth/data/initialization';
 
@@ -10,23 +10,20 @@ interface InitializationGuardProps {
 
 export function InitializationGuard({ children }: InitializationGuardProps) {
   const router = useRouter();
+  const isInitializationPage = useLocation({ select: ({ pathname }) => pathname === '/initialization' });
   const { data: systemStatus, isLoading, error } = useSystemStatus();
   const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
     // Only redirect if we have data and system is not initialized
-    if (systemStatus && !systemStatus.isInitialized) {
-      // Check if we're not already on the initialization page
-      const currentPath = window.location.pathname;
-      if (currentPath !== '/initialization') {
-        setIsNavigating(true);
-        //@ts-ignore
-        router.navigate({ to: '/initialization' }).finally(() => {
-          setIsNavigating(false);
-        });
-      }
+    if (systemStatus && !systemStatus.isInitialized && !isInitializationPage) {
+      setIsNavigating(true);
+      //@ts-ignore
+      router.navigate({ to: '/initialization' }).finally(() => {
+        setIsNavigating(false);
+      });
     }
-  }, [systemStatus, router]);
+  }, [systemStatus, isInitializationPage, router]);
 
   // Show loading skeleton while checking system status
   if (isLoading) {
@@ -54,7 +51,7 @@ export function InitializationGuard({ children }: InitializationGuardProps) {
 
   // If system is not initialized and we're not on initialization page, don't render children
   // But allow navigation to complete naturally
-  if ((systemStatus && !systemStatus.isInitialized && window.location.pathname !== '/initialization') || isNavigating) {
+  if ((systemStatus && !systemStatus.isInitialized && !isInitializationPage) || isNavigating) {
     // Don't return null immediately - let the navigation complete
     // The useEffect will handle the redirect
     return (
