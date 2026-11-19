@@ -288,6 +288,7 @@ input APIKeyAutoDisableRuleInput {
 type ChannelScheduledDisable {
   disableCron: String!
   disableTimezone: String
+  reenableMode: String
   reenableCron: String
   reenableTimezone: String
 }
@@ -295,6 +296,7 @@ type ChannelScheduledDisable {
 input ChannelScheduledDisableInput {
   disableCron: String!
   disableTimezone: String
+  reenableMode: String
   reenableCron: String
   reenableTimezone: String
 }

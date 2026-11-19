@@ -580,6 +580,7 @@ type ComplexityRoot struct {
 		DisableCron      func(childComplexity int) int
 		DisableTimezone  func(childComplexity int) int
 		ReenableCron     func(childComplexity int) int
+		ReenableMode     func(childComplexity int) int
 		ReenableTimezone func(childComplexity int) int
 	}
 
@@ -4684,6 +4685,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelScheduledDisable.ReenableCron(childComplexity), true
+	case "ChannelScheduledDisable.reenableMode":
+		if e.complexity.ChannelScheduledDisable.ReenableMode == nil {
+			break
+		}
+
+		return e.complexity.ChannelScheduledDisable.ReenableMode(childComplexity), true
 	case "ChannelScheduledDisable.reenableTimezone":
 		if e.complexity.ChannelScheduledDisable.ReenableTimezone == nil {
 			break
@@ -26076,6 +26083,8 @@ func (ec *executionContext) fieldContext_ChannelPolicies_scheduledDisable(_ cont
 				return ec.fieldContext_ChannelScheduledDisable_disableCron(ctx, field)
 			case "disableTimezone":
 				return ec.fieldContext_ChannelScheduledDisable_disableTimezone(ctx, field)
+			case "reenableMode":
+				return ec.fieldContext_ChannelScheduledDisable_reenableMode(ctx, field)
 			case "reenableCron":
 				return ec.fieldContext_ChannelScheduledDisable_reenableCron(ctx, field)
 			case "reenableTimezone":
@@ -27060,6 +27069,35 @@ func (ec *executionContext) _ChannelScheduledDisable_disableTimezone(ctx context
 }
 
 func (ec *executionContext) fieldContext_ChannelScheduledDisable_disableTimezone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelScheduledDisable",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelScheduledDisable_reenableMode(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelScheduledDisable) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelScheduledDisable_reenableMode,
+		func(ctx context.Context) (any, error) {
+			return obj.ReenableMode, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelScheduledDisable_reenableMode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelScheduledDisable",
 		Field:      field,
@@ -76372,7 +76410,7 @@ func (ec *executionContext) unmarshalInputChannelScheduledDisableInput(ctx conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"disableCron", "disableTimezone", "reenableCron", "reenableTimezone"}
+	fieldsInOrder := [...]string{"disableCron", "disableTimezone", "reenableMode", "reenableCron", "reenableTimezone"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76393,6 +76431,13 @@ func (ec *executionContext) unmarshalInputChannelScheduledDisableInput(ctx conte
 				return it, err
 			}
 			it.DisableTimezone = data
+		case "reenableMode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reenableMode"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReenableMode = data
 		case "reenableCron":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reenableCron"))
 			data, err := ec.unmarshalOString2string(ctx, v)
@@ -103609,6 +103654,8 @@ func (ec *executionContext) _ChannelScheduledDisable(ctx context.Context, sel as
 			}
 		case "disableTimezone":
 			out.Values[i] = ec._ChannelScheduledDisable_disableTimezone(ctx, field, obj)
+		case "reenableMode":
+			out.Values[i] = ec._ChannelScheduledDisable_reenableMode(ctx, field, obj)
 		case "reenableCron":
 			out.Values[i] = ec._ChannelScheduledDisable_reenableCron(ctx, field, obj)
 		case "reenableTimezone":

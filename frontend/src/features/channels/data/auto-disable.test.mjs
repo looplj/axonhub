@@ -1,9 +1,9 @@
+import { z } from 'zod';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import ts from 'typescript';
-import { z } from 'zod';
 
 const dataDir = import.meta.dirname;
 const srcRoot = join(dataDir, '..', '..', '..');
@@ -271,12 +271,14 @@ test('toScheduledDisableFormValue defaults empty schedules and maps API values',
   assert.deepEqual(toScheduledDisableFormValue(null), {
     disableCron: '',
     disableTimezone: 'UTC',
+    reenableMode: 'none',
     reenableCron: '',
     reenableTimezone: 'UTC',
   });
   assert.deepEqual(toScheduledDisableFormValue({ disableCron: '0 22 * * *' }), {
     disableCron: '0 22 * * *',
     disableTimezone: 'UTC',
+    reenableMode: 'none',
     reenableCron: '',
     reenableTimezone: 'UTC',
   });
@@ -284,13 +286,31 @@ test('toScheduledDisableFormValue defaults empty schedules and maps API values',
     toScheduledDisableFormValue({
       disableCron: '0 22 * * *',
       disableTimezone: 'Asia/Shanghai',
+      reenableMode: 'cron',
       reenableCron: '0 2 * * *',
       reenableTimezone: '',
     }),
     {
       disableCron: '0 22 * * *',
       disableTimezone: 'Asia/Shanghai',
+      reenableMode: 'cron',
       reenableCron: '0 2 * * *',
+      reenableTimezone: 'UTC',
+    }
+  );
+  // Opposite mode ignores the stored cron fields.
+  assert.deepEqual(
+    toScheduledDisableFormValue({
+      disableCron: '0 22 * * *',
+      reenableMode: 'opposite',
+      reenableCron: '0 2 * * *',
+      reenableTimezone: 'Asia/Shanghai',
+    }),
+    {
+      disableCron: '0 22 * * *',
+      disableTimezone: 'UTC',
+      reenableMode: 'opposite',
+      reenableCron: '',
       reenableTimezone: 'UTC',
     }
   );
@@ -300,7 +320,13 @@ test('availabilityPoliciesPayload drops blank scheduled disables and trims the r
   const blank = availabilityPoliciesPayload({
     mode: 'inherit',
     rules: [],
-    scheduledDisable: { disableCron: '   ', disableTimezone: 'UTC', reenableCron: '', reenableTimezone: 'UTC' },
+    scheduledDisable: {
+      disableCron: '   ',
+      disableTimezone: 'UTC',
+      reenableMode: 'none',
+      reenableCron: '',
+      reenableTimezone: 'UTC',
+    },
   });
   assert.equal(blank.scheduledDisable, null);
 
@@ -310,6 +336,7 @@ test('availabilityPoliciesPayload drops blank scheduled disables and trims the r
     scheduledDisable: {
       disableCron: ' 0 */6 * * * ',
       disableTimezone: '  Asia/Tokyo ',
+      reenableMode: 'none',
       reenableCron: ' ',
       reenableTimezone: '',
     },
@@ -317,6 +344,45 @@ test('availabilityPoliciesPayload drops blank scheduled disables and trims the r
   assert.deepEqual(filled.scheduledDisable, {
     disableCron: '0 */6 * * *',
     disableTimezone: 'Asia/Tokyo',
+    reenableMode: null,
+    reenableCron: null,
+    reenableTimezone: null,
+  });
+
+  const cron = availabilityPoliciesPayload({
+    mode: 'inherit',
+    rules: [],
+    scheduledDisable: {
+      disableCron: '0 22 * * *',
+      disableTimezone: 'UTC',
+      reenableMode: 'cron',
+      reenableCron: ' 0 6 * * * ',
+      reenableTimezone: 'Europe/Amsterdam',
+    },
+  });
+  assert.deepEqual(cron.scheduledDisable, {
+    disableCron: '0 22 * * *',
+    disableTimezone: 'UTC',
+    reenableMode: 'cron',
+    reenableCron: '0 6 * * *',
+    reenableTimezone: 'Europe/Amsterdam',
+  });
+
+  const opposite = availabilityPoliciesPayload({
+    mode: 'inherit',
+    rules: [],
+    scheduledDisable: {
+      disableCron: '0 1-3,6-9 * * 1-5',
+      disableTimezone: 'UTC',
+      reenableMode: 'opposite',
+      reenableCron: '',
+      reenableTimezone: 'UTC',
+    },
+  });
+  assert.deepEqual(opposite.scheduledDisable, {
+    disableCron: '0 1-3,6-9 * * 1-5',
+    disableTimezone: 'UTC',
+    reenableMode: 'opposite',
     reenableCron: null,
     reenableTimezone: null,
   });
@@ -345,8 +411,10 @@ test('scheduled-disable i18n keys exist in both locales', () => {
     'channels.dialogs.availability.scheduled.disableCron.label',
     'channels.dialogs.availability.scheduled.disableCron.placeholder',
     'channels.dialogs.availability.scheduled.disableCron.hint',
-    'channels.dialogs.availability.scheduled.reenableToggle',
     'channels.dialogs.availability.scheduled.reenable.label',
+    'channels.dialogs.availability.scheduled.reenable.placeholder',
+    'channels.dialogs.availability.scheduled.reenableOpposite',
+    'channels.dialogs.availability.scheduled.reenableOppositeHint',
     'channels.dialogs.availability.scheduled.reenable.hint',
   ]) {
     assert.ok(enChannels[key], `${key} missing in en`);

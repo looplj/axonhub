@@ -3,19 +3,12 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRetryPolicy } from '@/features/system/data/system';
 import {
   type ApiKeyAutoDisableRuleFormValue,
@@ -43,6 +36,69 @@ interface Props {
   currentRow: Channel;
 }
 
+type CronPickerValue = '' | (typeof CRON_PRESETS)[number] | 'custom';
+
+interface CronPickerProps {
+  /** '' (unconfigured), a preset expression, or 'custom'. */
+  selection: CronPickerValue;
+  customValue: string;
+  onSelectionChange: (value: CronPickerValue) => void;
+  onCustomValueChange: (value: string) => void;
+  placeholder: string;
+  ariaLabel: string;
+  testId?: string;
+  /** Extra options rendered before the presets, e.g. the "opposite" re-enable. */
+  extraOptions?: { value: string; label: string }[];
+}
+
+function CronPicker({
+  selection,
+  customValue,
+  onSelectionChange,
+  onCustomValueChange,
+  placeholder,
+  ariaLabel,
+  testId,
+  extraOptions = [],
+}: CronPickerProps) {
+  const { t } = useTranslation();
+  const isCustom = selection === 'custom';
+
+  return (
+    <div className='space-y-2'>
+      {isCustom ? (
+        <Input
+          data-testid={testId}
+          className='w-full font-mono'
+          aria-label={ariaLabel}
+          value={customValue}
+          placeholder={placeholder}
+          onChange={(event) => onCustomValueChange(event.target.value)}
+        />
+      ) : (
+        <Select value={selection} onValueChange={(value) => onSelectionChange(value as CronPickerValue)}>
+          <SelectTrigger>
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {extraOptions.map(({ value, label }) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+            {CRON_PRESETS.map((expr) => (
+              <SelectItem key={expr} value={expr}>
+                {t(CRON_PRESET_LABEL_KEYS[expr])}
+              </SelectItem>
+            ))}
+            <SelectItem value='custom'>{t('channels.dialogs.apiKeyRules.fields.cronCustom')}</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
+}
+
 export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
   const updateChannel = useUpdateChannel();
@@ -56,11 +112,13 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
     toScheduledDisableFormValue(currentRow.policies?.scheduledDisable)
   );
   const [customDisableCron, setCustomDisableCron] = useState(
-    () => !CRON_PRESETS.includes(schedule.disableCron as (typeof CRON_PRESETS)[number])
+    () => schedule.disableCron !== '' && !CRON_PRESETS.includes(schedule.disableCron as (typeof CRON_PRESETS)[number])
   );
-  const [reenableEnabled, setReenableEnabled] = useState(() => schedule.reenableCron !== '');
   const [customReenableCron, setCustomReenableCron] = useState(
-    () => schedule.reenableCron !== '' && !CRON_PRESETS.includes(schedule.reenableCron as (typeof CRON_PRESETS)[number])
+    () =>
+      schedule.reenableMode === 'cron' &&
+      schedule.reenableCron !== '' &&
+      !CRON_PRESETS.includes(schedule.reenableCron as (typeof CRON_PRESETS)[number])
   );
 
   useEffect(() => {
@@ -69,9 +127,12 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
       setRules(toApiKeyAutoDisableRuleFormValues(currentRow.policies?.apiKeyAutoDisableRules));
       const next = toScheduledDisableFormValue(currentRow.policies?.scheduledDisable);
       setSchedule(next);
-      setCustomDisableCron(!CRON_PRESETS.includes(next.disableCron as (typeof CRON_PRESETS)[number]));
-      setReenableEnabled(next.reenableCron !== '');
-      setCustomReenableCron(next.reenableCron !== '' && !CRON_PRESETS.includes(next.reenableCron as (typeof CRON_PRESETS)[number]));
+      setCustomDisableCron(next.disableCron !== '' && !CRON_PRESETS.includes(next.disableCron as (typeof CRON_PRESETS)[number]));
+      setCustomReenableCron(
+        next.reenableMode === 'cron' &&
+          next.reenableCron !== '' &&
+          !CRON_PRESETS.includes(next.reenableCron as (typeof CRON_PRESETS)[number])
+      );
     }
   }, [currentRow, open]);
 
@@ -87,10 +148,11 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
       stream: currentPolicies?.stream,
       mode,
       rules,
+      // An empty custom re-enable cron is not a schedule: normalize it to
+      // "none" so the payload never sends cron mode without a cron.
       scheduledDisable: {
         ...schedule,
-        reenableCron: reenableEnabled ? schedule.reenableCron : '',
-        reenableTimezone: reenableEnabled ? schedule.reenableTimezone : '',
+        reenableMode: schedule.reenableMode === 'cron' && schedule.reenableCron.trim() === '' ? 'none' : schedule.reenableMode,
       },
     });
     if (payload.emptiedCustom) {
@@ -114,7 +176,7 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
     } catch {
       // useUpdateChannel reports the request error.
     }
-  }, [currentPolicies?.stream, currentRow.id, mode, onOpenChange, reenableEnabled, rules, schedule, t, updateChannel]);
+  }, [currentPolicies?.stream, currentRow.id, mode, onOpenChange, rules, schedule, t, updateChannel]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -143,41 +205,35 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
 
           <div className='space-y-2'>
             <Label className='text-sm font-normal'>{t('channels.dialogs.availability.scheduled.disableCron.label')}</Label>
-            <div className='flex gap-2'>
-              <Select
-                value={customDisableCron ? 'custom' : (CRON_PRESETS.includes(schedule.disableCron as (typeof CRON_PRESETS)[number]) ? schedule.disableCron : 'custom')}
-                onValueChange={(value) => {
-                  if (value === 'custom') {
-                    setCustomDisableCron(true);
-                  } else {
-                    setCustomDisableCron(false);
-                    setSchedule((prev) => ({ ...prev, disableCron: value }));
-                  }
-                }}
-              >
-                <SelectTrigger className={customDisableCron ? 'w-1/2' : undefined}>
-                  <SelectValue placeholder={t('channels.dialogs.availability.scheduled.disableCron.placeholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {CRON_PRESETS.map((expr) => (
-                    <SelectItem key={expr} value={expr}>
-                      {t(CRON_PRESET_LABEL_KEYS[expr])}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {customDisableCron && (
-                <Input
-                  data-testid='availability-scheduled-disable-cron'
-                  className='w-1/2 font-mono'
-                  aria-label={t('channels.dialogs.availability.scheduled.disableCron.label')}
-                  value={schedule.disableCron}
-                  placeholder={t('channels.dialogs.availability.scheduled.disableCron.placeholder')}
-                  onChange={(event) => setSchedule((prev) => ({ ...prev, disableCron: event.target.value }))}
-                />
-              )}
-            </div>
-            <Select value={schedule.disableTimezone || 'UTC'} onValueChange={(value) => setSchedule((prev) => ({ ...prev, disableTimezone: value }))}>
+            <CronPicker
+              selection={
+                customDisableCron
+                  ? 'custom'
+                  : CRON_PRESETS.includes(schedule.disableCron as (typeof CRON_PRESETS)[number])
+                    ? schedule.disableCron
+                    : ''
+              }
+              customValue={schedule.disableCron}
+              onSelectionChange={(value) => {
+                if (value === 'custom') {
+                  setCustomDisableCron(true);
+                } else if (value === '') {
+                  setCustomDisableCron(false);
+                  setSchedule((prev) => ({ ...prev, disableCron: '' }));
+                } else {
+                  setCustomDisableCron(false);
+                  setSchedule((prev) => ({ ...prev, disableCron: value }));
+                }
+              }}
+              onCustomValueChange={(value) => setSchedule((prev) => ({ ...prev, disableCron: value }))}
+              placeholder={t('channels.dialogs.availability.scheduled.disableCron.placeholder')}
+              ariaLabel={t('channels.dialogs.availability.scheduled.disableCron.label')}
+              testId='availability-scheduled-disable-cron'
+            />
+            <Select
+              value={schedule.disableTimezone || 'UTC'}
+              onValueChange={(value) => setSchedule((prev) => ({ ...prev, disableTimezone: value }))}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -195,48 +251,45 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
             <p className='text-muted-foreground text-xs'>{t('channels.dialogs.availability.scheduled.disableCron.hint')}</p>
           </div>
 
-          <Label className='flex items-center gap-2 text-sm font-normal'>
-            <Checkbox checked={reenableEnabled} onCheckedChange={(checked) => setReenableEnabled(checked === true)} />
-            {t('channels.dialogs.availability.scheduled.reenableToggle')}
-          </Label>
-
-          {reenableEnabled && (
-            <div className='space-y-2'>
-              <Label className='text-sm font-normal'>{t('channels.dialogs.availability.scheduled.reenable.label')}</Label>
-              <div className='flex gap-2'>
-                <Select
-                  value={customReenableCron ? 'custom' : (CRON_PRESETS.includes(schedule.reenableCron as (typeof CRON_PRESETS)[number]) ? schedule.reenableCron : 'custom')}
-                  onValueChange={(value) => {
-                    if (value === 'custom') {
-                      setCustomReenableCron(true);
-                    } else {
-                      setCustomReenableCron(false);
-                      setSchedule((prev) => ({ ...prev, reenableCron: value }));
-                    }
-                  }}
-                >
-                  <SelectTrigger className={customReenableCron ? 'w-1/2' : undefined}>
-                    <SelectValue placeholder={t('channels.dialogs.availability.scheduled.reenable.label')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CRON_PRESETS.map((expr) => (
-                      <SelectItem key={expr} value={expr}>
-                        {t(CRON_PRESET_LABEL_KEYS[expr])}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {customReenableCron && (
-                  <Input
-                    className='w-1/2 font-mono'
-                    aria-label={t('channels.dialogs.availability.scheduled.reenable.label')}
-                    value={schedule.reenableCron}
-                    placeholder='0 0 1 * *'
-                    onChange={(event) => setSchedule((prev) => ({ ...prev, reenableCron: event.target.value }))}
-                  />
-                )}
-              </div>
-              <Select value={schedule.reenableTimezone || 'UTC'} onValueChange={(value) => setSchedule((prev) => ({ ...prev, reenableTimezone: value }))}>
+          <div className='space-y-2'>
+            <Label className='text-sm font-normal'>{t('channels.dialogs.availability.scheduled.reenable.label')}</Label>
+            <CronPicker
+              selection={
+                schedule.reenableMode === 'opposite'
+                  ? 'opposite'
+                  : schedule.reenableMode === 'cron' && customReenableCron
+                    ? 'custom'
+                    : schedule.reenableMode === 'cron' && CRON_PRESETS.includes(schedule.reenableCron as (typeof CRON_PRESETS)[number])
+                      ? schedule.reenableCron
+                      : ''
+              }
+              customValue={schedule.reenableCron}
+              onSelectionChange={(value) => {
+                if (value === 'opposite') {
+                  setCustomReenableCron(false);
+                  setSchedule((prev) => ({ ...prev, reenableMode: 'opposite', reenableCron: '', reenableTimezone: 'UTC' }));
+                } else if (value === 'custom') {
+                  setCustomReenableCron(true);
+                  setSchedule((prev) => ({ ...prev, reenableMode: 'cron' }));
+                } else if (value === '') {
+                  setCustomReenableCron(false);
+                  setSchedule((prev) => ({ ...prev, reenableMode: 'none', reenableCron: '', reenableTimezone: 'UTC' }));
+                } else {
+                  setCustomReenableCron(false);
+                  setSchedule((prev) => ({ ...prev, reenableMode: 'cron', reenableCron: value }));
+                }
+              }}
+              onCustomValueChange={(value) => setSchedule((prev) => ({ ...prev, reenableMode: 'cron', reenableCron: value }))}
+              placeholder={t('channels.dialogs.availability.scheduled.reenable.placeholder')}
+              ariaLabel={t('channels.dialogs.availability.scheduled.reenable.label')}
+              testId='availability-scheduled-reenable-cron'
+              extraOptions={[{ value: 'opposite', label: t('channels.dialogs.availability.scheduled.reenableOpposite') }]}
+            />
+            {schedule.reenableMode === 'cron' && (
+              <Select
+                value={schedule.reenableTimezone || 'UTC'}
+                onValueChange={(value) => setSchedule((prev) => ({ ...prev, reenableTimezone: value }))}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -251,9 +304,15 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
                   })}
                 </SelectContent>
               </Select>
-              <p className='text-muted-foreground text-xs'>{t('channels.dialogs.availability.scheduled.reenable.hint')}</p>
-            </div>
-          )}
+            )}
+            <p className='text-muted-foreground text-xs'>
+              {t(
+                schedule.reenableMode === 'opposite'
+                  ? 'channels.dialogs.availability.scheduled.reenableOppositeHint'
+                  : 'channels.dialogs.availability.scheduled.reenable.hint'
+              )}
+            </p>
+          </div>
         </div>
 
         {mode === 'inherit' && (

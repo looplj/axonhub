@@ -1,12 +1,18 @@
-// 职责: 调度化停用的校验、下次/上次 cron 时刻解析与每分钟清扫任务。
+// 职责: 调度化停用的校验、下次/上次 cron 时刻解析、opposite 重启用时刻推导与每分钟清扫任务。
 // 关联文件:
-//   internal/server/biz/channel.go
-//   internal/server/biz/channel_apikey.go
-//   internal/objects/channel.go
+//
+//	internal/server/biz/channel.go
+//	internal/server/biz/channel_apikey.go
+//	internal/objects/channel.go
+//
 // 注意事项:
-//   清扫任务的多实例安全依赖受 WHERE 谓词保护的 UPDATE，affected == 0 表示竞争失败。
-//   恢复半段与 cleanupExpiredAutoDisabledChannels 依赖同一不变量：
-//   status=disabled + AutoDisabledAt + AutoDisableExpiresAt 只在设置了过期时间的自动禁用下出现。
+//
+//	清扫任务的多实例安全依赖受 WHERE 谓词保护的 UPDATE，affected == 0 表示竞争失败。
+//	恢复半段与 cleanupExpiredAutoDisabledChannels 依赖同一不变量：
+//	status=disabled + AutoDisabledAt + AutoDisableExpiresAt 只在设置了过期时间的自动禁用下出现。
+//	opposite 模式的重启用时刻在禁用时一次性算好并存储，恢复不依赖任何实例再次求值表达式；
+//	每分钟都命中的 cron 无空闲时段，渠道保持禁用直到人工启用。
+
 package biz
 
 import (
@@ -28,6 +34,12 @@ import (
 // its wall-clock schedule.
 const scheduledDisableReason = "Disabled by scheduled disable schedule"
 
+// Re-enable modes stored in ChannelScheduledDisable.ReenableMode.
+const (
+	reenableModeCron     = "cron"
+	reenableModeOpposite = "opposite"
+)
+
 // NormalizeScheduledDisable trims the schedule's cron/timezone fields and
 // validates them. A nil schedule is valid (no schedule configured); an
 // all-empty struct is dropped to nil so clearing the schedule stores nothing.
@@ -44,10 +56,31 @@ func NormalizeScheduledDisable(policies *objects.ChannelPolicies) error {
 
 	sd.DisableCron = strings.TrimSpace(sd.DisableCron)
 	sd.DisableTimezone = strings.TrimSpace(sd.DisableTimezone)
+	sd.ReenableMode = strings.TrimSpace(sd.ReenableMode)
 	sd.ReenableCron = strings.TrimSpace(sd.ReenableCron)
 	sd.ReenableTimezone = strings.TrimSpace(sd.ReenableTimezone)
 
-	if sd.DisableCron == "" && sd.DisableTimezone == "" && sd.ReenableCron == "" && sd.ReenableTimezone == "" {
+	// A re-enable cron without an explicit mode is a legacy "cron" schedule.
+	if sd.ReenableMode == "" && sd.ReenableCron != "" {
+		sd.ReenableMode = reenableModeCron
+	}
+
+	switch sd.ReenableMode {
+	case "":
+	case reenableModeCron:
+		if sd.ReenableCron == "" {
+			return fmt.Errorf("channel scheduled disable re-enable cron mode requires a cron expression")
+		}
+	case reenableModeOpposite:
+		// The re-enable is derived from the disable cron; the cron fields
+		// would be dead settings, so they are cleared.
+		sd.ReenableCron = ""
+		sd.ReenableTimezone = ""
+	default:
+		return fmt.Errorf("channel scheduled disable re-enable mode %q is not supported", sd.ReenableMode)
+	}
+
+	if sd.DisableCron == "" && sd.DisableTimezone == "" && sd.ReenableMode == "" && sd.ReenableCron == "" && sd.ReenableTimezone == "" {
 		policies.ScheduledDisable = nil
 		return nil
 	}
@@ -64,7 +97,7 @@ func NormalizeScheduledDisable(policies *objects.ChannelPolicies) error {
 		}
 	}
 
-	if sd.ReenableCron != "" {
+	if sd.ReenableMode == reenableModeCron {
 		if _, err := cronexpr.Parse(sd.ReenableCron); err != nil {
 			return fmt.Errorf("channel scheduled disable re-enable has invalid cron expression %q: %w", sd.ReenableCron, err)
 		}
@@ -139,6 +172,65 @@ func prevScheduledCronOccurrence(cron, tz string, t time.Time) (time.Time, error
 	return time.Time{}, fmt.Errorf("cron expression %q has no occurrence within 5000 minutes of %s", cron, local.Format(time.RFC3339))
 }
 
+// cronMatchesMinute reports whether minute (already truncated to the minute)
+// is an occurrence of cron, evaluated in tz ("" ⇒ UTC). A minute is an
+// occurrence iff the first occurrence strictly after the previous minute is
+// exactly this minute.
+func cronMatchesMinute(cron, tz string, minute time.Time) (bool, error) {
+	loc := time.UTC
+	if tz != "" {
+		loaded, err := time.LoadLocation(tz)
+		if err != nil {
+			return false, fmt.Errorf("channel scheduled disable has invalid timezone %q: %w", tz, err)
+		}
+		loc = loaded
+	}
+
+	expr, err := cronexpr.Parse(cron)
+	if err != nil {
+		return false, fmt.Errorf("channel scheduled disable has invalid cron expression %q: %w", cron, err)
+	}
+
+	next := expr.Next(minute.In(loc).Add(-time.Minute))
+	return !next.IsZero() && next.Equal(minute.In(loc)), nil
+}
+
+// oppositeReenableExpiry resolves the re-enable instant for the "opposite"
+// mode. It scans forward from the matched minute for the end of the off
+// window the schedule describes: a matching minute P whose next occurrence is
+// more than an hour away, and the channel re-enables at P + 1h. For
+// "0 1-3,6-9 * * 1-5" matched at 06:00, the off window runs 06:00-09:00, so
+// the channel is back at 10:00. A cron whose matches are at most an hour
+// apart (e.g. "* * * * *") has no off window, so it returns (nil, nil) and
+// the channel stays disabled until an operator re-enables it.
+func oppositeReenableExpiry(cron, tz string, matchedMinute time.Time) (*time.Time, error) {
+	loc := time.UTC
+	if tz != "" {
+		loaded, err := time.LoadLocation(tz)
+		if err != nil {
+			return nil, fmt.Errorf("channel scheduled disable has invalid timezone %q: %w", tz, err)
+		}
+		loc = loaded
+	}
+
+	expr, err := cronexpr.Parse(cron)
+	if err != nil {
+		return nil, fmt.Errorf("channel scheduled disable has invalid cron expression %q: %w", cron, err)
+	}
+
+	minute := matchedMinute.In(loc)
+	for range 5280 {
+		isMatch := expr.Next(minute.Add(-time.Minute)).Equal(minute)
+		if isMatch && expr.Next(minute).After(minute.Add(time.Hour)) {
+			expiry := minute.Add(time.Hour)
+			return &expiry, nil
+		}
+		minute = minute.Add(time.Minute)
+	}
+
+	return nil, nil
+}
+
 // runScheduledDisableSweep runs once per minute. It disables channels whose
 // disable cron matches the current minute and re-enables scheduled-disabled
 // channels whose re-enable cron has passed. Both sweeps are guarded
@@ -195,17 +287,9 @@ func (svc *ChannelService) sweepChannelScheduledDisable(ctx context.Context, cha
 
 	changed := false
 
-	// Disable half: fire exactly once per matching minute. The zero-second
-	// comparison gives minute precision, consistent with the task's minute tick.
-	if ch.Status == channel.StatusEnabled {
-		disabled, err := svc.sweepScheduledDisable(ctx, ch, sd, now)
-		if err != nil {
-			return changed, err
-		}
-		changed = disabled
-	}
-
-	// Re-enable half.
+	// Re-enable half runs before the disable half: when an "opposite"
+	// re-enable and the next disable landing on the same minute collide, the
+	// channel flips off again instead of the re-enable being swallowed.
 	//
 	// Load-bearing invariant: a channel reaches status=disabled +
 	// AutoDisabledAt + AutoDisableExpiresAt != nil only via a disable that sets
@@ -222,7 +306,25 @@ func (svc *ChannelService) sweepChannelScheduledDisable(ctx context.Context, cha
 		if err != nil {
 			return changed, err
 		}
-		changed = changed || recovered
+		changed = recovered
+		ch, err = svc.entFromContext(ctx).Channel.Get(ctx, channelID)
+		if err != nil {
+			return changed, err
+		}
+		if ch.Policies.ScheduledDisable == nil {
+			return changed, nil
+		}
+		sd = ch.Policies.ScheduledDisable
+	}
+
+	// Disable half: fire exactly once per matching minute, consistent with the
+	// task's minute tick.
+	if ch.Status == channel.StatusEnabled {
+		disabled, err := svc.sweepScheduledDisable(ctx, ch, sd, now)
+		if err != nil {
+			return changed, err
+		}
+		changed = changed || disabled
 	}
 
 	return changed, nil
@@ -230,31 +332,19 @@ func (svc *ChannelService) sweepChannelScheduledDisable(ctx context.Context, cha
 
 // sweepScheduledDisable disables one channel whose disable cron matches now.
 func (svc *ChannelService) sweepScheduledDisable(ctx context.Context, ch *ent.Channel, sd *objects.ChannelScheduledDisable, now time.Time) (bool, error) {
-	loc := time.UTC
-	if sd.DisableTimezone != "" {
-		loaded, err := time.LoadLocation(sd.DisableTimezone)
-		if err != nil {
-			return false, fmt.Errorf("invalid disable timezone %q: %w", sd.DisableTimezone, err)
-		}
-		loc = loaded
-	}
-
-	expr, err := cronexpr.Parse(sd.DisableCron)
+	matched, err := cronMatchesMinute(sd.DisableCron, sd.DisableTimezone, now.Truncate(time.Minute))
 	if err != nil {
-		return false, fmt.Errorf("invalid disable cron expression %q: %w", sd.DisableCron, err)
+		return false, err
 	}
-
-	t := now.In(loc)
-	minute := t.Truncate(time.Minute)
-	// The current minute matches iff it is an occurrence of the cron: the first
-	// occurrence strictly after the previous minute is exactly this minute.
-	next := expr.Next(minute.Add(-time.Minute))
-	if next.IsZero() || !next.Equal(minute) {
+	if !matched {
 		return false, nil
 	}
 
+	// The re-enable expiry is stored on the disable, so recovery does not
+	// depend on any instance re-evaluating the schedule later.
 	var expiresAt *time.Time
-	if sd.ReenableCron != "" {
+	switch sd.ReenableMode {
+	case reenableModeCron:
 		exp, err := nextScheduledCronOccurrence(sd.ReenableCron, sd.ReenableTimezone, now)
 		if err != nil {
 			// Do not disable on a schedule whose recovery cannot be resolved.
@@ -265,6 +355,19 @@ func (svc *ChannelService) sweepScheduledDisable(ctx context.Context, ch *ent.Ch
 			return false, nil
 		}
 		expiresAt = &exp
+	case reenableModeOpposite:
+		// A nil result means the disable cron matches every minute: there is
+		// no off window, so the channel stays disabled until re-enabled by an
+		// operator.
+		exp, err := oppositeReenableExpiry(sd.DisableCron, sd.DisableTimezone, now.Truncate(time.Minute))
+		if err != nil {
+			log.Warn(ctx, "Skipping scheduled disable with unresolvable opposite re-enable",
+				log.Int("channel_id", ch.ID),
+				log.Cause(err),
+			)
+			return false, nil
+		}
+		expiresAt = exp
 	}
 
 	affected, err := svc.entFromContext(ctx).Channel.Update().

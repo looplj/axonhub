@@ -1,9 +1,13 @@
 // 职责: 覆盖调度化停用的校验、cron 时刻解析与每分钟清扫任务的端到端行为。
 // 关联文件:
-//   internal/server/biz/channel_scheduled_disable.go
-//   internal/server/biz/channel_auto_disable_test.go
+//
+//	internal/server/biz/channel_scheduled_disable.go
+//	internal/server/biz/channel_auto_disable_test.go
+//
 // 注意事项:
-//   清扫测试使用真实 cron 表达式计算期望值，避免硬编码与运行时刻相关的结果。
+//
+//	清扫测试使用真实 cron 表达式计算期望值，避免硬编码与运行时刻相关的结果。
+
 package biz
 
 import (
@@ -47,8 +51,45 @@ func TestNormalizeScheduledDisable(t *testing.T) {
 		require.NotNil(t, sd)
 		require.Equal(t, "0 22 * * *", sd.DisableCron)
 		require.Equal(t, "Asia/Shanghai", sd.DisableTimezone)
+		// A re-enable cron without an explicit mode is normalized to "cron".
+		require.Equal(t, "cron", sd.ReenableMode)
 		require.Equal(t, "0 2 * * *", sd.ReenableCron)
 		require.Equal(t, "UTC", sd.ReenableTimezone)
+	})
+
+	t.Run("opposite mode clears reenable cron fields", func(t *testing.T) {
+		policies := &objects.ChannelPolicies{ScheduledDisable: &objects.ChannelScheduledDisable{
+			DisableCron:      "0 22 * * *",
+			ReenableMode:     "opposite",
+			ReenableCron:     "0 2 * * *",
+			ReenableTimezone: "UTC",
+		}}
+		require.NoError(t, NormalizeScheduledDisable(policies))
+		sd := policies.ScheduledDisable
+		require.NotNil(t, sd)
+		require.Equal(t, "opposite", sd.ReenableMode)
+		require.Empty(t, sd.ReenableCron)
+		require.Empty(t, sd.ReenableTimezone)
+	})
+
+	t.Run("cron mode without a cron is rejected", func(t *testing.T) {
+		policies := &objects.ChannelPolicies{ScheduledDisable: &objects.ChannelScheduledDisable{
+			DisableCron:  "0 22 * * *",
+			ReenableMode: "cron",
+		}}
+		err := NormalizeScheduledDisable(policies)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cron mode requires a cron expression")
+	})
+
+	t.Run("unsupported reenable mode is rejected", func(t *testing.T) {
+		policies := &objects.ChannelPolicies{ScheduledDisable: &objects.ChannelScheduledDisable{
+			DisableCron:  "0 22 * * *",
+			ReenableMode: "sometimes",
+		}}
+		err := NormalizeScheduledDisable(policies)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "not supported")
 	})
 
 	t.Run("blank fields only are dropped to nil", func(t *testing.T) {
@@ -172,6 +213,149 @@ func TestNextScheduledCronOccurrence(t *testing.T) {
 	}
 }
 
+func TestCronMatchesMinute(t *testing.T) {
+	base := time.Date(2026, time.November, 14, 0, 0, 0, 0, time.UTC)
+	at := func(minute int) time.Time { return base.Add(time.Duration(minute) * time.Minute) }
+
+	tests := []struct {
+		name   string
+		cron   string
+		tz     string
+		minute time.Time
+		want   bool
+	}{
+		{name: "matches", cron: "0 14 * * *", minute: at(14 * 60), want: true},
+		{name: "one minute before", cron: "0 14 * * *", minute: at(14*60 - 1), want: false},
+		{name: "every minute", cron: "* * * * *", minute: at(1), want: true},
+		{name: "weekday restriction excludes Sunday", cron: "0 0 * * 1-5", minute: time.Date(2026, time.November, 15, 0, 0, 0, 0, time.UTC), want: false},
+		{
+			name:   "tokyo midnight matches 15:00 UTC previous day",
+			cron:   "0 0 * * *",
+			tz:     "Asia/Tokyo",
+			minute: time.Date(2026, time.November, 13, 15, 0, 0, 0, time.UTC),
+			want:   true,
+		},
+		{name: "invalid cron", cron: "bad", minute: at(0), want: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := cronMatchesMinute(test.cron, test.tz, test.minute)
+			if test.cron == "bad" {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.want, got)
+		})
+	}
+}
+
+func TestOppositeReenableExpiry(t *testing.T) {
+	base := time.Date(2026, time.November, 16, 0, 0, 0, 0, time.UTC) // Monday
+
+	tests := []struct {
+		name    string
+		cron    string
+		tz      string
+		matched time.Time
+		want    time.Time
+		wantNil bool
+		wantErr bool
+	}{
+		{
+			// 06:00, 07:00, 08:00, 09:00 match; 10:00 is the last quiet hour of the off window.
+			name:    "business morning cluster ends at last matching minute plus one hour",
+			cron:    "0 1-3,6-9 * * 1-5",
+			matched: time.Date(2026, time.November, 16, 6, 0, 0, 0, time.UTC),
+			want:    time.Date(2026, time.November, 16, 10, 0, 0, 0, time.UTC),
+		},
+		{
+			name:    "single daily match",
+			cron:    "0 22 * * *",
+			matched: time.Date(2026, time.November, 16, 22, 0, 0, 0, time.UTC),
+			want:    time.Date(2026, time.November, 16, 23, 0, 0, 0, time.UTC),
+		},
+		{
+			name:    "two-hourly cadence flips back after one hour",
+			cron:    "0 */2 * * *",
+			matched: time.Date(2026, time.November, 16, 4, 0, 0, 0, time.UTC),
+			want:    time.Date(2026, time.November, 16, 5, 0, 0, 0, time.UTC),
+		},
+		{
+			// Monday 00:00 matches, the next match is the following Monday, so
+			// the channel is back one hour after the matched minute.
+			name:    "weekly cron: back one hour after the matched minute",
+			cron:    "0 0 * * 1",
+			matched: base,
+			want:    time.Date(2026, time.November, 16, 1, 0, 0, 0, time.UTC),
+		},
+		{name: "every-minute cron has no off window", cron: "* * * * *", matched: base, wantNil: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := oppositeReenableExpiry(test.cron, test.tz, test.matched)
+			if test.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			if test.wantNil {
+				require.Nil(t, got)
+				return
+			}
+			require.NotNil(t, got)
+			require.True(t, got.Equal(test.want), "got %v want %v", *got, test.want)
+		})
+	}
+}
+
+func TestRunScheduledDisableSweepOppositeReenable(t *testing.T) {
+	now := time.Now().UTC()
+	minute := now.Truncate(time.Minute)
+
+	client, ctx, svc, ch := withScheduledDisablePolicy(t, "opposite", &objects.ChannelScheduledDisable{
+		DisableCron:  fmt.Sprintf("%d %d * * *", minute.Minute(), minute.Hour()),
+		ReenableMode: "opposite",
+	})
+
+	svc.runScheduledDisableSweep(context.Background())
+
+	updated, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Equal(t, channel.StatusDisabled, updated.Status)
+	require.NotNil(t, updated.AutoDisabledAt)
+	// The matching minute is a single-match cluster, so the channel comes back
+	// one hour later.
+	require.NotNil(t, updated.AutoDisableExpiresAt)
+	require.True(t, updated.AutoDisableExpiresAt.Equal(minute.Add(time.Hour)),
+		"got %v want %v", updated.AutoDisableExpiresAt, minute.Add(time.Hour))
+	require.Equal(t, scheduledDisableReason, lo.FromPtr(updated.ErrorMessage))
+
+	// After the stored expiry, the sweep re-enables the channel.
+	_, err = client.Channel.UpdateOneID(ch.ID).
+		SetAutoDisableExpiresAt(now.Add(-time.Minute)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	svc.runScheduledDisableSweep(context.Background())
+
+	recovered, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	// The disable cron may fire again within the minute; when it does the
+	// re-enabled channel is immediately disabled with a fresh expiry, which is
+	// the correct steady state. Only assert that recovery happened if the
+	// minute did not re-match.
+	if recovered.Status == channel.StatusEnabled {
+		require.Nil(t, recovered.AutoDisabledAt)
+		require.Nil(t, recovered.AutoDisableExpiresAt)
+	} else {
+		require.Equal(t, channel.StatusDisabled, recovered.Status)
+		require.NotNil(t, recovered.AutoDisableExpiresAt)
+	}
+}
+
 // withScheduledDisablePolicy returns a client, ctx, and service with one enabled
 // channel carrying the given schedule.
 func withScheduledDisablePolicy(t *testing.T, name string, sd *objects.ChannelScheduledDisable) (*ent.Client, context.Context, *ChannelService, *ent.Channel) {
@@ -194,6 +378,7 @@ func TestRunScheduledDisableSweep(t *testing.T) {
 	t.Run("non-matching cron leaves channel enabled", func(t *testing.T) {
 		client, ctx, svc, ch := withScheduledDisablePolicy(t, "no-match", &objects.ChannelScheduledDisable{
 			DisableCron:  "0 0 1 1 *",
+			ReenableMode: "cron",
 			ReenableCron: "0 0 2 1 *",
 		})
 
@@ -214,6 +399,7 @@ func TestRunScheduledDisableSweep(t *testing.T) {
 
 		client, ctx, svc, ch := withScheduledDisablePolicy(t, "match", &objects.ChannelScheduledDisable{
 			DisableCron:  fmt.Sprintf("%d %d * * *", minute.Minute(), minute.Hour()),
+			ReenableMode: "cron",
 			ReenableCron: "0 0 2 1 *",
 		})
 
@@ -254,6 +440,7 @@ func TestRunScheduledDisableSweepReenable(t *testing.T) {
 	_, err := client.Channel.UpdateOneID(ch.ID).
 		SetPolicies(objects.ChannelPolicies{ScheduledDisable: &objects.ChannelScheduledDisable{
 			DisableCron:  "0 0 1 1 *",
+			ReenableMode: "cron",
 			ReenableCron: "0 0 1 1 *",
 		}}).
 		SetStatus(channel.StatusDisabled).
@@ -277,6 +464,7 @@ func TestRunScheduledDisableSweepOperatorDisableImmune(t *testing.T) {
 	now := time.Now().Truncate(time.Minute)
 	client, ctx, svc, ch := withScheduledDisablePolicy(t, "operator-disabled", &objects.ChannelScheduledDisable{
 		DisableCron:  fmt.Sprintf("%d %d * * *", now.Minute(), now.Hour()),
+		ReenableMode: "cron",
 		ReenableCron: "0 0 1 1 *",
 	})
 

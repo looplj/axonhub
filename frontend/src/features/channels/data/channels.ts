@@ -102,6 +102,7 @@ const CREATE_CHANNEL_MUTATION = `
         scheduledDisable {
           disableCron
           disableTimezone
+          reenableMode
           reenableCron
           reenableTimezone
         }
@@ -210,6 +211,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
         scheduledDisable {
           disableCron
           disableTimezone
+          reenableMode
           reenableCron
           reenableTimezone
         }
@@ -318,6 +320,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         scheduledDisable {
           disableCron
           disableTimezone
+          reenableMode
           reenableCron
           reenableTimezone
         }
@@ -425,6 +428,7 @@ const CHANNEL_FIELDS_FRAGMENT = `
         scheduledDisable {
           disableCron
           disableTimezone
+          reenableMode
           reenableCron
           reenableTimezone
         }
@@ -1033,6 +1037,7 @@ const CHANNEL_AUTO_DISABLE_COPY_SOURCES_QUERY = `
         scheduledDisable {
           disableCron
           disableTimezone
+          reenableMode
           reenableCron
           reenableTimezone
         }
@@ -1065,6 +1070,7 @@ const BULK_UPDATE_CHANNEL_AUTO_DISABLE_MUTATION = `
           scheduledDisable {
             disableCron
             disableTimezone
+            reenableMode
             reenableCron
             reenableTimezone
           }
@@ -1181,6 +1187,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             scheduledDisable {
               disableCron
               disableTimezone
+              reenableMode
               reenableCron
               reenableTimezone
             }

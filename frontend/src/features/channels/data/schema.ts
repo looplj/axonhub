@@ -203,6 +203,7 @@ export const apiKeyAutoDisableRuleFormSchema = apiKeyAutoDisableRuleSchema
 export const channelScheduledDisableSchema = z.object({
   disableCron: z.string(),
   disableTimezone: z.string().nullable().optional(),
+  reenableMode: z.string().nullable().optional(),
   reenableCron: z.string().nullable().optional(),
   reenableTimezone: z.string().nullable().optional(),
 });

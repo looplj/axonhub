@@ -67,16 +67,22 @@ export function serializeApiKeyAutoDisableRules(rules: ApiKeyAutoDisableRuleForm
 export type ScheduledDisableFormValue = {
   disableCron: string;
   disableTimezone: string;
+  reenableMode: 'none' | 'opposite' | 'cron';
   reenableCron: string;
   reenableTimezone: string;
 };
 
 export function toScheduledDisableFormValue(value?: ChannelScheduledDisable | null): ScheduledDisableFormValue {
+  const mode = value?.reenableMode === 'opposite' ? 'opposite' : value?.reenableMode === 'cron' ? 'cron' : 'none';
+  // Opposite mode derives the re-enable from the disable cron's timezone, so
+  // the stored re-enable fields are not used.
+  const cronMode = mode === 'cron';
   return {
     disableCron: value?.disableCron ?? '',
     disableTimezone: value?.disableTimezone?.trim() || 'UTC',
-    reenableCron: value?.reenableCron ?? '',
-    reenableTimezone: value?.reenableTimezone?.trim() || 'UTC',
+    reenableMode: mode,
+    reenableCron: cronMode ? (value?.reenableCron ?? '') : '',
+    reenableTimezone: cronMode ? value?.reenableTimezone?.trim() || 'UTC' : 'UTC',
   };
 }
 
@@ -102,12 +108,18 @@ export function availabilityPoliciesPayload(input: {
 
   const scheduledDisable: ChannelScheduledDisable | null =
     input.scheduledDisable && input.scheduledDisable.disableCron.trim() !== ''
-      ? {
-          disableCron: input.scheduledDisable.disableCron.trim(),
-          disableTimezone: input.scheduledDisable.disableTimezone.trim() || null,
-          reenableCron: input.scheduledDisable.reenableCron.trim() || null,
-          reenableTimezone: input.scheduledDisable.reenableTimezone.trim() || null,
-        }
+      ? (() => {
+          const form = input.scheduledDisable;
+          const reenableMode = form.reenableMode === 'none' ? null : form.reenableMode;
+          const cronMode = form.reenableMode === 'cron';
+          return {
+            disableCron: form.disableCron.trim(),
+            disableTimezone: form.disableTimezone.trim() || null,
+            reenableMode,
+            reenableCron: cronMode ? form.reenableCron.trim() || null : null,
+            reenableTimezone: cronMode ? form.reenableTimezone.trim() || null : null,
+          };
+        })()
       : null;
 
   return {
