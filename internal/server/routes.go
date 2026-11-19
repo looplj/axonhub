@@ -127,6 +127,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	adminGroup := server.Group(adminGroupPath, middleware.WithJWTAuth(services.AuthService), middleware.WithProjectID())
 	// 管理员路由 - 使用 JWT 认证
 	{
+		adminGroup.POST("/realtime/reconcile", middleware.WithTimeout(server.Config.RequestTimeout), handlers.Realtime.ReconcileAudit)
 		adminGroup.GET("/playground", middleware.WithTimeout(server.Config.RequestTimeout), func(c *gin.Context) {
 			handlers.Graphql.Playground.ServeHTTP(c.Writer, c.Request)
 		})

@@ -7,6 +7,7 @@ package realtime
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -88,5 +89,15 @@ func TestQwenConversationContentUsesGATypes(t *testing.T) {
 		require.NoError(t, json.Unmarshal(wire, &e))
 		part := e["item"].(map[string]any)["content"].([]any)[0].(map[string]any)
 		require.Equal(t, tc.to, part["type"])
+	}
+}
+
+func TestNativeQwenNegotiatesInputAndOutputRatesIndependently(t *testing.T) {
+	for _, model := range modelNames() {
+		a, err := NewAdapter(model, true)
+		require.NoError(t, err)
+		raw := fmt.Sprintf(`{"type":"session.update","session":{"modalities":["text","audio"],"audio":{"input":{"format":{"type":"pcm","sample_rate":%d}},"output":{"format":{"type":"pcm","sample_rate":24000}}},"turn_detection":null}}`, NativeInputRate(model))
+		_, err = a.Client([]byte(raw))
+		require.NoError(t, err, model)
 	}
 }

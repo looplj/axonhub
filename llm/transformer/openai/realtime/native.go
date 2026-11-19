@@ -148,28 +148,7 @@ func (a *Adapter) Server(data []byte) ([]byte, error) {
 	if json.Unmarshal(data, &event) != nil || event.Type == "" {
 		return nil, errors.New("invalid upstream realtime event")
 	}
-	if event.Type == "error" {
-		// Authentication details and provider validation echoes can include secrets or media.
-		var envelope map[string]json.RawMessage
-		_ = json.Unmarshal(data, &envelope)
-		envelope["error"] = json.RawMessage(`{"type":"invalid_request_error","code":"upstream_error","message":"The upstream Realtime service rejected an event."}`)
-		result, err := json.Marshal(envelope)
-		return result, err
-	}
-	if event.Type == "response.done" {
-		var envelope map[string]json.RawMessage
-		_ = json.Unmarshal(data, &envelope)
-		var response map[string]json.RawMessage
-		_ = json.Unmarshal(envelope["response"], &response)
-		var details map[string]json.RawMessage
-		_ = json.Unmarshal(response["status_details"], &details)
-		if _, exists := details["error"]; exists {
-			details["error"] = json.RawMessage(`{"type":"server_error","code":"upstream_error","message":"The upstream Realtime response failed."}`)
-			response["status_details"], _ = json.Marshal(details)
-			envelope["response"], _ = json.Marshal(response)
-			return json.Marshal(envelope)
-		}
-	}
+
 	return data, nil
 }
 

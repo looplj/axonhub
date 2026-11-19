@@ -516,7 +516,11 @@ func (a *Adapter) nativeSession(s map[string]any) error {
 					return errors.New("only mono PCM16 is enabled")
 				}
 				n, ok := number(f["sample_rate"])
-				if !ok || !a.cap.supportsInputRate(int64(n)) {
+				supported := a.cap.supportsInputRate(int64(n))
+				if direction == "output" {
+					supported = a.cap.supportsOutputRate(int64(n))
+				}
+				if !ok || !supported {
 					return errors.New("unsupported native sample rate")
 				}
 				if direction == "input" && !a.cap.FreeAudioTranscript && n != 16000 {

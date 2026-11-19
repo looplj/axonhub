@@ -17,11 +17,14 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm"
@@ -51,7 +54,7 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 			ctx, db := setupTest(t)
 			project := db.Project.Create().SetName("Realtime").SaveX(ctx)
 			ctx = contexts.WithProjectID(ctx, project.ID)
-			key := db.APIKey.Create().SetName("Realtime").SetKey("synthetic-client-key").SetUserID(1).SetProjectID(project.ID).SetType(apikey.TypeUser).SetStatus(apikey.StatusEnabled).SaveX(ctx)
+			key := db.APIKey.Create().SetName("Realtime").SetKey("synthetic-client-key").SetUserID(1).SetProjectID(project.ID).SetType(apikey.TypeUser).SetScopes([]string{"read_channels", "write_requests"}).SetStatus(apikey.StatusEnabled).SaveX(ctx)
 			ctx = contexts.WithAPIKey(ctx, key)
 			row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("Realtime").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream-key"}).SetSupportedModels([]string{model}).SetDefaultTestModel(model).SetStatus(channel.StatusEnabled).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}).SaveX(ctx)
 			channels := newTestChannelServiceForChannels(db)
@@ -66,16 +69,25 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 				rate := decimal.NewFromInt(1)
 				price.Items = append(price.Items, objects.ModelPriceItem{ItemCode: objects.PriceItemCode(code), Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: &rate}})
 			}
-			service := &RealtimeService{Channels: channels, Usage: usage, Requests: requests}
+			cache := xcache.Config{Mode: xcache.ModeMemory}
+			projects := biz.NewProjectService(biz.ProjectServiceParams{CacheConfig: cache, Ent: db})
+			keys := biz.NewAPIKeyService(biz.APIKeyServiceParams{CacheConfig: cache, Ent: db, ProjectService: projects, KeyPrefix: "ah"})
+			t.Cleanup(keys.Stop)
+			auth := biz.NewAuthService(biz.AuthServiceParams{SystemService: system, APIKeyService: keys, Ent: db})
+			service := &RealtimeService{Channels: channels, Usage: usage, Requests: requests, Auth: auth}
+			key.Edges.Project = project
+			requestCtx := contexts.WithProjectID(contexts.WithAPIKey(ent.NewContext(context.Background(), db), key), project.ID)
+			requestCtx, err = authz.WithPrincipal(requestCtx, authz.Principal{Type: authz.PrincipalTypeAPIKey, APIKeyID: &key.ID, ProjectID: &project.ID})
+			require.NoError(t, err)
 			upstream, provider := realtimeSocketPair(t)
 			require.NoError(t, provider.WriteJSON(map[string]any{"type": "session.created", "session": map[string]any{"id": "s1", "type": "realtime", "model": model}}))
-			c, initial, err := service.configure(ctx, upstream, &RealtimeTarget{Channel: ch, Model: model, ClientModel: "voice", APIFormat: llm.APIFormatOpenAIRealtimeWebSocket, APIKey: key, Price: &biz.RealtimePriceSnapshot{Price: price, ReferenceID: "test-price-v1"}}, rt.Config{}.Defaults())
+			c, initial, err := service.configure(requestCtx, upstream, &RealtimeTarget{Channel: ch, Model: model, ClientModel: "voice", APIFormat: llm.APIFormatOpenAIRealtimeWebSocket, APIKey: key, Price: &biz.RealtimePriceSnapshot{Price: price, ReferenceID: "test-price-v1"}}, rt.Config{}.Defaults())
 			require.NoError(t, err)
 			require.Len(t, initial, 1)
 			defer c.Close()
-			// Drive the actual downstream socket; expensive authorization was tested at Prepare separately.
+			// Drive the real conversation client hook, auth/quota checks and both sockets.
 			client, downstream := realtimeSocketPair(t)
-			sessionCtx, cancel := context.WithCancel(ctx)
+			sessionCtx, cancel := context.WithCancel(requestCtx)
 			defer cancel()
 			done := make(chan error, 1)
 			go func() {
@@ -84,13 +96,7 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 						done <- fmt.Errorf("panic: %T", r)
 					}
 				}()
-				done <- rt.Run(sessionCtx, downstream, upstream, rt.Options{IdleTimeout: time.Second}, rt.Hooks{Client: func(data []byte) ([]byte, error) {
-					wire, err := c.adapter.Client(data)
-					if err == nil && strings.Contains(string(data), "session.update") {
-						err = c.state.Update()
-					}
-					return wire, err
-				}, Server: c.Server})
+				done <- rt.Run(sessionCtx, downstream, upstream, rt.Options{IdleTimeout: time.Second}, rt.Hooks{Client: c.Client, Server: c.Server})
 			}()
 			require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.update","session":{"type":"realtime","output_modalities":["text"],"future_official_field":true}}`)))
 			_ = provider.SetReadDeadline(time.Now().Add(time.Second))
@@ -128,6 +134,10 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(terminal)))
 				read(terminal)
 				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(terminal)))
+				barrier := fmt.Sprintf(`{"type":"rate_limits.updated","barrier":%d}`, turn)
+				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(barrier)))
+				read(barrier) // FIFO proves the duplicate frame has traversed the real Server hook.
+				require.Equal(t, turn, db.UsageLog.Query().CountX(ctx))
 				if turn == 1 {
 					executeTool := func(arguments string) string { require.JSONEq(t, "{}", arguments); return `{"ok":true}` }
 					result := map[string]any{"type": "conversation.item.create", "item": map[string]any{"type": "function_call_output", "call_id": "call1", "output": executeTool("{}")}}
@@ -160,12 +170,30 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 				require.NotContains(t, string(body), "private transcript")
 				require.Equal(t, row.ID, r.ChannelID)
 			}
-			cancel()
+			// Disconnect immediately after upstream accepts response.create, before
+			// response.created or final usage arrives.
+			require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
+			_ = provider.SetReadDeadline(time.Now().Add(5 * time.Second))
+			_, pendingCreate, err := provider.ReadMessage()
+			require.NoError(t, err)
+			require.JSONEq(t, `{"type":"response.create"}`, string(pendingCreate))
+			require.NoError(t, client.Close())
 			select {
 			case <-done:
 			case <-time.After(2 * time.Second):
 				t.Fatal("session workers did not exit")
 			}
+			// A normal mobile disconnect after response.create leaves uncertain usage,
+			// not confirmed debt. Exercise another real WS configuration afterwards.
+			c.Close()
+			require.NoError(t, usage.EnsureRealtimeUsageReconciled(requestCtx, key.ID))
+			require.Equal(t, 2, db.UsageLog.Query().CountX(ctx), "disconnect must not fabricate zero usage")
+			reconnected, reconnectedProvider := realtimeSocketPair(t)
+			require.NoError(t, reconnectedProvider.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf(`{"type":"session.created","session":{"id":"s2","type":"realtime","model":%q}}`, model))))
+			next, initial, err := service.configure(requestCtx, reconnected, c.target, rt.Config{}.Defaults())
+			require.NoError(t, err, "the same key must be able to establish its next session")
+			require.Len(t, initial, 1)
+			next.Close()
 		})
 	}
 }

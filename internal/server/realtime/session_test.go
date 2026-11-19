@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -135,33 +137,70 @@ func TestSessionEnforcesMessageAndDurationBounds(t *testing.T) {
 		require.Less(t, time.Since(start), time.Second)
 	})
 }
-func TestSessionSlowClientBoundedBackpressure(t *testing.T) {
-	_, downstream := socketPair(t)
-	upstream, provider := socketPair(t)
-	done := make(chan error, 1)
-	go func() {
-		done <- Run(context.Background(), downstream, upstream, Options{QueueSize: 1, WriteTimeout: 50 * time.Millisecond, MaxDuration: 2 * time.Second}, Hooks{})
-	}()
-	payload := []byte(strings.Repeat("x", 200<<10))
-	_ = provider.SetWriteDeadline(time.Now().Add(time.Second))
-	for i := 0; i < 128; i++ {
-		if err := provider.WriteMessage(websocket.TextMessage, payload); err != nil {
-			break
-		}
+func TestSendQueueFullBlocksThenReturnsBackpressure(t *testing.T) {
+	const capacity = 3
+	const wait = 80 * time.Millisecond
+	q := newSendQueue(capacity, wait)
+	// The first capacity frames succeed without a consumer; only the next frame
+	// may time out. No session deadline or input-rate limiter participates.
+	for i := 0; i < capacity; i++ {
+		require.NoError(t, q.enqueue(context.Background(), []byte{byte(i)}))
 	}
-	select {
-	case err := <-done:
-		require.Error(t, err)
-	case <-time.After(3 * time.Second):
-		t.Fatal("slow consumer retained session")
+	started := time.Now()
+	err := q.enqueue(context.Background(), []byte{capacity})
+	require.ErrorIs(t, err, ErrBackpressure)
+	require.GreaterOrEqual(t, time.Since(started), wait*3/4, "full queue must actually block the producer")
+	for i := 0; i < capacity; i++ {
+		require.Equal(t, []byte{byte(i)}, <-q.frames, "timeout must preserve accepted frames")
 	}
 }
 
-func TestSessionFastBurstUsesBoundedBackpressureWithoutDropping(t *testing.T) {
+func TestSendQueueBlockedProducerResumesWithoutDropping(t *testing.T) {
+	q := newSendQueue(1, time.Second)
+	require.NoError(t, q.enqueue(context.Background(), []byte("first")))
+	type result struct {
+		err     error
+		elapsed time.Duration
+	}
+	sent := make(chan result, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				sent <- result{err: fmt.Errorf("panic: %T", r)}
+			}
+		}()
+		started := time.Now()
+		err := q.enqueue(context.Background(), []byte("second"))
+		sent <- result{err: err, elapsed: time.Since(started)}
+	}()
+	select {
+	case outcome := <-sent:
+		t.Fatalf("producer did not wait for queue space: %+v", outcome)
+	case <-time.After(80 * time.Millisecond):
+	}
+	require.Equal(t, []byte("first"), <-q.frames)
+	select {
+	case outcome := <-sent:
+		require.NoError(t, outcome.err)
+		require.GreaterOrEqual(t, outcome.elapsed, 60*time.Millisecond)
+	case <-time.After(time.Second):
+		t.Fatal("producer did not resume after consumer released space")
+	}
+	select {
+	case frame := <-q.frames:
+		require.Equal(t, []byte("second"), frame, "accepted frame must not be silently discarded")
+	case <-time.After(time.Second):
+		t.Fatal("resumed producer silently dropped the pending frame")
+	}
+}
+
+func TestSessionSlowClientBoundedBackpressure(t *testing.T) {
 	client, downstream := socketPair(t)
+	// Prevent the loopback receive buffer from absorbing the whole burst while
+	// this client deliberately does not consume frames.
+	require.NoError(t, client.UnderlyingConn().(*net.TCPConn).SetReadBuffer(1024))
 	upstream, provider := socketPair(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	var observed atomic.Int32
 	done := make(chan error, 1)
 	go func() {
 		defer func() {
@@ -169,35 +208,27 @@ func TestSessionFastBurstUsesBoundedBackpressureWithoutDropping(t *testing.T) {
 				done <- fmt.Errorf("panic: %T", r)
 			}
 		}()
-		done <- Run(ctx, downstream, upstream, Options{QueueSize: 1}, Hooks{})
+		done <- Run(context.Background(), downstream, upstream,
+			Options{QueueSize: 1, WriteTimeout: 4 * time.Second, MaxDuration: 30 * time.Second, IdleTimeout: 30 * time.Second},
+			Hooks{Server: func(data []byte) ([]byte, error) { observed.Add(1); return data, nil }})
 	}()
-	sent := make(chan error, 1)
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				sent <- fmt.Errorf("panic: %T", r)
-			}
-		}()
-		for i := 0; i < 64; i++ {
-			if err := provider.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf(`{"sequence":%d}`, i))); err != nil {
-				sent <- err
-				return
-			}
+	// Upstream messages bypass the client-only input rate limiter. Session and
+	// socket deadlines are deliberately longer than the queue's one-second wait.
+	payload := []byte(strings.Repeat("x", 200<<10))
+	started := time.Now()
+	require.NoError(t, provider.SetWriteDeadline(started.Add(8*time.Second)))
+	for i := 0; i < 128; i++ {
+		if err := provider.WriteMessage(websocket.TextMessage, payload); err != nil {
+			break
 		}
-		sent <- nil
-	}()
-	for i := 0; i < 64; i++ {
-		_ = client.SetReadDeadline(time.Now().Add(2 * time.Second))
-		_, data, err := client.ReadMessage()
-		require.NoError(t, err)
-		require.JSONEq(t, fmt.Sprintf(`{"sequence":%d}`, i), string(data))
 	}
-	require.NoError(t, <-sent)
-	cancel()
 	select {
-	case <-done:
-	case <-time.After(time.Second):
-		t.Fatal("burst workers leaked")
+	case err := <-done:
+		require.ErrorIs(t, err, ErrBackpressure)
+		require.Greater(t, observed.Load(), int32(1), "must inject more frames than the queue capacity")
+		require.GreaterOrEqual(t, time.Since(started), 750*time.Millisecond)
+	case <-time.After(10 * time.Second):
+		t.Fatal("full send queue did not terminate the stalled session")
 	}
 }
 

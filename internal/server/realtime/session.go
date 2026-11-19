@@ -64,6 +64,40 @@ type Hooks struct {
 	Check func(context.Context) error
 }
 
+// sendQueue is shared by both directions. A full queue waits for a bounded
+// interval, then fails the session rather than dropping media or growing memory.
+type sendQueue struct {
+	frames chan []byte
+	wait   time.Duration
+}
+
+func newSendQueue(size int, wait time.Duration) *sendQueue {
+	return &sendQueue{frames: make(chan []byte, size), wait: min(time.Second, wait)}
+}
+
+func (q *sendQueue) enqueue(ctx context.Context, data []byte) error {
+	if data == nil {
+		return nil
+	}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case q.frames <- data:
+		return nil
+	default:
+	}
+	timer := time.NewTimer(q.wait)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case q.frames <- data:
+		return nil
+	case <-timer.C:
+		return ErrBackpressure
+	}
+}
+
 // Run owns both connections, joins every worker and closes the peer on any failure.
 // Client validation errors are reported without forwarding the rejected event.
 func Run(parent context.Context, downstream, upstream *websocket.Conn, options Options, hooks Hooks) error {
@@ -72,8 +106,8 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 	defer cancel()
 	defer downstream.Close()
 	defer upstream.Close()
-	toClient := make(chan []byte, o.QueueSize)
-	toProvider := make(chan []byte, o.QueueSize)
+	toClient := newSendQueue(o.QueueSize, o.WriteTimeout)
+	toProvider := newSendQueue(o.QueueSize, o.WriteTimeout)
 	var last atomic.Int64
 	last.Store(time.Now().UnixNano())
 	errs := make(chan error, 4)
@@ -103,29 +137,7 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 			cancel()
 		}()
 	}
-	enqueue := func(q chan []byte, data []byte) error {
-		if data == nil {
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case q <- data:
-			return nil
-		default:
-		}
-		timer := time.NewTimer(min(time.Second, o.WriteTimeout))
-		defer timer.Stop()
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case q <- data:
-			return nil
-		case <-timer.C:
-			return ErrBackpressure
-		}
-	}
-	read := func(conn *websocket.Conn, q chan []byte, transform func([]byte) ([]byte, error), client bool) func() error {
+	read := func(conn *websocket.Conn, q *sendQueue, transform func([]byte) ([]byte, error), client bool) func() error {
 		return func() error {
 			conn.SetReadLimit(MaxMessageBytes)
 			if err := conn.SetReadDeadline(time.Now().Add(o.IdleTimeout)); err != nil {
@@ -159,7 +171,7 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 					if !client {
 						return ErrInvalidEvent
 					}
-					if err := enqueue(toClient, clientError(data, err)); err != nil {
+					if err := toClient.enqueue(ctx, clientError(data, err)); err != nil {
 						return err
 					}
 					continue
@@ -171,13 +183,13 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 						if !client || errors.Is(err, ErrAccountingUnavailable) || errors.Is(err, ErrBackpressure) {
 							return err
 						}
-						if err := enqueue(toClient, clientError(original, err)); err != nil {
+						if err := toClient.enqueue(ctx, clientError(original, err)); err != nil {
 							return err
 						}
 						continue
 					}
 				}
-				if err := enqueue(q, data); err != nil {
+				if err := q.enqueue(ctx, data); err != nil {
 					return err
 				}
 			}
@@ -208,8 +220,8 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 	}
 	launch("downstream", read(downstream, toProvider, hooks.Client, true))
 	launch("upstream", read(upstream, toClient, hooks.Server, false))
-	launch("downstream", write(downstream, toClient))
-	launch("upstream", write(upstream, toProvider))
+	launch("downstream", write(downstream, toClient.frames))
+	launch("upstream", write(upstream, toProvider.frames))
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 	var result error
