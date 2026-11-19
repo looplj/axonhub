@@ -170,6 +170,7 @@ type FetchModelsInput struct {
 }
 
 // FetchModelsResult represents the result of fetching models.
+// CodexCatalogVersion is set only when Models came from a catalog queried with it.
 type FetchModelsResult struct {
 	Models                    []ModelIdentify
 	Error                     *string
@@ -658,7 +659,7 @@ func (f *ModelFetcher) fetchModels(ctx context.Context, input FetchModelsInput, 
 	models, err := fetchModels(ctx, req, execute, parse)
 	if err != nil {
 		if codexChannel != nil {
-			return &FetchModelsResult{Models: f.getDefaultModelsByType(ctx, channel.TypeCodex), Fallback: true, CodexCatalogVersion: catalogVersion}, nil
+			return &FetchModelsResult{Models: f.getDefaultModelsByType(ctx, channel.TypeCodex), Fallback: true}, nil
 		}
 		if isQiniuChannelType(channelType) {
 			return &FetchModelsResult{
@@ -666,9 +667,8 @@ func (f *ModelFetcher) fetchModels(ctx context.Context, input FetchModelsInput, 
 			}, nil
 		}
 		return &FetchModelsResult{
-			Models:              []ModelIdentify{},
-			Error:               lo.ToPtr(fmt.Sprintf("failed to fetch models: %v", err)),
-			CodexCatalogVersion: catalogVersion,
+			Models: []ModelIdentify{},
+			Error:  lo.ToPtr(fmt.Sprintf("failed to fetch models: %v", err)),
 		}, nil
 	}
 

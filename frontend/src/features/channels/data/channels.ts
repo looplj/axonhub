@@ -2388,16 +2388,16 @@ export function useSyncChannelModels() {
         toast.info(t(`channels.messages.codexCatalogSyncSkipped.${codexCatalogSkippedReason}`));
         return;
       }
+      if (fallback) {
+        toast.warning(t('channels.messages.codexCatalogSyncFallback'));
+        return;
+      }
       const description = codexCatalogVersion
         ? t('channels.messages.codexCatalogVersion', {
             version: codexCatalogVersion.version,
             source: t(`channels.messages.codexCatalogVersionSources.${codexCatalogVersion.source}`),
           })
         : undefined;
-      if (fallback) {
-        toast.warning(t('channels.messages.codexCatalogSyncFallback'), { description });
-        return;
-      }
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       toast.success(t('channels.messages.syncModelsSuccess'), { description });
     },

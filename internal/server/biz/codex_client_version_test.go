@@ -380,6 +380,6 @@ func TestCodexClientVersion_ManualSyncAndAccountCatalogs(t *testing.T) {
 	result, err = svc.SyncChannelModels(ctx, b.ID, nil)
 	require.ErrorContains(t, err, "fallback")
 	require.True(t, result.Fallback)
-	require.Equal(t, "0.158.0", result.CodexCatalogVersion.Version)
+	require.Nil(t, result.CodexCatalogVersion)
 	require.Equal(t, persisted, db.Channel.GetX(ctx, b.ID).SupportedModels)
 }
