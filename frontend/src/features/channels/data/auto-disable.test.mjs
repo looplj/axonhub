@@ -413,6 +413,7 @@ test('scheduled-disable i18n keys exist in both locales', () => {
     'channels.dialogs.availability.scheduled.disableCron.hint',
     'channels.dialogs.availability.scheduled.reenable.label',
     'channels.dialogs.availability.scheduled.reenable.placeholder',
+    'channels.dialogs.availability.scheduled.reenableNone',
     'channels.dialogs.availability.scheduled.reenableOpposite',
     'channels.dialogs.availability.scheduled.reenableOppositeHint',
     'channels.dialogs.availability.scheduled.reenable.hint',

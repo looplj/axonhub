@@ -39,7 +39,7 @@ interface Props {
 type CronPickerValue = '' | 'none' | 'opposite' | (typeof CRON_PRESETS)[number] | 'custom';
 
 interface CronPickerProps {
-  /** '' (unconfigured), a preset expression, or 'custom'. */
+  /** '' (unconfigured), a preset expression, 'custom', or a component-specific option value (e.g. 'none', 'opposite'). */
   selection: CronPickerValue;
   customValue: string;
   onSelectionChange: (value: CronPickerValue) => void;
