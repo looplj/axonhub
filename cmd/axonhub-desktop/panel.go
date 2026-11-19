@@ -78,6 +78,7 @@ func loadErrText(err string) string {
 // touched on the main thread only.
 type shell struct {
 	origin     string
+	basePath   string
 	session    desktopSession
 	sessionMu  sync.Mutex
 	secretPath string
@@ -137,10 +138,9 @@ func (s *shell) currentSession(ctx context.Context) (desktopSession, error) {
 	return session, nil
 }
 
-// openAIBaseURL is the base URL an OpenAI-compatible client uses. origin
-// is the listen address the desktop session already uses.
-func openAIBaseURL(origin string) string {
-	return strings.TrimRight(origin, "/") + "/v1"
+// openAIBaseURL is the base URL an OpenAI-compatible client uses.
+func openAIBaseURL(baseURL string) string {
+	return strings.TrimRight(baseURL, "/") + "/v1"
 }
 
 // dockPolicy is the macOS activation policy. Accessory while the panel is
@@ -311,7 +311,7 @@ func (s *shell) lanBaseURL() string {
 	if s.lanPort == 0 || s.lanIP == "" {
 		return ""
 	}
-	return openAIBaseURL("http://" + net.JoinHostPort(s.lanIP, strconv.Itoa(s.lanPort)))
+	return openAIBaseURL("http://" + net.JoinHostPort(s.lanIP, strconv.Itoa(s.lanPort)) + s.basePath)
 }
 
 // openTab shows a page and loads it.

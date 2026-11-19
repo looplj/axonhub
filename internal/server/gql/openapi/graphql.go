@@ -8,7 +8,6 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
-	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/vektah/gqlparser/v2/ast"
 	"go.uber.org/fx"
 
@@ -17,8 +16,7 @@ import (
 )
 
 type GraphqlHandler struct {
-	Graphql    http.Handler
-	Playground http.Handler
+	Graphql http.Handler
 }
 
 type Dependencies struct {
@@ -55,7 +53,6 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	})
 
 	return &GraphqlHandler{
-		Graphql:    gqlSrv,
-		Playground: playground.Handler("AxonHub", "/openapi/v1/graphql"),
+		Graphql: gqlSrv,
 	}
 }
