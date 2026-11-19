@@ -5,6 +5,8 @@ export const apiFormatSchema = z.enum([
   'openai/chat_completions',
   'openai/responses',
   'openai/responses-ws',
+  'openai/realtime',
+  'openai/realtime-ws',
   'openai/image_generation',
   'openai/image_edit',
   'openai/image_variation',
@@ -26,6 +28,7 @@ export const apiFormatSchema = z.enum([
   'jina/embeddings',
   'typesafe/systemone',
   'ollama/chat',
+  'qwen/realtime-ws',
 ]);
 
 export type ApiFormat = z.infer<typeof apiFormatSchema>;
@@ -33,6 +36,7 @@ export type ApiFormat = z.infer<typeof apiFormatSchema>;
 export const configurableChannelEndpointApiFormats = [
   'openai/chat_completions',
   'openai/responses',
+  'openai/realtime-ws',
   'openai/image_generation',
   'openai/image_edit',
   'openai/image_variation',
@@ -50,12 +54,14 @@ export const configurableChannelEndpointApiFormats = [
   'jina/rerank',
   'jina/embeddings',
   'typesafe/systemone',
+  'qwen/realtime-ws',
 ] as const;
 
 export const configurableChannelEndpointApiFormatSchema = z.enum(configurableChannelEndpointApiFormats);
 
 // Channel Endpoint
 export const channelEndpointSchema = z.object({
+  handshakeTimeoutMs: z.number().int().min(1000).max(60000).optional().nullable(),
   apiFormat: z.string().min(1),
   path: z.string().optional(),
   baseURL: z.url('Invalid URL').optional().or(z.literal('')),
@@ -543,7 +549,20 @@ export type TestChannelAPIKeysPayload = z.infer<typeof testChannelAPIKeysPayload
 export const pricingModeSchema = z.enum(['flat_fee', 'usage_per_unit', 'usage_tiered', 'usage_volume']);
 export type PricingMode = z.infer<typeof pricingModeSchema>;
 
-export const priceItemCodeSchema = z.enum(['prompt_tokens', 'completion_tokens', 'prompt_cached_tokens', 'prompt_write_cached_tokens']);
+export const priceItemCodeSchema = z.enum([
+  'prompt_tokens',
+  'completion_tokens',
+  'prompt_cached_tokens',
+  'prompt_write_cached_tokens',
+  'realtime_input_text_tokens',
+  'realtime_input_audio_tokens',
+  'realtime_output_text_tokens',
+  'realtime_output_audio_tokens',
+  'realtime_input_image_tokens',
+  'realtime_cached_input_text_tokens',
+  'realtime_cached_input_audio_tokens',
+  'realtime_cached_input_image_tokens',
+]);
 export type PriceItemCode = z.infer<typeof priceItemCodeSchema>;
 
 export const priceTierSchema = z.object({

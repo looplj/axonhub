@@ -1,4 +1,5 @@
 import type { ApiFormat, ChannelEndpoint, ChannelType, ModelProtocol } from './schema';
+import { QWEN_REALTIME_API_FORMAT, isQwenRealtimeEndpointAllowed } from './qwen-realtime.ts';
 
 type ProtocolEndpoint = {
   readonly apiFormat?: string | null;
@@ -76,7 +77,9 @@ export function getConfigurableApiFormatsForChannelType(
   const filtered = configurableFormats
     .filter((format) => supportsSystemOne || format !== 'typesafe/systemone')
     .filter((format) => channelType === 'openai' || format !== 'openai/decisions')
-    .filter((format) => channelType !== 'codex' || !isResponsesFamilyFormat(format));
+    .filter((format) => channelType !== 'codex' || !isResponsesFamilyFormat(format))
+    .filter((format) => format !== QWEN_REALTIME_API_FORMAT || isQwenRealtimeEndpointAllowed(channelType))
+    .filter((format) => format !== 'openai/realtime-ws' || channelType === 'openai');
   if (['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(channelType)) {
     return [...filtered];
   }

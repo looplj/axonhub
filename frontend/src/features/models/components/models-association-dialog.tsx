@@ -39,6 +39,7 @@ const requestFormatConditionOptions = [
   'openai/chat_completions',
   'openai/completions',
   'openai/responses',
+  'openai/realtime',
   'openai/responses_compact',
   'openai/image_generation',
   'openai/image_edit',

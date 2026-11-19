@@ -405,10 +405,11 @@ type ComplexityRoot struct {
 	}
 
 	ChannelEndpoint struct {
-		APIFormat func(childComplexity int) int
-		BaseURL   func(childComplexity int) int
-		Path      func(childComplexity int) int
-		Transport func(childComplexity int) int
+		APIFormat          func(childComplexity int) int
+		BaseURL            func(childComplexity int) int
+		HandshakeTimeoutMs func(childComplexity int) int
+		Path               func(childComplexity int) int
+		Transport          func(childComplexity int) int
 	}
 
 	ChannelLimiterStats struct {
@@ -4046,6 +4047,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelEndpoint.BaseURL(childComplexity), true
+	case "ChannelEndpoint.handshakeTimeoutMs":
+		if e.complexity.ChannelEndpoint.HandshakeTimeoutMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelEndpoint.HandshakeTimeoutMs(childComplexity), true
 	case "ChannelEndpoint.path":
 		if e.complexity.ChannelEndpoint.Path == nil {
 			break
@@ -22728,6 +22735,8 @@ func (ec *executionContext) fieldContext_Channel_endpoints(_ context.Context, fi
 				return ec.fieldContext_ChannelEndpoint_baseURL(ctx, field)
 			case "transport":
 				return ec.fieldContext_ChannelEndpoint_transport(ctx, field)
+			case "handshakeTimeoutMs":
+				return ec.fieldContext_ChannelEndpoint_handshakeTimeoutMs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelEndpoint", field.Name)
 		},
@@ -23065,6 +23074,8 @@ func (ec *executionContext) fieldContext_Channel_defaultEndpoints(_ context.Cont
 				return ec.fieldContext_ChannelEndpoint_baseURL(ctx, field)
 			case "transport":
 				return ec.fieldContext_ChannelEndpoint_transport(ctx, field)
+			case "handshakeTimeoutMs":
+				return ec.fieldContext_ChannelEndpoint_handshakeTimeoutMs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelEndpoint", field.Name)
 		},
@@ -23745,6 +23756,35 @@ func (ec *executionContext) fieldContext_ChannelEndpoint_transport(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelEndpoint_handshakeTimeoutMs(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelEndpoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelEndpoint_handshakeTimeoutMs,
+		func(ctx context.Context) (any, error) {
+			return obj.HandshakeTimeoutMs, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelEndpoint_handshakeTimeoutMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelEndpoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -73376,7 +73416,7 @@ func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiFormat", "path", "baseURL", "transport"}
+	fieldsInOrder := [...]string{"apiFormat", "path", "baseURL", "transport", "handshakeTimeoutMs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -73411,6 +73451,13 @@ func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Conte
 				return it, err
 			}
 			it.Transport = data
+		case "handshakeTimeoutMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("handshakeTimeoutMs"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HandshakeTimeoutMs = data
 		}
 	}
 
@@ -101657,6 +101704,8 @@ func (ec *executionContext) _ChannelEndpoint(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelEndpoint_baseURL(ctx, field, obj)
 		case "transport":
 			out.Values[i] = ec._ChannelEndpoint_transport(ctx, field, obj)
+		case "handshakeTimeoutMs":
+			out.Values[i] = ec._ChannelEndpoint_handshakeTimeoutMs(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

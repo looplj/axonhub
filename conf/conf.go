@@ -162,6 +162,9 @@ func unmarshal(v *viper.Viper) (Config, error) {
 		return Config{}, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	if err := config.APIServer.Realtime.Validate(); err != nil {
+		return Config{}, err
+	}
 	if config.APIServer.LLMRequestTimeout < 0 {
 		return Config{}, fmt.Errorf("server.llm_request_timeout must not be negative")
 	}
@@ -266,6 +269,14 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.llm_request_timeout", "600s")
 	v.SetDefault("server.llm_stream_request_timeout", "1800s")
 	v.SetDefault("server.llm_stream_idle_timeout", "600s")
+	v.SetDefault("server.realtime.idle_timeout", "2m")
+	v.SetDefault("server.realtime.max_duration", "15m")
+	v.SetDefault("server.realtime.handshake_timeout", "15s")
+	v.SetDefault("server.realtime.limits.global", 32)
+	v.SetDefault("server.realtime.limits.project", 8)
+	v.SetDefault("server.realtime.limits.api_key", 1)
+	v.SetDefault("server.realtime.limits.channel", 8)
+	v.SetDefault("server.realtime.limits.connections_per_minute", 20)
 	v.SetDefault("server.sse_keep_alive.enabled", false)
 	v.SetDefault("server.sse_keep_alive.interval", "15s")
 	v.SetDefault("server.trace.thread_header", "AH-Thread-Id")
