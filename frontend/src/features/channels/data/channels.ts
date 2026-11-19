@@ -98,6 +98,12 @@ const CREATE_CHANNEL_MUTATION = `
           disableUntilCron
           disableUntilTimezone
         }
+        scheduledDisable {
+          disableCron
+          disableTimezone
+          reenableCron
+          reenableTimezone
+        }
       }
       supportedModels
       autoSyncSupportedModels
@@ -197,6 +203,12 @@ const DUPLICATE_CHANNEL_MUTATION = `
           disableDurationMinutes
           disableUntilCron
           disableUntilTimezone
+        }
+        scheduledDisable {
+          disableCron
+          disableTimezone
+          reenableCron
+          reenableTimezone
         }
       }
       supportedModels
@@ -298,6 +310,12 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           disableUntilCron
           disableUntilTimezone
         }
+        scheduledDisable {
+          disableCron
+          disableTimezone
+          reenableCron
+          reenableTimezone
+        }
       }
       supportedModels
       autoSyncSupportedModels
@@ -396,6 +414,12 @@ const CHANNEL_FIELDS_FRAGMENT = `
           disableDurationMinutes
           disableUntilCron
           disableUntilTimezone
+        }
+        scheduledDisable {
+          disableCron
+          disableTimezone
+          reenableCron
+          reenableTimezone
         }
       }
       supportedModels
@@ -993,6 +1017,12 @@ const CHANNEL_AUTO_DISABLE_COPY_SOURCES_QUERY = `
           disableUntilCron
           disableUntilTimezone
         }
+        scheduledDisable {
+          disableCron
+          disableTimezone
+          reenableCron
+          reenableTimezone
+        }
       }
     }
   }
@@ -1018,6 +1048,12 @@ const BULK_UPDATE_CHANNEL_AUTO_DISABLE_MUTATION = `
             disableDurationMinutes
             disableUntilCron
             disableUntilTimezone
+          }
+          scheduledDisable {
+            disableCron
+            disableTimezone
+            reenableCron
+            reenableTimezone
           }
         }
       }
@@ -1112,6 +1148,12 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
               disableDurationMinutes
               disableUntilCron
               disableUntilTimezone
+            }
+            scheduledDisable {
+              disableCron
+              disableTimezone
+              reenableCron
+              reenableTimezone
             }
           }
           credentials {

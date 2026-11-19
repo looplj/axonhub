@@ -731,6 +731,23 @@ type ChannelPolicies struct {
 	// evaluated before the global retry policy when the mode is custom, and the
 	// first match owns the failure. Unmatched custom failures fall back to global.
 	APIKeyAutoDisableRules []APIKeyAutoDisableRule `json:"apiKeyAutoDisableRules,omitempty"`
+
+	// ScheduledDisable is an operator-configured wall-clock off/on schedule.
+	// Independent of APIKeyAutoDisableRules: a disabled channel is never
+	// evaluated for failure rules, so the two mechanisms do not interact.
+	ScheduledDisable *ChannelScheduledDisable `json:"scheduledDisable,omitempty"`
+}
+
+// ChannelScheduledDisable configures a wall-clock schedule that disables the
+// channel on disableCron and, when reenableCron is set, re-enables it on the
+// first reenableCron occurrence after it was disabled. Empty timezone means
+// UTC. The disable cron is the only required field: without a re-enable cron
+// the channel stays disabled until an operator re-enables it.
+type ChannelScheduledDisable struct {
+	DisableCron      string `json:"disableCron"`
+	DisableTimezone  string `json:"disableTimezone,omitempty"`
+	ReenableCron     string `json:"reenableCron,omitempty"`
+	ReenableTimezone string `json:"reenableTimezone,omitempty"`
 }
 
 // EffectiveAutoDisableMode returns the mode used at evaluation time.

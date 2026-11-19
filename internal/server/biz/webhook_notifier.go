@@ -142,7 +142,13 @@ func (n *WebhookNotifier) NotifyChannelAutoDisabled(ctx context.Context, event C
 	renderCtx.Channel.Provider = event.ChannelProvider
 	renderCtx.Channel.BaseURL = event.ChannelBaseURL
 	renderCtx.Channel.Status = event.ChannelStatus
-	renderCtx.Trigger.Type = "error_status_rule"
+	// A zero status code means the disable was not driven by an upstream error
+	// (e.g. a wall-clock schedule); the trigger type mirrors that.
+	triggerType := "error_status_rule"
+	if event.StatusCode == 0 {
+		triggerType = "scheduled"
+	}
+	renderCtx.Trigger.Type = triggerType
 	renderCtx.Trigger.StatusCode = event.StatusCode
 	renderCtx.Trigger.Threshold = event.Threshold
 	renderCtx.Trigger.ActualCount = event.ActualCount

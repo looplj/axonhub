@@ -162,6 +162,12 @@ models:
   APIKeyAutoDisableMode:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyAutoDisableMode
+  ChannelScheduledDisable:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelScheduledDisable
+  ChannelScheduledDisableInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelScheduledDisable
   ChannelSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings

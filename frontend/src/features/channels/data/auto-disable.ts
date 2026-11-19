@@ -4,6 +4,7 @@ import type {
   BulkAutoDisableAction,
   BulkUpdateChannelAutoDisableInput,
   CapabilityPolicy,
+  ChannelScheduledDisable,
 } from './schema';
 
 export type { BulkAutoDisableAction, BulkUpdateChannelAutoDisableInput };
@@ -63,14 +64,32 @@ export function serializeApiKeyAutoDisableRules(rules: ApiKeyAutoDisableRuleForm
   }));
 }
 
+export type ScheduledDisableFormValue = {
+  disableCron: string;
+  disableTimezone: string;
+  reenableCron: string;
+  reenableTimezone: string;
+};
+
+export function toScheduledDisableFormValue(value?: ChannelScheduledDisable | null): ScheduledDisableFormValue {
+  return {
+    disableCron: value?.disableCron ?? '',
+    disableTimezone: value?.disableTimezone?.trim() || 'UTC',
+    reenableCron: value?.reenableCron ?? '',
+    reenableTimezone: value?.reenableTimezone?.trim() || 'UTC',
+  };
+}
+
 export function availabilityPoliciesPayload(input: {
   stream?: CapabilityPolicy;
   mode: APIKeyAutoDisableMode;
   rules: ApiKeyAutoDisableRuleFormValue[];
+  scheduledDisable?: ScheduledDisableFormValue | null;
 }): {
   stream?: CapabilityPolicy;
   apiKeyAutoDisableMode: APIKeyAutoDisableMode;
   apiKeyAutoDisableRules: APIKeyAutoDisableRule[] | null;
+  scheduledDisable: ChannelScheduledDisable | null;
   emptiedCustom: boolean;
 } {
   let savedMode = input.mode;
@@ -81,10 +100,21 @@ export function availabilityPoliciesPayload(input: {
     emptiedCustom = true;
   }
 
+  const scheduledDisable: ChannelScheduledDisable | null =
+    input.scheduledDisable && input.scheduledDisable.disableCron.trim() !== ''
+      ? {
+          disableCron: input.scheduledDisable.disableCron.trim(),
+          disableTimezone: input.scheduledDisable.disableTimezone.trim() || null,
+          reenableCron: input.scheduledDisable.reenableCron.trim() || null,
+          reenableTimezone: input.scheduledDisable.reenableTimezone.trim() || null,
+        }
+      : null;
+
   return {
     stream: input.stream,
     apiKeyAutoDisableMode: savedMode,
     apiKeyAutoDisableRules: savedMode === 'inherit' ? null : serialized,
+    scheduledDisable,
     emptiedCustom,
   };
 }
