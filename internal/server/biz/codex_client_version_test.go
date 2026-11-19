@@ -140,8 +140,10 @@ func TestCodexClientVersion_FetchModelsRefreshesBeforeDiscovery(t *testing.T) {
 		require.Equal(t, "Bearer synthetic-token", r.Header.Get("Authorization"))
 		version := r.URL.Query().Get("client_version")
 		require.Equal(t, version, r.Header.Get("Version"))
-		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header),
-			Body: io.NopCloser(strings.NewReader(fmt.Sprintf(`{"models":[{"slug":%q,"visibility":"list"}]}`, version)))}, nil
+		return &http.Response{
+			StatusCode: http.StatusOK, Header: make(http.Header),
+			Body: io.NopCloser(strings.NewReader(fmt.Sprintf(`{"models":[{"slug":%q,"visibility":"list"}]}`, version))),
+		}, nil
 	})})
 	fetcher := NewModelFetcher(client, svc)
 	input := FetchModelsInput{ChannelType: "codex", BaseURL: "https://chatgpt.com/backend-api/codex"}
@@ -201,8 +203,10 @@ func TestCodexClientRelease_PersistsAfterModelSyncTransaction(t *testing.T) {
 			svc.codexVersions.registryURL = registry.URL
 			svc.httpClient = httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
 				require.Equal(t, "0.201.0", r.URL.Query().Get("client_version"))
-				return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header),
-					Body: io.NopCloser(strings.NewReader(`{"models":[{"slug":"new-model","visibility":"list"}]}`))}, nil
+				return &http.Response{
+					StatusCode: http.StatusOK, Header: make(http.Header),
+					Body: io.NopCloser(strings.NewReader(`{"models":[{"slug":"new-model","visibility":"list"}]}`)),
+				}, nil
 			})})
 			ch := db.Channel.Create().SetName("transactional-codex").SetType(channel.TypeCodex).
 				SetBaseURL("https://chatgpt.com/backend-api/codex").SetDefaultTestModel("existing").

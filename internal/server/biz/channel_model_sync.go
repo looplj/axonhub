@@ -73,6 +73,7 @@ func (svc *ChannelService) syncChannelModels(ctx context.Context) {
 
 type SyncChannelModelsResult struct {
 	*ent.Channel
+
 	CodexCatalogVersion       *CodexCatalogVersion
 	CodexCatalogSkippedReason *string
 	Fallback                  bool

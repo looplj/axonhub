@@ -381,6 +381,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	return f.fetchModels(ctx, input, true)
 }
 
+//nolint:maintidx // Handles every channel type in one pass and is hard to split.
 func (f *ModelFetcher) fetchModels(ctx context.Context, input FetchModelsInput, refreshCodexVersion bool) (*FetchModelsResult, error) {
 	if input.ChannelType == channel.TypeAntigravity.String() {
 		models, err := f.fetchAntigravityModels(ctx, input)

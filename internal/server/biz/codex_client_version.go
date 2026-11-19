@@ -164,8 +164,8 @@ func (svc *ChannelService) refreshCodexRelease(ctx context.Context) {
 	select {
 	case <-ctx.Done():
 	case checked := <-result:
-		if checked.Err == nil && svc.db != nil {
-			svc.persistCodexRelease(ctx, checked.Val.(codexRelease))
+		if release, ok := checked.Val.(codexRelease); ok && checked.Err == nil && svc.db != nil {
+			svc.persistCodexRelease(ctx, release)
 		}
 	}
 }
