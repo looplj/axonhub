@@ -8,6 +8,7 @@
 //
 //	内存模式仅约束单进程；多实例必须共享 Redis。同槽 Lua 原子获取所有维度。
 //	租约存活超过会话硬超时；进程崩溃后自动过期，释放按随机会话标识幂等执行。
+//	断线交接最多等待一秒；等待不撤销旧租约、不提高上限，每个密钥仅允许一个等待者。
 package realtime
 
 import (
@@ -23,6 +24,8 @@ import (
 )
 
 var ErrAdmission = errors.New("realtime concurrency or connection rate limit exceeded")
+
+var errConcurrentAdmission = errors.New("realtime active connection limit exceeded")
 
 type Limits struct {
 	Global               int `conf:"global" yaml:"global" json:"global"`
@@ -78,15 +81,56 @@ type Admission struct {
 	lease   time.Duration
 	mu      sync.Mutex
 	entries map[string]map[string]int64
+	waiting map[int]struct{}
 }
 
 func NewAdmission(client redis.UniversalClient, limits Limits, maxDuration time.Duration) *Admission {
 	if maxDuration <= 0 {
 		maxDuration = 15 * time.Minute
 	}
-	return &Admission{client: client, limits: limits.defaults(), lease: maxDuration + time.Minute, entries: make(map[string]map[string]int64)}
+	return &Admission{client: client, limits: limits.defaults(), lease: maxDuration + time.Minute, entries: make(map[string]map[string]int64), waiting: make(map[int]struct{})}
 }
+
+// AcquireForReconnect allows one bounded handoff while a disconnected socket's
+// reader catches EOF and its workers join. It never evicts a live connection or
+// retries a rate denial/backend failure. Redis remains the atomic authority.
+func (a *Admission) AcquireForReconnect(ctx context.Context, key, project, channel int, sessionID string) (func(), error) {
+	release, err := a.Acquire(ctx, key, project, channel, sessionID)
+	if !errors.Is(err, errConcurrentAdmission) {
+		return release, err
+	}
+	a.mu.Lock()
+	_, duplicate := a.waiting[key]
+	if duplicate || len(a.waiting) >= a.limits.Global {
+		a.mu.Unlock()
+		return nil, err
+	}
+	a.waiting[key] = struct{}{}
+	a.mu.Unlock()
+	defer func() { a.mu.Lock(); delete(a.waiting, key); a.mu.Unlock() }()
+	deadline := time.NewTimer(time.Second)
+	defer deadline.Stop()
+	tick := time.NewTicker(25 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-deadline.C:
+			return nil, err
+		case <-tick.C:
+			release, err = a.Acquire(ctx, key, project, channel, sessionID)
+			if !errors.Is(err, errConcurrentAdmission) {
+				return release, err
+			}
+		}
+	}
+}
+
 func (a *Admission) Acquire(ctx context.Context, key, project, channel int, sessionID ...string) (func(), error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	prefix := "axonhub:{realtime}:"
 	keys := []string{prefix + "global", prefix + "project:" + strconv.Itoa(project), prefix + "key:" + strconv.Itoa(key), prefix + "channel:" + strconv.Itoa(channel), prefix + "rate:" + strconv.Itoa(key)}
 	caps := []int{a.limits.Global, a.limits.Project, a.limits.APIKey, a.limits.Channel, a.limits.ConnectionsPerMinute}
@@ -104,6 +148,9 @@ func (a *Admission) Acquire(ctx context.Context, key, project, channel int, sess
 			return nil, fmt.Errorf("realtime shared admission unavailable: %w", err)
 		}
 		if result != 1 {
+			if result <= -1 && result >= -4 {
+				return nil, fmt.Errorf("%w: %w", ErrAdmission, errConcurrentAdmission)
+			}
 			return nil, ErrAdmission
 		}
 	} else {
@@ -123,6 +170,9 @@ func (a *Admission) Acquire(ctx context.Context, key, project, channel int, sess
 		for i, k := range keys {
 			if len(a.entries[k]) >= caps[i] {
 				a.mu.Unlock()
+				if i < 4 {
+					return nil, fmt.Errorf("%w: %w", ErrAdmission, errConcurrentAdmission)
+				}
 				return nil, ErrAdmission
 			}
 		}
@@ -164,7 +214,7 @@ local t=redis.call('TIME')
 local now=t[1]*1000+math.floor(t[2]/1000)
 for i,key in ipairs(KEYS) do
  redis.call('ZREMRANGEBYSCORE',key,'-inf',now)
- if redis.call('ZCARD',key)>=tonumber(ARGV[i+2]) then return 0 end
+ if redis.call('ZCARD',key)>=tonumber(ARGV[i+2]) then return -i end
 end
 for i,key in ipairs(KEYS) do
  local ttl=tonumber(ARGV[2]);if i==5 then ttl=60000 end

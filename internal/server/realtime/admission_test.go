@@ -1,4 +1,4 @@
-// 职责: 验证实时会话并发配额的原子获取和幂等释放。
+// 职责: 验证实时并发配额、断线交接、取消、限速与幂等释放。
 // 关联文件:
 //
 //	internal/server/realtime/admission.go
@@ -6,12 +6,83 @@ package realtime
 
 import (
 	"context"
+	"fmt"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
+
+func TestAdmissionReconnectHandoffLocalAndShared(t *testing.T) {
+	for _, shared := range []bool{false, true} {
+		t.Run(fmt.Sprint(shared), func(t *testing.T) {
+			var client redis.UniversalClient
+			if shared {
+				s := miniredis.RunT(t)
+				client = redis.NewClient(&redis.Options{Addr: s.Addr()})
+				t.Cleanup(func() { _ = client.Close() })
+			}
+			a := NewAdmission(client, Limits{Global: 2, Project: 2, APIKey: 1, Channel: 2, ConnectionsPerMinute: 10}, time.Minute)
+			release, err := a.Acquire(t.Context(), 1, 1, 1, "old")
+			require.NoError(t, err)
+			defer release()
+			type result struct {
+				release func()
+				err     error
+			}
+			done := make(chan result, 1)
+			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						t.Errorf("admission panic: %T", r)
+						done <- result{err: fmt.Errorf("admission panic")}
+					}
+				}()
+				f, e := a.AcquireForReconnect(t.Context(), 1, 1, 1, "next")
+				done <- result{f, e}
+			}()
+			require.Eventually(t, func() bool { a.mu.Lock(); defer a.mu.Unlock(); return len(a.waiting) == 1 }, time.Second, time.Millisecond)
+			started := time.Now()
+			_, err = a.AcquireForReconnect(t.Context(), 1, 1, 1, "third")
+			require.ErrorIs(t, err, ErrAdmission)
+			require.Less(t, time.Since(started), 100*time.Millisecond, "one key cannot accumulate unbounded waiters")
+			release()
+			var r result
+			select {
+			case r = <-done:
+			case <-time.After(time.Second):
+				t.Fatal("handoff failed")
+			}
+			require.NoError(t, r.err)
+			r.release()
+			if shared {
+				n, e := client.ZCard(t.Context(), "axonhub:{realtime}:rate:1").Result()
+				require.NoError(t, e)
+				require.Equal(t, int64(2), n, "only admitted handshakes consume rate slots")
+			}
+		})
+	}
+}
+
+func TestAdmissionReconnectCancellationAndRateDenial(t *testing.T) {
+	a := NewAdmission(nil, Limits{ConnectionsPerMinute: 1}, time.Minute)
+	release, err := a.Acquire(t.Context(), 1, 1, 1)
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+	defer cancel()
+	_, err = a.AcquireForReconnect(ctx, 1, 1, 1, "canceled")
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	a.mu.Lock()
+	remaining := len(a.waiting)
+	a.mu.Unlock()
+	require.Zero(t, remaining)
+	release()
+	started := time.Now()
+	_, err = a.AcquireForReconnect(t.Context(), 1, 1, 1, "rate-denied")
+	require.ErrorIs(t, err, ErrAdmission)
+	require.Less(t, time.Since(started), 100*time.Millisecond, "rate denials must not enter reconnect grace")
+}
 
 func TestAdmissionLocalAndShared(t *testing.T) {
 	for _, shared := range []bool{false, true} {
