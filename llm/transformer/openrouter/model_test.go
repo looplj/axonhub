@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/transformer/openrouter"
 )
@@ -184,4 +185,33 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestResponseCacheWriteUsage(t *testing.T) {
+	usage := `"usage":{"prompt_tokens":194,"completion_tokens":2,"total_tokens":196,"prompt_tokens_details":{"cached_tokens":20,"cache_write_tokens":100}}`
+	transformer := &openrouter.OutboundTransformer{}
+	t.Run("nonstream", func(t *testing.T) {
+		response, err := transformer.TransformResponse(t.Context(), &httpclient.Response{
+			StatusCode: 200,
+			Body:       []byte(`{"id":"gen-test","object":"chat.completion","model":"anthropic/claude-sonnet-4","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],` + usage + `}`),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, response.Usage)
+		require.NotNil(t, response.Usage.PromptTokensDetails)
+		require.Equal(t, int64(20), response.Usage.PromptTokensDetails.CachedTokens)
+		require.Equal(t, int64(100), response.Usage.PromptTokensDetails.WriteCachedTokens)
+	})
+	t.Run("stream", func(t *testing.T) {
+		chunks := []*httpclient.StreamEvent{
+			{Data: []byte(`{"id":"gen-test","object":"chat.completion.chunk","model":"anthropic/claude-sonnet-4","choices":[{"index":0,"delta":{"role":"assistant","content":"ok"},"finish_reason":null}]}`)},
+			{Data: []byte(`{"id":"gen-test","object":"chat.completion.chunk","model":"anthropic/claude-sonnet-4","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`)},
+			{Data: []byte(`{"id":"gen-test","object":"chat.completion.chunk","model":"anthropic/claude-sonnet-4","choices":[],` + usage + `}`)},
+		}
+		_, meta, err := transformer.AggregateStreamChunks(t.Context(), nil, chunks)
+		require.NoError(t, err)
+		require.NotNil(t, meta.Usage)
+		require.NotNil(t, meta.Usage.PromptTokensDetails)
+		require.Equal(t, int64(20), meta.Usage.PromptTokensDetails.CachedTokens)
+		require.Equal(t, int64(100), meta.Usage.PromptTokensDetails.WriteCachedTokens)
+	})
 }
