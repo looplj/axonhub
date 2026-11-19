@@ -218,6 +218,9 @@ type ChannelSettings struct {
 	// TransformOptions configures the transform options for the channel.
 	TransformOptions TransformOptions `json:"transformOptions"`
 
+	// SyncModelPrices opts into overwriting saved channel prices, including manual edits, with endpoint prices for every listed model.
+	SyncModelPrices bool `json:"syncModelPrices,omitempty"`
+
 	// PassThroughUserAgent controls whether to pass through the original User-Agent header to upstream AI providers.
 	// When set to nil, it inherits from the global system setting.
 	// When set to true/false, it overrides the global setting.

@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
@@ -187,6 +188,410 @@ func TestChannelService_SyncChannelModelsAutoConfiguresMissingPrices(t *testing.
 	require.NoError(t, err)
 	require.Len(t, retriedVersions, 1)
 	require.Equal(t, retriedPrice.ReferenceID, retriedVersions[0].ReferenceID)
+}
+
+func TestChannelService_SyncChannelModelsPreservesUnreportedEndpointPriceItems(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"partial-model","pricing":{"prompt":"0.0000004"}}]}`))
+	}))
+	defer server.Close()
+
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc.httpClient = httpclient.NewHttpClientWithClient(server.Client())
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Partial endpoint price sync").
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetStatus(channel.StatusEnabled).
+		SetSupportedModels([]string{"partial-model"}).
+		SetDefaultTestModel("partial-model").
+		SetSettings(&objects.ChannelSettings{SyncModelPrices: true}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	savedPrice := objects.ModelPrice{Items: []objects.ModelPriceItem{
+		{
+			ItemCode: objects.PriceItemCodeUsage,
+			Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("1")},
+		},
+		{
+			ItemCode: objects.PriceItemCodeCompletion,
+			Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("2")},
+		},
+		{
+			ItemCode: objects.PriceItemCodePromptCachedToken,
+			Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("3")},
+		},
+	}}
+	_, err = svc.SaveChannelModelPrices(ctx, ch.ID, []SaveChannelModelPriceInput{{ModelID: "partial-model", Price: savedPrice}})
+	require.NoError(t, err)
+
+	_, err = svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	updated, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("partial-model"),
+	).Only(ctx)
+	require.NoError(t, err)
+	updatedItems := lo.KeyBy(updated.Price.Items, func(item objects.ModelPriceItem) objects.PriceItemCode {
+		return item.ItemCode
+	})
+	require.Len(t, updatedItems, 3)
+	require.Equal(t, "0.4", updatedItems[objects.PriceItemCodeUsage].Pricing.UsagePerUnit.String())
+	require.Equal(t, "2", updatedItems[objects.PriceItemCodeCompletion].Pricing.UsagePerUnit.String())
+	require.Equal(t, "3", updatedItems[objects.PriceItemCodePromptCachedToken].Pricing.UsagePerUnit.String())
+	versions, err := updated.QueryVersions().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+}
+
+// A manual save that lands between the sync's unlocked snapshot read and its
+// write must not be reverted by the endpoint sync: the merge has to run
+// against the locked row, so only the endpoint-reported item (usage) changes.
+func TestChannelService_SyncChannelModelsPreservesConcurrentManualPriceSave(t *testing.T) {
+	var (
+		svc    *ChannelService
+		client *ent.Client
+		ctx    context.Context
+	)
+	channelIDs := make(chan int, 1)
+	saveResult := make(chan error, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		id := <-channelIDs
+		_, saveErr := svc.SaveChannelModelPrices(ctx, id, []SaveChannelModelPriceInput{{
+			ModelID: "race-model",
+			Price: objects.ModelPrice{Items: []objects.ModelPriceItem{
+				{ItemCode: objects.PriceItemCodeUsage, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("1")}},
+				{ItemCode: objects.PriceItemCodeCompletion, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("20")}},
+				{ItemCode: objects.PriceItemCodePromptCachedToken, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("3")}},
+			}},
+		}})
+		saveResult <- saveErr
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"race-model","pricing":{"prompt":"0.0000004"}}]}`))
+	}))
+	defer server.Close()
+
+	svc, client = setupTestChannelService(t)
+	defer client.Close()
+	ctx = authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc.httpClient = httpclient.NewHttpClientWithClient(server.Client())
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Concurrent manual save during sync").
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetStatus(channel.StatusEnabled).
+		SetSupportedModels([]string{"race-model"}).
+		SetDefaultTestModel("race-model").
+		SetSettings(&objects.ChannelSettings{SyncModelPrices: true}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Baseline row before the sync starts.
+	_, err = svc.SaveChannelModelPrices(ctx, ch.ID, []SaveChannelModelPriceInput{{
+		ModelID: "race-model",
+		Price: objects.ModelPrice{Items: []objects.ModelPriceItem{
+			{ItemCode: objects.PriceItemCodeUsage, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("1")}},
+			{ItemCode: objects.PriceItemCodeCompletion, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("2")}},
+			{ItemCode: objects.PriceItemCodePromptCachedToken, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: loToDecimalPtr("3")}},
+		}},
+	}})
+	require.NoError(t, err)
+	channelIDs <- ch.ID
+
+	_, err = svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	require.NoError(t, <-saveResult)
+
+	updated, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("race-model"),
+	).Only(ctx)
+	require.NoError(t, err)
+	updatedItems := lo.KeyBy(updated.Price.Items, func(item objects.ModelPriceItem) objects.PriceItemCode {
+		return item.ItemCode
+	})
+	require.Len(t, updatedItems, 3)
+	require.Equal(t, "0.4", updatedItems[objects.PriceItemCodeUsage].Pricing.UsagePerUnit.String())
+	// Completion was changed by the manual save during the sync and the endpoint
+	// did not report it, so the manual value must survive.
+	require.Equal(t, "20", updatedItems[objects.PriceItemCodeCompletion].Pricing.UsagePerUnit.String())
+	require.Equal(t, "3", updatedItems[objects.PriceItemCodePromptCachedToken].Pricing.UsagePerUnit.String())
+	versions, err := updated.QueryVersions().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, versions, 3)
+}
+
+func TestChannelService_SyncChannelModelsMergesEndpointAndLibraryPriceItems(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"merged-model","pricing":{"prompt":"0.0000002"}}]}`))
+	}))
+	defer server.Close()
+
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc.httpClient = httpclient.NewHttpClientWithClient(server.Client())
+	createModelLibraryEntry(t, ctx, client, "merged-model", model.StatusEnabled, objects.ModelCardCost{
+		Input:      9,
+		Output:     4,
+		CacheRead:  1.5,
+		CacheWrite: 2.5,
+	})
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Endpoint and library price merge").
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetStatus(channel.StatusEnabled).
+		SetSupportedModels([]string{"merged-model"}).
+		SetDefaultTestModel("merged-model").
+		SetSettings(&objects.ChannelSettings{SyncModelPrices: true}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	created, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("merged-model"),
+	).Only(ctx)
+	require.NoError(t, err)
+	createdItems := lo.KeyBy(created.Price.Items, func(item objects.ModelPriceItem) objects.PriceItemCode {
+		return item.ItemCode
+	})
+	require.Len(t, createdItems, 4)
+	require.Equal(t, "0.2", createdItems[objects.PriceItemCodeUsage].Pricing.UsagePerUnit.String())
+	require.Equal(t, "4", createdItems[objects.PriceItemCodeCompletion].Pricing.UsagePerUnit.String())
+	require.Equal(t, "1.5", createdItems[objects.PriceItemCodePromptCachedToken].Pricing.UsagePerUnit.String())
+	require.Equal(t, "2.5", createdItems[objects.PriceItemCodeWriteCachedTokens].Pricing.UsagePerUnit.String())
+	versions, err := created.QueryVersions().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, versions, 1, "endpoint and library prices should create one initial version")
+}
+
+func TestChannelService_SyncChannelModelsSkipsEndpointPricesAfterProviderIdentityChange(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	channelIDs := make(chan int, 1)
+	identityUpdateResult := make(chan error, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		channelID := <-channelIDs
+		_, updateErr := client.Channel.UpdateOneID(channelID).
+			SetBaseURL("https://changed-provider.example/v1").
+			Save(ctx)
+		identityUpdateResult <- updateErr
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"stale-provider-model","pricing":{"prompt":"0.0000006"}}]}`))
+	}))
+	defer server.Close()
+	svc.httpClient = httpclient.NewHttpClientWithClient(server.Client())
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Changed provider identity during fetch").
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetStatus(channel.StatusEnabled).
+		SetSupportedModels([]string{"stale-provider-model"}).
+		SetDefaultTestModel("stale-provider-model").
+		SetSettings(&objects.ChannelSettings{SyncModelPrices: true}).
+		Save(ctx)
+	require.NoError(t, err)
+	channelIDs <- ch.ID
+
+	updated, err := svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	require.NoError(t, <-identityUpdateResult)
+	require.Equal(t, "https://changed-provider.example/v1", updated.BaseURL)
+	exists, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("stale-provider-model"),
+	).Exist(ctx)
+	require.NoError(t, err)
+	require.False(t, exists, "stale endpoint quote must not be written")
+}
+
+func TestChannelService_SyncChannelModelsSyncsEndpointPrices(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[
+			{"id":"created-model","pricing":{"prompt":"0.0000002"}},
+			{"id":"updated-model","pricing":{"prompt":"0.0000004"}},
+			{"id":"equal-model","pricing":{"prompt":"0.0000003"}},
+			{"id":"zero-model","pricing":{"prompt":"0"}},
+			{"id":"excluded-model","pricing":{"prompt":"0.0000007"}}
+		]}`))
+	}))
+	defer server.Close()
+
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc.httpClient = httpclient.NewHttpClientWithClient(server.Client())
+
+	pattern := `^(created-model|updated-model|equal-model|zero-model)$`
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Endpoint price sync").
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetStatus(channel.StatusEnabled).
+		SetSupportedModels([]string{"created-model", "updated-model", "equal-model", "zero-model"}).
+		SetDefaultTestModel("created-model").
+		SetSettings(&objects.ChannelSettings{SyncModelPrices: true}).
+		SetAutoSyncModelPattern(pattern).
+		Save(ctx)
+	require.NoError(t, err)
+
+	oldUpdatedPrice := endpointSyncTestPrice("1")
+	equalPrice := endpointSyncTestPrice("0.3")
+	_, err = svc.SaveChannelModelPrices(ctx, ch.ID, []SaveChannelModelPriceInput{
+		{ModelID: "updated-model", Price: oldUpdatedPrice},
+		{ModelID: "equal-model", Price: equalPrice},
+	})
+	require.NoError(t, err)
+	oldUpdated, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("updated-model"),
+	).Only(ctx)
+	require.NoError(t, err)
+	equalBefore, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("equal-model"),
+	).Only(ctx)
+	require.NoError(t, err)
+
+	enabledChannel, err := svc.GetChannel(ctx, ch.ID)
+	require.NoError(t, err)
+	svc.SetEnabledChannelsForTest([]*Channel{enabledChannel})
+	notifier := &channelSyncNotifierSpy{}
+	svc.channelNotifier = notifier
+	previousAsyncReloadDisabled := asyncReloadDisabled
+	asyncReloadDisabled = false
+	t.Cleanup(func() {
+		asyncReloadDisabled = previousAsyncReloadDisabled
+	})
+
+	updated, err := svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"created-model", "updated-model", "equal-model", "zero-model"}, updated.SupportedModels)
+	require.Equal(t, 1, notifier.notifyCount, "endpoint price changes must notify channel cache reload")
+
+	created, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("created-model"),
+	).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "0.2", created.Price.Items[0].Pricing.UsagePerUnit.String())
+	createdVersions, err := created.QueryVersions().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, createdVersions, 1)
+	require.Equal(t, channelmodelpriceversion.StatusActive, createdVersions[0].Status)
+
+	updatedPrice, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("updated-model"),
+	).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "0.4", updatedPrice.Price.Items[0].Pricing.UsagePerUnit.String())
+	updatedVersions, err := updatedPrice.QueryVersions().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, updatedVersions, 2)
+	archivedCount := 0
+	activeCount := 0
+	for _, version := range updatedVersions {
+		switch version.Status {
+		case channelmodelpriceversion.StatusArchived:
+			archivedCount++
+		case channelmodelpriceversion.StatusActive:
+			activeCount++
+			require.Equal(t, updatedPrice.ReferenceID, version.ReferenceID)
+			require.Equal(t, updatedPrice.Price, version.Price)
+		}
+	}
+	require.Equal(t, 1, archivedCount)
+	require.Equal(t, 1, activeCount)
+	require.NotEqual(t, oldUpdated.ReferenceID, updatedPrice.ReferenceID)
+
+	equalAfter, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("equal-model"),
+	).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, equalBefore.ReferenceID, equalAfter.ReferenceID)
+	equalVersions, err := equalAfter.QueryVersions().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, equalVersions, 1)
+	require.Equal(t, channelmodelpriceversion.StatusActive, equalVersions[0].Status)
+
+	for _, modelID := range []string{"zero-model", "excluded-model"} {
+		exists, err := client.ChannelModelPrice.Query().Where(
+			channelmodelprice.ChannelID(ch.ID),
+			channelmodelprice.ModelID(modelID),
+		).Exist(ctx)
+		require.NoError(t, err)
+		require.False(t, exists, "unexpected endpoint price for %s", modelID)
+	}
+
+	refreshedChannels, _, reloaded, err := svc.reloadEnabledChannels(ctx, svc.GetEnabledChannels(), time.Time{})
+	require.NoError(t, err)
+	require.True(t, reloaded)
+	svc.SetEnabledChannelsForTest(refreshedChannels)
+	cachedChannel := svc.GetEnabledChannel(ch.ID)
+	require.NotNil(t, cachedChannel)
+	cachedPrice := cachedChannel.cachedModelPrices["updated-model"]
+	require.NotNil(t, cachedPrice)
+	require.Equal(t, "0.4", cachedPrice.Price.Items[0].Pricing.UsagePerUnit.String())
+}
+
+func TestChannelService_SyncChannelModelsLeavesEndpointPricesDisabledByDefault(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"disabled-model","pricing":{"prompt":"0.0000005"}}]}`))
+	}))
+	defer server.Close()
+
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc.httpClient = httpclient.NewHttpClientWithClient(server.Client())
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Endpoint price sync disabled").
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetStatus(channel.StatusEnabled).
+		SetSupportedModels([]string{"disabled-model"}).
+		SetDefaultTestModel("disabled-model").
+		SetSettings(&objects.ChannelSettings{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	exists, err := client.ChannelModelPrice.Query().Where(
+		channelmodelprice.ChannelID(ch.ID),
+		channelmodelprice.ModelID("disabled-model"),
+	).Exist(ctx)
+	require.NoError(t, err)
+	require.False(t, exists)
+}
+
+func endpointSyncTestPrice(prompt string) objects.ModelPrice {
+	return objects.ModelPrice{Items: []objects.ModelPriceItem{{
+		ItemCode: objects.PriceItemCodeUsage,
+		Pricing: objects.Pricing{
+			Mode:         objects.PricingModeUsagePerUnit,
+			UsagePerUnit: loToDecimalPtr(prompt),
+		},
+	}}}
 }
 
 func TestChannelService_ClineModelSyncPreservesModelsOnDiscoveryFallback(t *testing.T) {

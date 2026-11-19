@@ -15,12 +15,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUpdateChannel } from '../data/channels';
 import { Channel, ModelMapping } from '../data/schema';
-import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { useChannelModelPreview } from '../data/use-channel-model-preview';
+import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { ChannelModelPreview } from './channel-model-preview';
 
 interface Props {
@@ -33,6 +34,7 @@ interface Props {
 const createModelMappingFormSchema = (supportedModels: string[]) =>
   z.object({
     extraModelPrefix: z.string().optional(),
+    syncModelPrices: z.boolean().optional(),
     modelMappings: z
       .array(
         z.object({
@@ -111,6 +113,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     resolver: zodResolver(modelMappingFormSchema),
     defaultValues: {
       extraModelPrefix: currentRow.settings?.extraModelPrefix || '',
+      syncModelPrices: currentRow.settings?.syncModelPrices || false,
       modelMappings: currentRow.settings?.modelMappings || [],
       autoTrimedModelPrefixes: currentRow.settings?.autoTrimedModelPrefixes || [],
       hideOriginalModels: currentRow.settings?.hideOriginalModels || false,
@@ -213,6 +216,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     setNewMapping({ from: '', to: '' });
     form.reset({
       extraModelPrefix: nextExtraModelPrefix,
+      syncModelPrices: currentRow.settings?.syncModelPrices || false,
       modelMappings: nextMappings,
       autoTrimedModelPrefixes: currentRow.settings?.autoTrimedModelPrefixes || [],
       hideOriginalModels: currentRow.settings?.hideOriginalModels || false,
@@ -296,6 +300,7 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     try {
       const modelNameSettings = {
         extraModelPrefix: values.extraModelPrefix,
+        syncModelPrices: values.syncModelPrices,
         modelMappings: values.modelMappings,
         autoTrimedModelPrefixes: values.autoTrimedModelPrefixes || [],
         hideOriginalModels: values.hideOriginalModels,
@@ -363,319 +368,336 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col overflow-hidden'>
               <div className='grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] sm:grid-rows-1'>
-              <div className='min-h-0 space-y-6 overflow-y-auto pr-2' data-testid='model-alias-settings-scroll'>
-              <Card>
-                <CardHeader>
-                  <CardTitle className='text-lg'>{t('channels.dialogs.settings.modelMapping.hideOriginalModels.label')}</CardTitle>
-                  <CardDescription>{t('channels.dialogs.settings.modelMapping.hideOriginalModels.description')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className='flex items-start gap-3'>
-                    <Checkbox
-                      id='hideOriginalModels'
-                      checked={form.watch('hideOriginalModels') || false}
-                      onCheckedChange={(checked) => form.setValue('hideOriginalModels', checked === true)}
-                    />
-                    <label
-                      htmlFor='hideOriginalModels'
-                      className='cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
-                    >
-                      {t('channels.dialogs.settings.modelMapping.hideOriginalModels.label')}
-                    </label>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className='text-lg'>{t('channels.dialogs.settings.extraModelPrefix.title')}</CardTitle>
-                  <CardDescription>{t('channels.dialogs.settings.extraModelPrefix.description')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Input
-                    placeholder={t('channels.dialogs.settings.extraModelPrefix.placeholder')}
-                    value={form.watch('extraModelPrefix') || ''}
-                    onChange={(e) => form.setValue('extraModelPrefix', e.target.value)}
-                  />
-                  {form.formState.errors.extraModelPrefix?.message && (
-                    <p className='text-destructive mt-2 text-sm'>{form.formState.errors.extraModelPrefix.message.toString()}</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className='text-lg'>{t('channels.dialogs.settings.autoTrimedModelPrefixes.title')}</CardTitle>
-                  <CardDescription>{t('channels.dialogs.settings.autoTrimedModelPrefixes.description')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className='space-y-2'>
-                    {/* 添加新前缀 */}
-                    <FormField
-                      control={form.control}
-                      name='autoTrimedModelPrefixes'
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <TagsAutocompleteInput
-                              value={field.value || []}
-                              onChange={field.onChange}
-                              placeholder={t('channels.dialogs.settings.autoTrimedModelPrefixes.placeholder')}
-                              suggestions={prefixSuggestions}
-                              className='h-auto min-h-9 py-1'
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* 自动提取所有前缀 */}
-                    {prefixSuggestions.length > 0 && (
-                      <div className='flex items-center gap-2 pt-2'>
-                        <Button type='button' variant='outline' size='sm' onClick={handleAutoExtractAllPrefixes} className='text-xs'>
-                          {t('channels.dialogs.settings.autoTrimedModelPrefixes.autoExtractAll', {
-                            defaultValue: 'Auto-extract all prefixes',
-                          })}
-                        </Button>
-                        <Button type='button' variant='outline' size='sm' onClick={handleClearAllPrefixes} className='text-xs'>
-                          {t('channels.dialogs.settings.autoTrimedModelPrefixes.clearAll', {
-                            defaultValue: 'Clear all',
-                          })}
-                        </Button>
-                        <span className='text-muted-foreground text-xs'>
-                          {t('channels.dialogs.settings.autoTrimedModelPrefixes.prefixesDetected', {
-                            count: prefixSuggestions.length,
-                            defaultValue: `Detected ${prefixSuggestions.length} prefix(es)`,
-                          })}
-                        </span>
+                <div className='min-h-0 space-y-6 overflow-y-auto pr-2' data-testid='model-alias-settings-scroll'>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className='text-lg'>{t('channels.dialogs.settings.modelMapping.hideOriginalModels.label')}</CardTitle>
+                      <CardDescription>{t('channels.dialogs.settings.modelMapping.hideOriginalModels.description')}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className='flex items-start gap-3'>
+                        <Checkbox
+                          id='hideOriginalModels'
+                          checked={form.watch('hideOriginalModels') || false}
+                          onCheckedChange={(checked) => form.setValue('hideOriginalModels', checked === true)}
+                        />
+                        <label
+                          htmlFor='hideOriginalModels'
+                          className='cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
+                        >
+                          {t('channels.dialogs.settings.modelMapping.hideOriginalModels.label')}
+                        </label>
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className='text-lg'>{t('channels.dialogs.settings.lowercaseModelId.title')}</CardTitle>
-                  <CardDescription>{t('channels.dialogs.settings.lowercaseModelId.description')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className='flex items-start gap-3'>
-                    <Checkbox
-                      id='lowercaseModelId'
-                      checked={form.watch('lowercaseModelId') || false}
-                      onCheckedChange={(checked) => form.setValue('lowercaseModelId', checked === true)}
-                    />
-                    <label
-                      htmlFor='lowercaseModelId'
-                      className='cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
-                    >
-                      {t('channels.dialogs.settings.lowercaseModelId.label')}
-                    </label>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className='text-lg'>{t('channels.dialogs.settings.modelMapping.title')}</CardTitle>
-                  <CardDescription>{t('channels.dialogs.settings.modelMapping.description')}</CardDescription>
-                </CardHeader>
-                <CardContent className='space-y-4'>
-                  <div className='flex flex-wrap items-center gap-6 pb-2'>
-                    <div className='flex items-center gap-2'>
-                      <Checkbox
-                        id='hideMappedModels'
-                        checked={form.watch('hideMappedModels') || false}
-                        onCheckedChange={(checked) => form.setValue('hideMappedModels', checked === true)}
-                      />
-                      <label
-                        htmlFor='hideMappedModels'
-                        className='cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
-                      >
-                        {t('channels.dialogs.settings.modelMapping.hideMappedModels.label')}
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className='grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_auto] md:items-center'>
-                    <div className='flex min-w-0 gap-2'>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className='text-lg'>{t('channels.dialogs.settings.extraModelPrefix.title')}</CardTitle>
+                      <CardDescription>{t('channels.dialogs.settings.extraModelPrefix.description')}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
                       <Input
-                        placeholder={t('channels.dialogs.settings.modelMapping.originalModel')}
-                        value={newMapping.from}
-                        onChange={(e) => setNewMapping({ ...newMapping, from: e.target.value })}
-                        className='min-w-0 flex-1'
+                        placeholder={t('channels.dialogs.settings.extraModelPrefix.placeholder')}
+                        value={form.watch('extraModelPrefix') || ''}
+                        onChange={(e) => form.setValue('extraModelPrefix', e.target.value)}
                       />
-                      {aliasSuggestion && newMapping.to && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type='button'
-                              variant='outline'
-                              size='sm'
-                              onClick={applyAliasSuggestion}
-                              disabled={!aliasSuggestion || newMapping.from.trim() === aliasSuggestion}
-                              aria-label={t('channels.dialogs.settings.modelMapping.useSuggestion', {
-                                alias: aliasSuggestion,
-                                defaultValue: `Use ${aliasSuggestion}`,
-                              })}
-                            >
-                              <Lightbulb className='h-4 w-4' />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>
-                              {t('channels.dialogs.settings.modelMapping.useSuggestion', {
-                                alias: aliasSuggestion,
-                                defaultValue: `Use ${aliasSuggestion}`,
-                              })}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
+                      {form.formState.errors.extraModelPrefix?.message && (
+                        <p className='text-destructive mt-2 text-sm'>{form.formState.errors.extraModelPrefix.message.toString()}</p>
                       )}
-                    </div>
-                    <span className='text-muted-foreground hidden justify-center md:flex'>→</span>
-                    <Select value={newMapping.to} onValueChange={(value) => setNewMapping({ ...newMapping, to: value })}>
-                      <SelectTrigger className='min-w-0 w-full'>
-                        <SelectValue placeholder={t('channels.dialogs.settings.modelMapping.targetModel')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {currentRow.supportedModels.map((model) => (
-                          <SelectItem key={model} value={model}>
-                            {model}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type='button'
-                      onClick={addMapping}
-                      size='sm'
-                      disabled={!newMapping.from.trim() || !newMapping.to.trim()}
-                      data-testid='add-model-mapping-button'
-                      aria-label={t('channels.dialogs.settings.modelMapping.addMappingButton', {
-                        defaultValue: 'Add mapping',
-                      })}
-                    >
-                      <Plus size={16} />
-                    </Button>
-                    {(newMapping.from.trim() || newMapping.to.trim()) && (
-                      <Button type='button' variant='outline' size='sm' onClick={() => setNewMapping({ from: '', to: '' })}>
-                        <X size={16} />
-                      </Button>
-                    )}
-                  </div>
+                    </CardContent>
+                  </Card>
 
-                  {/* 显示表单错误 */}
-                  {form.formState.errors.modelMappings?.message && (
-                    <p className='text-destructive text-sm'>{form.formState.errors.modelMappings.message.toString()}</p>
-                  )}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className='text-lg'>{t('channels.dialogs.settings.syncModelPrices.title')}</CardTitle>
+                      <CardDescription>{t('channels.dialogs.settings.syncModelPrices.description')}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className='flex items-center justify-end'>
+                        <Switch
+                          id='syncModelPrices'
+                          aria-label={t('channels.dialogs.settings.syncModelPrices.title')}
+                          checked={form.watch('syncModelPrices') ?? false}
+                          onCheckedChange={(checked) => form.setValue('syncModelPrices', checked)}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                  <div className='space-y-2'>
-                    {modelMappings.length === 0 ? (
-                      <p className='text-muted-foreground py-4 text-center text-sm'>
-                        {t('channels.dialogs.settings.modelMapping.noMappings')}
-                      </p>
-                    ) : (
-                      modelMappings.map((mapping, index) => {
-                        const isEditing = editingIndex === index;
-                        return (
-                          <div key={index} className='rounded-lg border p-3'>
-                            {isEditing ? (
-                              <div className='space-y-2'>
-                                <div
-                                  className='grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] md:items-center'
-                                  onKeyDown={handleInlineEditKeyDown}
-                                >
-                                  <Input
-                                    value={editingDraft?.from ?? ''}
-                                    onChange={(e) => handleInlineEditFieldChange('from', e.target.value)}
-                                    autoFocus
-                                    className='min-w-0 w-full'
-                                  />
-                                  <span className='text-muted-foreground hidden justify-center md:flex'>→</span>
-                                  <Select
-                                    value={editingDraft?.to ?? undefined}
-                                    onValueChange={(value) => handleInlineEditFieldChange('to', value)}
-                                  >
-                                    <SelectTrigger className='min-w-0 w-full'>
-                                      <SelectValue placeholder={t('channels.dialogs.settings.modelMapping.targetModel')} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {currentRow.supportedModels.map((model) => (
-                                        <SelectItem key={model} value={model}>
-                                          {model}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <div className='flex gap-2 md:justify-end'>
-                                    <Button
-                                      type='button'
-                                      size='sm'
-                                      onClick={saveEditingDraft}
-                                      disabled={!editingDraft?.from.trim() || !editingDraft?.to.trim()}
-                                    >
-                                      {t('common.buttons.save')}
-                                    </Button>
-                                    <Button type='button' variant='ghost' size='sm' onClick={exitInlineEditing}>
-                                      {t('common.buttons.cancel')}
-                                    </Button>
-                                  </div>
-                                </div>
-                                {editingError && <p className='text-destructive text-sm'>{editingError}</p>}
-                              </div>
-                            ) : (
-                              <div className='flex items-center justify-between'>
-                                <div
-                                  className='focus-within:outline-ring flex flex-1 cursor-pointer items-center gap-2 rounded p-1 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2'
-                                  onDoubleClick={() => startEditing(index)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                      e.preventDefault();
-                                      startEditing(index);
-                                    }
-                                  }}
-                                  tabIndex={0}
-                                  role='button'
-                                  aria-label={t('channels.dialogs.settings.modelMapping.editHint', {
-                                    defaultValue: 'Double-click to edit',
-                                  })}
-                                  title={t('channels.dialogs.settings.modelMapping.editHint', {
-                                    defaultValue: 'Double-click to edit',
-                                  })}
-                                >
-                                  <Badge variant='outline'>{mapping.from}</Badge>
-                                  <span className='text-muted-foreground'>→</span>
-                                  <Badge variant='outline'>{mapping.to}</Badge>
-                                </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className='text-lg'>{t('channels.dialogs.settings.autoTrimedModelPrefixes.title')}</CardTitle>
+                      <CardDescription>{t('channels.dialogs.settings.autoTrimedModelPrefixes.description')}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className='space-y-2'>
+                        {/* 添加新前缀 */}
+                        <FormField
+                          control={form.control}
+                          name='autoTrimedModelPrefixes'
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <TagsAutocompleteInput
+                                  value={field.value || []}
+                                  onChange={field.onChange}
+                                  placeholder={t('channels.dialogs.settings.autoTrimedModelPrefixes.placeholder')}
+                                  suggestions={prefixSuggestions}
+                                  className='h-auto min-h-9 py-1'
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* 自动提取所有前缀 */}
+                        {prefixSuggestions.length > 0 && (
+                          <div className='flex items-center gap-2 pt-2'>
+                            <Button type='button' variant='outline' size='sm' onClick={handleAutoExtractAllPrefixes} className='text-xs'>
+                              {t('channels.dialogs.settings.autoTrimedModelPrefixes.autoExtractAll', {
+                                defaultValue: 'Auto-extract all prefixes',
+                              })}
+                            </Button>
+                            <Button type='button' variant='outline' size='sm' onClick={handleClearAllPrefixes} className='text-xs'>
+                              {t('channels.dialogs.settings.autoTrimedModelPrefixes.clearAll', {
+                                defaultValue: 'Clear all',
+                              })}
+                            </Button>
+                            <span className='text-muted-foreground text-xs'>
+                              {t('channels.dialogs.settings.autoTrimedModelPrefixes.prefixesDetected', {
+                                count: prefixSuggestions.length,
+                                defaultValue: `Detected ${prefixSuggestions.length} prefix(es)`,
+                              })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className='text-lg'>{t('channels.dialogs.settings.lowercaseModelId.title')}</CardTitle>
+                      <CardDescription>{t('channels.dialogs.settings.lowercaseModelId.description')}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className='flex items-start gap-3'>
+                        <Checkbox
+                          id='lowercaseModelId'
+                          checked={form.watch('lowercaseModelId') || false}
+                          onCheckedChange={(checked) => form.setValue('lowercaseModelId', checked === true)}
+                        />
+                        <label
+                          htmlFor='lowercaseModelId'
+                          className='cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
+                        >
+                          {t('channels.dialogs.settings.lowercaseModelId.label')}
+                        </label>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className='text-lg'>{t('channels.dialogs.settings.modelMapping.title')}</CardTitle>
+                      <CardDescription>{t('channels.dialogs.settings.modelMapping.description')}</CardDescription>
+                    </CardHeader>
+                    <CardContent className='space-y-4'>
+                      <div className='flex flex-wrap items-center gap-6 pb-2'>
+                        <div className='flex items-center gap-2'>
+                          <Checkbox
+                            id='hideMappedModels'
+                            checked={form.watch('hideMappedModels') || false}
+                            onCheckedChange={(checked) => form.setValue('hideMappedModels', checked === true)}
+                          />
+                          <label
+                            htmlFor='hideMappedModels'
+                            className='cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
+                          >
+                            {t('channels.dialogs.settings.modelMapping.hideMappedModels.label')}
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className='grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_auto] md:items-center'>
+                        <div className='flex min-w-0 gap-2'>
+                          <Input
+                            placeholder={t('channels.dialogs.settings.modelMapping.originalModel')}
+                            value={newMapping.from}
+                            onChange={(e) => setNewMapping({ ...newMapping, from: e.target.value })}
+                            className='min-w-0 flex-1'
+                          />
+                          {aliasSuggestion && newMapping.to && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
                                 <Button
                                   type='button'
-                                  variant='ghost'
+                                  variant='outline'
                                   size='sm'
-                                  onClick={() => removeMapping(index)}
-                                  className='text-destructive hover:text-destructive'
+                                  onClick={applyAliasSuggestion}
+                                  disabled={!aliasSuggestion || newMapping.from.trim() === aliasSuggestion}
+                                  aria-label={t('channels.dialogs.settings.modelMapping.useSuggestion', {
+                                    alias: aliasSuggestion,
+                                    defaultValue: `Use ${aliasSuggestion}`,
+                                  })}
                                 >
-                                  <X size={16} />
+                                  <Lightbulb className='h-4 w-4' />
                                 </Button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>
+                                  {t('channels.dialogs.settings.modelMapping.useSuggestion', {
+                                    alias: aliasSuggestion,
+                                    defaultValue: `Use ${aliasSuggestion}`,
+                                  })}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                        <span className='text-muted-foreground hidden justify-center md:flex'>→</span>
+                        <Select value={newMapping.to} onValueChange={(value) => setNewMapping({ ...newMapping, to: value })}>
+                          <SelectTrigger className='w-full min-w-0'>
+                            <SelectValue placeholder={t('channels.dialogs.settings.modelMapping.targetModel')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {currentRow.supportedModels.map((model) => (
+                              <SelectItem key={model} value={model}>
+                                {model}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type='button'
+                          onClick={addMapping}
+                          size='sm'
+                          disabled={!newMapping.from.trim() || !newMapping.to.trim()}
+                          data-testid='add-model-mapping-button'
+                          aria-label={t('channels.dialogs.settings.modelMapping.addMappingButton', {
+                            defaultValue: 'Add mapping',
+                          })}
+                        >
+                          <Plus size={16} />
+                        </Button>
+                        {(newMapping.from.trim() || newMapping.to.trim()) && (
+                          <Button type='button' variant='outline' size='sm' onClick={() => setNewMapping({ from: '', to: '' })}>
+                            <X size={16} />
+                          </Button>
+                        )}
+                      </div>
 
-              <aside className='flex min-h-0 flex-col border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4'>
-                <ChannelModelPreview
-                  models={currentRow.supportedModels}
-                  entries={preview.data ?? []}
-                  isUpdating={preview.isUpdating}
-                  isError={preview.isError}
-                />
-              </aside>
+                      {/* 显示表单错误 */}
+                      {form.formState.errors.modelMappings?.message && (
+                        <p className='text-destructive text-sm'>{form.formState.errors.modelMappings.message.toString()}</p>
+                      )}
+
+                      <div className='space-y-2'>
+                        {modelMappings.length === 0 ? (
+                          <p className='text-muted-foreground py-4 text-center text-sm'>
+                            {t('channels.dialogs.settings.modelMapping.noMappings')}
+                          </p>
+                        ) : (
+                          modelMappings.map((mapping, index) => {
+                            const isEditing = editingIndex === index;
+                            return (
+                              <div key={index} className='rounded-lg border p-3'>
+                                {isEditing ? (
+                                  <div className='space-y-2'>
+                                    <div
+                                      className='grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] md:items-center'
+                                      onKeyDown={handleInlineEditKeyDown}
+                                    >
+                                      <Input
+                                        value={editingDraft?.from ?? ''}
+                                        onChange={(e) => handleInlineEditFieldChange('from', e.target.value)}
+                                        autoFocus
+                                        className='w-full min-w-0'
+                                      />
+                                      <span className='text-muted-foreground hidden justify-center md:flex'>→</span>
+                                      <Select
+                                        value={editingDraft?.to ?? undefined}
+                                        onValueChange={(value) => handleInlineEditFieldChange('to', value)}
+                                      >
+                                        <SelectTrigger className='w-full min-w-0'>
+                                          <SelectValue placeholder={t('channels.dialogs.settings.modelMapping.targetModel')} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {currentRow.supportedModels.map((model) => (
+                                            <SelectItem key={model} value={model}>
+                                              {model}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <div className='flex gap-2 md:justify-end'>
+                                        <Button
+                                          type='button'
+                                          size='sm'
+                                          onClick={saveEditingDraft}
+                                          disabled={!editingDraft?.from.trim() || !editingDraft?.to.trim()}
+                                        >
+                                          {t('common.buttons.save')}
+                                        </Button>
+                                        <Button type='button' variant='ghost' size='sm' onClick={exitInlineEditing}>
+                                          {t('common.buttons.cancel')}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    {editingError && <p className='text-destructive text-sm'>{editingError}</p>}
+                                  </div>
+                                ) : (
+                                  <div className='flex items-center justify-between'>
+                                    <div
+                                      className='focus-within:outline-ring flex flex-1 cursor-pointer items-center gap-2 rounded p-1 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2'
+                                      onDoubleClick={() => startEditing(index)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                          e.preventDefault();
+                                          startEditing(index);
+                                        }
+                                      }}
+                                      tabIndex={0}
+                                      role='button'
+                                      aria-label={t('channels.dialogs.settings.modelMapping.editHint', {
+                                        defaultValue: 'Double-click to edit',
+                                      })}
+                                      title={t('channels.dialogs.settings.modelMapping.editHint', {
+                                        defaultValue: 'Double-click to edit',
+                                      })}
+                                    >
+                                      <Badge variant='outline'>{mapping.from}</Badge>
+                                      <span className='text-muted-foreground'>→</span>
+                                      <Badge variant='outline'>{mapping.to}</Badge>
+                                    </div>
+                                    <Button
+                                      type='button'
+                                      variant='ghost'
+                                      size='sm'
+                                      onClick={() => removeMapping(index)}
+                                      className='text-destructive hover:text-destructive'
+                                    >
+                                      <X size={16} />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <aside className='flex min-h-0 flex-col border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4'>
+                  <ChannelModelPreview
+                    models={currentRow.supportedModels}
+                    entries={preview.data ?? []}
+                    isUpdating={preview.isUpdating}
+                    isError={preview.isError}
+                  />
+                </aside>
               </div>
 
               <DialogFooter className='mt-4 shrink-0 border-t pt-4'>

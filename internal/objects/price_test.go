@@ -437,4 +437,65 @@ func TestModelPrice_Validate(t *testing.T) {
 		assert.Contains(t, err.Error(), "promptWriteCacheVariants[0]")
 		assert.Contains(t, err.Error(), "usagePerUnit is required")
 	})
+
+	t.Run("write-cache item with empty mode and variants is valid", func(t *testing.T) {
+		d5m := decimal.NewFromFloat(2.5)
+		d1h := decimal.NewFromFloat(3.5)
+		mp := ModelPrice{
+			Items: []ModelPriceItem{
+				{
+					ItemCode: PriceItemCodeUsage,
+					Pricing:  Pricing{Mode: PricingModeUsagePerUnit, UsagePerUnit: &d5m},
+				},
+				{
+					// Mixed-TTL cache write: no aggregate rate is a safe fallback,
+					// so the variants carry the only rates.
+					ItemCode: PriceItemCodeWriteCachedTokens,
+					Pricing:  Pricing{},
+					PromptWriteCacheVariants: []PromptWriteCacheVariant{
+						{
+							VariantCode: PromptWriteCacheVariantCode5Min,
+							Pricing:     Pricing{Mode: PricingModeUsagePerUnit, UsagePerUnit: &d5m},
+						},
+						{
+							VariantCode: PromptWriteCacheVariantCode1Hour,
+							Pricing:     Pricing{Mode: PricingModeUsagePerUnit, UsagePerUnit: &d1h},
+						},
+					},
+				},
+			},
+		}
+
+		require.NoError(t, mp.Validate())
+	})
+
+	t.Run("empty mode without variants is invalid", func(t *testing.T) {
+		mp := ModelPrice{
+			Items: []ModelPriceItem{
+				{
+					ItemCode: PriceItemCodeWriteCachedTokens,
+					Pricing:  Pricing{},
+				},
+			},
+		}
+
+		err := mp.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "mode is required")
+	})
+
+	t.Run("empty mode on non-write-cache item is invalid", func(t *testing.T) {
+		mp := ModelPrice{
+			Items: []ModelPriceItem{
+				{
+					ItemCode: PriceItemCodeUsage,
+					Pricing:  Pricing{},
+				},
+			},
+		}
+
+		err := mp.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "mode is required")
+	})
 }

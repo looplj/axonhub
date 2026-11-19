@@ -4,14 +4,15 @@ import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 
 const priceItemCodes = ['prompt_tokens', 'completion_tokens', 'prompt_cached_tokens', 'prompt_write_cached_tokens'] as const;
 const promptWriteCacheVariantCodes = ['five_min', 'one_hour'] as const;
-type PricingMode = 'flat_fee' | 'usage_per_unit' | 'usage_tiered' | 'usage_volume';
+// An empty mode marks cache-write items whose 5m/1h variants carry the rates (no aggregate).
+type PricingMode = '' | 'flat_fee' | 'usage_per_unit' | 'usage_tiered' | 'usage_volume';
 
 type PriceEditorFormValues = {
   prices: Array<{
@@ -20,7 +21,7 @@ type PriceEditorFormValues = {
       items: Array<{
         itemCode: (typeof priceItemCodes)[number];
         pricing: {
-          mode: PricingMode;
+          mode?: PricingMode | null;
           flatFee?: string | null;
           usagePerUnit?: string | null;
           usageTiered?: {
@@ -33,7 +34,8 @@ type PriceEditorFormValues = {
         promptWriteCacheVariants?: Array<{
           variantCode: (typeof promptWriteCacheVariantCodes)[number];
           pricing: {
-            mode: PricingMode;
+            // Variants must always carry a real mode; the empty mode is aggregate-only.
+            mode: Exclude<PricingMode, ''>;
             flatFee?: string | null;
             usagePerUnit?: string | null;
             usageTiered?: {
@@ -178,10 +180,7 @@ const PriceItemRow = memo(function PriceItemRow({
     control,
     name: asFieldArrayPath(`prices.${priceIndex}.price.items.${itemIndex}.pricing.usageTiered.tiers`),
   });
-  const tiers = usePriceEditorWatch<Tier[] | undefined>(
-    control,
-    `prices.${priceIndex}.price.items.${itemIndex}.pricing.usageTiered.tiers`
-  );
+  const tiers = usePriceEditorWatch<Tier[] | undefined>(control, `prices.${priceIndex}.price.items.${itemIndex}.pricing.usageTiered.tiers`);
   const { setValue } = useFormContext<PriceEditorFormValues>();
   const requiredMessage = t('price.validation.priceRequired');
 
@@ -336,7 +335,7 @@ const PriceItemRow = memo(function PriceItemRow({
         </div>
 
         {(pricingMode === 'usage_tiered' || pricingMode === 'usage_volume') && (
-          <div className='col-span-full ml-4 mt-2 min-w-0 space-y-2 rounded-md border border-dashed p-3'>
+          <div className='col-span-full mt-2 ml-4 min-w-0 space-y-2 rounded-md border border-dashed p-3'>
             <div className='text-muted-foreground flex items-center justify-between text-xs'>
               <span>{t('price.tiers')}</span>
               <Button type='button' variant='outline' size='icon-sm' onClick={() => appendTier({ upTo: null, pricePerUnit: '0' })}>
@@ -356,11 +355,9 @@ const PriceItemRow = memo(function PriceItemRow({
                           <Input
                             type='number'
                             {...field}
-                            value={isLastTier ? '' : (field.value as unknown as number | null | undefined) ?? ''}
+                            value={isLastTier ? '' : ((field.value as unknown as number | null | undefined) ?? '')}
                             onChange={(e) =>
-                              isLastTier
-                                ? field.onChange(null)
-                                : field.onChange(e.target.value ? parseInt(e.target.value) : null)
+                              isLastTier ? field.onChange(null) : field.onChange(e.target.value ? parseInt(e.target.value) : null)
                             }
                             placeholder={isLastTier ? '∞' : t('price.upTo')}
                             disabled={isLastTier}
@@ -605,9 +602,7 @@ const PriceVariantRow = memo(function PriceVariantRow({
         {pricingMode === 'flat_fee' && (
           <FormField
             control={control}
-            name={asFieldPath(
-              `prices.${priceIndex}.price.items.${itemIndex}.promptWriteCacheVariants.${variantIndex}.pricing.flatFee`
-            )}
+            name={asFieldPath(`prices.${priceIndex}.price.items.${itemIndex}.promptWriteCacheVariants.${variantIndex}.pricing.flatFee`)}
             render={({ field }) => (
               <FormItem className='min-w-0 flex-1'>
                 <FormControl>
@@ -663,11 +658,9 @@ const PriceVariantRow = memo(function PriceVariantRow({
                         <Input
                           type='number'
                           {...field}
-                          value={isLastTier ? '' : (field.value as unknown as number | null | undefined) ?? ''}
+                          value={isLastTier ? '' : ((field.value as unknown as number | null | undefined) ?? '')}
                           onChange={(e) =>
-                            isLastTier
-                              ? field.onChange(null)
-                              : field.onChange(e.target.value ? parseInt(e.target.value) : null)
+                            isLastTier ? field.onChange(null) : field.onChange(e.target.value ? parseInt(e.target.value) : null)
                           }
                           placeholder={isLastTier ? '∞' : t('price.upTo')}
                           disabled={isLastTier}
@@ -713,12 +706,7 @@ const PriceVariantRow = memo(function PriceVariantRow({
                 )}
                 rules={{ required: requiredMessage }}
               />
-              <Button
-                type='button'
-                variant='ghost'
-                size='icon-sm'
-                onClick={() => removeTier(tierIndex)}
-              >
+              <Button type='button' variant='ghost' size='icon-sm' onClick={() => removeTier(tierIndex)}>
                 <IconTrash size={10} className='text-destructive' />
               </Button>
             </div>

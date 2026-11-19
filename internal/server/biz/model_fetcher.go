@@ -322,7 +322,7 @@ func (f *ModelFetcher) fetchClineRecommendedModels(ctx context.Context, httpClie
 	usedFallback := !hasUsableClineModel(response.ClinePass)
 	if usedFallback {
 		fallbackEntries := lo.Map(fallback, func(model ModelIdentify, _ int) clineRecommendedModel {
-			return clineRecommendedModel(model)
+			return clineRecommendedModel{ID: model.ID}
 		})
 		models = appendUniqueClineModels(models, seen, fallbackEntries)
 	}
@@ -547,7 +547,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		httpClient = httpClient.WithRejectHTTPSDowngrade()
 	}
 
-	parse := f.parseModelsResponse
+	parse := func(body []byte) ([]ModelIdentify, error) {
+		return f.parseModelsResponse(channelType, body)
+	}
 	if codexChannel != nil {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, 15*time.Second)
@@ -726,7 +728,7 @@ func (f *ModelFetcher) fetchGeminiModels(ctx context.Context, httpClient *httpcl
 
 		var page geminiListModelsResponse
 		if err := json.Unmarshal(resp.Body, &page); err != nil {
-			models, parseErr := f.parseModelsResponse(resp.Body)
+			models, parseErr := f.parseModelsResponse(channel.TypeGemini, resp.Body)
 			if parseErr != nil {
 				return nil, fmt.Errorf("failed to parse models response: paginated unmarshal: %w; fallback parse: %w", err, parseErr)
 			}
@@ -930,7 +932,7 @@ type GeminiModelResponse struct {
 }
 
 type commonModelsResponse struct {
-	Data   []ModelIdentify       `json:"data"`
+	Data   []json.RawMessage     `json:"data"`
 	Models []GeminiModelResponse `json:"models"`
 }
 
@@ -953,28 +955,34 @@ func ExtractJSONArray(body []byte, target any) error {
 }
 
 // parseModelsResponse parses the models response from the provider API.
-func (f *ModelFetcher) parseModelsResponse(body []byte) ([]ModelIdentify, error) {
-	// First, try to parse as direct array (e.g., GitHub Models response)
-	var directArray []ModelIdentify
-	if err := json.Unmarshal(body, &directArray); err == nil && len(directArray) > 0 {
-		return directArray, nil
+func (f *ModelFetcher) parseModelsResponse(channelType channel.Type, body []byte) ([]ModelIdentify, error) {
+	rawItems, geminiModels, err := extractRawModelResponse(body)
+	if err != nil {
+		return nil, err
 	}
 
-	var response commonModelsResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		if err := ExtractJSONArray(body, &response.Data); err != nil {
-			return nil, fmt.Errorf("failed to parse response: %w", err)
+	models := make([]ModelIdentify, 0, len(rawItems)+len(geminiModels))
+	for _, rawItem := range rawItems {
+		var model struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(rawItem, &model); err != nil {
+			return nil, fmt.Errorf("failed to parse model: %w", err)
+		}
+		models = append(models, ModelIdentify{ID: model.ID})
+	}
+
+	for _, model := range geminiModels {
+		// remove "models/" prefix for gemini.
+		models = append(models, ModelIdentify{ID: strings.TrimPrefix(model.Name, "models/")})
+	}
+
+	if supportsEndpointPricing(channelType) {
+		prices := extractModelPricingFromRawItems(rawItems, models[:len(rawItems)])
+		for i := range models {
+			models[i].Pricing = prices[models[i].ID]
 		}
 	}
 
-	if len(response.Models) > 0 {
-		for _, model := range response.Models {
-			// remove "models/" prefix for gemini.
-			response.Data = append(response.Data, ModelIdentify{
-				ID: strings.TrimPrefix(model.Name, "models/"),
-			})
-		}
-	}
-
-	return response.Data, nil
+	return models, nil
 }
