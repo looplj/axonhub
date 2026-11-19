@@ -595,3 +595,56 @@ func (t *OutboundTransformer) applyStreamFilter(ctx context.Context, stream stre
 		return hasContent
 	}), nil
 }
+
+func TestOutboundTransformer_TransformRequest_StripsUnsupportedReasoningParams(t *testing.T) {
+	tests := []struct {
+		name      string
+		model     string
+		wantStrip bool
+	}{
+		{name: "grok-4", model: "grok-4", wantStrip: true},
+		{name: "grok-4 dated", model: "grok-4-0709", wantStrip: true},
+		{name: "grok-4 fast reasoning", model: "grok-4-fast-reasoning", wantStrip: true},
+		{name: "grok-4.1 fast reasoning", model: "grok-4.1-fast-reasoning", wantStrip: true},
+		{name: "grok-4.20", model: "grok-4.20", wantStrip: true},
+		{name: "grok-3", model: "grok-3", wantStrip: true},
+		{name: "grok-3-mini", model: "grok-3-mini", wantStrip: true},
+		{name: "grok-4 fast non-reasoning keeps params", model: "grok-4-fast-non-reasoning", wantStrip: false},
+		{name: "grok-4.1 fast non-reasoning keeps params", model: "grok-4.1-fast-non-reasoning", wantStrip: false},
+		{name: "grok-code-fast-1 keeps params", model: "grok-code-fast-1", wantStrip: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outbound, err := NewOutboundTransformerWithConfig(&Config{
+				BaseURL:        DefaultBaseURL,
+				APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+			})
+			require.NoError(t, err)
+
+			req := &llm.Request{
+				Model: tt.model,
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+				},
+				PresencePenalty:  lo.ToPtr(0.5),
+				FrequencyPenalty: lo.ToPtr(0.5),
+				Stop:             &llm.Stop{Stop: lo.ToPtr("END")},
+			}
+
+			httpReq, err := outbound.TransformRequest(context.Background(), req)
+			require.NoError(t, err)
+
+			var body map[string]any
+			require.NoError(t, json.Unmarshal(httpReq.Body, &body))
+
+			for _, key := range []string{"presence_penalty", "frequency_penalty", "stop"} {
+				if tt.wantStrip {
+					assert.NotContains(t, body, key)
+				} else {
+					assert.Contains(t, body, key)
+				}
+			}
+		})
+	}
+}
