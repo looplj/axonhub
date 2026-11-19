@@ -397,7 +397,7 @@
   "quota.label.show_key_details": "Show per-key detail ({{count}})",
   "quota.label.hide_key_details": "Hide per-key detail",
   "quota.label.key_usage": "{{window}} usage for {{key}}",
-  "quota.label.channel_capacity": "{{window}} capacity across {{count}} keys",
+  "quota.label.channel_capacity": "{{window}} usage across {{count}} keys",
   "quota.label.show_disabled_accounts": "Show disabled ({{count}})",
   "quota.label.hide_disabled_accounts": "Hide disabled ({{count}})",
   "quota.label.days": " days",
