@@ -266,6 +266,45 @@ func TestOppositeReenableExpiry(t *testing.T) {
 			matched: base,
 			want:    time.Date(2026, time.November, 16, 1, 0, 0, 0, time.UTC),
 		},
+		{
+			// Matches Monday 00:00; hourly matches run until Friday 23:00,
+			// whose next match is the following Monday 00:00 — a 2940-minute
+			// (49-hour) gap. The off window ends at Friday 23:00 + 1h, i.e.
+			// the start of the weekend.
+			name:    "weekly weekday cron: off window spans the weekend",
+			cron:    "0 * * * 1-5",
+			matched: base,
+			want:    time.Date(2026, time.November, 21, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			// Every hour of January and February: the run of consecutive
+			// matches lasts ~59 days. Disabled Jan 15, back one hour after
+			// the February run ends: Mar 1 00:00.
+			name:    "multi-month cron run resolves at the end of the run",
+			cron:    "0 * * 1-2 *",
+			matched: time.Date(2026, time.January, 15, 0, 0, 0, 0, time.UTC),
+			want:    time.Date(2026, time.March, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			// Every hour of January through July: a ~199-day run, longer
+			// than the pinned 5-day and ~59-day runs and shorter than the
+			// 366-day bound. Disabled Jan 15, back one hour after the July
+			// run ends: Aug 1 00:00.
+			name:    "mid-year cron run resolves at the end of the run",
+			cron:    "0 * * 1-7 *",
+			matched: time.Date(2026, time.January, 15, 0, 0, 0, 0, time.UTC),
+			want:    time.Date(2026, time.August, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			// supercronic's non-strict Parse accepts 7-field expressions:
+			// every hour of 2026. The year list exhausts at the end of the
+			// run, expr.Next returns the zero time, and the run must end
+			// there: back one hour after the last 2026 match, Jan 1 2027.
+			name:    "year-scoped run ends when the year list exhausts",
+			cron:    "0 * * * * 2026",
+			matched: time.Date(2026, time.January, 15, 0, 0, 0, 0, time.UTC),
+			want:    time.Date(2027, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
 		{name: "every-minute cron has no off window", cron: "* * * * *", matched: base, wantNil: true},
 		{
 			// Same business cluster evaluated in Tokyo: matched at 06:00 JST
@@ -533,4 +572,218 @@ func TestRegisterScheduledTasksInclScheduledDisable(t *testing.T) {
 	}
 	require.True(t, names["channel-model-sync"])
 	require.True(t, names["channel-disabled-api-key-cleanup"])
+}
+
+func TestSweepScheduledDisableStaleScheduleDoesNotFire(t *testing.T) {
+	// The sweep fires a guarded UPDATE for the channel row it read. Any admin
+	// edit landing between the read and the write advances UpdatedAt, so the
+	// UPDATE must affect 0 rows and the channel must not be disabled.
+	now := time.Now().UTC().Truncate(time.Minute)
+	client, ctx, svc, ch := withScheduledDisablePolicy(t, "stale-disable", &objects.ChannelScheduledDisable{
+		DisableCron:  fmt.Sprintf("%d %d * * *", now.Minute(), now.Hour()),
+		ReenableMode: "cron",
+		ReenableCron: "0 0 1 1 *",
+	})
+
+	// The sweep's read is done (snapshot); an admin edit now lands before the
+	// guarded write.
+	snapshot, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	_, err = client.Channel.UpdateOneID(ch.ID).
+		SetRemark("edited after sweep read").
+		Save(ctx)
+	require.NoError(t, err)
+
+	disabled, err := svc.sweepScheduledDisable(ctx, snapshot, snapshot.Policies.ScheduledDisable, now)
+	require.NoError(t, err)
+	require.False(t, disabled, "a stale schedule must not disable the channel")
+
+	updated, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Equal(t, channel.StatusEnabled, updated.Status)
+	require.Nil(t, updated.AutoDisabledAt)
+	require.Nil(t, updated.AutoDisableExpiresAt)
+	require.Empty(t, updated.ErrorMessage)
+	require.Equal(t, "edited after sweep read", lo.FromPtr(updated.Remark))
+}
+
+func TestSweepScheduledReenableStaleRowNotOverwritten(t *testing.T) {
+	// Same compare-and-set on the recovery half: an edit after the sweep's
+	// read must survive the re-enable UPDATE.
+	now := time.Now()
+	client, ctx, svc, ch := withScheduledDisablePolicy(t, "stale-reenable", &objects.ChannelScheduledDisable{
+		DisableCron:  "0 0 1 1 *",
+		ReenableMode: "cron",
+		ReenableCron: "0 0 2 1 *",
+	})
+
+	_, err := client.Channel.UpdateOneID(ch.ID).
+		SetStatus(channel.StatusDisabled).
+		SetErrorMessage(scheduledDisableReason).
+		SetAutoDisabledAt(now.Add(-time.Hour)).
+		SetAutoDisableExpiresAt(now.Add(-time.Minute)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// The sweep's read is done (snapshot); an admin edit now lands before the
+	// guarded write.
+	snapshot, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	_, err = client.Channel.UpdateOneID(ch.ID).
+		SetRemark("edited after sweep read").
+		Save(ctx)
+	require.NoError(t, err)
+
+	recovered, err := svc.sweepScheduledReenable(ctx, snapshot, now)
+	require.NoError(t, err)
+	require.False(t, recovered, "a stale re-enable must not overwrite a concurrent edit")
+
+	updated, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Equal(t, channel.StatusDisabled, updated.Status)
+	require.NotNil(t, updated.AutoDisabledAt)
+	require.NotNil(t, updated.AutoDisableExpiresAt)
+	require.Equal(t, scheduledDisableReason, lo.FromPtr(updated.ErrorMessage))
+	require.Equal(t, "edited after sweep read", lo.FromPtr(updated.Remark))
+}
+
+// withScheduledDisabledChannel stores a channel already disabled by its
+// schedule, with the sweep's markers and a future re-enable expiry.
+func withScheduledDisabledChannel(t *testing.T, name string, sd *objects.ChannelScheduledDisable, expiresAt time.Time) (*ent.Client, context.Context, *ChannelService, *ent.Channel) {
+	t.Helper()
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc := newTestChannelService(client)
+	ch := createTestChannelWithAPIKeys(t, client, ctx, name, []string{"test-key"})
+
+	_, err := client.Channel.UpdateOneID(ch.ID).
+		SetPolicies(objects.ChannelPolicies{ScheduledDisable: sd}).
+		SetStatus(channel.StatusDisabled).
+		SetErrorMessage(scheduledDisableReason).
+		SetAutoDisabledAt(time.Now().Add(-time.Hour)).
+		SetAutoDisableExpiresAt(expiresAt).
+		Save(ctx)
+	require.NoError(t, err)
+
+	return client, ctx, svc, ch
+}
+
+func TestScheduledDisableNotOverwrittenByAPIKeyOperations(t *testing.T) {
+	expiresAt := time.Now().Add(time.Hour)
+	client, ctx, svc, ch := withScheduledDisabledChannel(t, "key-takeover", &objects.ChannelScheduledDisable{
+		// A cron that cannot match the current minute, so the final sweep can
+		// only recover the channel, never re-disable it mid-test.
+		DisableCron:  "0 0 1 1 *",
+		ReenableMode: "cron",
+		ReenableCron: "0 1 1 1 *",
+	}, expiresAt)
+
+	// (a) Disabling the last key must not take the scheduled disable over:
+	// the scheduled reason and the stored re-enable expiry survive.
+	require.NoError(t, svc.DisableAPIKey(ctx, ch.ID, "test-key", 401, "key revoked"))
+
+	updated, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Equal(t, channel.StatusDisabled, updated.Status)
+	require.Equal(t, scheduledDisableReason, lo.FromPtr(updated.ErrorMessage),
+		"the scheduled disable reason must not be overwritten by the key path")
+	require.NotNil(t, updated.AutoDisabledAt)
+	require.NotNil(t, updated.AutoDisableExpiresAt)
+	require.True(t, updated.AutoDisableExpiresAt.Equal(expiresAt),
+		"the stored re-enable expiry must survive: got %v want %v", updated.AutoDisableExpiresAt, expiresAt)
+
+	// (b) Re-enabling the key must not resurrect the channel early; it stays
+	// disabled until the stored expiry, which the sweep then clears.
+	require.NoError(t, svc.EnableAPIKey(ctx, ch.ID, "test-key"))
+
+	recovered, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Equal(t, channel.StatusDisabled, recovered.Status,
+		"key recovery must not re-enable a scheduled-disabled channel")
+	require.Equal(t, scheduledDisableReason, lo.FromPtr(recovered.ErrorMessage))
+	require.True(t, recovered.AutoDisableExpiresAt.Equal(expiresAt))
+
+	// Once the stored expiry passes, the sweep re-enables the channel as planned.
+	_, err = client.Channel.UpdateOneID(ch.ID).
+		SetAutoDisableExpiresAt(time.Now().Add(-time.Minute)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	svc.runScheduledDisableSweep(context.Background())
+
+	final, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Equal(t, channel.StatusEnabled, final.Status)
+	require.Nil(t, final.AutoDisabledAt)
+	require.Nil(t, final.AutoDisableExpiresAt)
+	require.Empty(t, final.ErrorMessage)
+}
+
+// TestScheduledDisableSurvivesQuotaReconcile pins the same ownership rule on
+// the quota side: a scheduled-disabled channel whose last key exhausts through
+// the quota reconciler keeps the scheduled reason and the stored re-enable
+// expiry, and a later available observation does not resurrect the channel
+// before the expiry.
+func TestScheduledDisableSurvivesQuotaReconcile(t *testing.T) {
+	env := setupQuotaKeyTestEnv(t)
+	ch := env.createOpenCodeChannel(t, quotaTestKeyA, quotaTestKeyB)
+
+	// The channel is disabled by its schedule; the markers are exactly what
+	// the sweep would store.
+	expiresAt := time.Now().Add(time.Hour)
+	_, err := env.client.Channel.UpdateOneID(ch.ID).
+		SetPolicies(objects.ChannelPolicies{ScheduledDisable: &objects.ChannelScheduledDisable{
+			DisableCron:  "0 0 1 1 *",
+			ReenableMode: "cron",
+			ReenableCron: "0 0 2 1 *",
+		}}).
+		SetStatus(channel.StatusDisabled).
+		SetErrorMessage(scheduledDisableReason).
+		SetAutoDisabledAt(time.Now().Add(-time.Hour)).
+		SetAutoDisableExpiresAt(expiresAt).
+		Save(env.ctx)
+	require.NoError(t, err)
+
+	// A scheduled-disabled channel is not pollable, so the scheduled pass
+	// skips it; the reset-refresh path reaches it and must reconcile.
+	check := func(t *testing.T) {
+		t.Helper()
+		current := env.reload(t, ch.ID)
+		env.quota.mu.Lock()
+		defer env.quota.mu.Unlock()
+		env.quota.checkChannelQuota(env.ctx, quotaCheckGroup{
+			channels:   []*ent.Channel{current},
+			accountKey: quotaAccountKey("opencode_go", current),
+		}, time.Now())
+	}
+
+	// The last key exhausts mid-window.
+	env.server.usage(quotaTestKeyA, 100, 10, 10)
+	env.server.usage(quotaTestKeyB, 100, 10, 10)
+	check(t)
+
+	kept := env.reload(t, ch.ID)
+	require.Equal(t, channel.StatusDisabled, kept.Status)
+	require.Equal(t, scheduledDisableReason, lo.FromPtr(kept.ErrorMessage),
+		"the scheduled disable reason must not be overwritten by the quota takeover")
+	require.NotNil(t, kept.AutoDisabledAt)
+	require.NotNil(t, kept.AutoDisableExpiresAt)
+	require.True(t, kept.AutoDisableExpiresAt.Equal(expiresAt),
+		"the stored re-enable expiry must survive the mid-window exhaustion")
+	require.ElementsMatch(t, []string{quotaTestKeyA, quotaTestKeyB}, quotaOwnedKeys(kept))
+
+	// A later available observation parks no key, but must not resurrect the
+	// channel: its recovery is owned by the stored expiry.
+	env.server.usage(quotaTestKeyA, 5, 5, 5)
+	env.server.usage(quotaTestKeyB, 5, 5, 5)
+	check(t)
+
+	recovered := env.reload(t, ch.ID)
+	require.Equal(t, channel.StatusDisabled, recovered.Status,
+		"key recovery must not re-enable a scheduled-disabled channel")
+	require.Equal(t, scheduledDisableReason, lo.FromPtr(recovered.ErrorMessage))
+	require.NotNil(t, recovered.AutoDisableExpiresAt)
+	require.True(t, recovered.AutoDisableExpiresAt.Equal(expiresAt))
+	require.Empty(t, quotaOwnedKeys(recovered))
 }

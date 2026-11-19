@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -66,18 +67,12 @@ function CronPicker({
 
   return (
     <div className='space-y-2'>
-      {isCustom ? (
-        <Input
-          data-testid={testId}
-          className='w-full font-mono'
-          aria-label={ariaLabel}
-          value={customValue}
-          placeholder={placeholder}
-          onChange={(event) => onCustomValueChange(event.target.value)}
-        />
-      ) : (
-        <Select value={selection} onValueChange={(value) => onSelectionChange(value as CronPickerValue)}>
-          <SelectTrigger>
+      <div className='flex gap-2'>
+        {/* The dropdown stays visible in custom mode (pinned to the custom
+            item) so a preset, "none" or "opposite" can be picked without
+            clearing the custom cron first. */}
+        <Select value={isCustom ? 'custom' : selection} onValueChange={(value) => onSelectionChange(value as CronPickerValue)}>
+          <SelectTrigger className={cn('shrink-0', isCustom && 'w-28')}>
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>
           <SelectContent>
@@ -94,7 +89,17 @@ function CronPicker({
             <SelectItem value='custom'>{t('channels.dialogs.apiKeyRules.fields.cronCustom')}</SelectItem>
           </SelectContent>
         </Select>
-      )}
+        {isCustom && (
+          <Input
+            data-testid={testId}
+            className='min-w-0 flex-1 font-mono'
+            aria-label={ariaLabel}
+            value={customValue}
+            placeholder={placeholder}
+            onChange={(event) => onCustomValueChange(event.target.value)}
+          />
+        )}
+      </div>
     </div>
   );
 }

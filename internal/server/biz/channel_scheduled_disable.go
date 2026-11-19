@@ -40,6 +40,14 @@ const (
 	reenableModeOpposite = "opposite"
 )
 
+// oppositeReenableScanMinutes is the opposite-mode scan window in minutes
+// (366 days). A run of consecutive matches can last months, so the window has
+// to cover a year. The walk stops once it has advanced this far in
+// wall-clock time: only a cron matching every hour of every day is still
+// within an hour of its next occurrence that far ahead, and that is the one
+// case a nil result legitimately describes.
+const oppositeReenableScanMinutes = 366 * 24 * 60
+
 // NormalizeScheduledDisable trims the schedule's cron/timezone fields and
 // validates them. A nil schedule is valid (no schedule configured); an
 // all-empty struct is dropped to nil so clearing the schedule stores nothing.
@@ -162,13 +170,17 @@ func cronMatchesMinute(cron, tz string, minute time.Time) (bool, error) {
 }
 
 // oppositeReenableExpiry resolves the re-enable instant for the "opposite"
-// mode. It scans forward from the matched minute for the end of the off
-// window the schedule describes: a matching minute P whose next occurrence is
-// more than an hour away, and the channel re-enables at P + 1h. For
-// "0 1-3,6-9 * * 1-5" matched at 06:00, the off window runs 06:00-09:00, so
-// the channel is back at 10:00. A cron whose matches are at most an hour
-// apart (e.g. "* * * * *") has no off window, so it returns (nil, nil) and
-// the channel stays disabled until an operator re-enables it.
+// mode. It walks the occurrences of the cron forward from the matched minute
+// for the end of the off window the schedule describes: a matching minute P
+// whose next occurrence is more than an hour away, and the channel re-enables
+// at P + 1h. For "0 1-3,6-9 * * 1-5" matched at 06:00, the off window runs
+// 06:00-09:00, so the channel is back at 10:00. Walking occurrence to
+// occurrence instead of minute by minute keeps a year-long run of matches to
+// at most a few thousand steps; the walk is still bounded by
+// oppositeReenableScanMinutes in wall-clock terms: the walk stops once it has
+// covered that many minutes. A nil result means the cron matches every hour
+// of every day (every occurrence is at most an hour apart), and the channel
+// stays disabled until an operator re-enables it.
 func oppositeReenableExpiry(cron, tz string, matchedMinute time.Time) (*time.Time, error) {
 	loc := time.UTC
 	if tz != "" {
@@ -184,17 +196,28 @@ func oppositeReenableExpiry(cron, tz string, matchedMinute time.Time) (*time.Tim
 		return nil, fmt.Errorf("channel scheduled disable has invalid cron expression %q: %w", cron, err)
 	}
 
+	// matchedMinute is a matching minute of the cron (the sweep only calls
+	// this on a match), so it is the first occurrence to walk.
 	minute := matchedMinute.In(loc)
-	for range 5280 {
-		isMatch := expr.Next(minute.Add(-time.Minute)).Equal(minute)
-		if isMatch && expr.Next(minute).After(minute.Add(time.Hour)) {
+	deadline := minute.Add(time.Duration(oppositeReenableScanMinutes) * time.Minute)
+	for {
+		next := expr.Next(minute)
+		if next.IsZero() {
+			// A year-scoped 7-field expression exhausts its year list and
+			// Next returns the zero time: the run ends here, so the off
+			// window starts now.
 			expiry := minute.Add(time.Hour)
 			return &expiry, nil
 		}
-		minute = minute.Add(time.Minute)
+		if next.After(minute.Add(time.Hour)) {
+			expiry := minute.Add(time.Hour)
+			return &expiry, nil
+		}
+		if !next.Before(deadline) {
+			return nil, nil
+		}
+		minute = next
 	}
-
-	return nil, nil
 }
 
 // runScheduledDisableSweep runs once per minute. It disables channels whose
@@ -340,6 +363,10 @@ func (svc *ChannelService) sweepScheduledDisable(ctx context.Context, ch *ent.Ch
 		Where(
 			channel.IDEQ(ch.ID),
 			channel.StatusEQ(channel.StatusEnabled),
+			// The schedule may have been removed or changed between the read
+			// above and this write: any edit advances UpdatedAt, so a stale
+			// schedule must not fire (affected == 0 skips the channel).
+			channel.UpdatedAtEQ(ch.UpdatedAt),
 		).
 		SetStatus(channel.StatusDisabled).
 		SetErrorMessage(scheduledDisableReason).
@@ -380,6 +407,10 @@ func (svc *ChannelService) sweepScheduledReenable(ctx context.Context, ch *ent.C
 			channel.AutoDisabledAtNotNil(),
 			channel.AutoDisableExpiresAtNotNil(),
 			channel.AutoDisableExpiresAtLT(now),
+			// Same compare-and-set as the disable half: an edit after the
+			// sweep's read (e.g. the schedule was removed) must not be
+			// overwritten by a stale re-enable (affected == 0 skips it).
+			channel.UpdatedAtEQ(ch.UpdatedAt),
 		).
 		SetStatus(channel.StatusEnabled).
 		ClearErrorMessage().
