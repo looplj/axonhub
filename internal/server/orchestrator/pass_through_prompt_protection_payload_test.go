@@ -44,6 +44,11 @@ func TestPromptProtectedPassThroughPayload(t *testing.T) {
 			unchanged: map[string]string{"messages.0.content": "secret-system", "messages.2.content.1.image_url.url": "https://example.com/image.png"},
 		},
 		{
+			name: "OpenAI chat assistant tool call arguments", format: llm.APIFormatOpenAIChatCompletion,
+			body:   `{"model":"alias","messages":[{"role":"assistant","content":"secret-text","tool_calls":[{"id":"call_1","type":"function","function":{"name":"run","arguments":"secret-args"}}]}],"provider_option":{"keep":true}}`,
+			masked: []string{"messages.0.content", "messages.0.tool_calls.0.function.arguments"},
+		},
+		{
 			name: "OpenAI Responses string input and instructions", format: llm.APIFormatOpenAIResponse,
 			body:   `{"model":"alias","instructions":"secret-system","input":"secret-user","provider_option":{"keep":true}}`,
 			masked: []string{"instructions", "input"},

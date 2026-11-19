@@ -246,6 +246,24 @@ func applyPromptProtectionRuleToMessage(msg llm.Message, rule *ent.PromptProtect
 		matched = true
 	}
 
+	if len(msg.ToolCalls) > 0 {
+		toolCalls := slices.Clone(msg.ToolCalls)
+
+		for i, call := range toolCalls {
+			if call.Function.Arguments == "" || !MatchPromptProtectionRule(rule.Pattern, call.Function.Arguments) {
+				continue
+			}
+
+			if rule.Settings.Action == objects.PromptProtectionActionMask {
+				toolCalls[i].Function.Arguments = ReplacePromptProtectionRule(rule.Pattern, call.Function.Arguments, rule.Settings.Replacement)
+			}
+
+			matched = true
+		}
+
+		msg.ToolCalls = toolCalls
+	}
+
 	return msg, matched
 }
 

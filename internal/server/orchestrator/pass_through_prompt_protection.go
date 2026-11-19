@@ -372,6 +372,10 @@ func openAIChatPromptTextFields(body []byte) []rawPromptTextField {
 		messagePath := fmt.Sprintf("messages.%d", i)
 		role := gjson.GetBytes(body, messagePath+".role").String()
 		fields = append(fields, rawContentTextFields(body, messagePath+".content", role, "text")...)
+
+		for j := range jsonArrayLength(body, messagePath+".tool_calls") {
+			fields = append(fields, rawStringField(body, fmt.Sprintf("%s.tool_calls.%d.function.arguments", messagePath, j), role)...)
+		}
 	}
 
 	return fields
