@@ -635,7 +635,7 @@ func (p *PersistentOutboundTransformer) refreshCandidateAPIFormat(
 	}
 
 	entry := candidate.Models[modelIndex]
-	endpoints, forced := applyForcedAPIFormats(ctx, candidate.Channel, []biz.ChannelModelEntry{entry}, requestModel, candidate.Channel.ResolveEndpoints())
+	endpoints, forced := applyForcedAPIFormatsForRequest(ctx, candidate.Channel, []biz.ChannelModelEntry{entry}, requestModel, req, candidate.Channel.ResolveEndpoints())
 	candidate.APIFormat = selectEndpointAPIFormat(endpoints, req, forced)
 }
 

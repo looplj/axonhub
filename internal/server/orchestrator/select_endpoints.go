@@ -77,7 +77,7 @@ func selectAPIFormat(
 			}
 		}
 
-		if requiresExplicitEndpoint(req.RequestType) {
+		if requiresExplicitEndpoint(req) {
 			return ""
 		}
 	}
@@ -96,10 +96,11 @@ func compatibleResponsesAPIFormat(format llm.APIFormat) string {
 	}
 }
 
-func requiresExplicitEndpoint(requestType llm.RequestType) bool {
-	return requestType == llm.RequestTypeAlphaSearch ||
-		requestType == llm.RequestTypeDecisions ||
-		requestType == llm.RequestTypeSystemOne
+func requiresExplicitEndpoint(req *llm.Request) bool {
+	return (req.Rerank != nil && len(req.Rerank.NativeBody) > 0) ||
+		req.RequestType == llm.RequestTypeAlphaSearch ||
+		req.RequestType == llm.RequestTypeDecisions ||
+		req.RequestType == llm.RequestTypeSystemOne
 }
 
 // FilterEndpointsByAPIFormats restricts endpoints to the given api formats. The
@@ -210,12 +211,12 @@ func applyForcedAPIFormatsForRequest(
 	ch *biz.Channel,
 	entries []biz.ChannelModelEntry,
 	requestModel string,
-	requestType llm.RequestType,
+	req *llm.Request,
 	endpoints []objects.ChannelEndpoint,
 ) ([]objects.ChannelEndpoint, bool) {
 	forced := forcedAPIFormatsForCandidate(ch, entries, requestModel)
 	filtered, forcedActive := applyForcedAPIFormats(ctx, ch, entries, requestModel, endpoints)
-	if len(forced) > 0 && len(filtered) == len(endpoints) && requiresExplicitEndpoint(requestType) && len(FilterEndpointsByAPIFormats(endpoints, forced)) == 0 {
+	if len(forced) > 0 && len(filtered) == len(endpoints) && requiresExplicitEndpoint(req) && len(FilterEndpointsByAPIFormats(endpoints, forced)) == 0 {
 		return nil, true
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 
 	"github.com/looplj/axonhub/llm"
@@ -86,6 +87,12 @@ func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatJinaRerank // Primary format, routing handled in methods
 }
 
+// AllowPassThroughBody keeps the adapter's mapped native body instead of replaying
+// the inbound JSON, which may contain duplicate keys or pre-hook content.
+func (t *OutboundTransformer) AllowPassThroughBody(_ context.Context, req *llm.Request, _ *httpclient.Request) bool {
+	return req == nil || req.Rerank == nil || len(req.Rerank.NativeBody) == 0
+}
+
 // TransformRequest transforms unified llm.Request to HTTP request (rerank or embedding).
 func (t *OutboundTransformer) TransformRequest(
 	ctx context.Context,
@@ -125,27 +132,33 @@ func (t *OutboundTransformer) transformRerankRequest(
 		return nil, fmt.Errorf("model is required")
 	}
 
-	if rerankReq.Query == "" {
-		return nil, fmt.Errorf("query is required")
+	var body []byte
+	var err error
+	if len(rerankReq.NativeBody) > 0 {
+		model, marshalErr := json.Marshal(llmReq.Model)
+		if marshalErr != nil {
+			return nil, fmt.Errorf("failed to marshal rerank model: %w", marshalErr)
+		}
+		fields := maps.Clone(rerankReq.NativeBody)
+		fields["model"] = model
+		body, err = json.Marshal(fields)
+	} else {
+		if rerankReq.Query == "" {
+			return nil, fmt.Errorf("query is required")
+		}
+		if len(rerankReq.Documents) == 0 {
+			return nil, fmt.Errorf("documents are required")
+		}
+		body, err = json.Marshal(RerankRequest{
+			Model:           llmReq.Model,
+			Query:           rerankReq.Query,
+			Documents:       rerankReq.Documents,
+			TopN:            rerankReq.TopN,
+			ReturnDocuments: rerankReq.ReturnDocuments,
+		})
 	}
-
-	if len(rerankReq.Documents) == 0 {
-		return nil, fmt.Errorf("documents are required")
-	}
-
-	// Create Jina rerank request with model from top-level
-	jinaRerankReq := RerankRequest{
-		Model:           llmReq.Model,
-		Query:           rerankReq.Query,
-		Documents:       rerankReq.Documents,
-		TopN:            rerankReq.TopN,
-		ReturnDocuments: rerankReq.ReturnDocuments,
-	}
-
-	// Marshal request body
-	body, err := json.Marshal(jinaRerankReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal rerank request: %w", err)
+		return nil, fmt.Errorf("failed to build rerank request: %w", err)
 	}
 
 	// Get API key from provider
@@ -304,17 +317,10 @@ func (t *OutboundTransformer) transformRerankResponse(
 
 	// Convert results
 	for i, result := range jinaResp.Results {
-		var doc *llm.RerankDocument
-		if result.Document != nil {
-			doc = &llm.RerankDocument{
-				Text: result.Document.Text,
-			}
-		}
-
 		llmRerankResp.Results[i] = llm.RerankResult{
 			Index:          result.Index,
 			RelevanceScore: result.RelevanceScore,
-			Document:       doc,
+			Document:       result.Document,
 		}
 	}
 
@@ -324,6 +330,7 @@ func (t *OutboundTransformer) transformRerankResponse(
 		APIFormat:   llm.APIFormatJinaRerank,
 		Rerank:      &llmRerankResp,
 		Model:       jinaResp.Model,
+		ID:          jinaResp.ID,
 	}
 
 	// Set usage on Response

@@ -14,7 +14,22 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/jina"
 )
+
+func TestSelectAPIFormat_MultimodalRerank(t *testing.T) {
+	t.Parallel()
+	chat := objects.ChannelEndpoint{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}
+	rerank := objects.ChannelEndpoint{APIFormat: llm.APIFormatJinaRerank.String()}
+	req, err := jina.NewRerankInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{
+		Body: []byte(`{"model":"m","query":"a square","documents":{"content":[{"type":"image_url","image_url":{"url":"https://example.com/square.png"}}]}}`),
+	})
+	require.NoError(t, err)
+	require.Equal(t, rerank.APIFormat, SelectAPIFormat([]objects.ChannelEndpoint{chat, rerank}, req))
+	require.Empty(t, SelectAPIFormat([]objects.ChannelEndpoint{chat}, req))
+	require.Empty(t, selectForcedAPIFormat([]objects.ChannelEndpoint{chat}, req))
+}
 
 func TestSelectAPIFormat(t *testing.T) {
 	endpoints := []objects.ChannelEndpoint{

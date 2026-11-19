@@ -12,7 +12,44 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/jina"
 )
+
+func TestRerankMediaAssociationConditions(t *testing.T) {
+	t.Parallel()
+	const image = `{"content":[{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}`
+	const video = `{"content":[{"type":"video_url","video_url":{"url":"https://example.com/video.mp4"}}]}`
+	for _, tc := range []struct {
+		name, query, docs string
+		image, video      bool
+	}{
+		{"text only", `"q"`, `["image_url"]`, false, false},
+		{"image query", image, `["text"]`, true, false},
+		{"single image document", `"q"`, image, true, false},
+		{"mixed documents", `"q"`, `["text",` + image + `]`, true, false},
+		{"video document", `"q"`, video, false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := jina.NewRerankInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{
+				Body: []byte(`{"model":"m","query":` + tc.query + `,"documents":` + tc.docs + `}`),
+			})
+			require.NoError(t, err)
+			features := detectRequestContentFeatures(req)
+			for field, want := range map[string]bool{
+				objects.ModelAssociationConditionFieldHasImage: tc.image,
+				objects.ModelAssociationConditionFieldHasVideo: tc.video,
+			} {
+				for _, value := range []bool{false, true} {
+					when := &objects.ModelAssociationWhen{Enabled: true, Condition: &objects.Condition{
+						Type: objects.ConditionTypeCondition, Field: field, Operator: "eq", Value: value,
+					}}
+					require.Equal(t, want == value, matchesAssociationWhen(0, false, req.APIFormat.String(), "", features, nil, time.Now(), when))
+				}
+			}
+		})
+	}
+}
 
 func TestFilterResolvedCandidatesForRequest_ReasoningEffort(t *testing.T) {
 	ch := &biz.Channel{Channel: &ent.Channel{ID: 1, Type: channel.TypeOpenai}}
