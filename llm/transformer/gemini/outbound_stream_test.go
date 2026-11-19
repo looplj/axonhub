@@ -1168,3 +1168,50 @@ func TestOutboundTransformer_PreservesMultipartThoughts(t *testing.T) {
 		})
 	}
 }
+
+func TestOutboundTransformer_TransformStream_ErrorChunk(t *testing.T) {
+	transformer := &OutboundTransformer{
+		config: Config{
+			BaseURL:    DefaultBaseURL,
+			APIVersion: DefaultAPIVersion,
+		},
+	}
+
+	events := []*httpclient.StreamEvent{
+		{
+			Data: mustMarshal(&GenerateContentResponse{
+				ResponseID: "resp-stream-err",
+				Candidates: []*Candidate{
+					{
+						Index: 0,
+						Content: &Content{
+							Role:  "model",
+							Parts: []*Part{{Text: "Hello"}},
+						},
+					},
+				},
+			}),
+		},
+		{
+			Data: []byte(`{"error":{"code":503,"message":"The model is overloaded.","status":"UNAVAILABLE"}}`),
+		},
+	}
+
+	outputStream, err := transformer.TransformStream(context.Background(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	var results []*llm.Response
+	for outputStream.Next() {
+		results = append(results, outputStream.Current())
+	}
+
+	require.Len(t, results, 1)
+	require.Equal(t, "Hello", *results[0].Choices[0].Delta.Content.Content)
+
+	var respErr *llm.ResponseError
+	require.ErrorAs(t, outputStream.Err(), &respErr)
+	require.Equal(t, 503, respErr.StatusCode)
+	require.Equal(t, "The model is overloaded.", respErr.Detail.Message)
+	require.Equal(t, "UNAVAILABLE", respErr.Detail.Type)
+	require.Equal(t, "503", respErr.Detail.Code)
+}
