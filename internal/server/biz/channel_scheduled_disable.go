@@ -1,4 +1,4 @@
-// 职责: 调度化停用的校验、下次/上次 cron 时刻解析、opposite 重启用时刻推导与每分钟清扫任务。
+// 职责: 调度化停用的校验、cron 时刻解析、opposite 重启用时刻推导与每分钟清扫任务。
 // 关联文件:
 //
 //	internal/server/biz/channel.go
@@ -136,40 +136,6 @@ func nextScheduledCronOccurrence(cron, tz string, from time.Time) (time.Time, er
 	}
 
 	return next, nil
-}
-
-// prevScheduledCronOccurrence returns the last occurrence of cron at or before
-// t, evaluated in tz ("" ⇒ UTC). cronexpr has no Previous, so it walks back
-// one minute at a time checking which minutes are occurrences; the 5000-minute
-// bound errors for sparse expressions whose last occurrence is older (for
-// example "0 0 1 1 *" from mid-year).
-func prevScheduledCronOccurrence(cron, tz string, t time.Time) (time.Time, error) {
-	loc := time.UTC
-	if tz != "" {
-		parsed, err := time.LoadLocation(tz)
-		if err != nil {
-			return time.Time{}, fmt.Errorf("channel scheduled disable has invalid timezone %q: %w", tz, err)
-		}
-		loc = parsed
-	}
-
-	expr, err := cronexpr.Parse(cron)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("channel scheduled disable has invalid cron expression %q: %w", cron, err)
-	}
-
-	local := t.In(loc)
-	minute := local.Truncate(time.Minute)
-	for range 5000 {
-		// minute is an occurrence iff the first occurrence strictly after the
-		// previous minute is exactly this minute.
-		if expr.Next(minute.Add(-time.Minute)).Equal(minute) {
-			return minute, nil
-		}
-		minute = minute.Add(-time.Minute)
-	}
-
-	return time.Time{}, fmt.Errorf("cron expression %q has no occurrence within 5000 minutes of %s", cron, local.Format(time.RFC3339))
 }
 
 // cronMatchesMinute reports whether minute (already truncated to the minute)
@@ -370,16 +336,24 @@ func (svc *ChannelService) sweepScheduledDisable(ctx context.Context, ch *ent.Ch
 		expiresAt = exp
 	}
 
-	affected, err := svc.entFromContext(ctx).Channel.Update().
+	update := svc.entFromContext(ctx).Channel.Update().
 		Where(
 			channel.IDEQ(ch.ID),
 			channel.StatusEQ(channel.StatusEnabled),
 		).
 		SetStatus(channel.StatusDisabled).
 		SetErrorMessage(scheduledDisableReason).
-		SetAutoDisabledAt(now).
-		SetNillableAutoDisableExpiresAt(expiresAt).
-		Save(ctx)
+		SetAutoDisabledAt(now)
+	// SetNillableAutoDisableExpiresAt(nil) is a no-op in ent; a nil expiry
+	// ("stays disabled") must clear any stale value, matching the sibling
+	// auto-disable writer.
+	if expiresAt != nil {
+		update = update.SetAutoDisableExpiresAt(*expiresAt)
+	} else {
+		update = update.ClearAutoDisableExpiresAt()
+	}
+
+	affected, err := update.Save(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -450,5 +424,6 @@ func (svc *ChannelService) publishChannelAutoDisabledWebhook(ctx context.Context
 		ChannelStatus:   updatedChannel.Status.String(),
 		Reason:          scheduledDisableReason,
 		OccurredAt:      time.Now(),
+		TriggerType:     "scheduled",
 	})
 }

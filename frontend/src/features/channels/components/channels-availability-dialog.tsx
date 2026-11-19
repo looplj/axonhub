@@ -36,7 +36,7 @@ interface Props {
   currentRow: Channel;
 }
 
-type CronPickerValue = '' | (typeof CRON_PRESETS)[number] | 'custom';
+type CronPickerValue = '' | 'none' | 'opposite' | (typeof CRON_PRESETS)[number] | 'custom';
 
 interface CronPickerProps {
   /** '' (unconfigured), a preset expression, or 'custom'. */
@@ -210,7 +210,7 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
                 customDisableCron
                   ? 'custom'
                   : CRON_PRESETS.includes(schedule.disableCron as (typeof CRON_PRESETS)[number])
-                    ? schedule.disableCron
+                    ? (schedule.disableCron as CronPickerValue)
                     : ''
               }
               customValue={schedule.disableCron}
@@ -260,8 +260,8 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
                   : schedule.reenableMode === 'cron' && customReenableCron
                     ? 'custom'
                     : schedule.reenableMode === 'cron' && CRON_PRESETS.includes(schedule.reenableCron as (typeof CRON_PRESETS)[number])
-                      ? schedule.reenableCron
-                      : ''
+                      ? (schedule.reenableCron as CronPickerValue)
+                      : 'none'
               }
               customValue={schedule.reenableCron}
               onSelectionChange={(value) => {
@@ -271,7 +271,7 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
                 } else if (value === 'custom') {
                   setCustomReenableCron(true);
                   setSchedule((prev) => ({ ...prev, reenableMode: 'cron' }));
-                } else if (value === '') {
+                } else if (value === 'none') {
                   setCustomReenableCron(false);
                   setSchedule((prev) => ({ ...prev, reenableMode: 'none', reenableCron: '', reenableTimezone: 'UTC' }));
                 } else {
@@ -283,7 +283,10 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
               placeholder={t('channels.dialogs.availability.scheduled.reenable.placeholder')}
               ariaLabel={t('channels.dialogs.availability.scheduled.reenable.label')}
               testId='availability-scheduled-reenable-cron'
-              extraOptions={[{ value: 'opposite', label: t('channels.dialogs.availability.scheduled.reenableOpposite') }]}
+              extraOptions={[
+                { value: 'none', label: t('channels.dialogs.availability.scheduled.reenableNone') },
+                { value: 'opposite', label: t('channels.dialogs.availability.scheduled.reenableOpposite') },
+              ]}
             />
             {schedule.reenableMode === 'cron' && (
               <Select

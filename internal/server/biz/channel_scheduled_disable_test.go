@@ -144,39 +144,6 @@ func TestNormalizeScheduledDisable(t *testing.T) {
 	})
 }
 
-func TestPrevScheduledCronOccurrence(t *testing.T) {
-	// 2026-11-14T14:37Z, not on a minute boundary.
-	now := time.Date(2026, time.November, 14, 14, 37, 0, 0, time.UTC)
-
-	tests := []struct {
-		name  string
-		cron  string
-		tz    string
-		want  time.Time
-		isErr bool
-	}{
-		{name: "hourly", cron: "0 * * * *", want: now.Truncate(time.Hour)},
-		{name: "exact previous", cron: "30 14 * * *", want: now.Add(-7 * time.Minute)},
-		// 2025-11-15 00:00 UTC is more than 5000 minutes before now: the
-		// bounded backward search must give up with an error.
-		{name: "occurrence beyond the 5000-minute bound", cron: "0 0 15 11 *", isErr: true},
-		{name: "every minute", cron: "* * * * *", want: now},
-		{name: "invalid cron", cron: "bad", isErr: true},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			got, err := prevScheduledCronOccurrence(test.cron, test.tz, now)
-			if test.isErr {
-				require.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-			require.True(t, got.Equal(test.want), "got %v want %v", got, test.want)
-		})
-	}
-}
-
 func TestNextScheduledCronOccurrence(t *testing.T) {
 	// 2026-11-14T14:37:00Z, not on a minute boundary.
 	now := time.Date(2026, time.November, 14, 14, 37, 0, 0, time.UTC)
@@ -235,6 +202,15 @@ func TestCronMatchesMinute(t *testing.T) {
 			minute: time.Date(2026, time.November, 13, 15, 0, 0, 0, time.UTC),
 			want:   true,
 		},
+		{
+			// 2027-03-14 is the US spring-forward day; 12:00 noon lands on
+			// EDT (16:00 UTC), so matching must resolve in the local zone.
+			name:   "DST spring forward in New York",
+			cron:   "0 12 * * *",
+			tz:     "America/New_York",
+			minute: time.Date(2027, time.March, 14, 16, 0, 0, 0, time.UTC),
+			want:   true,
+		},
 		{name: "invalid cron", cron: "bad", minute: at(0), want: false},
 	}
 
@@ -291,6 +267,28 @@ func TestOppositeReenableExpiry(t *testing.T) {
 			want:    time.Date(2026, time.November, 16, 1, 0, 0, 0, time.UTC),
 		},
 		{name: "every-minute cron has no off window", cron: "* * * * *", matched: base, wantNil: true},
+		{
+			// Same business cluster evaluated in Tokyo: matched at 06:00 JST
+			// (21:00 UTC the prior day), off window ends 09:00 JST, back on at
+			// 10:00 JST = 01:00 UTC. Verifies the location load and the
+			// absolute +1h stored as an instant.
+			name:    "timezone: business cluster in Tokyo",
+			cron:    "0 1-3,6-9 * * 1-5",
+			tz:      "Asia/Tokyo",
+			matched: time.Date(2026, time.November, 15, 21, 0, 0, 0, time.UTC),
+			want:    time.Date(2026, time.November, 16, 1, 0, 0, 0, time.UTC),
+		},
+		{
+			// 2027-03-14 is the US spring-forward day. Matched at 08:00 EDT
+			// (12:00 UTC); the scan runs to 14:00 EDT (18:00 UTC), whose next
+			// occurrence is 06:00 EDT the next day (10:00 UTC) — a 16-hour
+			// gap, so the channel is back one absolute hour later at 19:00 UTC.
+			name:    "DST spring forward in New York",
+			cron:    "0 6-14 * * *",
+			tz:      "America/New_York",
+			matched: time.Date(2027, time.March, 14, 12, 0, 0, 0, time.UTC),
+			want:    time.Date(2027, time.March, 14, 19, 0, 0, 0, time.UTC),
+		},
 	}
 
 	for _, test := range tests {
