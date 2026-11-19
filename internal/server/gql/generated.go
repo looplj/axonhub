@@ -519,6 +519,7 @@ type ComplexityRoot struct {
 	ChannelPolicies struct {
 		APIKeyAutoDisableMode  func(childComplexity int) int
 		APIKeyAutoDisableRules func(childComplexity int) int
+		ScheduledDisable       func(childComplexity int) int
 		Stream                 func(childComplexity int) int
 	}
 
@@ -573,6 +574,13 @@ type ComplexityRoot struct {
 		Mode                            func(childComplexity int) int
 		NonStreamResponseTimeoutSeconds func(childComplexity int) int
 		StreamFirstEventTimeoutSeconds  func(childComplexity int) int
+	}
+
+	ChannelScheduledDisable struct {
+		DisableCron      func(childComplexity int) int
+		DisableTimezone  func(childComplexity int) int
+		ReenableCron     func(childComplexity int) int
+		ReenableTimezone func(childComplexity int) int
 	}
 
 	ChannelSettings struct {
@@ -4460,6 +4468,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelPolicies.APIKeyAutoDisableRules(childComplexity), true
+	case "ChannelPolicies.scheduledDisable":
+		if e.complexity.ChannelPolicies.ScheduledDisable == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.ScheduledDisable(childComplexity), true
 	case "ChannelPolicies.stream":
 		if e.complexity.ChannelPolicies.Stream == nil {
 			break
@@ -4648,6 +4662,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelResponseTimeout.StreamFirstEventTimeoutSeconds(childComplexity), true
+
+	case "ChannelScheduledDisable.disableCron":
+		if e.complexity.ChannelScheduledDisable.DisableCron == nil {
+			break
+		}
+
+		return e.complexity.ChannelScheduledDisable.DisableCron(childComplexity), true
+	case "ChannelScheduledDisable.disableTimezone":
+		if e.complexity.ChannelScheduledDisable.DisableTimezone == nil {
+			break
+		}
+
+		return e.complexity.ChannelScheduledDisable.DisableTimezone(childComplexity), true
+	case "ChannelScheduledDisable.reenableCron":
+		if e.complexity.ChannelScheduledDisable.ReenableCron == nil {
+			break
+		}
+
+		return e.complexity.ChannelScheduledDisable.ReenableCron(childComplexity), true
+	case "ChannelScheduledDisable.reenableTimezone":
+		if e.complexity.ChannelScheduledDisable.ReenableTimezone == nil {
+			break
+		}
+
+		return e.complexity.ChannelScheduledDisable.ReenableTimezone(childComplexity), true
 
 	case "ChannelSettings.apiKeyRoundRobinSwitchAfter":
 		if e.complexity.ChannelSettings.APIKeyRoundRobinSwitchAfter == nil {
@@ -13058,6 +13097,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputChannelRateLimitInput,
 		ec.unmarshalInputChannelRegexAssociationInput,
 		ec.unmarshalInputChannelResponseTimeoutInput,
+		ec.unmarshalInputChannelScheduledDisableInput,
 		ec.unmarshalInputChannelSettingsInput,
 		ec.unmarshalInputChannelTagsModelAssociationInput,
 		ec.unmarshalInputChannelTagsRegexAssociationInput,
@@ -22446,6 +22486,8 @@ func (ec *executionContext) fieldContext_Channel_policies(_ context.Context, fie
 				return ec.fieldContext_ChannelPolicies_apiKeyAutoDisableMode(ctx, field)
 			case "apiKeyAutoDisableRules":
 				return ec.fieldContext_ChannelPolicies_apiKeyAutoDisableRules(ctx, field)
+			case "scheduledDisable":
+				return ec.fieldContext_ChannelPolicies_scheduledDisable(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelPolicies", field.Name)
 		},
@@ -25983,6 +26025,45 @@ func (ec *executionContext) fieldContext_ChannelPolicies_apiKeyAutoDisableRules(
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelPolicies_scheduledDisable(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_scheduledDisable,
+		func(ctx context.Context) (any, error) {
+			return obj.ScheduledDisable, nil
+		},
+		nil,
+		ec.marshalOChannelScheduledDisable2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelScheduledDisable,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_scheduledDisable(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "disableCron":
+				return ec.fieldContext_ChannelScheduledDisable_disableCron(ctx, field)
+			case "disableTimezone":
+				return ec.fieldContext_ChannelScheduledDisable_disableTimezone(ctx, field)
+			case "reenableCron":
+				return ec.fieldContext_ChannelScheduledDisable_reenableCron(ctx, field)
+			case "reenableTimezone":
+				return ec.fieldContext_ChannelScheduledDisable_reenableTimezone(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelScheduledDisable", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelProbe_id(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelProbe) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -26905,6 +26986,122 @@ func (ec *executionContext) fieldContext_ChannelResponseTimeout_nonStreamRespons
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelScheduledDisable_disableCron(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelScheduledDisable) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelScheduledDisable_disableCron,
+		func(ctx context.Context) (any, error) {
+			return obj.DisableCron, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelScheduledDisable_disableCron(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelScheduledDisable",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelScheduledDisable_disableTimezone(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelScheduledDisable) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelScheduledDisable_disableTimezone,
+		func(ctx context.Context) (any, error) {
+			return obj.DisableTimezone, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelScheduledDisable_disableTimezone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelScheduledDisable",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelScheduledDisable_reenableCron(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelScheduledDisable) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelScheduledDisable_reenableCron,
+		func(ctx context.Context) (any, error) {
+			return obj.ReenableCron, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelScheduledDisable_reenableCron(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelScheduledDisable",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelScheduledDisable_reenableTimezone(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelScheduledDisable) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelScheduledDisable_reenableTimezone,
+		func(ctx context.Context) (any, error) {
+			return obj.ReenableTimezone, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelScheduledDisable_reenableTimezone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelScheduledDisable",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -75348,7 +75545,7 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"stream", "apiKeyAutoDisableMode", "apiKeyAutoDisableRules"}
+	fieldsInOrder := [...]string{"stream", "apiKeyAutoDisableMode", "apiKeyAutoDisableRules", "scheduledDisable"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -75376,6 +75573,13 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 				return it, err
 			}
 			it.APIKeyAutoDisableRules = data
+		case "scheduledDisable":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scheduledDisable"))
+			data, err := ec.unmarshalOChannelScheduledDisableInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelScheduledDisable(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ScheduledDisable = data
 		}
 	}
 
@@ -76035,6 +76239,54 @@ func (ec *executionContext) unmarshalInputChannelResponseTimeoutInput(ctx contex
 				return it, err
 			}
 			it.NonStreamResponseTimeoutSeconds = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputChannelScheduledDisableInput(ctx context.Context, obj any) (objects.ChannelScheduledDisable, error) {
+	var it objects.ChannelScheduledDisable
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"disableCron", "disableTimezone", "reenableCron", "reenableTimezone"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "disableCron":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disableCron"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DisableCron = data
+		case "disableTimezone":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disableTimezone"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DisableTimezone = data
+		case "reenableCron":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reenableCron"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReenableCron = data
+		case "reenableTimezone":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reenableTimezone"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReenableTimezone = data
 		}
 	}
 
@@ -102674,6 +102926,8 @@ func (ec *executionContext) _ChannelPolicies(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelPolicies_apiKeyAutoDisableMode(ctx, field, obj)
 		case "apiKeyAutoDisableRules":
 			out.Values[i] = ec._ChannelPolicies_apiKeyAutoDisableRules(ctx, field, obj)
+		case "scheduledDisable":
+			out.Values[i] = ec._ChannelPolicies_scheduledDisable(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -103173,6 +103427,51 @@ func (ec *executionContext) _ChannelResponseTimeout(ctx context.Context, sel ast
 			out.Values[i] = ec._ChannelResponseTimeout_streamFirstEventTimeoutSeconds(ctx, field, obj)
 		case "nonStreamResponseTimeoutSeconds":
 			out.Values[i] = ec._ChannelResponseTimeout_nonStreamResponseTimeoutSeconds(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelScheduledDisableImplementors = []string{"ChannelScheduledDisable"}
+
+func (ec *executionContext) _ChannelScheduledDisable(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelScheduledDisable) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelScheduledDisableImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelScheduledDisable")
+		case "disableCron":
+			out.Values[i] = ec._ChannelScheduledDisable_disableCron(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "disableTimezone":
+			out.Values[i] = ec._ChannelScheduledDisable_disableTimezone(ctx, field, obj)
+		case "reenableCron":
+			out.Values[i] = ec._ChannelScheduledDisable_reenableCron(ctx, field, obj)
+		case "reenableTimezone":
+			out.Values[i] = ec._ChannelScheduledDisable_reenableTimezone(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -129740,6 +130039,21 @@ func (ec *executionContext) unmarshalOChannelResponseTimeoutMode2githubᚗcomᚋ
 
 func (ec *executionContext) marshalOChannelResponseTimeoutMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelResponseTimeoutMode(ctx context.Context, sel ast.SelectionSet, v objects.ChannelResponseTimeoutMode) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalOChannelScheduledDisable2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelScheduledDisable(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelScheduledDisable) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelScheduledDisable(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChannelScheduledDisableInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelScheduledDisable(ctx context.Context, v any) (*objects.ChannelScheduledDisable, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelScheduledDisableInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOChannelSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelSettings(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelSettings) graphql.Marshaler {
