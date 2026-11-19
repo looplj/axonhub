@@ -276,6 +276,10 @@
 
 让你的 Agent 读取并遵循 [`deploy-axonhub`](https://github.com/looplj/axonhub-skills/blob/main/deploy-axonhub/SKILL.md) 来部署 AxonHub。
 
+如需在子路径部署，请设置 `server.base_path: /axonhub`（或环境变量 `AXONHUB_SERVER_BASE_PATH=/axonhub`），重启后让反向代理保留完整请求路径。网页地址为 `/axonhub/`，OpenAI 兼容 API 地址为 `/axonhub/v1`，健康检查使用 `/axonhub/health`。
+
+To serve AxonHub under a URL prefix, set `server.base_path: /axonhub` (or `AXONHUB_SERVER_BASE_PATH=/axonhub`) and restart. Configure your reverse proxy to forward the full request path. The dashboard is at `/axonhub/`, the OpenAI-compatible API base is `/axonhub/v1`, and health probes use `/axonhub/health`.
+
 ---
 
 ## ⚡ 快速开始 | Quick Start
