@@ -55,5 +55,9 @@ func (s *RequestService) UpdateRealtimeAudit(ctx context.Context, req *ent.Reque
 			update.SetMetricsFirstTokenLatencyMs(*latency.FirstTokenLatencyMs)
 		}
 	}
-	return s.saveRequestUpdate(ctx, req.ID, update)
+	if err := s.saveRequestUpdate(ctx, req.ID, update); err != nil {
+		return err
+	}
+	s.recordChatRequestMetrics(ctx, req, status, latency)
+	return nil
 }

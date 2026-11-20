@@ -24,9 +24,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -454,7 +456,17 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 		return nil, err
 	}
 	if kind == "session.update" {
-		c.pendingConfigurationID = gjson.GetBytes(wire, "event_id").String()
+		eventID := gjson.GetBytes(wire, "event_id").String()
+		if eventID == "" {
+			// An upstream rejection must identify this update even when the client omitted an ID.
+			eventID = "evt_axonhub_" + uuid.NewString()
+			wire, err = sjson.SetBytes(wire, "event_id", eventID)
+			if err != nil {
+				c.state.ConfigurationRejected()
+				return nil, errors.New("could not assign realtime configuration event ID")
+			}
+		}
+		c.pendingConfigurationID = eventID
 	}
 	if kind == "response.create" || kind == "input_audio_buffer.append" {
 		c.checkMu.Lock()
