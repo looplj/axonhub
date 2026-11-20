@@ -200,10 +200,20 @@ export const apiKeyAutoDisableRuleFormSchema = apiKeyAutoDisableRuleSchema
     path: ['disableUntilCron'],
   });
 
+export const channelScheduledDisableSchema = z.object({
+  disableCron: z.string(),
+  disableTimezone: z.string().nullable().optional(),
+  reenableMode: z.string().nullable().optional(),
+  reenableCron: z.string().nullable().optional(),
+  reenableTimezone: z.string().nullable().optional(),
+});
+export type ChannelScheduledDisable = z.infer<typeof channelScheduledDisableSchema>;
+
 export const channelPoliciesSchema = z.object({
   stream: capabilityPolicySchema.optional(),
   apiKeyAutoDisableMode: z.preprocess(coerceApiKeyAutoDisableMode, apiKeyAutoDisableModeSchema.optional().nullable()),
   apiKeyAutoDisableRules: z.array(apiKeyAutoDisableRuleSchema).optional().nullable(),
+  scheduledDisable: channelScheduledDisableSchema.optional().nullable(),
 });
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
 

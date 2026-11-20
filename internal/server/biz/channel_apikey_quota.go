@@ -179,8 +179,12 @@ func (svc *ChannelService) ReconcileQuotaKeys(
 		// be applied when the channel was serving or is already auto-disabled:
 		// a manually disabled channel keeps its status, its error message and a
 		// nil AutoDisabledAt, exactly as DisableAPIKey does, so a later
-		// recovery cannot resurrect it.
+		// recovery cannot resurrect it. A scheduled disable is owned by its
+		// schedule until the stored re-enable expiry, so it is never taken over
+		// (doing so would clear the planned downtime), exactly as DisableAPIKey
+		// does.
 		if !channelIsAllKeysDisabled(ch) &&
+			!isScheduledAutoDisabled(ch) &&
 			(ch.Status == channel.StatusEnabled || ch.AutoDisabledAt != nil) {
 			autoDisabled = true
 			update = update.
