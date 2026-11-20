@@ -142,32 +142,24 @@ func getUpToOrZero(v *int64) int64 {
 // ComputeUsageCost calculates total cost and cost items breakdown for the given usage and model price.
 // The now parameter is used for time-based schedule matching.
 func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice, now time.Time) ([]objects.CostItem, decimal.Decimal) {
-	effectiveItems := price.Items
-
-	if price.Schedule != nil {
-		if override := findMatchingOverride(now, price.Schedule); override != nil {
-			effectiveItems = override.Items
-		}
-	}
-
-	if hasRealtimeItem(effectiveItems) {
-		return computeRealtimeUsageCost(usage, effectiveItems)
-	}
-
-	return computeUsageCostWithItems(usage, effectiveItems)
+	return computeUsageCostWithItems(usage, effectivePriceItems(price, now))
 }
 
-// hasRealtimeItem reports whether the item set carries any of the realtime
-// billing codes. A realtime price set is billed exclusively through those codes
-// and never shares legacy prompt/completion items.
-func hasRealtimeItem(items []objects.ModelPriceItem) bool {
-	for _, it := range items {
-		if objects.IsRealtimePriceItemCode(it.ItemCode) {
-			return true
+// ComputeRealtimeUsageCost calculates a Realtime response using only its
+// modality-specific price items. Ordinary usage billing always uses
+// ComputeUsageCost, even when a model price also contains Realtime rates.
+func ComputeRealtimeUsageCost(usage *llm.Usage, price objects.ModelPrice, now time.Time) ([]objects.CostItem, decimal.Decimal) {
+	return computeRealtimeUsageCost(usage, effectivePriceItems(price, now))
+}
+
+func effectivePriceItems(price objects.ModelPrice, now time.Time) []objects.ModelPriceItem {
+	if price.Schedule != nil {
+		if override := findMatchingOverride(now, price.Schedule); override != nil {
+			return override.Items
 		}
 	}
 
-	return false
+	return price.Items
 }
 
 // computeRealtimeUsageCost bills a realtime session by input/output modality.
@@ -254,6 +246,10 @@ func computeUsageCostWithItems(usage *llm.Usage, priceItems []objects.ModelPrice
 	total := decimal.Zero
 
 	for _, it := range priceItems {
+		if objects.IsRealtimePriceItemCode(it.ItemCode) {
+			continue
+		}
+
 		var quantity int64
 
 		switch it.ItemCode {

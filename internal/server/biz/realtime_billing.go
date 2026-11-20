@@ -245,7 +245,7 @@ func validateRealtimeUsage(usage *llm.Usage) error {
 // and sums their exact decimal subtotals. Legacy codes never contribute, so a
 // price carrying both sets cannot double-count the same tokens.
 func computeRealtimeCostItems(usage *llm.Usage, price objects.ModelPrice) ([]objects.CostItem, decimal.Decimal, error) {
-	computed, _ := ComputeUsageCost(usage, price, time.Now())
+	computed, _ := ComputeRealtimeUsageCost(usage, price, time.Now())
 
 	byCode := make(map[objects.PriceItemCode]objects.CostItem, len(objects.RealtimePriceItemCodes()))
 

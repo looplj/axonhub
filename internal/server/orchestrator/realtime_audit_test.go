@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
@@ -98,4 +99,62 @@ func TestRealtimeAuditRetryDoesNotRepeatUsage(t *testing.T) {
 	interrupted.Close()
 	require.NoError(t, usage.EnsureRealtimeUsageReconciled(ctx, key.ID), "an interrupted response must not permanently lock the key")
 	require.Equal(t, 1, db.UsageLog.Query().CountX(ctx), "pending requests must never become fabricated zero-cost usage")
+}
+
+func TestAutomaticRealtimeTurnChecksRequestQuota(t *testing.T) {
+	ctx, db := setupTest(t)
+	project := db.Project.Create().SetName("automatic-realtime-quota").SaveX(ctx)
+	ctx = contexts.WithProjectID(ctx, project.ID)
+	profiles := &objects.APIKeyProfiles{ActiveProfile: "limited", Profiles: []objects.APIKeyProfile{{
+		Name: "limited",
+		Quota: &objects.APIKeyQuota{
+			Requests: lo.ToPtr(int64(1)),
+			Period:   objects.APIKeyQuotaPeriod{Type: objects.APIKeyQuotaPeriodTypeAllTime},
+		},
+	}}}
+	key := db.APIKey.Create().SetName("automatic-realtime-quota").SetKey("synthetic-quota").SetProjectID(project.ID).SetType("user").SetProfiles(profiles).SaveX(ctx)
+	ctx = contexts.WithAPIKey(ctx, key)
+
+	channelRow := db.Channel.Create().SetType("openai").SetName("automatic-realtime-quota").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic"}).SetSupportedModels([]string{"voice"}).SetDefaultTestModel("voice").SetStatus("enabled").SaveX(ctx)
+	channels := newTestChannelServiceForChannels(db)
+	channelService, err := channels.GetChannel(ctx, channelRow.ID)
+	require.NoError(t, err)
+	channels.SetEnabledChannelsForTest([]*biz.Channel{channelService})
+	system := newTestSystemService(db)
+	service := &RealtimeService{
+		Channels: channels,
+		Quota:    biz.NewQuotaService(db, system),
+		Usage:    biz.NewUsageLogService(db, system, channels),
+		Requests: newTestRequestServiceForChannels(db, system),
+	}
+	price := objects.ModelPrice{}
+	for _, code := range objects.RealtimePriceItemCodes() {
+		rate := decimal.NewFromInt(1)
+		price.Items = append(price.Items, objects.ModelPriceItem{ItemCode: code, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: &rate}})
+	}
+	state := rt.NewState()
+	require.NoError(t, state.Connecting())
+	require.NoError(t, state.ObserveServer("session.created"))
+	require.NoError(t, state.ObserveServer("session.updated"))
+	adapter, err := openairt.NewAdapter("gpt-realtime-2.1-mini")
+	require.NoError(t, err)
+	c := &RealtimeConversation{
+		service: service, ctx: ctx, state: state, adapter: adapter,
+		target: &RealtimeTarget{
+			Channel: &biz.Channel{Channel: channelRow}, Model: "gpt-realtime-2.1-mini", ClientModel: "voice",
+			APIFormat: llm.APIFormatOpenAIRealtimeWebSocket, APIKey: key,
+			Price: &biz.RealtimePriceSnapshot{Price: price, ReferenceID: "automatic-quota"},
+		},
+		started: time.Now(), responses: map[string]*realtimeResponse{}, lastCheck: time.Now(),
+	}
+	_, err = c.Client([]byte(`{"type":"response.create"}`))
+	require.NoError(t, err)
+	_, err = c.Server([]byte(`{"type":"response.created","response":{"id":"r1"}}`))
+	require.NoError(t, err)
+	_, err = c.Server([]byte(`{"type":"response.done","response":{"id":"r1","status":"completed","usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2,"input_token_details":{"text_tokens":1,"audio_tokens":0},"output_token_details":{"text_tokens":1,"audio_tokens":0}}}}`))
+	require.NoError(t, err)
+	require.Equal(t, 1, db.UsageLog.Query().CountX(ctx), "the first response should consume the only allowed request")
+
+	_, err = c.Server([]byte(`{"type":"response.created","response":{"id":"r2"}}`))
+	require.ErrorIs(t, err, rt.ErrQuotaExceeded, "an automatic turn without a client reservation must check request quota")
 }
