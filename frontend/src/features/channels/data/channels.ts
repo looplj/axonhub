@@ -99,6 +99,13 @@ const CREATE_CHANNEL_MUTATION = `
           disableUntilCron
           disableUntilTimezone
         }
+        scheduledDisable {
+          disableCron
+          disableTimezone
+          reenableMode
+          reenableCron
+          reenableTimezone
+        }
       }
       supportedModels
       autoSyncSupportedModels
@@ -203,6 +210,13 @@ const DUPLICATE_CHANNEL_MUTATION = `
           disableDurationMinutes
           disableUntilCron
           disableUntilTimezone
+        }
+        scheduledDisable {
+          disableCron
+          disableTimezone
+          reenableMode
+          reenableCron
+          reenableTimezone
         }
       }
       supportedModels
@@ -309,6 +323,13 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           disableUntilCron
           disableUntilTimezone
         }
+        scheduledDisable {
+          disableCron
+          disableTimezone
+          reenableMode
+          reenableCron
+          reenableTimezone
+        }
       }
       supportedModels
       autoSyncSupportedModels
@@ -412,6 +433,13 @@ const CHANNEL_FIELDS_FRAGMENT = `
           disableDurationMinutes
           disableUntilCron
           disableUntilTimezone
+        }
+        scheduledDisable {
+          disableCron
+          disableTimezone
+          reenableMode
+          reenableCron
+          reenableTimezone
         }
       }
       supportedModels
@@ -1027,6 +1055,13 @@ const CHANNEL_AUTO_DISABLE_COPY_SOURCES_QUERY = `
           disableUntilCron
           disableUntilTimezone
         }
+        scheduledDisable {
+          disableCron
+          disableTimezone
+          reenableMode
+          reenableCron
+          reenableTimezone
+        }
       }
     }
   }
@@ -1052,6 +1087,13 @@ const BULK_UPDATE_CHANNEL_AUTO_DISABLE_MUTATION = `
             disableDurationMinutes
             disableUntilCron
             disableUntilTimezone
+          }
+          scheduledDisable {
+            disableCron
+            disableTimezone
+            reenableMode
+            reenableCron
+            reenableTimezone
           }
         }
       }
@@ -1082,6 +1124,12 @@ const FETCH_MODELS_QUERY = `
         }
       }
       error
+      fallback
+      codexCatalogVersion {
+        version
+        source
+      }
+      codexCatalogSkippedReason
     }
   }
 `;
@@ -1162,6 +1210,13 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
               disableDurationMinutes
               disableUntilCron
               disableUntilTimezone
+            }
+            scheduledDisable {
+              disableCron
+              disableTimezone
+              reenableMode
+              reenableCron
+              reenableTimezone
             }
           }
           credentials {
@@ -2361,14 +2416,33 @@ const SYNC_CHANNEL_MODELS_MUTATION = `
       channelID
       supportedModels
       manualModels
+      fallback
+      codexCatalogVersion {
+        version
+        source
+      }
+      codexCatalogSkippedReason
     }
   }
 `;
+
+const codexCatalogVersionSchema = z.object({
+  version: z.string(),
+  source: z.enum(['channel_version', 'channel_user_agent', 'npm', 'cache', 'builtin']),
+});
+
+export type CodexCatalogVersion = z.infer<typeof codexCatalogVersionSchema>;
+
+const codexCatalogSkippedReasonSchema = z.enum(['no_credentials', 'unsupported_url']);
+export type CodexCatalogSkippedReason = z.infer<typeof codexCatalogSkippedReasonSchema>;
 
 const syncChannelModelsPayloadSchema = z.object({
   channelID: z.string(),
   supportedModels: z.array(z.string()),
   manualModels: z.array(z.string()),
+  fallback: z.boolean(),
+  codexCatalogVersion: codexCatalogVersionSchema.nullable(),
+  codexCatalogSkippedReason: codexCatalogSkippedReasonSchema.nullable(),
 });
 
 export function useSyncChannelModels() {
@@ -2386,9 +2460,23 @@ export function useSyncChannelModels() {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: ({ fallback, codexCatalogVersion, codexCatalogSkippedReason }) => {
+      if (codexCatalogSkippedReason) {
+        toast.info(t(`channels.messages.codexCatalogSyncSkipped.${codexCatalogSkippedReason}`));
+        return;
+      }
+      if (fallback) {
+        toast.warning(t('channels.messages.codexCatalogSyncFallback'));
+        return;
+      }
+      const description = codexCatalogVersion
+        ? t('channels.messages.codexCatalogVersion', {
+            version: codexCatalogVersion.version,
+            source: t(`channels.messages.codexCatalogVersionSources.${codexCatalogVersion.source}`),
+          })
+        : undefined;
       queryClient.invalidateQueries({ queryKey: ['channels'] });
-      toast.success(t('channels.messages.syncModelsSuccess'));
+      toast.success(t('channels.messages.syncModelsSuccess'), { description });
     },
   });
 }
@@ -2411,6 +2499,9 @@ export function useFetchModels() {
           fetchModels: {
             models: Array<{ id: string; pricing?: ModelPrice | null }>;
             error?: string | null;
+            fallback: boolean;
+            codexCatalogVersion: CodexCatalogVersion | null;
+            codexCatalogSkippedReason: CodexCatalogSkippedReason | null;
           };
         }>(FETCH_MODELS_QUERY, { input });
         return data.fetchModels;
@@ -2419,10 +2510,10 @@ export function useFetchModels() {
         throw error;
       }
     },
-    onSuccess: (data) => {
+    onSuccess: (data, input) => {
       if (data.error) {
         toast.error(t('common.errors.internalServerError'));
-      } else {
+      } else if (input.channelType !== 'codex' || !data.fallback) {
         const count = data.models.length;
         if (count > 100) {
           toast.success(t('channels.messages.fetchModelsSuccessLarge', { count }));

@@ -69,6 +69,9 @@ type SyncChannelModelsPayload {
   channelID: ID!
   supportedModels: [String!]!
   manualModels: [String!]!
+  fallback: Boolean!
+  codexCatalogVersion: CodexCatalogVersion
+  codexCatalogSkippedReason: String
 }
 
 input ReasoningEffortMappingInput {
@@ -306,16 +309,34 @@ input APIKeyAutoDisableRuleInput {
   disableUntilTimezone: String
 }
 
+type ChannelScheduledDisable {
+  disableCron: String!
+  disableTimezone: String
+  reenableMode: String
+  reenableCron: String
+  reenableTimezone: String
+}
+
+input ChannelScheduledDisableInput {
+  disableCron: String!
+  disableTimezone: String
+  reenableMode: String
+  reenableCron: String
+  reenableTimezone: String
+}
+
 type ChannelPolicies {
   stream: CapabilityPolicy
   apiKeyAutoDisableMode: APIKeyAutoDisableMode
   apiKeyAutoDisableRules: [APIKeyAutoDisableRule!]
+  scheduledDisable: ChannelScheduledDisable
 }
 
 input ChannelPoliciesInput {
   stream: CapabilityPolicy
   apiKeyAutoDisableMode: APIKeyAutoDisableMode
   apiKeyAutoDisableRules: [APIKeyAutoDisableRuleInput!]
+  scheduledDisable: ChannelScheduledDisableInput
 }
 
 input ModelMappingInput {
@@ -750,6 +771,14 @@ input FetchModelsInput {
 type FetchModelsPayload {
   models: [ModelIdentify!]!
   error: String
+  fallback: Boolean!
+  codexCatalogVersion: CodexCatalogVersion
+  codexCatalogSkippedReason: String
+}
+
+type CodexCatalogVersion {
+  version: String!
+  source: String!
 }
 
 type ModelIdentify {

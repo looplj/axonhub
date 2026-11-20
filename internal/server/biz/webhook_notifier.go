@@ -53,6 +53,12 @@ type ChannelAutoDisabledEvent struct {
 	ActualCount     int
 	Reason          string
 	OccurredAt      time.Time
+	// TriggerType names the webhook render context's trigger.type for this
+	// event. Empty keeps the default "error_status_rule" (status-driven
+	// auto-disable rules); the scheduled-disable sweep sets "scheduled". A
+	// zero StatusCode is not used for inference: quota-driven disables also
+	// carry no HTTP status.
+	TriggerType string
 }
 
 type QuotaStatusChangedEvent struct {
@@ -142,7 +148,11 @@ func (n *WebhookNotifier) NotifyChannelAutoDisabled(ctx context.Context, event C
 	renderCtx.Channel.Provider = event.ChannelProvider
 	renderCtx.Channel.BaseURL = event.ChannelBaseURL
 	renderCtx.Channel.Status = event.ChannelStatus
-	renderCtx.Trigger.Type = "error_status_rule"
+	triggerType := event.TriggerType
+	if triggerType == "" {
+		triggerType = "error_status_rule"
+	}
+	renderCtx.Trigger.Type = triggerType
 	renderCtx.Trigger.StatusCode = event.StatusCode
 	renderCtx.Trigger.Threshold = event.Threshold
 	renderCtx.Trigger.ActualCount = event.ActualCount

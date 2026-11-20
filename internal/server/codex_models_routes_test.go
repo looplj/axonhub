@@ -17,6 +17,8 @@ func TestCodexRoutes_CallerIntersection(t *testing.T) {
 	h := newCodexRouteHarness(t)
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "Bearer upstream", r.Header.Get("Authorization"))
+		require.Equal(t, []string{"0.162.1"}, r.URL.Query()["client_version"])
+		require.Equal(t, "0.162.1", r.Header.Get("Version"))
 		require.Empty(t, r.Header.Get("If-None-Match"))
 		require.Empty(t, r.Header.Get("Cookie"))
 		w.Header().Set("ETag", "upstream-etag")
@@ -24,7 +26,10 @@ func TestCodexRoutes_CallerIntersection(t *testing.T) {
 		_, _ = w.Write([]byte(`{"extension":true,"models":[{"slug":"B","visibility":"hide","details":{"future":3}},{"slug":"A"},{"slug":"a"},{"slug":"remote-only"}]}`))
 	}))
 	defer upstream.Close()
-	h.db.Channel.UpdateOneID(h.source.ID).SetBaseURL(upstream.URL).SaveX(h.ctx)
+	h.db.Channel.UpdateOneID(h.source.ID).SetBaseURL(upstream.URL).
+		SetSettings(&objects.ChannelSettings{HeaderOverrideOperations: []objects.OverrideOperation{
+			{Op: objects.OverrideOpSet, Path: "Version", Value: "0.170.0"},
+		}}).SaveX(h.ctx)
 	inference := h.db.Channel.Create().SetName("inference").SetType(channel.TypeOpenai).SetBaseURL("https://example.invalid").SetDefaultTestModel("A").SetSupportedModels([]string{"A", "B", "local-only"}).SetCredentials(objects.ChannelCredentials{APIKey: "infer-key"}).SaveX(h.ctx)
 	built, err := h.channels.GetChannel(h.ctx, inference.ID)
 	require.NoError(t, err)

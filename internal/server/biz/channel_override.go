@@ -10,6 +10,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -66,22 +67,18 @@ func (c *Channel) GetHeaderOverrideOperations() []objects.OverrideOperation {
 		return c.cachedOverrideHeaders
 	}
 
-	if c.Settings != nil {
-		// New schema field takes precedence. Even an explicit empty slice means "no overrides".
-		if c.Settings.HeaderOverrideOperations != nil {
-			c.cachedOverrideHeaders = c.Settings.HeaderOverrideOperations
-			return c.cachedOverrideHeaders
-		}
-	}
-
-	if c.Settings == nil || len(c.Settings.OverrideHeaders) == 0 {
-		c.cachedOverrideHeaders = make([]objects.OverrideOperation, 0)
-		return c.cachedOverrideHeaders
-	}
-
-	c.cachedOverrideHeaders = objects.HeaderEntriesToOverrideOperations(c.Settings.OverrideHeaders)
-
+	c.cachedOverrideHeaders = channelHeaderOverrideOperations(c.Channel)
 	return c.cachedOverrideHeaders
+}
+
+func channelHeaderOverrideOperations(ch *ent.Channel) []objects.OverrideOperation {
+	if ch.Settings == nil || (ch.Settings.HeaderOverrideOperations == nil && len(ch.Settings.OverrideHeaders) == 0) {
+		return []objects.OverrideOperation{}
+	}
+	if ch.Settings.HeaderOverrideOperations != nil {
+		return ch.Settings.HeaderOverrideOperations
+	}
+	return objects.HeaderEntriesToOverrideOperations(ch.Settings.OverrideHeaders)
 }
 
 const ClearHeaderDirective = "__AXONHUB_CLEAR__"

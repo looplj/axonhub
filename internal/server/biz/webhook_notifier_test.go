@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -533,4 +534,69 @@ func TestWebhookNotifier_SendToTarget(t *testing.T) {
 	require.ErrorIs(t, err, ErrWebhookUnavailable)
 	require.Equal(t, before+1, hits.Load())
 	require.False(t, errors.Is(err, ErrWebhookTargetNotFound))
+}
+
+func TestWebhookNotifier_AutoDisabledTriggerType(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	var bodies []string
+	var mu sync.Mutex
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		mu.Lock()
+		bodies = append(bodies, string(body))
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := WebhookNotifierConfig{
+		Targets: []WebhookTarget{
+			{
+				Name:      "default",
+				Enabled:   true,
+				URL:       server.URL,
+				TimeoutMs: 1000,
+				Body:      `{"trigger_type":"{{.Trigger.Type}}"}`,
+			},
+		},
+		Subscriptions: []WebhookSubscription{
+			{Event: EventChannelAutoDisabled, TargetNames: []string{"default"}},
+		},
+	}
+
+	systemService := newTestSystemServiceWithWebhookConfig(t, client, cfg)
+	notifier := NewWebhookNotifier(systemService, httpclient.NewHttpClient())
+
+	event := ChannelAutoDisabledEvent{
+		ChannelID:     1,
+		ChannelName:   "primary",
+		ChannelStatus: "disabled",
+		OccurredAt:    time.Unix(1712812800, 0),
+	}
+
+	// Status-driven rule: the trigger type stays the default even with a real
+	// status code.
+	event.StatusCode = 429
+	event.Reason = "rate limited"
+	notifier.NotifyChannelAutoDisabled(context.Background(), event)
+
+	// Quota-driven disable: StatusCode 0 must NOT be inferred as scheduled.
+	event.StatusCode = 0
+	event.Reason = "All API keys disabled (last error: quota)"
+	notifier.NotifyChannelAutoDisabled(context.Background(), event)
+
+	// Scheduled disable: explicit trigger type.
+	event.TriggerType = "scheduled"
+	event.Reason = scheduledDisableReason
+	notifier.NotifyChannelAutoDisabled(context.Background(), event)
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, bodies, 3)
+	require.Contains(t, bodies[0], `"trigger_type":"error_status_rule"`)
+	require.Contains(t, bodies[1], `"trigger_type":"error_status_rule"`)
+	require.Contains(t, bodies[2], `"trigger_type":"scheduled"`)
 }

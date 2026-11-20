@@ -1,9 +1,9 @@
+import { z } from 'zod';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import ts from 'typescript';
-import { z } from 'zod';
 
 const dataDir = import.meta.dirname;
 const srcRoot = join(dataDir, '..', '..', '..');
@@ -27,6 +27,7 @@ const {
   effectiveAutoDisableMode,
   serializeApiKeyAutoDisableRules,
   toApiKeyAutoDisableRuleFormValues,
+  toScheduledDisableFormValue,
 } = await import(moduleUrl);
 
 test('effectiveAutoDisableMode keeps explicit off even without rules', () => {
@@ -260,6 +261,162 @@ test('bulk auto-disable i18n keys exist in both locales', () => {
     'channels.bulkAutoDisable.overwriteWarning',
     'channels.bulkAutoDisable.emptyRules',
     'channels.bulkAutoDisable.success',
+  ]) {
+    assert.ok(enChannels[key], `${key} missing in en`);
+    assert.ok(zhChannels[key], `${key} missing in zh-CN`);
+  }
+});
+
+test('toScheduledDisableFormValue defaults empty schedules and maps API values', () => {
+  assert.deepEqual(toScheduledDisableFormValue(null), {
+    disableCron: '',
+    disableTimezone: 'UTC',
+    reenableMode: 'none',
+    reenableCron: '',
+    reenableTimezone: 'UTC',
+  });
+  assert.deepEqual(toScheduledDisableFormValue({ disableCron: '0 22 * * *' }), {
+    disableCron: '0 22 * * *',
+    disableTimezone: 'UTC',
+    reenableMode: 'none',
+    reenableCron: '',
+    reenableTimezone: 'UTC',
+  });
+  assert.deepEqual(
+    toScheduledDisableFormValue({
+      disableCron: '0 22 * * *',
+      disableTimezone: 'Asia/Shanghai',
+      reenableMode: 'cron',
+      reenableCron: '0 2 * * *',
+      reenableTimezone: '',
+    }),
+    {
+      disableCron: '0 22 * * *',
+      disableTimezone: 'Asia/Shanghai',
+      reenableMode: 'cron',
+      reenableCron: '0 2 * * *',
+      reenableTimezone: 'UTC',
+    }
+  );
+  // Opposite mode ignores the stored cron fields.
+  assert.deepEqual(
+    toScheduledDisableFormValue({
+      disableCron: '0 22 * * *',
+      reenableMode: 'opposite',
+      reenableCron: '0 2 * * *',
+      reenableTimezone: 'Asia/Shanghai',
+    }),
+    {
+      disableCron: '0 22 * * *',
+      disableTimezone: 'UTC',
+      reenableMode: 'opposite',
+      reenableCron: '',
+      reenableTimezone: 'UTC',
+    }
+  );
+});
+
+test('availabilityPoliciesPayload drops blank scheduled disables and trims the rest', () => {
+  const blank = availabilityPoliciesPayload({
+    mode: 'inherit',
+    rules: [],
+    scheduledDisable: {
+      disableCron: '   ',
+      disableTimezone: 'UTC',
+      reenableMode: 'none',
+      reenableCron: '',
+      reenableTimezone: 'UTC',
+    },
+  });
+  assert.equal(blank.scheduledDisable, null);
+
+  const filled = availabilityPoliciesPayload({
+    mode: 'inherit',
+    rules: [],
+    scheduledDisable: {
+      disableCron: ' 0 */6 * * * ',
+      disableTimezone: '  Asia/Tokyo ',
+      reenableMode: 'none',
+      reenableCron: ' ',
+      reenableTimezone: '',
+    },
+  });
+  assert.deepEqual(filled.scheduledDisable, {
+    disableCron: '0 */6 * * *',
+    disableTimezone: 'Asia/Tokyo',
+    reenableMode: null,
+    reenableCron: null,
+    reenableTimezone: null,
+  });
+
+  const cron = availabilityPoliciesPayload({
+    mode: 'inherit',
+    rules: [],
+    scheduledDisable: {
+      disableCron: '0 22 * * *',
+      disableTimezone: 'UTC',
+      reenableMode: 'cron',
+      reenableCron: ' 0 6 * * * ',
+      reenableTimezone: 'Europe/Amsterdam',
+    },
+  });
+  assert.deepEqual(cron.scheduledDisable, {
+    disableCron: '0 22 * * *',
+    disableTimezone: 'UTC',
+    reenableMode: 'cron',
+    reenableCron: '0 6 * * *',
+    reenableTimezone: 'Europe/Amsterdam',
+  });
+
+  const opposite = availabilityPoliciesPayload({
+    mode: 'inherit',
+    rules: [],
+    scheduledDisable: {
+      disableCron: '0 1-3,6-9 * * 1-5',
+      disableTimezone: 'UTC',
+      reenableMode: 'opposite',
+      reenableCron: '',
+      reenableTimezone: 'UTC',
+    },
+  });
+  assert.deepEqual(opposite.scheduledDisable, {
+    disableCron: '0 1-3,6-9 * * 1-5',
+    disableTimezone: 'UTC',
+    reenableMode: 'opposite',
+    reenableCron: null,
+    reenableTimezone: null,
+  });
+  // Unrelated to the rules payload.
+  assert.equal(filled.apiKeyAutoDisableMode, 'inherit');
+  assert.equal(filled.apiKeyAutoDisableRules, null);
+});
+
+test('channelPoliciesSchema exposes scheduledDisable and every channel query selects it', () => {
+  const schemaSource = read('features/channels/data/schema.ts');
+  const policiesBlock = schemaSource.match(/channelPoliciesSchema = z\.object\(\{[\s\S]*?\}\);/)?.[0] ?? '';
+  assert.match(policiesBlock, /scheduledDisable:/);
+
+  const channelsSource = read('features/channels/data/channels.ts');
+  const ruleFieldCount = (channelsSource.match(/apiKeyAutoDisableMode/g) ?? []).length;
+  const scheduledFieldCount = (channelsSource.match(/scheduledDisable \{/g) ?? []).length;
+  assert.equal(scheduledFieldCount, ruleFieldCount, 'every policies block must select scheduledDisable');
+  assert.ok(ruleFieldCount > 0);
+});
+
+test('scheduled-disable i18n keys exist in both locales', () => {
+  const enChannels = JSON.parse(read('locales/en/channels.json'));
+  const zhChannels = JSON.parse(read('locales/zh-CN/channels.json'));
+  for (const key of [
+    'channels.dialogs.availability.scheduled.title',
+    'channels.dialogs.availability.scheduled.disableCron.label',
+    'channels.dialogs.availability.scheduled.disableCron.placeholder',
+    'channels.dialogs.availability.scheduled.disableCron.hint',
+    'channels.dialogs.availability.scheduled.reenable.label',
+    'channels.dialogs.availability.scheduled.reenable.placeholder',
+    'channels.dialogs.availability.scheduled.reenableNone',
+    'channels.dialogs.availability.scheduled.reenableOpposite',
+    'channels.dialogs.availability.scheduled.reenableOppositeHint',
+    'channels.dialogs.availability.scheduled.reenable.hint',
   ]) {
     assert.ok(enChannels[key], `${key} missing in en`);
     assert.ok(zhChannels[key], `${key} missing in zh-CN`);

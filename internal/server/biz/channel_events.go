@@ -199,6 +199,16 @@ func channelIsAllKeysDisabled(ch *ent.Channel) bool {
 		ch.ErrorMessage != nil && strings.HasPrefix(*ch.ErrorMessage, allKeysDisabledErrorPrefix)
 }
 
+// isScheduledAutoDisabled reports whether the channel is disabled by its
+// wall-clock schedule (the sweep's reason marker, so a scheduled disable
+// never matches channelIsAllKeysDisabled). API-key paths must not take such
+// a disable over: overwriting the reason and clearing the stored re-enable
+// expiry would cancel the planned downtime.
+func isScheduledAutoDisabled(ch *ent.Channel) bool {
+	return ch != nil && ch.Status == channel.StatusDisabled && ch.AutoDisabledAt != nil &&
+		ch.ErrorMessage != nil && *ch.ErrorMessage == scheduledDisableReason
+}
+
 func rfc3339OrNil(value *time.Time) any {
 	if value == nil {
 		return nil

@@ -4,6 +4,7 @@ import type {
   BulkAutoDisableAction,
   BulkUpdateChannelAutoDisableInput,
   CapabilityPolicy,
+  ChannelScheduledDisable,
 } from './schema';
 
 export type { BulkAutoDisableAction, BulkUpdateChannelAutoDisableInput };
@@ -63,14 +64,38 @@ export function serializeApiKeyAutoDisableRules(rules: ApiKeyAutoDisableRuleForm
   }));
 }
 
+export type ScheduledDisableFormValue = {
+  disableCron: string;
+  disableTimezone: string;
+  reenableMode: 'none' | 'opposite' | 'cron';
+  reenableCron: string;
+  reenableTimezone: string;
+};
+
+export function toScheduledDisableFormValue(value?: ChannelScheduledDisable | null): ScheduledDisableFormValue {
+  const mode = value?.reenableMode === 'opposite' ? 'opposite' : value?.reenableMode === 'cron' ? 'cron' : 'none';
+  // Opposite mode derives the re-enable from the disable cron's timezone, so
+  // the stored re-enable fields are not used.
+  const cronMode = mode === 'cron';
+  return {
+    disableCron: value?.disableCron ?? '',
+    disableTimezone: value?.disableTimezone?.trim() || 'UTC',
+    reenableMode: mode,
+    reenableCron: cronMode ? (value?.reenableCron ?? '') : '',
+    reenableTimezone: cronMode ? value?.reenableTimezone?.trim() || 'UTC' : 'UTC',
+  };
+}
+
 export function availabilityPoliciesPayload(input: {
   stream?: CapabilityPolicy;
   mode: APIKeyAutoDisableMode;
   rules: ApiKeyAutoDisableRuleFormValue[];
+  scheduledDisable?: ScheduledDisableFormValue | null;
 }): {
   stream?: CapabilityPolicy;
   apiKeyAutoDisableMode: APIKeyAutoDisableMode;
   apiKeyAutoDisableRules: APIKeyAutoDisableRule[] | null;
+  scheduledDisable: ChannelScheduledDisable | null;
   emptiedCustom: boolean;
 } {
   let savedMode = input.mode;
@@ -81,10 +106,27 @@ export function availabilityPoliciesPayload(input: {
     emptiedCustom = true;
   }
 
+  const scheduledDisable: ChannelScheduledDisable | null =
+    input.scheduledDisable && input.scheduledDisable.disableCron.trim() !== ''
+      ? (() => {
+          const form = input.scheduledDisable;
+          const reenableMode = form.reenableMode === 'none' ? null : form.reenableMode;
+          const cronMode = form.reenableMode === 'cron';
+          return {
+            disableCron: form.disableCron.trim(),
+            disableTimezone: form.disableTimezone.trim() || null,
+            reenableMode,
+            reenableCron: cronMode ? form.reenableCron.trim() || null : null,
+            reenableTimezone: cronMode ? form.reenableTimezone.trim() || null : null,
+          };
+        })()
+      : null;
+
   return {
     stream: input.stream,
     apiKeyAutoDisableMode: savedMode,
     apiKeyAutoDisableRules: savedMode === 'inherit' ? null : serialized,
+    scheduledDisable,
     emptiedCustom,
   };
 }

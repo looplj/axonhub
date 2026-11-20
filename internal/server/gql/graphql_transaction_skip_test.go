@@ -59,6 +59,16 @@ func TestSkipGraphqlTransaction(t *testing.T) {
 			wantSkip: true,
 		},
 		{
+			name:     "syncChannelModels uses the enclosing transaction",
+			op:       mutationOp("UpdateModels", "syncChannelModels"),
+			wantSkip: false,
+		},
+		{
+			name:     "syncChannelModels and an ordinary mutation share the transaction",
+			op:       mutationOp("MixedModelSync", "syncChannelModels", "disableChannelAPIKey"),
+			wantSkip: false,
+		},
+		{
 			name:     "empty selection set does not skip",
 			op:       mutationOp("Empty"),
 			wantSkip: false,

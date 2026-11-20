@@ -216,6 +216,7 @@ type ChannelService struct {
 	apiKeyStatesLock sync.Mutex
 
 	modelSyncMu            sync.Mutex
+	codexVersions          codexVersionCache
 	codexCatalogSF         singleflight.Group
 	codexCatalogProviderSF singleflight.Group
 	codexCatalogOutbounds  sync.Map
@@ -243,12 +244,21 @@ func (svc *ChannelService) RegisterScheduledTasks(ctx context.Context, s *schedu
 	// Ticks every minute rather than every five so that a disable_until_cron rule
 	// recovers within a minute of the instant it scheduled, matching the finest
 	// granularity a crontab expression can express.
-	return s.Register(ctx, scheduler.TaskSpec{
+	if err := s.Register(ctx, scheduler.TaskSpec{
 		Name:        "channel-disabled-api-key-cleanup",
 		Description: "Recover temporarily disabled channel credentials and the channels they gated",
 		CronExpr:    "* * * * *",
 		Timezone:    "UTC",
-	}, svc.cleanupExpiredDisabledAPIKeys)
+	}, svc.cleanupExpiredDisabledAPIKeys); err != nil {
+		return err
+	}
+
+	return s.Register(ctx, scheduler.TaskSpec{
+		Name:        "channel-scheduled-disable",
+		Description: "Disable and re-enable channels on their configured wall-clock schedules",
+		CronExpr:    "* * * * *",
+		Timezone:    "UTC",
+	}, svc.runScheduledDisableSweep)
 }
 
 func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []*Channel, lastUpdate time.Time) ([]*Channel, time.Time, bool, error) {
@@ -591,6 +601,9 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	}
 
 	if err := NormalizeAPIKeyAutoDisableRules(input.Policies); err != nil {
+		return nil, err
+	}
+	if err := NormalizeScheduledDisable(input.Policies); err != nil {
 		return nil, err
 	}
 	baseURL := lo.FromPtr(input.BaseURL)
@@ -982,6 +995,9 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	}
 
 	if err := NormalizeAPIKeyAutoDisableRules(input.Policies); err != nil {
+		return nil, err
+	}
+	if err := NormalizeScheduledDisable(input.Policies); err != nil {
 		return nil, err
 	}
 	officialBaseURL := xaisubscription.DefaultBaseURL
