@@ -262,3 +262,19 @@ func TestRealtimeClosePreservesObservedUsageWithoutBodyStorage(t *testing.T) {
 	require.Equal(t, request.StatusFailed, stored.Status)
 	require.Zero(t, db.UsageLog.Query().CountX(ctx))
 }
+
+func TestRealtimeResponseReservationsKeepAudioClearOrder(t *testing.T) {
+	before, clearing, after := &realtimeResponse{createEventID: "before"}, &realtimeResponse{}, &realtimeResponse{createEventID: "after"}
+	c := &RealtimeConversation{
+		pendingClearID: "clear", preClearCreates: 1, clearingInput: clearing,
+		pendingResponses: []*realtimeResponse{before, after},
+		responses:        map[string]*realtimeResponse{},
+	}
+	require.NoError(t, c.admitResponse("explicit-before"))
+	require.Same(t, before, c.responses["explicit-before"])
+	require.NoError(t, c.admitResponse("vad-before"))
+	require.Same(t, clearing, c.responses["vad-before"])
+	require.NoError(t, c.confirmAudioClear())
+	require.NoError(t, c.admitResponse("explicit-after"))
+	require.Same(t, after, c.responses["explicit-after"])
+}

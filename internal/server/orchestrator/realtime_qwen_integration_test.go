@@ -70,8 +70,18 @@ func TestRealtimeQwenConfigurationDuplexAndTools(t *testing.T) {
 						done <- fmt.Errorf("bridge panic: %T", r)
 					}
 				}()
-				done <- rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: time.Second}, rt.Hooks{Client: conversation.adapter.Client, Server: conversation.adapter.Server})
+				done <- rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: time.Second}, rt.Hooks{Client: conversation.adapter.Client, Server: conversation.adapter.Server, ServerFollowup: conversation.ServerFollowup})
 			}()
+			require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"conversation.item.created","event_id":"qwen-item","item":{"id":"i1","type":"message","role":"assistant","content":[{"type":"text","text":"hello"}]}}`)))
+			require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
+			for _, kind := range []string{"conversation.item.added", "conversation.item.done"} {
+				_, frame, err := client.ReadMessage()
+				require.NoError(t, err)
+				require.Equal(t, kind, gjson.GetBytes(frame, "type").String())
+				require.Equal(t, "i1", gjson.GetBytes(frame, "item.id").String())
+				require.Equal(t, "output_text", gjson.GetBytes(frame, "item.content.0.type").String())
+			}
+
 			send := func(data string) {
 				t.Helper()
 				require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(data)))
@@ -113,6 +123,22 @@ func TestRealtimeQwenConfigurationDuplexAndTools(t *testing.T) {
 			case <-time.After(2 * time.Second):
 				t.Fatal("Qwen disconnect leaked session")
 			}
+		})
+	}
+}
+
+func TestRealtimeProbeAcknowledgesProviderItemLifecycle(t *testing.T) {
+	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIRealtimeWebSocket, llm.APIFormatQwenRealtimeWebSocket} {
+		t.Run(string(format), func(t *testing.T) {
+			conn, provider := realtimeSocketPair(t)
+			require.NoError(t, conn.SetReadDeadline(time.Now().Add(time.Second)))
+			if format == llm.APIFormatOpenAIRealtimeWebSocket {
+				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"conversation.item.added"}`)))
+				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"conversation.item.done"}`)))
+			} else {
+				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"conversation.item.created"}`)))
+			}
+			require.NoError(t, waitRealtimeItemAcknowledgement(conn, format))
 		})
 	}
 }

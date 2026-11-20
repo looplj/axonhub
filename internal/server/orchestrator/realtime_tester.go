@@ -93,19 +93,31 @@ func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *b
 		if err := conn.WriteMessage(websocket.TextMessage, event); err != nil {
 			return fail()
 		}
-		for range 8 {
-			_, data, err := conn.ReadMessage()
-			if err != nil {
-				return fail()
-			}
-			switch gjson.GetBytes(data, "type").String() {
-			case "error":
-				return fail()
-			case "conversation.item.created":
-				return &TestChannelResult{Latency: time.Since(start).Seconds(), Success: true, Message: lo.ToPtr("Realtime WebSocket handshake, PCM configuration and conversation event acknowledged")}, nil
-			}
+		if err := waitRealtimeItemAcknowledgement(conn, llm.APIFormat(ep.APIFormat)); err != nil {
+			return fail()
 		}
-		return fail()
+		return &TestChannelResult{Latency: time.Since(start).Seconds(), Success: true, Message: lo.ToPtr("Realtime WebSocket handshake, PCM configuration and conversation event acknowledged")}, nil
 	}
 	return nil, errors.New("Realtime endpoint is not explicitly configured")
+}
+
+func waitRealtimeItemAcknowledgement(conn *websocket.Conn, format llm.APIFormat) error {
+	for range 8 {
+		_, data, err := conn.ReadMessage()
+		if err != nil {
+			return err
+		}
+		kind := gjson.GetBytes(data, "type").String()
+		if kind == "error" {
+			return errors.New("upstream rejected realtime probe item")
+		}
+		if format == llm.APIFormatOpenAIRealtimeWebSocket {
+			if kind == "conversation.item.done" {
+				return nil
+			}
+		} else if kind == "conversation.item.created" {
+			return nil
+		}
+	}
+	return errors.New("upstream did not acknowledge realtime probe item")
 }

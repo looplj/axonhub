@@ -71,7 +71,11 @@ func TestQwenDeclaredServerEventSurface(t *testing.T) {
 		require.NoError(t, err)
 		var event map[string]any
 		require.NoError(t, json.Unmarshal(converted, &event))
-		require.Equal(t, kind, event["type"])
+		expected := kind
+		if kind == "conversation.item.created" {
+			expected = "conversation.item.added"
+		}
+		require.Equal(t, expected, event["type"])
 		require.Equal(t, "event1", event["event_id"])
 		require.Equal(t, "call1", event["call_id"])
 	}
