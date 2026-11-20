@@ -558,6 +558,16 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 // createChannel creates a new channel without triggering a reload.
 // This is useful for batch operations where reload should happen once at the end.
 func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
+	// The xAI Subscription provider owns its URL and ignores custom endpoints.
+	// Reject channel-only Realtime input before that provider normalization so a
+	// direct biz caller cannot have an unsupported protocol silently discarded.
+	if input.Type == channel.TypeXaiSubscription {
+		for _, endpoint := range input.Endpoints {
+			if objects.IsRealtimeAPIFormat(endpoint.APIFormat) {
+				return nil, objects.RealtimeEndpointInputError()
+			}
+		}
+	}
 	sanitizedSettings, err := normalizeCommandCodeQuotaCookieSettings(input.Settings, input.Type)
 	if err != nil {
 		return nil, err
