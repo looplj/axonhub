@@ -48,6 +48,11 @@ func (d reconnectDialer) Connect(ctx context.Context, _ string, _ string, _ *htt
 
 func newRealtimeReconnectFixture(t *testing.T, configureKey ...func(*ent.APIKeyCreate)) (*ent.Client, func() (*websocket.Conn, *http.Response, error), *atomic.Int32, <-chan struct{}) {
 	t.Helper()
+	return newRealtimeReconnectFixtureWithDuration(t, 0, configureKey...)
+}
+
+func newRealtimeReconnectFixtureWithDuration(t *testing.T, maxDuration time.Duration, configureKey ...func(*ent.APIKeyCreate)) (*ent.Client, func() (*websocket.Conn, *http.Response, error), *atomic.Int32, <-chan struct{}) {
+	t.Helper()
 	db := enttest.NewEntClient(t, "sqlite3", "file:"+t.Name()+"?mode=memory&_fk=1")
 	t.Cleanup(func() { _ = db.Close() })
 	seed := authz.WithTestBypass(ent.NewContext(context.Background(), db))
@@ -110,7 +115,7 @@ func newRealtimeReconnectFixture(t *testing.T, configureKey ...func(*ent.APIKeyC
 	close(h.drained)
 	router := gin.New()
 	router.Use(middleware.WithEntClient(db))
-	router.GET("/v1/realtime", RealtimeBoundary(), middleware.WithIPBlocklist(system), middleware.WithStrictAPIKeyConfig(auth, &middleware.APIKeyConfig{Headers: []string{"Authorization"}, RequireBearer: true}), middleware.WithSource(request.SourceAPI), h.Handler(rt.Config{Limits: rt.Limits{APIKey: 1, ConnectionsPerMinute: 100}}, false))
+	router.GET("/v1/realtime", RealtimeBoundary(), middleware.WithIPBlocklist(system), middleware.WithStrictAPIKeyConfig(auth, &middleware.APIKeyConfig{Headers: []string{"Authorization"}, RequireBearer: true}), middleware.WithSource(request.SourceAPI), h.Handler(rt.Config{MaxDuration: maxDuration, Limits: rt.Limits{APIKey: 1, ConnectionsPerMinute: 100}}, false))
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
 	t.Cleanup(func() {
@@ -275,4 +280,58 @@ func TestRealtimeHTTPFailedRequestWithConfirmedUsageStillEnforcesQuota(t *testin
 	require.NotNil(t, response)
 	require.Equal(t, http.StatusForbidden, response.StatusCode, "confirmed request quota still applies to failed requests")
 	require.Zero(t, peak.Load(), "quota rejection precedes upstream dialing")
+}
+
+func TestRealtimeHTTPAuditInsertCancellationReleasesLease(t *testing.T) {
+	db, dial, peak, _ := newRealtimeReconnectFixtureWithDuration(t, 500*time.Millisecond)
+	first, _, err := dial()
+	require.NoError(t, err)
+	defer first.Close()
+	require.NoError(t, first.SetReadDeadline(time.Now().Add(3*time.Second)))
+	_, _, err = first.ReadMessage()
+	require.NoError(t, err)
+
+	entered := make(chan struct{})
+	canceled := make(chan error, 1)
+	cleanup := make(chan struct{})
+	defer close(cleanup)
+	db.Request.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if !m.Op().Is(ent.OpCreate) {
+				return next.Mutate(ctx, m)
+			}
+			close(entered)
+			select {
+			case <-ctx.Done():
+				canceled <- ctx.Err()
+				return nil, ctx.Err()
+			case <-cleanup:
+				return nil, context.Canceled
+			}
+		})
+	})
+	require.NoError(t, first.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
+	select {
+	case <-entered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("audit INSERT did not reach the write boundary")
+	}
+
+	// Read the server close so the peer can complete its close handshake.
+	_, _, err = first.ReadMessage()
+	require.Error(t, err)
+	select {
+	case err = <-canceled:
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+	case <-time.After(time.Second):
+		t.Fatal("session deadline did not cancel the blocked audit INSERT")
+	}
+
+	second, response, err := dial()
+	if second != nil {
+		defer second.Close()
+	}
+	require.NoError(t, err, "the same API key must immediately regain its lease")
+	require.Equal(t, http.StatusSwitchingProtocols, response.StatusCode)
+	require.Equal(t, int32(1), peak.Load())
 }

@@ -219,8 +219,6 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 		// Connection admission ends after both sockets/workers stop, before audit
 		// finalization, which may wait on storage. Keep the outer release for dial failures.
 		defer func() { _ = upstream.Close(); release() }()
-		// Conversation accounting must inherit the session, not the short dialing deadline.
-		conversation.WithContext(ctx)
 		controller := http.NewResponseController(c.Writer)
 		_ = controller.SetReadDeadline(time.Time{})
 		_ = controller.SetWriteDeadline(time.Time{})
@@ -241,7 +239,7 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 		metrics.Metrics.RealtimeActive(ctx, 1)
 		defer metrics.Metrics.RealtimeActive(context.WithoutCancel(ctx), -1)
 		started := time.Now()
-		err = rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: config.IdleTimeout, MaxDuration: config.MaxDuration}, rt.Hooks{Client: conversation.Client, Server: conversation.Server, Check: conversation.Check})
+		err = rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: config.IdleTimeout, MaxDuration: config.MaxDuration}, rt.Hooks{BindContext: conversation.WithContext, Client: conversation.Client, Server: conversation.Server, Check: conversation.Check})
 		release() // Run has closed both peers and joined every worker.
 		metrics.Metrics.RealtimeDuration(context.WithoutCancel(ctx), time.Since(started).Seconds())
 		if err != nil {

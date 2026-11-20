@@ -64,8 +64,10 @@ func (o Options) defaults() Options {
 }
 
 type Hooks struct {
-	Client func([]byte) ([]byte, error)
-	Server func([]byte) ([]byte, error)
+	// BindContext runs before workers start so their operations share the session deadline and cancellation.
+	BindContext func(context.Context)
+	Client      func([]byte) ([]byte, error)
+	Server      func([]byte) ([]byte, error)
 	// Check runs periodically, including while server VAD can generate autonomously.
 	Check func(context.Context) error
 }
@@ -114,6 +116,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 	defer cancel()
 	defer downstream.Close()
 	defer upstream.Close()
+	if hooks.BindContext != nil {
+		hooks.BindContext(ctx)
+	}
 	toClient := newSendQueue(o.QueueSize, o.WriteTimeout)
 	toProvider := newSendQueue(o.QueueSize, o.WriteTimeout)
 	var last atomic.Int64
