@@ -713,18 +713,22 @@ func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, c
 		if chData == nil {
 			continue
 		}
+		existing, err := db.Channel.Query().
+			Where(channel.Name(chData.Name)).
+			First(ctx)
+		if err != nil && !ent.IsNotFound(err) {
+			return err
+		}
+		if existing != nil && opts.ChannelConflictStrategy == ConflictStrategySkip {
+			log.Info(ctx, "skipping existing channel", log.String("channel", chData.Name))
+			continue
+		}
 		// Backup JSON does not pass through GraphQL's endpoint input scalar.
 		// Apply that same boundary here instead of silently dropping legacy RT.
 		for _, endpoint := range chData.Endpoints {
 			if _, err := objects.UnmarshalEndpointAPIFormat(endpoint.APIFormat); err != nil {
 				return fmt.Errorf("invalid restored endpoint protocol: %w", err)
 			}
-		}
-		existing, err := db.Channel.Query().
-			Where(channel.Name(chData.Name)).
-			First(ctx)
-		if err != nil && !ent.IsNotFound(err) {
-			return err
 		}
 		kind := chData.Type
 		if existing != nil {

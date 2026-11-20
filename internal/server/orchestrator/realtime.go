@@ -342,23 +342,24 @@ type realtimeResponse struct {
 	observedUsage   *llm.Usage
 }
 type RealtimeConversation struct {
-	auditsCreated    int
-	pendingInput     *realtimeResponse
-	pendingResponses []*realtimeResponse
-	service          *RealtimeService
-	target           *RealtimeTarget
-	adapter          realtimeAdapter
-	state            *rt.State
-	ctx              context.Context
-	started          time.Time
-	mu               sync.Mutex
-	responses        map[string]*realtimeResponse
-	credential       string
-	audioBytes       int64
-	checkMu          sync.Mutex
-	lastCheck        time.Time
-	lastCheckErr     error
-	latestKey        *ent.APIKey
+	pendingConfigurationID string
+	auditsCreated          int
+	pendingInput           *realtimeResponse
+	pendingResponses       []*realtimeResponse
+	service                *RealtimeService
+	target                 *RealtimeTarget
+	adapter                realtimeAdapter
+	state                  *rt.State
+	ctx                    context.Context
+	started                time.Time
+	mu                     sync.Mutex
+	responses              map[string]*realtimeResponse
+	credential             string
+	audioBytes             int64
+	checkMu                sync.Mutex
+	lastCheck              time.Time
+	lastCheckErr           error
+	latestKey              *ent.APIKey
 }
 
 func (c *RealtimeConversation) Check(ctx context.Context) error {
@@ -439,6 +440,8 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 		return nil, errors.New("session configuration pending")
 	}
 	if kind == "session.update" {
+		c.mu.Lock()
+		defer c.mu.Unlock()
 		if err := c.state.Update(); err != nil {
 			return nil, err
 		}
@@ -449,6 +452,9 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 			c.state.ConfigurationRejected()
 		}
 		return nil, err
+	}
+	if kind == "session.update" {
+		c.pendingConfigurationID = gjson.GetBytes(wire, "event_id").String()
 	}
 	if kind == "response.create" || kind == "input_audio_buffer.append" {
 		c.checkMu.Lock()
@@ -502,11 +508,15 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 
 func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	kind := gjson.GetBytes(data, "type").String()
-	if kind == "error" {
-		c.state.ConfigurationRejected()
-	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if kind == "error" && c.pendingConfigurationID != "" && gjson.GetBytes(data, "error.event_id").String() == c.pendingConfigurationID {
+		c.state.ConfigurationRejected()
+		c.pendingConfigurationID = ""
+	}
+	if kind == "session.updated" {
+		c.pendingConfigurationID = ""
+	}
 	if kind == "response.done" {
 		if previous := c.responses[gjson.GetBytes(data, "response.id").String()]; previous != nil && previous.done {
 			return nil, nil
@@ -519,7 +529,7 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 		clearCtx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 5*time.Second)
 		defer cancel()
 		pending := c.pendingInput
-		if err := c.service.Requests.UpdateRequestStatusExternalIDAndResponseBody(clearCtx, pending.request, request.StatusCanceled, "", map[string]any{"realtime": true, "input_discarded_before_response": true, "usage_confirmed": false}, nil, nil); err != nil {
+		if err := c.service.Requests.UpdateRealtimeAudit(clearCtx, pending.request, request.StatusCanceled, "", map[string]any{"realtime": true, "input_discarded_before_response": true, "usage_confirmed": false}, nil, nil); err != nil {
 			return nil, errors.New("realtime discarded-input audit failed")
 		}
 		c.pendingInput = nil
@@ -529,39 +539,9 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	}
 	id := gjson.GetBytes(data, "response.id").String()
 	if kind == "response.created" {
-		if _, ok := c.responses[id]; ok {
-			return nil, errors.New("duplicate response id")
+		if err := c.admitResponse(id); err != nil {
+			return nil, err
 		}
-		if len(c.responses) >= 512 {
-			return nil, errors.New("realtime response limit reached")
-		}
-		var r *realtimeResponse
-		if len(c.pendingResponses) > 0 {
-			r = c.pendingResponses[0]
-			c.pendingResponses = c.pendingResponses[1:]
-		} else if c.pendingInput != nil {
-			r = c.pendingInput
-			c.pendingInput = nil
-		} else {
-			c.checkMu.Lock()
-			quotaKey := c.latestKey
-			if quotaKey == nil {
-				quotaKey = c.target.APIKey
-			}
-			c.checkMu.Unlock()
-			quotaCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
-			quotaErr := c.service.checkQuota(quotaCtx, quotaKey)
-			cancel()
-			if quotaErr != nil {
-				return nil, quotaErr
-			}
-			var err error
-			r, err = c.createResponse(id)
-			if err != nil {
-				return nil, err
-			}
-		}
-		c.responses[id] = r
 	}
 	if kind == "response.audio.delta" || kind == "response.text.delta" || kind == "response.output_audio.delta" || kind == "response.output_text.delta" {
 		responseID := gjson.GetBytes(data, "response_id").String()
@@ -622,7 +602,7 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 		summary := map[string]any{"response_id": id, "usage": usage, "realtime": true, "usage_confirmed": true, "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat, "price_reference_id": c.target.Price.ReferenceID, "price_snapshot": c.target.Price.Price, "price_quoted_at": c.target.Price.QuotedAt}
 		r.auditStatus = status
 		r.auditSummary = summary
-		err = c.service.Requests.UpdateRequestStatusExternalIDAndResponseBody(billingCtx, r.request, status, id, summary, &biz.LatencyMetrics{LatencyMs: lo.ToPtr(time.Since(r.started).Milliseconds()), FirstTokenLatencyMs: r.firstOutput}, nil)
+		err = c.service.Requests.UpdateRealtimeAudit(billingCtx, r.request, status, id, summary, &biz.LatencyMetrics{LatencyMs: lo.ToPtr(time.Since(r.started).Milliseconds()), FirstTokenLatencyMs: r.firstOutput}, nil)
 		if err != nil {
 			return nil, errors.New("realtime audit update failed")
 		}
@@ -639,6 +619,45 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 		}
 	}
 	return c.aliasModel(converted), nil
+}
+
+// admitResponse consumes an existing reservation or checks quota before an automatic turn.
+// The caller holds c.mu so each reservation is consumed exactly once.
+func (c *RealtimeConversation) admitResponse(id string) error {
+	if _, ok := c.responses[id]; ok {
+		return errors.New("duplicate response id")
+	}
+	if len(c.responses) >= 512 {
+		return errors.New("realtime response limit reached")
+	}
+	var r *realtimeResponse
+	if len(c.pendingResponses) > 0 {
+		r = c.pendingResponses[0]
+		c.pendingResponses = c.pendingResponses[1:]
+	} else if c.pendingInput != nil {
+		r = c.pendingInput
+		c.pendingInput = nil
+	} else {
+		c.checkMu.Lock()
+		quotaKey := c.latestKey
+		if quotaKey == nil {
+			quotaKey = c.target.APIKey
+		}
+		c.checkMu.Unlock()
+		quotaCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+		quotaErr := c.service.checkQuota(quotaCtx, quotaKey)
+		cancel()
+		if quotaErr != nil {
+			return quotaErr
+		}
+		var err error
+		r, err = c.createResponse(id)
+		if err != nil {
+			return err
+		}
+	}
+	c.responses[id] = r
+	return nil
 }
 
 func (c *RealtimeConversation) createResponse(id string) (*realtimeResponse, error) {
@@ -694,7 +713,7 @@ func (c *RealtimeConversation) Close() {
 		if ctx.Err() != nil {
 			break
 		}
-		if err := c.service.Requests.UpdateRequestStatusExternalIDAndResponseBody(ctx, r.request, request.StatusFailed, "", map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before input or generation accounting was confirmed", "upstream_model": c.target.Model, "price_reference_id": c.target.Price.ReferenceID, "price_snapshot": c.target.Price.Price}, nil, nil); err != nil {
+		if err := c.service.Requests.UpdateRealtimeAudit(ctx, r.request, request.StatusFailed, "", map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before input or generation accounting was confirmed", "upstream_model": c.target.Model, "price_reference_id": c.target.Price.ReferenceID, "price_snapshot": c.target.Price.Price}, nil, nil); err != nil {
 			log.Warn(context.WithoutCancel(c.ctx), "realtime pending audit finalization failed", log.Int("request_id", r.request.ID))
 		}
 	}
@@ -717,7 +736,7 @@ func (c *RealtimeConversation) Close() {
 			status = r.auditStatus
 			summary = r.auditSummary
 		}
-		if err := c.service.Requests.UpdateRequestStatusExternalIDAndResponseBody(ctx, r.request, status, id, summary, &biz.LatencyMetrics{LatencyMs: lo.ToPtr(time.Since(r.started).Milliseconds())}, nil); err != nil {
+		if err := c.service.Requests.UpdateRealtimeAudit(ctx, r.request, status, id, summary, &biz.LatencyMetrics{LatencyMs: lo.ToPtr(time.Since(r.started).Milliseconds())}, nil); err != nil {
 			log.Warn(context.WithoutCancel(c.ctx), "realtime audit finalization failed", log.Int("request_id", r.request.ID))
 			continue
 		}

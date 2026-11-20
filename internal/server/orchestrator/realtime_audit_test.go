@@ -189,3 +189,50 @@ func TestQueuedResponseCreatedDuringSessionUpdate(t *testing.T) {
 	require.NoError(t, err, "the server must accept an acknowledgement for a response queued before session.update")
 	require.Same(t, pending, c.responses["queued-before-update"])
 }
+
+func TestUnrelatedErrorPreservesPendingConfiguration(t *testing.T) {
+	state := rt.NewState()
+	require.NoError(t, state.Connecting())
+	require.NoError(t, state.ObserveServer("session.created"))
+	require.NoError(t, state.ObserveServer("session.updated"))
+	require.NoError(t, state.Update())
+	adapter, err := openairt.NewAdapter("gpt-realtime-2.1")
+	require.NoError(t, err)
+	c := &RealtimeConversation{state: state, adapter: adapter, pendingConfigurationID: "pending-update", target: &RealtimeTarget{APIFormat: llm.APIFormatOpenAIRealtimeWebSocket}, responses: map[string]*realtimeResponse{}}
+	_, err = c.Server([]byte(`{"type":"error","error":{"event_id":"earlier-response","message":"rejected"}}`))
+	require.NoError(t, err)
+	_, err = c.Server([]byte(`{"type":"session.updated","session":{"type":"realtime"}}`))
+	require.NoError(t, err)
+	require.True(t, state.Ready())
+	require.NoError(t, state.Update())
+	c.pendingConfigurationID = "rejected-update"
+	_, err = c.Server([]byte(`{"type":"error","error":{"event_id":"rejected-update","message":"invalid setting"}}`))
+	require.NoError(t, err)
+	require.True(t, state.Ready(), "a correlated configuration rejection restores the previous configuration")
+	require.NoError(t, state.Update(), "a rejected update must not block the next update")
+}
+
+func TestRealtimeClosePreservesObservedUsageWithoutBodyStorage(t *testing.T) {
+	ctx, db := setupTest(t)
+	project := db.Project.Create().SetName("audit-no-body").SaveX(ctx)
+	ctx = contexts.WithProjectID(ctx, project.ID)
+	key := db.APIKey.Create().SetName("audit-no-body").SetKey("synthetic").SetProjectID(project.ID).SetType("user").SaveX(ctx)
+	ctx = contexts.WithAPIKey(ctx, key)
+	system := newTestSystemService(db)
+	policy, err := system.StoragePolicy(ctx)
+	require.NoError(t, err)
+	policy.StoreResponseBody = false
+	require.NoError(t, system.SetStoragePolicy(ctx, policy))
+	service := &RealtimeService{Requests: newTestRequestServiceForChannels(db, system)}
+	req, err := service.Requests.CreateRealtimeRequest(ctx, "voice", 1, "session", objects.JSONRawMessage(`{}`))
+	require.NoError(t, err)
+	usage := &llm.Usage{PromptTokens: 10, CompletionTokens: 20, TotalTokens: 30}
+	c := &RealtimeConversation{ctx: ctx, state: rt.NewState(), service: service, target: &RealtimeTarget{Model: "qwen3.5-omni-flash-realtime", Price: &biz.RealtimePriceSnapshot{ReferenceID: "frozen"}}, responses: map[string]*realtimeResponse{"r1": {request: req, observedUsage: usage, started: time.Now()}}}
+	c.Close()
+	stored := db.Request.GetX(ctx, req.ID)
+	require.Contains(t, string(stored.ResponseBody), `"observed_usage"`)
+	require.Contains(t, string(stored.ResponseBody), `"total_tokens":30`)
+	require.Contains(t, string(stored.ResponseBody), `"price_reference_id":"frozen"`)
+	require.Equal(t, request.StatusFailed, stored.Status)
+	require.Zero(t, db.UsageLog.Query().CountX(ctx))
+}

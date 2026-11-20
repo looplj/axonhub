@@ -47,3 +47,15 @@ func TestRestoreRejectsRealtimeEndpointsAndInvalidChannelRealtime(t *testing.T) 
 		})
 	}
 }
+
+func TestRestoreSkipsConflictingProviderBeforeRealtimeValidation(t *testing.T) {
+	db, service, ctx := setupBackupTest(t)
+	defer db.Close()
+	local := db.Channel.Create().SetName("same").SetType(channel.TypeBailian).SetBaseURL("https://example.test").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic"}).SetSupportedModels([]string{"voice"}).SetDefaultTestModel("voice").SaveX(ctx)
+	data, err := json.Marshal(BackupData{Version: BackupVersion, Channels: []*BackupChannel{{Name: "same", Type: channel.TypeOpenai, Credentials: objects.ChannelCredentials{APIKey: "synthetic"}, Settings: &objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}}}})
+	require.NoError(t, err)
+	require.NoError(t, service.Restore(ctx, bytes.NewReader(data), RestoreOptions{IncludeChannels: true, ChannelConflictStrategy: ConflictStrategySkip}))
+	saved := db.Channel.GetX(ctx, local.ID)
+	require.Equal(t, local.Type, saved.Type)
+	require.Equal(t, local.Settings, saved.Settings)
+}
