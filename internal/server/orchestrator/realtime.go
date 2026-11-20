@@ -559,7 +559,8 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 			return nil, nil
 		}
 	}
-	if err := c.state.ObserveServer(kind, len(c.pendingResponses) > 0 || c.pendingInput != nil); err != nil {
+	responseQueued := len(c.pendingResponses) > 0 || c.pendingInput != nil || c.clearingInput != nil
+	if err := c.state.ObserveServer(kind, responseQueued); err != nil {
 		return nil, err
 	}
 	if kind == "input_audio_buffer.cleared" {

@@ -178,23 +178,42 @@ func TestQueuedResponseCreatedDuringSessionUpdate(t *testing.T) {
 	_, err = unrequested.Server([]byte(`{"type":"response.created","response":{"id":"not-queued"}}`))
 	require.Error(t, err, "an unrequested response must remain blocked during session.update")
 
-	state := rt.NewState()
-	require.NoError(t, state.Connecting())
-	require.NoError(t, state.ObserveServer("session.created"))
-	require.NoError(t, state.ObserveServer("session.updated"))
-	require.NoError(t, state.Update())
-	adapter, err := openairt.NewAdapter("gpt-realtime-2.1-mini")
-	require.NoError(t, err)
-	pending := &realtimeResponse{}
-	c := &RealtimeConversation{
-		state: state, adapter: adapter,
-		target:    &RealtimeTarget{APIFormat: llm.APIFormatOpenAIRealtimeWebSocket},
-		responses: map[string]*realtimeResponse{}, pendingResponses: []*realtimeResponse{pending},
-	}
+	for name, clearing := range map[string]bool{"explicit create": false, "audio awaiting clear": true} {
+		t.Run(name, func(t *testing.T) {
+			state := rt.NewState()
+			require.NoError(t, state.Connecting())
+			require.NoError(t, state.ObserveServer("session.created"))
+			require.NoError(t, state.ObserveServer("session.updated"))
+			require.NoError(t, state.Update())
+			adapter, err := openairt.NewAdapter("gpt-realtime-2.1-mini")
+			require.NoError(t, err)
+			pending := &realtimeResponse{}
+			c := &RealtimeConversation{
+				state: state, adapter: adapter,
+				target:    &RealtimeTarget{APIFormat: llm.APIFormatOpenAIRealtimeWebSocket},
+				responses: map[string]*realtimeResponse{},
+			}
 
-	_, err = c.Server([]byte(`{"type":"response.created","response":{"id":"queued-before-update"}}`))
-	require.NoError(t, err, "the server must accept an acknowledgement for a response queued before session.update")
-	require.Same(t, pending, c.responses["queued-before-update"])
+			if clearing {
+				c.clearingInput = pending
+				c.pendingClearID = "clear-before-update"
+			} else {
+				c.pendingResponses = []*realtimeResponse{pending}
+			}
+
+			_, err = c.Server([]byte(`{"type":"response.created","response":{"id":"queued-before-update"}}`))
+			require.NoError(t, err, "the server must accept an acknowledgement for a response queued before session.update")
+			require.Same(t, pending, c.responses["queued-before-update"])
+			if clearing {
+				require.Nil(t, c.clearingInput, "the response must consume the pre-clear reservation")
+				_, err = c.Server([]byte(`{"type":"input_audio_buffer.cleared"}`))
+				require.NoError(t, err)
+			}
+			_, err = c.Server([]byte(`{"type":"session.updated","session":{"type":"realtime"}}`))
+			require.NoError(t, err)
+			require.True(t, c.state.Ready())
+		})
+	}
 }
 
 func TestUnrelatedErrorPreservesPendingConfiguration(t *testing.T) {
