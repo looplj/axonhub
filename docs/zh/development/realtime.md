@@ -178,4 +178,4 @@ Qwen3.5 的一个响应若同时包含音频和 Function Calling 文本，而上
 
 ## 原生保真与安全边界
 
-OpenAI 原生 Adapter 对每个有效 JSON 消息返回相同字节，包括字段顺序与错误消息；客户端的 session.update 缺少事件 ID 或 ID 为空时，网关会补上 ID，以便把上游拒绝关联到该次更新。网关也会对上游 error 及 status_details.error 脱敏。WebSocket 传输保留 JSON 消息边界，不承诺保留底层 RFC6455 分片方式或 TCP 包边界。
+OpenAI 原生 Adapter 对每个有效 JSON 消息返回相同字节，包括字段顺序与错误消息；客户端的 session.update 或 response.create 缺少事件 ID 或 ID 为空时，网关会补上 ID，以便把上游拒绝关联到该次客户端事件。网关也会对上游 error 及 status_details.error 脱敏。WebSocket 传输保留 JSON 消息边界，不承诺保留底层 RFC6455 分片方式或 TCP 包边界。

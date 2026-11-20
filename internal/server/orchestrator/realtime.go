@@ -333,6 +333,7 @@ func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Con
 }
 
 type realtimeResponse struct {
+	createEventID   string
 	request         *ent.Request
 	done            bool
 	auditFinalized  bool
@@ -444,6 +445,9 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 	if kind == "session.update" {
 		c.mu.Lock()
 		defer c.mu.Unlock()
+		if c.hasPendingCreate(gjson.GetBytes(data, "event_id").String()) {
+			return nil, errors.New("realtime event ID is already pending")
+		}
 		if err := c.state.Update(); err != nil {
 			return nil, err
 		}
@@ -455,17 +459,21 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 		}
 		return nil, err
 	}
-	if kind == "session.update" {
-		eventID := gjson.GetBytes(wire, "event_id").String()
+	var eventID string
+	if kind == "session.update" || kind == "response.create" {
+		eventID = gjson.GetBytes(wire, "event_id").String()
 		if eventID == "" {
-			// An upstream rejection must identify this update even when the client omitted an ID.
 			eventID = "evt_axonhub_" + uuid.NewString()
 			wire, err = sjson.SetBytes(wire, "event_id", eventID)
 			if err != nil {
-				c.state.ConfigurationRejected()
-				return nil, errors.New("could not assign realtime configuration event ID")
+				if kind == "session.update" {
+					c.state.ConfigurationRejected()
+				}
+				return nil, errors.New("could not assign realtime event ID")
 			}
 		}
+	}
+	if kind == "session.update" {
 		c.pendingConfigurationID = eventID
 	}
 	if kind == "response.create" || kind == "input_audio_buffer.append" {
@@ -476,6 +484,10 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 		}
 		c.checkMu.Unlock()
 		c.mu.Lock()
+		if eventID != "" && (eventID == c.pendingConfigurationID || c.hasPendingCreate(eventID)) {
+			c.mu.Unlock()
+			return nil, errors.New("realtime event ID is already pending")
+		}
 		if len(c.responses)+len(c.pendingResponses) >= 512 || len(c.pendingResponses) >= 8 {
 			c.mu.Unlock()
 			return nil, rt.ErrAccountingUnavailable
@@ -496,6 +508,7 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 			c.pendingInput = pending
 		}
 		if kind == "response.create" {
+			c.pendingInput.createEventID = eventID
 			c.pendingResponses = append(c.pendingResponses, c.pendingInput)
 			c.pendingInput = nil
 		}
@@ -522,9 +535,10 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	kind := gjson.GetBytes(data, "type").String()
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if kind == "error" && c.pendingConfigurationID != "" && gjson.GetBytes(data, "error.event_id").String() == c.pendingConfigurationID {
-		c.state.ConfigurationRejected()
-		c.pendingConfigurationID = ""
+	if kind == "error" {
+		if err := c.rejectPendingEvent(gjson.GetBytes(data, "error.event_id").String()); err != nil {
+			return nil, err
+		}
 	}
 	if kind == "session.updated" {
 		c.pendingConfigurationID = ""
@@ -631,6 +645,41 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 		}
 	}
 	return c.aliasModel(converted), nil
+}
+
+// hasPendingCreate is called with c.mu held.
+func (c *RealtimeConversation) hasPendingCreate(eventID string) bool {
+	return eventID != "" && slices.ContainsFunc(c.pendingResponses, func(r *realtimeResponse) bool {
+		return r.createEventID == eventID
+	})
+}
+
+// rejectPendingEvent finalizes only the reservation named by the provider.
+// The caller holds c.mu to serialize this with response admission.
+func (c *RealtimeConversation) rejectPendingEvent(eventID string) error {
+	if eventID == "" {
+		return nil
+	}
+	if eventID == c.pendingConfigurationID {
+		c.state.ConfigurationRejected()
+		c.pendingConfigurationID = ""
+		return nil
+	}
+	index := slices.IndexFunc(c.pendingResponses, func(r *realtimeResponse) bool {
+		return r.createEventID == eventID
+	})
+	if index < 0 {
+		return nil
+	}
+	pending := c.pendingResponses[index]
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 5*time.Second)
+	defer cancel()
+	summary := map[string]any{"realtime": true, "usage_confirmed": false, "response_create_rejected": true}
+	if err := c.service.Requests.UpdateRealtimeAudit(ctx, pending.request, request.StatusFailed, "", summary, nil, nil); err != nil {
+		return errors.New("realtime rejected-response audit failed")
+	}
+	c.pendingResponses = slices.Delete(c.pendingResponses, index, index+1)
+	return nil
 }
 
 // admitResponse consumes an existing reservation or checks quota before an automatic turn.

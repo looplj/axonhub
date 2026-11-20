@@ -171,11 +171,27 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 				require.NoError(t, err)
 				require.JSONEq(t, expected, string(raw))
 			}
+			for attempt := range 9 {
+				eventID := fmt.Sprintf("rejected-%d", attempt)
+				create := fmt.Sprintf(`{"type":"response.create","event_id":%q}`, eventID)
+				require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(create)))
+				_ = provider.SetReadDeadline(time.Now().Add(2 * time.Second))
+				_, forwarded, err := provider.ReadMessage()
+				require.NoError(t, err)
+				require.JSONEq(t, create, string(forwarded))
+				require.NoError(t, provider.WriteJSON(map[string]any{"type": "error", "error": map[string]string{"event_id": eventID}}))
+				_, rejected, err := client.ReadMessage()
+				require.NoError(t, err)
+				require.Contains(t, string(rejected), eventID)
+			}
+			require.Zero(t, db.UsageLog.Query().CountX(ctx))
+			require.Equal(t, 9, db.Request.Query().Where(request.StatusEQ(request.StatusFailed)).CountX(ctx))
 			require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
 			_ = provider.SetReadDeadline(time.Now().Add(5 * time.Second))
 			_, initialCreate, err := provider.ReadMessage()
 			require.NoError(t, err)
-			require.JSONEq(t, `{"type":"response.create"}`, string(initialCreate))
+			require.Contains(t, string(initialCreate), `"event_id":"evt_axonhub_`)
+			require.Contains(t, string(initialCreate), `"type":"response.create"`)
 			for turn := 1; turn <= 2; turn++ {
 				created := fmt.Sprintf(`{"type":"response.created","response":{"id":"r%d","status":"in_progress"}}`, turn)
 				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(created)))
@@ -207,10 +223,10 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 					require.NoError(t, json.Unmarshal(raw, &forwarded))
 					require.Equal(t, "call1", forwarded["item"].(map[string]any)["call_id"])
 					require.Equal(t, `{"ok":true}`, forwarded["item"].(map[string]any)["output"])
-					require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
+					require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","event_id":"accepted-create"}`)))
 					_, raw, err = provider.ReadMessage()
 					require.NoError(t, err)
-					require.JSONEq(t, `{"type":"response.create"}`, string(raw))
+					require.JSONEq(t, `{"type":"response.create","event_id":"accepted-create"}`, string(raw))
 				}
 			}
 			// Duplicate completion frames must not produce an extra downstream event or ledger entry.
@@ -223,6 +239,10 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 				require.InDelta(t, 0.00013, *log.TotalCost, 0.000000001)
 			}
 			for _, r := range db.Request.Query().AllX(ctx) {
+				if r.Status == request.StatusFailed {
+					require.Contains(t, string(r.ResponseBody), `"response_create_rejected":true`)
+					continue
+				}
 				require.Equal(t, request.StatusCompleted, r.Status)
 				body, _ := json.Marshal(r.ResponseBody)
 				require.NotContains(t, string(body), "private transcript")
@@ -230,11 +250,11 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 			}
 			// Disconnect immediately after upstream accepts response.create, before
 			// response.created or final usage arrives.
-			require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
+			require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","event_id":"accepted-create"}`)))
 			_ = provider.SetReadDeadline(time.Now().Add(5 * time.Second))
 			_, pendingCreate, err := provider.ReadMessage()
 			require.NoError(t, err)
-			require.JSONEq(t, `{"type":"response.create"}`, string(pendingCreate))
+			require.JSONEq(t, `{"type":"response.create","event_id":"accepted-create"}`, string(pendingCreate))
 			require.NoError(t, client.Close())
 			select {
 			case <-done:
