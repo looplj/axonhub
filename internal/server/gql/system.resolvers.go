@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
@@ -312,8 +313,10 @@ func (r *mutationResolver) TriggerGcCleanup(ctx context.Context, input gc.Trigge
 			}
 		}()
 
-		// Use a detached context with system bypass for background execution
-		bgCtx := authz.WithSystemBypass(context.WithoutCancel(ctx), "manual-gc-cleanup")
+		// WithoutCancel keeps context values. Let the worker open new transactions
+		// instead of reusing the GraphQL transaction, which closes with the mutation.
+		bgCtx := ent.NewTxContext(context.WithoutCancel(ctx), nil)
+		bgCtx = authz.WithSystemBypass(bgCtx, "manual-gc-cleanup")
 		_ = r.gcWorker.RunCleanupNow(bgCtx, input)
 	}()
 

@@ -4,16 +4,21 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/samber/lo"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/gc"
 )
 
 func setupTestSystemMutationResolver(t *testing.T) (*mutationResolver, context.Context, *ent.Client) {
@@ -30,6 +35,45 @@ func setupTestSystemMutationResolver(t *testing.T) (*mutationResolver, context.C
 
 	resolver := &mutationResolver{&Resolver{systemService: systemService}}
 	return resolver, ctx, client
+}
+
+func TestMutationResolver_TriggerGcCleanupUsesFreshTransactions(t *testing.T) {
+	resolver, ctx, client := setupTestSystemMutationResolver(t)
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
+	resolver.gcWorker = &gc.Worker{Ent: client, SystemService: resolver.systemService}
+
+	project, err := client.Project.Create().SetName("manual cleanup").Save(ctx)
+	require.NoError(t, err)
+	old, err := client.Request.Create().
+		SetProjectID(project.ID).
+		SetCreatedAt(time.Now().AddDate(0, 0, -7)).
+		SetModelID("test-model").
+		SetFormat("openai/chat_completions").
+		SetSource(request.SourceAPI).
+		SetStatus(request.StatusCompleted).
+		SetRequestBody(objects.JSONRawMessage(`{"prompt":"expired"}`)).
+		SetResponseBody(objects.JSONRawMessage(`{"answer":"expired"}`)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Reproduce the context the background job sees after GraphQL commits.
+	callerCtx := contexts.WithUser(ctx, &ent.User{ID: 1, IsOwner: true})
+	txCtx, tx, err := client.OpenTx(callerCtx)
+	require.NoError(t, err)
+	require.NoError(t, tx.Commit())
+
+	ok, err := resolver.TriggerGcCleanup(txCtx, gc.TriggerGcCleanupInput{
+		RequestBodiesCleanupDays:  3,
+		ResponseBodiesCleanupDays: 3,
+	})
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		row, err := client.Request.Get(ctx, old.ID)
+		require.NoError(c, err)
+		require.JSONEq(c, `{}`, string(row.RequestBody))
+		require.JSONEq(c, `{}`, string(row.ResponseBody))
+	}, 3*time.Second, 20*time.Millisecond)
 }
 
 func TestMutationResolver_UpdateSystemChannelSettings_MergesAutoSyncWithoutOverwritingProbe(t *testing.T) {
