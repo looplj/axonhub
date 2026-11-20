@@ -27,9 +27,9 @@ require (
 	github.com/eko/gocache/store/go_cache/v4 v4.2.10
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/expr-lang/expr v1.17.8
+	github.com/felixge/httpsnoop v1.1.0
 	github.com/gin-contrib/cors v1.7.11
 	github.com/gin-contrib/sse v1.1.1
-	github.com/felixge/httpsnoop v1.1.0
 	github.com/gin-contrib/static v1.1.10
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-sql-driver/mysql v1.10.1
