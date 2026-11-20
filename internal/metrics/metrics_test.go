@@ -10,6 +10,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 
 	sdk "go.opentelemetry.io/otel/sdk/metric"
+
+	"github.com/looplj/axonhub/llm"
 )
 
 func TestRecordChatRequestAndTokens(t *testing.T) {
@@ -121,6 +123,37 @@ func labelKey(attrs attribute.Set) string {
 	}
 
 	return strings.Join(parts, "|")
+}
+
+func TestRealtimeUsageExportsImageAndParsedTextTokensSeparately(t *testing.T) {
+	previousMetrics := Metrics
+	reader := sdk.NewManualReader()
+	provider := sdk.NewMeterProvider(sdk.WithReader(reader))
+	t.Cleanup(func() {
+		Metrics = previousMetrics
+		require.NoError(t, provider.Shutdown(context.Background()))
+	})
+	require.NoError(t, SetupMetrics(provider, "test"))
+
+	Metrics.RealtimeUsage(context.Background(), &llm.Usage{
+		PromptTokens:     100,
+		CompletionTokens: 30,
+		TotalTokens:      130,
+		Realtime: &llm.RealtimeUsageDetails{
+			InputTextTokens: 40, InputAudioTokens: 50, InputImageTokens: 10,
+			OutputTextTokens: 10, OutputAudioTokens: 20,
+		},
+	}, nil)
+
+	var data metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(context.Background(), &data))
+	tokens := sumInt64(t, collectMetricsByName(t, data), "axonhub_realtime_tokens_total")
+	require.Equal(t, int64(130), tokens.total)
+	require.Equal(t, int64(40), tokens.byLabel["modality=input_text"])
+	require.Equal(t, int64(50), tokens.byLabel["modality=input_audio"])
+	require.Equal(t, int64(10), tokens.byLabel["modality=input_image"])
+	require.Equal(t, int64(10), tokens.byLabel["modality=output_text"])
+	require.Equal(t, int64(20), tokens.byLabel["modality=output_audio"])
 }
 
 func TestEnabled(t *testing.T) {

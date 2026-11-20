@@ -76,6 +76,30 @@ func TestMigrateChannelRealtimePreservesExplicitSetting(t *testing.T) {
 	require.Nil(t, (&Channel{Channel: moved}).RealtimeEndpoint(), "migration must not reactivate disabled Realtime")
 }
 
+func TestMigrateChannelRealtimeIgnoresStaleEndpointsWhenSettingExists(t *testing.T) {
+	db, ctx := realtimeMigrationFixture(t)
+	existing := &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}
+	row := db.Channel.Create().
+		SetName("authoritative-realtime-setting").
+		SetType(channel.TypeOpenai).
+		SetBaseURL("https://untouched-http.example/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "synthetic"}).
+		SetSupportedModels([]string{"voice"}).
+		SetDefaultTestModel("voice").
+		SetEndpoints([]objects.ChannelEndpoint{
+			{APIFormat: "openai/chat_completions", Path: "/chat/completions"},
+			{APIFormat: "openai/realtime-ws", BaseURL: "wss://stale.example", Path: "/wrong"},
+			{APIFormat: "qwen/realtime-ws", BaseURL: "wss://stale.cn-beijing.maas.aliyuncs.com", Path: "/wrong"},
+		}).
+		SetSettings(&objects.ChannelSettings{Realtime: existing}).
+		SaveX(ctx)
+
+	require.NoError(t, MigrateChannelRealtime(context.Background(), db))
+	migrated := db.Channel.GetX(ctx, row.ID)
+	require.Equal(t, existing, migrated.Settings.Realtime)
+	require.Equal(t, []objects.ChannelEndpoint{{APIFormat: "openai/chat_completions", Path: "/chat/completions"}}, migrated.Endpoints)
+}
+
 func TestMigrateChannelRealtimeIncludesSoftDeletedChannels(t *testing.T) {
 	db, ctx := realtimeMigrationFixture(t)
 	row := seedLegacyRealtimeChannel(t, db, ctx, channel.TypeOpenai, objects.ChannelEndpoint{APIFormat: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}, &objects.ChannelSettings{ExtraModelPrefix: "preserved"})

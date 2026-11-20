@@ -73,10 +73,6 @@ func migrateChannelRealtimeRows(ctx context.Context, db *ent.Client) error {
 		if len(legacy) == 0 {
 			continue
 		}
-		migrated, err := realtimeConfigFromLegacy(row.Type, legacy)
-		if err != nil {
-			return fmt.Errorf("channel %d Realtime migration: %w", row.ID, err)
-		}
 		settings := objects.ChannelSettings{}
 		if row.Settings != nil {
 			settings = *row.Settings
@@ -84,6 +80,10 @@ func migrateChannelRealtimeRows(ctx context.Context, db *ent.Client) error {
 		// An explicitly saved channel setting wins over the stale endpoint, including
 		// a deliberate disabled setting. Never reactivate an operator-disabled channel.
 		if settings.Realtime == nil {
+			migrated, err := realtimeConfigFromLegacy(row.Type, legacy)
+			if err != nil {
+				return fmt.Errorf("channel %d Realtime migration: %w", row.ID, err)
+			}
 			settings.Realtime = migrated
 		}
 		if err := ValidateChannelRealtime(row.Type, settings.Realtime); err != nil {

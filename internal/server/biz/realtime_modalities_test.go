@@ -27,7 +27,7 @@ func TestRealtimeCachedModalitiesUseIndependentRates(t *testing.T) {
 		price.Items = append(price.Items, objects.ModelPriceItem{ItemCode: code, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: &value}})
 	}
 	require.NoError(t, objects.ValidateOpenAIRealtimePrice(price))
-	items, total := ComputeUsageCost(usage, price, time.Now())
+	items, total := ComputeRealtimeUsageCost(usage, price, time.Now())
 	require.True(t, total.Equal(decimal.RequireFromString("0.0002605")), total.String())
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeInputText, 30, "0.00003")
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeInputAudio, 35, "0.00007")
@@ -36,13 +36,13 @@ func TestRealtimeCachedModalitiesUseIndependentRates(t *testing.T) {
 
 func TestRealtimeFreeSpeechTranscriptRetainsActualTokens(t *testing.T) {
 	usage := &llm.Usage{PromptTokens: 100, CompletionTokens: 30, TotalTokens: 130, Realtime: &llm.RealtimeUsageDetails{InputTextTokens: 100, OutputTextTokens: 10, OutputAudioTokens: 20, UnbilledOutputTextTokens: 10}}
-	items, total := ComputeUsageCost(usage, realtimePrice("1", "2", "3", "4"), time.Now())
+	items, total := ComputeRealtimeUsageCost(usage, realtimePrice("1", "2", "3", "4"), time.Now())
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeOutputText, 0, "0")
 	require.True(t, total.Equal(decimal.RequireFromString("0.00018")))
 	require.EqualValues(t, 30, usage.CompletionTokens)
 	require.EqualValues(t, 10, usage.Realtime.OutputTextTokens)
 	usage.Realtime.UnbilledOutputTextTokens = 0
-	items, total = ComputeUsageCost(usage, realtimePrice("1", "2", "3", "4"), time.Now())
+	items, total = ComputeRealtimeUsageCost(usage, realtimePrice("1", "2", "3", "4"), time.Now())
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeOutputText, 10, "0.00003")
 	require.True(t, total.Equal(decimal.RequireFromString("0.00021")))
 }
@@ -54,7 +54,7 @@ func TestRealtimeUnusedOrFreeModalitiesDoNotIncurFlatFees(t *testing.T) {
 		price.Items[index].Pricing = objects.Pricing{Mode: objects.PricingModeFlatFee, FlatFee: &fee}
 	}
 	usage := &llm.Usage{PromptTokens: 1, CompletionTokens: 2, TotalTokens: 3, Realtime: &llm.RealtimeUsageDetails{InputTextTokens: 1, OutputTextTokens: 1, OutputAudioTokens: 1, UnbilledOutputTextTokens: 1}}
-	items, total := ComputeUsageCost(usage, price, time.Now())
+	items, total := ComputeRealtimeUsageCost(usage, price, time.Now())
 	require.Equal(t, "2", total.String())
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeInputAudio, 0, "0")
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeOutputText, 0, "0")

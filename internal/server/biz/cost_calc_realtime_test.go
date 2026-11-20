@@ -69,7 +69,7 @@ func TestComputeUsageCost_RealtimeTokens(t *testing.T) {
 		},
 	}
 
-	items, total := ComputeUsageCost(usage, realtimePrice("1.10", "2.20", "3.30", "4.40"), time.Now())
+	items, total := ComputeRealtimeUsageCost(usage, realtimePrice("1.10", "2.20", "3.30", "4.40"), time.Now())
 
 	// (700*1.10 + 300*2.20 + 400*3.30 + 100*4.40) / 1e6
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeInputText, 700, "0.00077")
@@ -90,7 +90,7 @@ func TestComputeUsageCost_RealtimeAudioOnly(t *testing.T) {
 		CompletionTokensDetails: &llm.CompletionTokensDetails{AudioTokens: 200},
 	}
 
-	items, total := ComputeUsageCost(usage, realtimePrice("1", "2", "3", "4"), time.Now())
+	items, total := ComputeRealtimeUsageCost(usage, realtimePrice("1", "2", "3", "4"), time.Now())
 
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeInputText, 0, "0")
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeInputAudio, 400, "0.0008")
@@ -108,7 +108,7 @@ func TestComputeUsageCost_RealtimeClampsAudioAboveTotal(t *testing.T) {
 		CompletionTokensDetails: &llm.CompletionTokensDetails{AudioTokens: 80},
 	}
 
-	items, _ := ComputeUsageCost(usage, realtimePrice("1", "1", "1", "1"), time.Now())
+	items, _ := ComputeRealtimeUsageCost(usage, realtimePrice("1", "1", "1", "1"), time.Now())
 
 	// Audio is clamped to the reported total so text + audio never exceed it.
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeInputText, 0, "0")
@@ -120,7 +120,7 @@ func TestComputeUsageCost_RealtimeClampsAudioAboveTotal(t *testing.T) {
 func TestComputeUsageCost_RealtimeMissingDetails(t *testing.T) {
 	usage := &llm.Usage{PromptTokens: 1000, CompletionTokens: 500, TotalTokens: 1500}
 
-	items, total := ComputeUsageCost(usage, realtimePrice("1", "2", "3", "4"), time.Now())
+	items, total := ComputeRealtimeUsageCost(usage, realtimePrice("1", "2", "3", "4"), time.Now())
 
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeInputText, 1000, "0.001")
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeInputAudio, 0, "0")
@@ -149,7 +149,7 @@ func TestComputeUsageCost_RealtimeScheduleOverride(t *testing.T) {
 		CompletionTokensDetails: &llm.CompletionTokensDetails{AudioTokens: 100},
 	}
 
-	items, total := ComputeUsageCost(usage, price, time.Date(2026, 7, 21, 12, 0, 0, 0, time.UTC))
+	items, total := ComputeRealtimeUsageCost(usage, price, time.Date(2026, 7, 21, 12, 0, 0, 0, time.UTC))
 
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeInputText, 700, "0.007")
 	requireCostItem(t, items, objects.PriceItemCodeRealtimeInputAudio, 300, "0.006")
@@ -185,4 +185,27 @@ func TestComputeUsageCost_LegacyCodesIgnoreRealtimeAudio(t *testing.T) {
 	requireCostItem(t, items, objects.PriceItemCodeUsage, 1000, "0.00003")
 	requireCostItem(t, items, objects.PriceItemCodeCompletion, 500, "0.00003")
 	require.True(t, total.Equal(decimal.RequireFromString("0.00006")), "total: %s", total)
+}
+
+func TestComputeUsageCostKeepsHTTPBillingWhenPriceContainsRealtimeItems(t *testing.T) {
+	usage := &llm.Usage{
+		PromptTokens:     100,
+		CompletionTokens: 20,
+		TotalTokens:      120,
+		PromptTokensDetails: &llm.PromptTokensDetails{
+			ImageTokens: 10,
+		},
+	}
+	price := objects.ModelPrice{Items: []objects.ModelPriceItem{
+		{ItemCode: objects.PriceItemCodeUsage, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: mustDecimalPtr("1")}},
+		{ItemCode: objects.PriceItemCodeCompletion, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: mustDecimalPtr("2")}},
+		{ItemCode: objects.PriceItemCodeRealtimeInputImage, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: mustDecimalPtr("3")}},
+	}}
+
+	items, total := ComputeUsageCost(usage, price, time.Now())
+
+	require.True(t, total.Equal(decimal.RequireFromString("0.00014")), total.String())
+	require.Len(t, items, 2, "ordinary usage logs must not contain Realtime cost items")
+	requireCostItem(t, items, objects.PriceItemCodeUsage, 100, "0.0001")
+	requireCostItem(t, items, objects.PriceItemCodeCompletion, 20, "0.00004")
 }

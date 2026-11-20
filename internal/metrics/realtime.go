@@ -66,14 +66,26 @@ func (sm *_Metrics) RealtimeUsage(ctx context.Context, usage *llm.Usage, firstOu
 	if usage == nil {
 		return
 	}
-	inAudio, outAudio := int64(0), int64(0)
-	if usage.PromptTokensDetails != nil {
-		inAudio = usage.PromptTokensDetails.AudioTokens
+	inputText, inputAudio, inputImage := int64(0), int64(0), int64(0)
+	outputText, outputAudio := int64(0), int64(0)
+	if details := usage.Realtime; details != nil {
+		inputText = details.InputTextTokens
+		inputAudio = details.InputAudioTokens
+		inputImage = details.InputImageTokens
+		outputText = details.OutputTextTokens
+		outputAudio = details.OutputAudioTokens
+	} else {
+		if usage.PromptTokensDetails != nil {
+			inputAudio = usage.PromptTokensDetails.AudioTokens
+			inputImage = usage.PromptTokensDetails.ImageTokens
+		}
+		if usage.CompletionTokensDetails != nil {
+			outputAudio = usage.CompletionTokensDetails.AudioTokens
+		}
+		inputText = max(usage.PromptTokens-inputAudio-inputImage, 0)
+		outputText = max(usage.CompletionTokens-outputAudio, 0)
 	}
-	if usage.CompletionTokensDetails != nil {
-		outAudio = usage.CompletionTokensDetails.AudioTokens
-	}
-	for kind, count := range map[string]int64{"input_text": usage.PromptTokens - inAudio, "input_audio": inAudio, "output_text": usage.CompletionTokens - outAudio, "output_audio": outAudio} {
+	for kind, count := range map[string]int64{"input_text": inputText, "input_audio": inputAudio, "input_image": inputImage, "output_text": outputText, "output_audio": outputAudio} {
 		if count > 0 {
 			sm.realtime.tokens.Add(ctx, count, metric.WithAttributes(attribute.String("modality", kind)))
 		}

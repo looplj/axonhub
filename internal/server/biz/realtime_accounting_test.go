@@ -77,8 +77,8 @@ func TestRealtimePriceFreezesEffectiveScheduleAtConnection(t *testing.T) {
 	snapshot, err := f.svc.RealtimePrice(f.ctx, f.channelID, f.model)
 	require.NoError(t, err)
 	require.Nil(t, snapshot.Price.Schedule)
-	_, atStart := ComputeUsageCost(realtimeUsageFixture(), snapshot.Price, time.Now())
-	_, afterWeek := ComputeUsageCost(realtimeUsageFixture(), snapshot.Price, time.Now().Add(7*24*time.Hour))
+	_, atStart := ComputeRealtimeUsageCost(realtimeUsageFixture(), snapshot.Price, time.Now())
+	_, afterWeek := ComputeRealtimeUsageCost(realtimeUsageFixture(), snapshot.Price, time.Now().Add(7*24*time.Hour))
 	require.True(t, atStart.Equal(afterWeek))
 	require.Equal(t, "10", snapshot.Price.Items[0].Pricing.UsagePerUnit.String())
 }

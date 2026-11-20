@@ -542,6 +542,18 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 			r = c.pendingInput
 			c.pendingInput = nil
 		} else {
+			c.checkMu.Lock()
+			quotaKey := c.latestKey
+			if quotaKey == nil {
+				quotaKey = c.target.APIKey
+			}
+			c.checkMu.Unlock()
+			quotaCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+			quotaErr := c.service.checkQuota(quotaCtx, quotaKey)
+			cancel()
+			if quotaErr != nil {
+				return nil, quotaErr
+			}
 			var err error
 			r, err = c.createResponse(id)
 			if err != nil {
