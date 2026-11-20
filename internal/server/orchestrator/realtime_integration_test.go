@@ -137,11 +137,30 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 				}()
 				done <- rt.Run(sessionCtx, downstream, upstream, rt.Options{IdleTimeout: time.Second}, rt.Hooks{Client: c.Client, Server: c.Server})
 			}()
-			require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.update","session":{"type":"realtime","output_modalities":["text"],"future_official_field":true}}`)))
+			update := []byte(`{"type":"session.update","session":{"type":"realtime","output_modalities":["text"],"future_official_field":true}}`)
+			require.NoError(t, client.WriteMessage(websocket.TextMessage, update))
 			_ = provider.SetReadDeadline(time.Now().Add(time.Second))
 			_, wire, err := provider.ReadMessage()
 			require.NoError(t, err)
 			require.Contains(t, string(wire), "future_official_field")
+			var sent struct {
+				EventID string `json:"event_id"`
+			}
+			require.NoError(t, json.Unmarshal(wire, &sent))
+			require.NotEmpty(t, sent.EventID)
+			require.NoError(t, provider.WriteJSON(map[string]any{"type": "error", "error": map[string]string{"event_id": sent.EventID, "message": "invalid settings"}}))
+			_ = client.SetReadDeadline(time.Now().Add(time.Second))
+			_, rejected, err := client.ReadMessage()
+			require.NoError(t, err)
+			require.Contains(t, string(rejected), "upstream_error")
+			require.NoError(t, client.WriteMessage(websocket.TextMessage, update))
+			_, retried, err := provider.ReadMessage()
+			require.NoError(t, err)
+			previousID := sent.EventID
+			sent.EventID = ""
+			require.NoError(t, json.Unmarshal(retried, &sent))
+			require.NotEmpty(t, sent.EventID)
+			require.NotEqual(t, previousID, sent.EventID)
 			require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.updated","session":{"id":"s1","type":"realtime"}}`)))
 			_, _, err = client.ReadMessage()
 			require.NoError(t, err)

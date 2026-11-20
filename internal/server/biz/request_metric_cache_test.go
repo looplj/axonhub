@@ -9,10 +9,12 @@ import (
 
 	sdk "go.opentelemetry.io/otel/sdk/metric"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/metrics"
+	"github.com/looplj/axonhub/llm"
 )
 
 func TestRequestMetricsUseCachedChannel(t *testing.T) {
@@ -35,14 +37,20 @@ func TestRequestMetricsUseCachedChannel(t *testing.T) {
 	channels := NewChannelServiceForTest(client)
 	t.Cleanup(channels.Stop)
 	channels.SetEnabledChannelsForTest([]*Channel{{Channel: &ent.Channel{ID: 7, Name: "cached-channel"}}})
-	svc := &RequestService{UsageLogService: &UsageLogService{ChannelService: channels}, metricClaims: newRequestMetricClaims()}
+	svc := &RequestService{AbstractService: &AbstractService{db: client}, UsageLogService: &UsageLogService{ChannelService: channels}, metricClaims: newRequestMetricClaims()}
 	// These entities deliberately have no database client: labels must be resolved
 	// entirely from the cache, including a cache miss for a disabled/deleted channel.
-	svc.recordChatRequestMetrics(ctx, &ent.Request{ID: 1, ChannelID: 7, Status: request.StatusProcessing}, request.StatusCompleted, nil)
-	svc.recordChatRequestMetrics(ctx, &ent.Request{ID: 2, ChannelID: 8, Status: request.StatusProcessing}, request.StatusFailed, nil)
+	svc.recordChatRequestMetrics(ctx, &ent.Request{ID: 1001, ChannelID: 7, Status: request.StatusProcessing}, request.StatusCompleted, nil)
+	svc.recordChatRequestMetrics(ctx, &ent.Request{ID: 1002, ChannelID: 8, Status: request.StatusProcessing}, request.StatusFailed, nil)
+	auditCtx := authz.WithTestBypass(ent.NewContext(ctx, client))
+	rt := client.Request.Create().SetModelID("voice").SetChannelID(7).SetFormat(llm.APIFormatOpenAIRealtime.String()).SetStatus(request.StatusProcessing).SetRequestBody([]byte("{}")).SaveX(auditCtx)
+	for range 2 {
+		require.NoError(t, svc.UpdateRealtimeAudit(auditCtx, rt, request.StatusCompleted, "response", nil, nil, nil))
+	}
 	var data metricdata.ResourceMetrics
 	require.NoError(t, reader.Collect(ctx, &data))
 	labels := map[string]string{}
+	counts := map[string]int64{}
 	for _, scope := range data.ScopeMetrics {
 		for _, m := range scope.Metrics {
 			if m.Name != "chat_request_count" {
@@ -52,8 +60,10 @@ func TestRequestMetricsUseCachedChannel(t *testing.T) {
 				id, _ := point.Attributes.Value("channel_id")
 				name, _ := point.Attributes.Value("channel_name")
 				labels[id.AsString()] = name.AsString()
+				counts[id.AsString()] = point.Value
 			}
 		}
 	}
 	require.Equal(t, map[string]string{"7": "cached-channel", "8": ""}, labels)
+	require.Equal(t, map[string]int64{"7": 2, "8": 1}, counts)
 }
