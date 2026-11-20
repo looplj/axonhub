@@ -299,6 +299,7 @@ func TestSendQueueBlockedProducerResumesWithoutDropping(t *testing.T) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
+				t.Errorf("session test worker panic: %T", r)
 				sent <- result{err: fmt.Errorf("panic: %T", r)}
 			}
 		}()
@@ -338,6 +339,7 @@ func TestSessionSlowClientBoundedBackpressure(t *testing.T) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
+				t.Errorf("session test worker panic: %T", r)
 				done <- fmt.Errorf("panic: %T", r)
 			}
 		}()
@@ -374,6 +376,7 @@ func TestRejectedClientEventPreservesCorrelation(t *testing.T) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
+				t.Errorf("session test worker panic: %T", r)
 				done <- fmt.Errorf("panic: %T", r)
 			}
 		}()

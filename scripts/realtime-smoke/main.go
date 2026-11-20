@@ -98,8 +98,8 @@ func run() error {
 			}
 			if kind == "response.done" {
 				body, _ := event["response"].(map[string]any)
-				if body["usage"] == nil {
-					return nil, errors.New("response.done has unknown usage")
+				if err := checkCompletedResponse(body); err != nil {
+					return nil, err
 				}
 				usage, _ := json.Marshal(body["usage"])
 				fmt.Println("confirmed usage", string(usage))
@@ -219,4 +219,14 @@ func run() error {
 	}
 	fmt.Println("PASS function call, result and continuation")
 	return conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "smoke complete"), time.Now().Add(time.Second))
+}
+
+func checkCompletedResponse(body map[string]any) error {
+	if body["status"] != "completed" {
+		return errors.New("response.done did not report completed status")
+	}
+	if body["usage"] == nil {
+		return errors.New("response.done has unknown usage")
+	}
+	return nil
 }
