@@ -12,7 +12,8 @@ const code = ts
     "import { getTokenFromStorage, useAuthStore } from '@/stores/authStore';",
     `const getTokenFromStorage = () => globalThis.sessionToken;
    const useAuthStore = { getState: () => ({ auth: { setAccessToken: value => { globalThis.sessionToken = value; } } }) };`
-  );
+  )
+  .replace("'@/lib/app-path'", JSON.stringify(new URL('./app-path.ts', import.meta.url).href));
 let moduleIndex = 0;
 const makeToken = (seconds, authTime = true) =>
   `header.${Buffer.from(
@@ -22,13 +23,15 @@ const makeToken = (seconds, authTime = true) =>
     })
   ).toString('base64url')}.signature`;
 
-async function setup(t, token = makeToken(86400)) {
-  const previous = { window: globalThis.window, fetch: globalThis.fetch, token: globalThis.sessionToken };
+async function setup(t, token = makeToken(86400), basePath = '') {
+  const previous = { window: globalThis.window, document: globalThis.document, fetch: globalThis.fetch, token: globalThis.sessionToken };
   const events = new Map();
   globalThis.window = { addEventListener: (event, listener) => events.set(event, listener) };
+  globalThis.document = { querySelector: () => ({ content: basePath }) };
   globalThis.sessionToken = token;
   t.after(() => {
     globalThis.window = previous.window;
+    globalThis.document = previous.document;
     globalThis.fetch = previous.fetch;
     globalThis.sessionToken = previous.token;
   });
@@ -45,12 +48,12 @@ test('background requests do not renew a session', async (t) => {
 });
 
 test('active concurrent requests share renewal and persist the new token', async (t) => {
-  const session = await setup(t);
+  const session = await setup(t, makeToken(86400), '/apps/axonhub');
   session.activate();
   let resolve;
   let calls = 0;
   globalThis.fetch = (url, options) => {
-    assert.equal(url, '/admin/auth/refresh');
+    assert.equal(url, '/apps/axonhub/admin/auth/refresh');
     assert.equal(options.headers.Authorization, `Bearer ${session.token}`);
     calls++;
     return new Promise((done) => {

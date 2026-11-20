@@ -2,6 +2,7 @@
 // 关联文件:
 //   frontend/src/lib/auth-redirect.ts
 //   frontend/src/lib/auth-session.ts
+//   frontend/src/lib/app-path.ts
 //   frontend/src/stores/authStore.ts
 //   frontend/src/main.tsx
 //   frontend/src/locales/en.json
@@ -13,7 +14,8 @@
 //   回调页上的未登录请求会返回 401；按过期会话处理会打断 OIDC exchange。
 import { toast } from 'sonner';
 import { getTokenFromStorage, removeTokenFromStorage } from '@/stores/authStore';
-import { shouldRedirectUnauthorizedToSignIn } from '@/lib/auth-redirect';
+import { appPath } from '@/lib/app-path';
+import { getSafeRedirect, shouldRedirectUnauthorizedToSignIn } from '@/lib/auth-redirect';
 import { ensureFreshAccessToken } from '@/lib/auth-session';
 import i18n from '@/lib/i18n';
 
@@ -47,7 +49,7 @@ export function extractOperationName(query: string): string | undefined {
   return undefined;
 }
 
-export const GRAPHQL_ENDPOINT = '/admin/graphql';
+export const GRAPHQL_ENDPOINT = appPath('/admin/graphql');
 
 function isForbiddenGraphQLError(error: any): boolean {
   return error?.extensions?.code === 'FORBIDDEN' || error?.message?.toLowerCase().includes('permission denied');
@@ -59,11 +61,8 @@ export function isUnauthorizedGraphQLError(error: any): boolean {
 
 function redirectToSignIn() {
   const { pathname, search, hash } = window.location;
-  if (pathname.startsWith('/sign-in')) {
-    window.location.href = '/sign-in';
-    return;
-  }
-  window.location.href = `/sign-in?redirect=${encodeURIComponent(pathname + search + hash)}`;
+  const redirect = getSafeRedirect(pathname + search + hash);
+  window.location.href = appPath(redirect ? `/sign-in?redirect=${encodeURIComponent(redirect)}` : '/sign-in');
 }
 
 function abandonSessionForSignIn(token: string) {

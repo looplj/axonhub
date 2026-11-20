@@ -10,7 +10,9 @@ server:
   # means forwarded client IP headers are ignored and the TCP peer is used.
   trusted_proxies: []            # (env: AXONHUB_SERVER_TRUSTED_PROXIES)
   name: "AxonHub"               # Server name (env: AXONHUB_SERVER_NAME)
-  base_path: ""                 # Base path for API routes (env: AXONHUB_SERVER_BASE_PATH)
+  # Mount the dashboard and all HTTP API routes under a prefix, e.g. "/axonhub".
+  # Forward the full request path through the reverse proxy. Restart to apply changes.
+  base_path: ""                 # Empty serves at the root (env: AXONHUB_SERVER_BASE_PATH)
   # pid_file: "~/.config/axonhub/axonhub.pid"  # PID file for axonhub reload (env: AXONHUB_SERVER_PID_FILE)
   request_timeout: "30s"        # Request timeout duration (env: AXONHUB_SERVER_REQUEST_TIMEOUT)
   llm_request_timeout: "600s"   # Non-streaming LLM total timeout; 0 disables (env: AXONHUB_SERVER_LLM_REQUEST_TIMEOUT)

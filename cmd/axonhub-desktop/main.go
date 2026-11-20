@@ -105,6 +105,7 @@ func openDesktop(shell *shell, dir, configPath string) error {
 		return err
 	}
 	shell.origin = strings.TrimRight(started.baseURL, "/")
+	shell.basePath = started.basePath
 	if settings, err := readDesktopSettings(configPath); err == nil && settings.LAN {
 		shell.lanPort = settings.Port
 	}
@@ -128,8 +129,9 @@ func applicationMenu() *mygo.Menu {
 // desktopServer is the running server: where it listens, and the services
 // that make the desktop account ready in its database.
 type desktopServer struct {
-	baseURL string
-	account desktopAccount
+	baseURL  string
+	basePath string
+	account  desktopAccount
 }
 
 type desktopStart struct {
@@ -200,8 +202,9 @@ func startServer() (desktopServer, *serverStop, error) {
 						}
 						started <- desktopStart{
 							server: desktopServer{
-								baseURL: "http://" + addr,
-								account: desktopAccount{client: client, projects: projectSvc},
+								baseURL:  "http://" + addr + srv.Config.BasePath,
+								basePath: srv.Config.BasePath,
+								account:  desktopAccount{client: client, projects: projectSvc},
 							},
 						}
 						return nil

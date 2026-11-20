@@ -4,10 +4,13 @@
 //   frontend/src/main.tsx
 //   frontend/src/components/command-menu.tsx
 //   frontend/src/routes/oauth/oidc/idp-callback.tsx
-//   frontend/src/features/auth/data/auth.ts
+//   frontend/src/lib/app-path.ts
 // 注意事项:
 //   未携带凭证的 401 不是过期会话，不能跳转 /sign-in。
 //   路径以 /oauth/ 开头时，401 必须留在当前页。离开页面会取消 /oauth/oidc/exchange。
+//   登录回跳使用浏览器路径，必须位于当前部署路径内。
+import { appRoutePath } from './app-path.ts';
+
 const OIDC_REDIRECT_KEY = 'axonhub:oidc-redirect';
 
 export function isAuthExchangePath(pathname: string): boolean {
@@ -17,7 +20,7 @@ export function isAuthExchangePath(pathname: string): boolean {
 // Only a request that presented a credential, on a page that is not itself
 // finishing login, should abandon the session and open the sign-in page.
 export function shouldRedirectUnauthorizedToSignIn(token: string, pathname: string): boolean {
-  return token.length > 0 && !isAuthExchangePath(pathname);
+  return token.length > 0 && !isAuthExchangePath(appRoutePath(pathname) ?? '');
 }
 
 // Resolve browser URL normalization before allowing a local return destination.
@@ -28,11 +31,14 @@ export function getSafeRedirect(redirect?: string): string | undefined {
 
   try {
     const url = new URL(redirect, window.location.origin);
-    if (url.origin !== window.location.origin || decodeURIComponent(url.pathname).startsWith('/sign-in')) {
-      return undefined;
-    }
+    const routePath = appRoutePath(url.pathname);
     // A normalized path beginning with // would be reinterpreted as a host.
-    if (url.pathname.startsWith('//')) {
+    if (
+      url.origin !== window.location.origin ||
+      !routePath ||
+      routePath.startsWith('//') ||
+      decodeURIComponent(routePath).startsWith('/sign-in')
+    ) {
       return undefined;
     }
     return `${url.pathname}${url.search}${url.hash}`;

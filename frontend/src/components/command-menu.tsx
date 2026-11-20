@@ -11,7 +11,7 @@
 // 注意事项:
 //   /oauth/ 不能挂载本组件。挂载后会请求 PluginUIEntries，401 会把 OIDC 回调页带走。
 import React from 'react';
-import { useNavigate, useRouter } from '@tanstack/react-router';
+import { useLocation, useNavigate, useRouter } from '@tanstack/react-router';
 import { IconArrowRightDashed, IconChevronRight, IconDeviceLaptop, IconMoon, IconSun } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { isAuthExchangePath } from '@/lib/auth-redirect';
@@ -133,6 +133,7 @@ function CommandMenuContent({
 
 export function CommandMenu() {
   const router = useRouter();
+  const currentPath = useLocation({ select: (location) => location.pathname });
   const { open, setOpen } = useSearch();
 
   // Don't render if router is not available
@@ -143,7 +144,6 @@ export function CommandMenu() {
   // Don't render on auth pages. The command menu loads plugin navigation
   // from /admin/graphql, and a 401 there would leave the OIDC callback
   // before /oauth/oidc/exchange runs.
-  const currentPath = window.location.pathname;
   if (
     currentPath.startsWith('/sign-in') ||
     currentPath.startsWith('/sign-up') ||

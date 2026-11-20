@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { getTokenFromStorage } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
+import { appPath } from '@/lib/app-path';
 import { ensureFreshAccessToken } from '@/lib/auth-session';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { extractNumberID } from '@/lib/utils';
@@ -259,7 +260,7 @@ export default function RequestDetailPage() {
           setPreviewRequest(null);
           return;
         }
-        const response = await fetch(`/admin/requests/${encodeURIComponent(requestIdNumber)}/preview`, {
+        const response = await fetch(appPath(`/admin/requests/${encodeURIComponent(requestIdNumber)}/preview`), {
           headers: {
             Authorization: `Bearer ${currentToken}`,
             'X-Project-ID': selectedProjectId,

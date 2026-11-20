@@ -7,6 +7,13 @@ import tanstackRouter from '@tanstack/router-plugin/vite';
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
+  experimental: {
+    // Keep Vite preview working on deep routes. The server prefixes these URLs when it serves index.html.
+    renderBuiltUrl(filename, { hostType }) {
+      if (hostType === 'html') return `/${filename}`;
+    },
+  },
   plugins: [
     tanstackRouter({
       target: 'react',

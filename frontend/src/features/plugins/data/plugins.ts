@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { graphqlRequest } from '@/gql/graphql';
+import { GRAPHQL_ENDPOINT, graphqlRequest } from '@/gql/graphql';
 import { toast } from 'sonner';
 import { ensureFreshAccessToken } from '@/lib/auth-session';
 import i18n from '@/lib/i18n';
@@ -277,7 +277,7 @@ export async function installPlugin(
   const token = await ensureFreshAccessToken();
   const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch('/admin/graphql', {
+  const response = await fetch(GRAPHQL_ENDPOINT, {
     method: 'POST',
     headers,
     body: formData,

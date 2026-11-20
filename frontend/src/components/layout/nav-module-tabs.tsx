@@ -1,5 +1,6 @@
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { firstNavLink } from '@/sidebar';
+import { appPath } from '@/lib/app-path';
 import { cn } from '@/lib/utils';
 import { useSidebarPrefsStore } from '@/stores/sidebarPrefsStore';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -47,7 +48,7 @@ export function NavModuleTabs({ modules, activeModuleId, variant = 'header', cla
   const openModule = (module: NavModule) => {
     const lastPath = lastModulePaths[module.id];
     if (lastPath && isPathInModule(module, lastPath)) {
-      router.history.push(lastPath);
+      router.history.push(appPath(lastPath));
       return;
     }
 

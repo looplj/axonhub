@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Copy, Eye, EyeOff, AlertTriangle, Link, CheckIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { getBasePath } from '@/lib/app-path';
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -50,7 +51,8 @@ export function ApiKeysViewDialog() {
   const apiKey = selectedApiKey?.key || '';
   const maskedApiKey = selectedApiKey?.key ? selectedApiKey.key.slice(0, 3) + '...' + selectedApiKey.key.slice(-4) : '';
 
-  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8090';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8090';
+  const serverURL = origin + getBasePath();
 
   // The key detail carries the active profile's model allowlist, which the list row omits.
   const detailApiKeyId = isDialogOpen.view ? (selectedApiKey?.id ?? '') : '';
@@ -68,19 +70,19 @@ export function ApiKeysViewDialog() {
       .filter((model) => modelIDs.length === 0 || modelIDs.includes(model.modelID));
 
     return {
-      config: buildPiModelsConfig({ origin: currentOrigin, apiKey, models }),
-      masked: buildPiModelsConfig({ origin: currentOrigin, apiKey: maskedApiKey, models }),
+      config: buildPiModelsConfig({ baseUrl: `${serverURL}/v1`, apiKey, models }),
+      masked: buildPiModelsConfig({ baseUrl: `${serverURL}/v1`, apiKey: maskedApiKey, models }),
     };
-  }, [detailApiKeyId, apiKeyDetail, enabledModels, currentOrigin, apiKey, maskedApiKey]);
+  }, [detailApiKeyId, apiKeyDetail, enabledModels, serverURL, apiKey, maskedApiKey]);
 
   const piConfigCode = useMemo(
     () =>
       piConfig && {
-        baseUrl: `${currentOrigin}/v1`,
+        baseUrl: `${serverURL}/v1`,
         display: serializePiModelsConfig(piConfig.masked),
         real: serializePiModelsConfig(piConfig.config),
       },
-    [piConfig, currentOrigin]
+    [piConfig, serverURL]
   );
 
   // Highlighting a full model list is expensive, so cache it per rendered content.
@@ -105,7 +107,7 @@ export function ApiKeysViewDialog() {
 
     return {
       codex: {
-        baseUrl: `${currentOrigin}/v1`,
+        baseUrl: `${serverURL}/v1`,
         display: `# Set your API key as an environment variable
 export AXONHUB_API_KEY="${maskedApiKey}"
 
@@ -115,7 +117,7 @@ model_provider = "axonhub-responses"
 
 [model_providers.axonhub-responses]
 name = "AxonHub using Chat Completions"
-base_url = "${currentOrigin}/v1"
+base_url = "${serverURL}/v1"
 env_key = "AXONHUB_API_KEY"
 wire_api = "responses"
 query_params = {}
@@ -130,7 +132,7 @@ model_provider = "axonhub-responses"
 
 [model_providers.axonhub-responses]
 name = "AxonHub using Chat Completions"
-base_url = "${currentOrigin}/v1"
+base_url = "${serverURL}/v1"
 env_key = "AXONHUB_API_KEY"
 wire_api = "responses"
 query_params = {}
@@ -140,12 +142,12 @@ query_params = {}
       ...(showCodexCompatibility
         ? {
             codexCompatibility: {
-              baseUrl: `${currentOrigin}/codex`,
+              baseUrl: `${serverURL}/codex`,
               display: `# \${HOME}/.codex/config.toml
 model = "gpt-6.1-sol"
 model_provider = "openai"
-openai_base_url = "${currentOrigin}/codex"
-chatgpt_base_url = "${currentOrigin}/codex"
+openai_base_url = "${serverURL}/codex"
+chatgpt_base_url = "${serverURL}/codex"
 web_search = "live"
 
 [features]
@@ -159,13 +161,13 @@ context_management = true
 }
 
 # In the same shell that starts Codex (macOS/Linux)
-export CODEX_AUTHAPI_BASE_URL="${currentOrigin}/codex"
-# Windows: add CODEX_AUTHAPI_BASE_URL=${currentOrigin}/codex in System Environment Variables`,
+export CODEX_AUTHAPI_BASE_URL="${serverURL}/codex"
+# Windows: add CODEX_AUTHAPI_BASE_URL=${serverURL}/codex in System Environment Variables`,
               real: `# \${HOME}/.codex/config.toml
 model = "gpt-6.1-sol"
 model_provider = "openai"
-openai_base_url = "${currentOrigin}/codex"
-chatgpt_base_url = "${currentOrigin}/codex"
+openai_base_url = "${serverURL}/codex"
+chatgpt_base_url = "${serverURL}/codex"
 web_search = "live"
 
 [features]
@@ -179,43 +181,43 @@ context_management = true
 }
 
 # In the same shell that starts Codex (macOS/Linux)
-export CODEX_AUTHAPI_BASE_URL="${currentOrigin}/codex"
-# Windows: add CODEX_AUTHAPI_BASE_URL=${currentOrigin}/codex in System Environment Variables`,
+export CODEX_AUTHAPI_BASE_URL="${serverURL}/codex"
+# Windows: add CODEX_AUTHAPI_BASE_URL=${serverURL}/codex in System Environment Variables`,
             },
           }
         : {}),
       claudeCode: {
-        baseUrl: `${currentOrigin}/anthropic`,
+        baseUrl: `${serverURL}/anthropic`,
         display: `# In your terminal, set the API key
 export ANTHROPIC_AUTH_TOKEN="${maskedApiKey}"
-export ANTHROPIC_BASE_URL="${currentOrigin}/anthropic"
+export ANTHROPIC_BASE_URL="${serverURL}/anthropic"
 
 # Then launch Claude Code
 claude
 
 # Or use the --api-key flag with the base URL
-claude --api-key "${maskedApiKey}" --base-url "${currentOrigin}/anthropic" "Hello, Claude!"
+claude --api-key "${maskedApiKey}" --base-url "${serverURL}/anthropic" "Hello, Claude!"
 
 # The configuration will be stored in ~/.config/claude/config.json`,
         real: `# In your terminal, set the API key
 export ANTHROPIC_AUTH_TOKEN="${apiKey}"
-export ANTHROPIC_BASE_URL="${currentOrigin}/anthropic"
+export ANTHROPIC_BASE_URL="${serverURL}/anthropic"
 
 # Then launch Claude Code
 claude
 
 # Or use the --api-key flag with the base URL
-claude --api-key "${apiKey}" --base-url "${currentOrigin}/anthropic" "Hello, Claude!"
+claude --api-key "${apiKey}" --base-url "${serverURL}/anthropic" "Hello, Claude!"
 
 # The configuration will be stored in ~/.config/claude/config.json`,
       },
       anthropicSDK: {
-        baseUrl: `${currentOrigin}/anthropic`,
+        baseUrl: `${serverURL}/anthropic`,
         display: `from anthropic import Anthropic
 
 client = Anthropic(
     api_key="${maskedApiKey}",
-    base_url="${currentOrigin}/anthropic"
+    base_url="${serverURL}/anthropic"
 )
 
 message = client.messages.create(
@@ -234,7 +236,7 @@ print(message.content)`,
 
 client = Anthropic(
     api_key="${apiKey}",
-    base_url="${currentOrigin}/anthropic"
+    base_url="${serverURL}/anthropic"
 )
 
 message = client.messages.create(
@@ -251,12 +253,12 @@ message = client.messages.create(
 print(message.content)`,
       },
       openAISDK: {
-        baseUrl: `${currentOrigin}/v1`,
+        baseUrl: `${serverURL}/v1`,
         display: `from openai import OpenAI
 
 client = OpenAI(
     api_key="${maskedApiKey}",
-    base_url="${currentOrigin}/v1"
+    base_url="${serverURL}/v1"
 )
 
 response = client.responses.create(
@@ -269,7 +271,7 @@ print(response.output_text)`,
 
 client = OpenAI(
     api_key="${apiKey}",
-    base_url="${currentOrigin}/v1"
+    base_url="${serverURL}/v1"
 )
 
 response = client.responses.create(
@@ -280,13 +282,13 @@ response = client.responses.create(
 print(response.output_text)`,
       },
       geminiSDK: {
-        baseUrl: `${currentOrigin}/gemini`,
+        baseUrl: `${serverURL}/gemini`,
         display: `from google import genai
 from google.genai import types
 
 client = genai.Client(
     api_key="${maskedApiKey}",
-    base_url="${currentOrigin}/gemini"
+    base_url="${serverURL}/gemini"
 )
 
 response = client.models.generate_content(
@@ -304,7 +306,7 @@ from google.genai import types
 
 client = genai.Client(
     api_key="${apiKey}",
-    base_url="${currentOrigin}/gemini"
+    base_url="${serverURL}/gemini"
 )
 
 response = client.models.generate_content(
@@ -319,7 +321,7 @@ response = client.models.generate_content(
 print(response.text)`,
       },
     };
-  }, [selectedApiKey?.key, apiKey, maskedApiKey, showCodexCompatibility]);
+  }, [selectedApiKey?.key, apiKey, maskedApiKey, serverURL, showCodexCompatibility]);
 
   useEffect(() => {
     if (!showCodexCompatibility && activeExampleTab === 'codexCompatibility') {

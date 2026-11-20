@@ -72,7 +72,7 @@ func newCodexRouteHarness(t *testing.T) *codexRouteHarness {
 	h.openAI = openAI
 	router := gin.New()
 	router.Use(middleware.WithEntClient(db))
-	router.NoRoute(static.Handler())
+	router.NoRoute(static.Handler(""))
 	timeout := time.Second
 	if os.Getenv("AXONHUB_CODEX_LIVE_QA") == "1" {
 		timeout = 90 * time.Second

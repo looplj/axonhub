@@ -77,7 +77,7 @@ func (h *OIDCHandlers) GetAuthorizeURL(c *gin.Context) {
 		return
 	}
 
-	baseURL, err := h.getBaseURL()
+	baseURL, err := h.getBaseURL(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -114,7 +114,7 @@ func (h *OIDCHandlers) GetLinkAuthorizeURL(c *gin.Context) {
 
 	userID := user.ID
 
-	baseURL, err := h.getBaseURL()
+	baseURL, err := h.getBaseURL(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -166,7 +166,7 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 		return
 	}
 
-	baseURL, err := h.getBaseURL()
+	baseURL, err := h.getBaseURL(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -187,7 +187,7 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 	c.Redirect(http.StatusFound, baseURL+"/oauth/oidc/idp-callback?code="+exchangeCode)
 }
 
-func (h *OIDCHandlers) getBaseURL() (string, error) {
+func (h *OIDCHandlers) getBaseURL(ctx context.Context) (string, error) {
 	baseURL := strings.TrimSpace(h.publicURL)
 	if baseURL == "" {
 		return "", errOIDCPublicURLRequired
@@ -201,7 +201,11 @@ func (h *OIDCHandlers) getBaseURL() (string, error) {
 		return "", fmt.Errorf("server.public_url must use http or https")
 	}
 
-	return strings.TrimSuffix(baseURL, "/"), nil
+	baseURL = strings.TrimSuffix(baseURL, "/")
+	if path := parsed.EscapedPath(); path == "" || path == "/" {
+		baseURL += contexts.GetBasePath(ctx)
+	}
+	return baseURL, nil
 }
 
 func (h *OIDCHandlers) Exchange(c *gin.Context) {

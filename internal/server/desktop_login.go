@@ -16,6 +16,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
+
+	"github.com/looplj/axonhub/internal/contexts"
 )
 
 const (
@@ -42,8 +44,8 @@ var (
 // protocol-relative (a leading //), a scheme, a host, or userinfo (@), and
 // must not contain a backslash, a control character, or a space. "//" later
 // in the path is allowed, so an encoded request id is a valid next path.
-// cmd/axonhub-desktop calls this and opens the path on the loopback origin;
-// GET DesktopLoginPath redeems it.
+// cmd/axonhub-desktop opens the handoff on the loopback URL with its configured
+// base path. The redeem handler resolves nextPath relative to that base path.
 func MintDesktopLogin(token, projectID, nextPath string) (string, error) {
 	if token == "" || projectID == "" {
 		return "", errDesktopLoginIdentity
@@ -79,7 +81,7 @@ func serveDesktopLogin(c *gin.Context) {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
-	page, err := desktopLoginPage(grant)
+	page, err := desktopLoginPage(grant, contexts.GetBasePath(c.Request.Context()))
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
@@ -92,7 +94,7 @@ func serveDesktopLogin(c *gin.Context) {
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(page))
 }
 
-func desktopLoginPage(grant desktopLoginGrant) (string, error) {
+func desktopLoginPage(grant desktopLoginGrant, basePath string) (string, error) {
 	tokenJS, err := jsString(grant.token)
 	if err != nil {
 		return "", err
@@ -101,7 +103,7 @@ func desktopLoginPage(grant desktopLoginGrant) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	nextJS, err := jsString(grant.nextPath)
+	nextJS, err := jsString(basePath + grant.nextPath)
 	if err != nil {
 		return "", err
 	}

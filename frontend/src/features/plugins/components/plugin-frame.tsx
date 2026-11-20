@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useSelectedProjectId } from '@/stores/projectStore';
+import { appPath } from '@/lib/app-path';
 import { ensureFreshAccessToken } from '@/lib/auth-session';
 import { useTheme } from '@/context/theme-context';
 import { Button } from '@/components/ui/button';
@@ -229,7 +230,8 @@ function PluginFrameAttempt({
         return;
       }
       try {
-        routerRef.current.history.push(call.params.path);
+        const path = new URL(call.params.path, window.location.origin);
+        routerRef.current.history.push(appPath(path.pathname + path.search + path.hash));
       } catch {
         reply({ ok: false, error: bridgeError('INTERNAL') });
         return;
@@ -275,7 +277,7 @@ function PluginFrameAttempt({
         if (requestProjectId) {
           headers['X-Project-ID'] = requestProjectId;
         }
-        const response = await fetch(`/admin/plugins/${encodeURIComponent(requestPluginId)}/fetch`, {
+        const response = await fetch(appPath(`/admin/plugins/${encodeURIComponent(requestPluginId)}/fetch`), {
           method: 'POST',
           headers,
           body: JSON.stringify(outbound),
@@ -361,7 +363,7 @@ function PluginFrameAttempt({
       if (requestProjectId) {
         headers['X-Project-ID'] = requestProjectId;
       }
-      const response = await fetch(`/admin/plugins/${encodeURIComponent(requestPluginId)}/graphql`, {
+      const response = await fetch(appPath(`/admin/plugins/${encodeURIComponent(requestPluginId)}/graphql`), {
         method: 'POST',
         headers,
         body: JSON.stringify({ query, variables, operationName }),

@@ -9,9 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -333,4 +335,36 @@ func TestDashboardUsageAggregatesNullableCostAndDeletedChannel(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, requestStats, 1)
 	require.Equal(t, "channel-a", requestStats[0].ChannelName)
+}
+
+func TestUsageStatsByUserUsesProjectOwnerPolicy(t *testing.T) {
+	resolver, setupCtx := newDashboardUsageTestResolver(t)
+	client := resolver.client
+	project := client.Project.Create().SetName("owned project").SaveX(setupCtx)
+	otherProject := client.Project.Create().SetName("other project").SaveX(setupCtx)
+	owner := client.User.Create().SetEmail("owner@example.com").SetPassword("password").SaveX(setupCtx)
+	member := client.User.Create().SetEmail("member@example.com").SetPassword("password").SaveX(setupCtx)
+	client.UserProject.Create().SetUserID(owner.ID).SetProjectID(project.ID).SetIsOwner(true).SaveX(setupCtx)
+	client.UserProject.Create().SetUserID(member.ID).SetProjectID(project.ID).SaveX(setupCtx)
+	key := client.APIKey.Create().SetName("member key").SetKey("dashboard-key").
+		SetUserID(member.ID).SetProjectID(project.ID).SaveX(setupCtx)
+	for _, projectID := range []int{project.ID, otherProject.ID} {
+		client.UsageLog.Create().SetRequestID(1).SetProjectID(projectID).
+			SetAPIKeyID(key.ID).SetModelID("model-a").SetTotalTokens(12).SaveX(setupCtx)
+	}
+
+	asUser := func(id int) context.Context {
+		currentUser := client.User.Query().Where(user.IDEQ(id)).WithProjectUsers().OnlyX(setupCtx)
+		ctx := authz.NewUserContext(ent.NewContext(t.Context(), client), id)
+		return contexts.WithProjectID(contexts.WithUser(ctx, currentUser), project.ID)
+	}
+	stats, err := resolver.UsageStatsByUser(asUser(owner.ID), nil)
+	require.NoError(t, err)
+	require.Len(t, stats, 1)
+	require.Equal(t, member.ID, stats[0].UserID.ID)
+	require.Equal(t, 1, stats[0].RequestCount)
+	require.Equal(t, 12, stats[0].TotalTokens)
+
+	_, err = resolver.UsageStatsByUser(asUser(member.ID), nil)
+	require.ErrorContains(t, err, "only project owners")
 }
