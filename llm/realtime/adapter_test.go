@@ -8,8 +8,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/require"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestGAQwenSessionAndEvents(t *testing.T) {
@@ -110,4 +112,37 @@ func TestQwenErrorRedactionRetainsRejectedEventID(t *testing.T) {
 		require.NoError(t, err)
 		require.JSONEq(t, `{"type":"error","event_id":"server-event","error":{"event_id":"client-event","type":"invalid_request_error","code":"upstream_error","message":"The Qwen Realtime service rejected an event."}}`, string(raw))
 	}
+}
+
+func TestQwenUnrelatedErrorPreservesPendingAudioRates(t *testing.T) {
+	a, err := NewAdapter("qwen3.5-omni-flash-realtime", true)
+	require.NoError(t, err)
+	const session = `{"modalities":["text","audio"],"audio":{"input":{"format":{"type":"pcm","sample_rate":16000}},"output":{"format":{"type":"pcm","sample_rate":24000}}},"turn_detection":null}`
+	_, err = a.Client([]byte(`{"type":"session.update","event_id":"new-rate","session":` + session + `}`))
+	require.NoError(t, err)
+	_, err = a.Server([]byte(`{"type":"error","error":{"event_id":"earlier-commit"}}`))
+	require.NoError(t, err)
+	_, err = a.Server([]byte(`{"type":"session.updated","session":` + session + `}`))
+	require.NoError(t, err)
+
+	previousRate := strings.Replace(session, "16000", "24000", 1)
+	_, err = a.Client([]byte(`{"type":"session.update","event_id":"rejected-rate","session":` + previousRate + `}`))
+	require.NoError(t, err)
+	_, err = a.Server([]byte(`{"type":"error","error":{"event_id":"rejected-rate"}}`))
+	require.NoError(t, err)
+	require.Equal(t, 16000, a.inputRate)
+}
+
+func TestQwenReplaysGAAssistantText(t *testing.T) {
+	const frame = `{"type":"conversation.item.create","item":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Earlier answer"}]}}`
+	a, err := NewAdapter("qwen3.8-omni-flash-realtime", false)
+	require.NoError(t, err)
+	wire, err := a.Client([]byte(frame))
+	require.NoError(t, err)
+	require.JSONEq(t, `{"type":"conversation.item.create","item":{"type":"message","role":"assistant","content":[{"type":"text","text":"Earlier answer"}]}}`, string(wire))
+
+	native, err := NewAdapter("qwen3.8-omni-flash-realtime", true)
+	require.NoError(t, err)
+	_, err = native.Client([]byte(frame))
+	require.Error(t, err)
 }

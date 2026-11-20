@@ -66,14 +66,14 @@ func TestRealtimeShutdownDrainsBeforeServicesStop(t *testing.T) {
 	finished := make(chan struct{})
 	go func() {
 		defer func() {
-			if recover() != nil {
-				close(finished)
+			if recovered := recover(); recovered != nil {
+				t.Errorf("shutdown worker panicked: %v", recovered)
 			}
+			close(finished)
 		}()
 		<-ctx.Done()
 		time.Sleep(20 * time.Millisecond)
 		release()
-		close(finished)
 	}()
 	stopCtx, stopCancel := context.WithTimeout(context.Background(), time.Second)
 	defer stopCancel()

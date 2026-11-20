@@ -346,6 +346,8 @@ type realtimeResponse struct {
 }
 type RealtimeConversation struct {
 	pendingConfigurationID string
+	pendingClearID         string
+	clearingInput          *realtimeResponse
 	auditsCreated          int
 	pendingInput           *realtimeResponse
 	pendingResponses       []*realtimeResponse
@@ -442,14 +444,31 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 	if kind != "session.update" && !c.state.Ready() {
 		return nil, errors.New("session configuration pending")
 	}
-	if kind == "session.update" {
+	var eventID string
+	if kind == "session.update" || kind == "response.create" || kind == "input_audio_buffer.clear" {
+		eventID = gjson.GetBytes(data, "event_id").String()
+		if eventID == "" {
+			eventID = "evt_axonhub_" + uuid.NewString()
+			var err error
+			data, err = sjson.SetBytes(data, "event_id", eventID)
+			if err != nil {
+				return nil, errors.New("could not assign realtime event ID")
+			}
+		}
+	}
+	if kind == "session.update" || kind == "input_audio_buffer.clear" {
 		c.mu.Lock()
 		defer c.mu.Unlock()
-		if c.hasPendingCreate(gjson.GetBytes(data, "event_id").String()) {
+		if c.hasPendingCreate(eventID) || eventID == c.pendingClearID {
 			return nil, errors.New("realtime event ID is already pending")
 		}
-		if err := c.state.Update(); err != nil {
-			return nil, err
+		if kind == "input_audio_buffer.clear" && c.pendingClearID != "" {
+			return nil, errors.New("audio buffer clear is pending")
+		}
+		if kind == "session.update" {
+			if err := c.state.Update(); err != nil {
+				return nil, err
+			}
 		}
 	}
 	wire, err := c.adapter.Client(data)
@@ -459,22 +478,14 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 		}
 		return nil, err
 	}
-	var eventID string
-	if kind == "session.update" || kind == "response.create" {
-		eventID = gjson.GetBytes(wire, "event_id").String()
-		if eventID == "" {
-			eventID = "evt_axonhub_" + uuid.NewString()
-			wire, err = sjson.SetBytes(wire, "event_id", eventID)
-			if err != nil {
-				if kind == "session.update" {
-					c.state.ConfigurationRejected()
-				}
-				return nil, errors.New("could not assign realtime event ID")
-			}
-		}
-	}
-	if kind == "session.update" {
+	switch kind {
+	case "session.update":
 		c.pendingConfigurationID = eventID
+	case "input_audio_buffer.clear":
+		c.pendingClearID = eventID
+		c.clearingInput = c.pendingInput
+		c.pendingInput = nil
+		c.audioBytes = 0
 	}
 	if kind == "response.create" || kind == "input_audio_buffer.append" {
 		c.checkMu.Lock()
@@ -484,7 +495,7 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 		}
 		c.checkMu.Unlock()
 		c.mu.Lock()
-		if eventID != "" && (eventID == c.pendingConfigurationID || c.hasPendingCreate(eventID)) {
+		if eventID != "" && (eventID == c.pendingConfigurationID || eventID == c.pendingClearID || c.hasPendingCreate(eventID)) {
 			c.mu.Unlock()
 			return nil, errors.New("realtime event ID is already pending")
 		}
@@ -523,7 +534,7 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 			return nil, rt.ErrBackpressure
 		}
 	}
-	if kind == "input_audio_buffer.clear" || kind == "input_audio_buffer.commit" {
+	if kind == "input_audio_buffer.commit" {
 		c.mu.Lock()
 		c.audioBytes = 0
 		c.mu.Unlock()
@@ -551,14 +562,10 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	if err := c.state.ObserveServer(kind, len(c.pendingResponses) > 0 || c.pendingInput != nil); err != nil {
 		return nil, err
 	}
-	if kind == "input_audio_buffer.cleared" && c.pendingInput != nil {
-		clearCtx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 5*time.Second)
-		defer cancel()
-		pending := c.pendingInput
-		if err := c.service.Requests.UpdateRealtimeAudit(clearCtx, pending.request, request.StatusCanceled, "", map[string]any{"realtime": true, "input_discarded_before_response": true, "usage_confirmed": false}, nil, nil); err != nil {
-			return nil, errors.New("realtime discarded-input audit failed")
+	if kind == "input_audio_buffer.cleared" {
+		if err := c.confirmAudioClear(); err != nil {
+			return nil, err
 		}
-		c.pendingInput = nil
 	}
 	if kind == "input_audio_buffer.committed" {
 		c.audioBytes = 0
@@ -647,6 +654,21 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	return c.aliasModel(converted), nil
 }
 
+// confirmAudioClear finalizes the audio reserved before the clear was sent.
+func (c *RealtimeConversation) confirmAudioClear() error {
+	if pending := c.clearingInput; pending != nil {
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 5*time.Second)
+		defer cancel()
+		summary := map[string]any{"realtime": true, "input_discarded_before_response": true, "usage_confirmed": false}
+		if err := c.service.Requests.UpdateRealtimeAudit(ctx, pending.request, request.StatusCanceled, "", summary, nil, nil); err != nil {
+			return errors.New("realtime discarded-input audit failed")
+		}
+	}
+	c.clearingInput = nil
+	c.pendingClearID = ""
+	return nil
+}
+
 // hasPendingCreate is called with c.mu held.
 func (c *RealtimeConversation) hasPendingCreate(eventID string) bool {
 	return eventID != "" && slices.ContainsFunc(c.pendingResponses, func(r *realtimeResponse) bool {
@@ -659,6 +681,11 @@ func (c *RealtimeConversation) hasPendingCreate(eventID string) bool {
 func (c *RealtimeConversation) rejectPendingEvent(eventID string) error {
 	if eventID == "" {
 		return nil
+	}
+	if eventID == c.pendingClearID {
+		// The adapter may already have reset its PCM buffer. Stop forwarding and
+		// let Close preserve both reservations for reconciliation.
+		return errors.New("upstream rejected realtime audio buffer clear")
 	}
 	if eventID == c.pendingConfigurationID {
 		c.state.ConfigurationRejected()
@@ -695,7 +722,10 @@ func (c *RealtimeConversation) admitResponse(id string) error {
 	if len(c.pendingResponses) > 0 {
 		r = c.pendingResponses[0]
 		c.pendingResponses = c.pendingResponses[1:]
-	} else if c.pendingInput != nil {
+	} else if c.clearingInput != nil {
+		r = c.clearingInput
+		c.clearingInput = nil
+	} else if c.pendingClearID == "" && c.pendingInput != nil {
 		r = c.pendingInput
 		c.pendingInput = nil
 	} else {
@@ -767,6 +797,9 @@ func (c *RealtimeConversation) Close() {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 10*time.Second)
 	defer cancel()
 	pending := append([]*realtimeResponse{}, c.pendingResponses...)
+	if c.clearingInput != nil {
+		pending = append(pending, c.clearingInput)
+	}
 	if c.pendingInput != nil {
 		pending = append(pending, c.pendingInput)
 	}
@@ -780,6 +813,8 @@ func (c *RealtimeConversation) Close() {
 	}
 	c.pendingResponses = nil
 	c.pendingInput = nil
+	c.clearingInput = nil
+	c.pendingClearID = ""
 	for id, r := range c.responses {
 		if r.auditFinalized {
 			continue
