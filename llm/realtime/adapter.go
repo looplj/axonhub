@@ -583,6 +583,12 @@ func (a *Adapter) Server(data []byte) ([]byte, error) {
 				return nil, err
 			}
 		}
+		if event.Type == "response.done" {
+			response, _ := e["response"].(map[string]any)
+			if redactQwenResponseError(response) {
+				return json.Marshal(e)
+			}
+		}
 		return data, nil
 	}
 	mapped, ok := serverTypes[event.Type]
@@ -609,11 +615,7 @@ func (a *Adapter) Server(data []byte) ([]byte, error) {
 		convertContent(part)
 	}
 	if response, ok := e["response"].(map[string]any); ok {
-		if details, ok := response["status_details"].(map[string]any); ok {
-			if _, exists := details["error"]; exists {
-				details["error"] = map[string]any{"type": "server_error", "code": "upstream_error", "message": "The Qwen Realtime response failed."}
-			}
-		}
+		redactQwenResponseError(response)
 		if response["status"] == "canceled" {
 			response["status"] = "cancelled"
 		}
@@ -650,6 +652,17 @@ func (a *Adapter) Server(data []byte) ([]byte, error) {
 	}
 	return json.Marshal(e)
 }
+
+// redactQwenResponseError reports whether the response needs to be serialized again.
+func redactQwenResponseError(response map[string]any) bool {
+	details, _ := response["status_details"].(map[string]any)
+	if _, exists := details["error"]; !exists {
+		return false
+	}
+	details["error"] = map[string]any{"type": "server_error", "code": "upstream_error", "message": "The Qwen Realtime response failed."}
+	return true
+}
+
 func (a *Adapter) verifyAudioAck(session map[string]any) error {
 	a.pendingUpdateID = ""
 	if !a.cap.FreeAudioTranscript {

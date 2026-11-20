@@ -132,6 +132,7 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 			go func() {
 				defer func() {
 					if r := recover(); r != nil {
+						t.Errorf("session panic: %T", r)
 						done <- fmt.Errorf("panic: %T", r)
 					}
 				}()

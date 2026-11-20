@@ -146,3 +146,23 @@ func TestQwenReplaysGAAssistantText(t *testing.T) {
 	_, err = native.Client([]byte(frame))
 	require.Error(t, err)
 }
+
+func TestQwenFailedResponseRedaction(t *testing.T) {
+	const failed = `{"type":"response.done","event_id":"done-1","response":{"id":"r1","status":"failed","status_details":{"error":{"message":"private provider detail","param":"private parameter"}},"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2,"input_tokens_details":{"text_tokens":1},"output_tokens_details":{"text_tokens":1}}}}`
+	for _, native := range []bool{true, false} {
+		a, err := NewAdapter("qwen3.8-omni-flash-realtime", native)
+		require.NoError(t, err)
+		wire, err := a.Server([]byte(failed))
+		require.NoError(t, err)
+		require.NotContains(t, string(wire), "private")
+		require.Contains(t, string(wire), "upstream_error")
+		require.Contains(t, string(wire), "done-1")
+		require.Contains(t, string(wire), "total_tokens")
+	}
+	a, err := NewAdapter("qwen3.8-omni-flash-realtime", true)
+	require.NoError(t, err)
+	normal := []byte(`{ "type": "response.done", "response": {"id":"r2","status":"completed"} }`)
+	wire, err := a.Server(normal)
+	require.NoError(t, err)
+	require.Equal(t, normal, wire)
+}
