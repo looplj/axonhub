@@ -356,6 +356,8 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 	if len(endpointPath) > 0 {
 		path = endpointPath[0]
 	}
+	ops := channelHeaderOverrideOperations(c)
+	clientVersion := func() string { return svc.resolveCodexClientVersion(ops).Version }
 	if c.Credentials.IsOAuth() {
 		if ch != nil {
 			if existing, ok := ch.Outbound.(*codex.OutboundTransformer); ok {
@@ -366,6 +368,7 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 						Transport:       transport,
 						AlphaSearchPath: alphaSearchPath,
 						EndpointPath:    path,
+						ClientVersion:   clientVersion,
 					})
 				}
 			}
@@ -411,6 +414,7 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 			Transport:       transport,
 			AlphaSearchPath: alphaSearchPath,
 			EndpointPath:    path,
+			ClientVersion:   clientVersion,
 		})
 	}
 
@@ -426,6 +430,7 @@ func (svc *ChannelService) buildCodexOutboundWithRefresh(
 		Transport:       transport,
 		AlphaSearchPath: alphaSearchPath,
 		EndpointPath:    path,
+		ClientVersion:   clientVersion,
 	})
 }
 

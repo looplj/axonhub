@@ -313,7 +313,7 @@ func TestModelFetcher_CodexStoredCredentialReplacement(t *testing.T) {
 				input.APIKey = nil
 			}
 			fetcher := NewModelFetcher(client, &ChannelService{AbstractService: &AbstractService{db: db}, httpClient: client})
-			result, err := fetcher.FetchModels(ctx, input)
+			result, err := fetcher.fetchModels(ctx, input, false)
 			require.NoError(t, err)
 			switch mode {
 			case "mismatch":

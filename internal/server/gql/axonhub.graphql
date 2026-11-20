@@ -69,6 +69,9 @@ type SyncChannelModelsPayload {
   channelID: ID!
   supportedModels: [String!]!
   manualModels: [String!]!
+  fallback: Boolean!
+  codexCatalogVersion: CodexCatalogVersion
+  codexCatalogSkippedReason: String
 }
 
 input ReasoningEffortMappingInput {
@@ -745,6 +748,14 @@ input FetchModelsInput {
 type FetchModelsPayload {
   models: [ModelIdentify!]!
   error: String
+  fallback: Boolean!
+  codexCatalogVersion: CodexCatalogVersion
+  codexCatalogSkippedReason: String
+}
+
+type CodexCatalogVersion {
+  version: String!
+  source: String!
 }
 
 type ModelIdentify {

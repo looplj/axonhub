@@ -23,6 +23,12 @@ Before configuring Codex, open the **Codex Compatibility** settings in AxonHub:
 
 The switch is off by default. Saving an enabled configuration requires a selected existing Codex channel. The catalog test can be run while the switch is off, and a failed test does not prevent saving. Catalog results are filtered to the models visible to the caller; this does not authorize a manually selected model, which is still checked by the normal inference permission path.
 
+### Choose the client version for model discovery
+
+In the Codex channel's request header overrides, add an unconditional `set` for `Version` with a value such as `0.160.0` to pin the catalog to that version. Without a valid `Version` override, AxonHub uses the version from a recognized Codex `User-Agent` override, then the automatic version. A valid `client_version` supplied by a client to `/codex/models` takes precedence for that request.
+
+AxonHub checks the `latest` metadata for `@openai/codex` at `registry.npmjs.org` on startup, even before any Codex channel exists. It checks again when you click **Fetch Models** for a channel that can query its catalog, or manually request a model sync for such a channel. The npm request only reads package metadata and carries no channel credentials. If npm is unreachable, AxonHub uses the last known stable version or the built-in version and can still query the upstream account catalog.
+
 ### Configure Codex authentication and routes
 1. Create `${HOME}/.codex/auth.json` with the AxonHub API key in both supported fields. Keeping both fields provides an API-key fallback across Codex client versions:
    ```json

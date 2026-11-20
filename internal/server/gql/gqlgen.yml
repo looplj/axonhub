@@ -73,6 +73,9 @@ converters:
 
 # This section declares type mapping between the GraphQL and Go type systems.
 models:
+  CodexCatalogVersion:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.CodexCatalogVersion
   ClaudeCodeSafeguardsSettings:
     model: github.com/looplj/axonhub/internal/server/biz.ClaudeCodeSafeguardsSettings
   ClaudeCodeSafeguardsConfig:

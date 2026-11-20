@@ -75,6 +75,15 @@ var Module = fx.Module("biz",
 	fx.Invoke(func(lc fx.Lifecycle, svc *ChannelService, s *scheduler.Scheduler) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
+				svc.loadCodexRelease(ctx)
+				go func() {
+					defer func() {
+						if r := recover(); r != nil {
+							log.Error(context.Background(), "refreshCodexRelease panicked", log.Any("panic", r))
+						}
+					}()
+					svc.refreshCodexRelease(context.Background())
+				}()
 				go func() {
 					defer func() {
 						if r := recover(); r != nil {

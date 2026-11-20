@@ -35,7 +35,11 @@ const (
 	RedirectURI = "http://localhost:1455/auth/callback"
 	Scopes      = "openid profile email offline_access"
 
-	codexDefaultVersion = "0.159.0"
+	// DefaultClientVersion is the built-in version for requests without a resolved version.
+	DefaultClientVersion = "0.159.0"
+
+	codexDefaultVersion  = DefaultClientVersion
+	codexUserAgentPrefix = "codex_cli_rs/"
 
 	// codexDefaultUserAgent is the Codex-client-like User-Agent the transformer
 	// presents upstream when it owns the outbound identity (i.e. when the
@@ -44,7 +48,7 @@ const (
 	// identity stays consistent with the Version header. Client UA forwarding
 	// belongs solely to the orchestrator's user-agent pass-through middleware,
 	// which overwrites this value when the switch is enabled.
-	codexDefaultUserAgent = "codex_cli_rs/" + codexDefaultVersion
+	codexDefaultUserAgent = codexUserAgentPrefix + codexDefaultVersion
 
 	// fabricatedBetaFeatures mirrors the X-Codex-Beta-Features value the current
 	// Codex CLI sends, used when a non-Codex inbound client omits the header.

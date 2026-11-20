@@ -743,22 +743,25 @@ func (r *mutationResolver) ClearChannelOverrideTemplates(ctx context.Context, in
 
 // SyncChannelModels is the resolver for the syncChannelModels field.
 func (r *mutationResolver) SyncChannelModels(ctx context.Context, channelID objects.GUID, pattern *string) (*SyncChannelModelsPayload, error) {
-	ch, err := r.channelService.SyncChannelModels(ctx, channelID.ID, pattern)
-	if err != nil {
+	result, err := r.channelService.SyncChannelModels(ctx, channelID.ID, pattern)
+	if err != nil && (result == nil || !result.Fallback || result.Type != channel.TypeCodex) {
 		return nil, err
 	}
 
 	// manual_models is nullable in the schema; normalize nil so the non-null
 	// payload field never resolves to null.
-	manualModels := ch.ManualModels
+	manualModels := result.ManualModels
 	if manualModels == nil {
 		manualModels = []string{}
 	}
 
 	return &SyncChannelModelsPayload{
-		ChannelID:       channelID,
-		SupportedModels: ch.SupportedModels,
-		ManualModels:    manualModels,
+		ChannelID:                 channelID,
+		SupportedModels:           result.SupportedModels,
+		ManualModels:              manualModels,
+		Fallback:                  result.Fallback,
+		CodexCatalogVersion:       result.CodexCatalogVersion,
+		CodexCatalogSkippedReason: result.CodexCatalogSkippedReason,
 	}, nil
 }
 
