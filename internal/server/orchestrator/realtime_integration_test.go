@@ -76,6 +76,10 @@ func TestRealtimeCheckRevalidatesCurrentChannelTags(t *testing.T) {
 	service := &RealtimeService{Auth: auth, Channels: channels, Usage: biz.NewUsageLogService(db, system, channels)}
 	c := &RealtimeConversation{service: service, ctx: requestCtx, state: rt.NewState(), target: &RealtimeTarget{Channel: channelAtConnect, APIKey: key}, lastCheck: time.Time{}}
 	require.NoError(t, c.Check(requestCtx))
+	accountingKey, ok := contexts.GetAPIKey(c.ctx)
+	require.True(t, ok)
+	require.Same(t, key, accountingKey, "reauthorization must preserve the session accounting identity")
+	require.NotSame(t, key, c.latestKey, "the authorization check must use the refreshed key")
 
 	currentChannel := &biz.Channel{Channel: &ent.Channel{ID: row.ID, Type: channel.TypeOpenai, Tags: []string{"forbidden"}}}
 	channels.SetEnabledChannelsForTest([]*biz.Channel{currentChannel})

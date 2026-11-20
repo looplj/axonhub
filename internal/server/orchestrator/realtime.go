@@ -383,7 +383,7 @@ func (c *RealtimeConversation) Check(ctx context.Context) error {
 		c.lastCheckErr = errors.New("realtime API key is no longer authorized")
 		return c.lastCheckErr
 	}
-	authorizedCtx := contexts.WithAPIKey(checkCtx, current)
+	authorizedCtx := contexts.WithAPIKey(contexts.ForkRequest(checkCtx), current)
 	if err := authz.RequireScope(authorizedCtx, scopes.ScopeWriteRequests); err != nil {
 		c.lastCheckErr = errors.New("realtime request scope revoked")
 		return c.lastCheckErr
