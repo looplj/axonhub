@@ -154,15 +154,26 @@ func socketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
 	return client, server
 }
 
+func runSessionForTest(t *testing.T, done chan<- error, run func() error) {
+	t.Helper()
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			t.Errorf("session panic: %T", recovered)
+			done <- fmt.Errorf("session panic")
+		}
+	}()
+	done <- run()
+}
+
 func TestSessionBidirectionalAndCancellation(t *testing.T) {
 	client, downstream := socketPair(t)
 	upstream, provider := socketPair(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	finished := make(chan error, 1)
-	go func() {
-		finished <- Run(ctx, downstream, upstream, Options{IdleTimeout: time.Second, MaxDuration: time.Minute}, Hooks{})
-	}()
+	go runSessionForTest(t, finished, func() error {
+		return Run(ctx, downstream, upstream, Options{IdleTimeout: time.Second, MaxDuration: time.Minute}, Hooks{})
+	})
 	require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`)))
 	_, data, err := provider.ReadMessage()
 	require.NoError(t, err)
@@ -188,9 +199,9 @@ func TestSessionDoesNotForwardRejectedEvent(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)
-	go func() {
-		done <- Run(ctx, downstream, upstream, Options{IdleTimeout: time.Second}, Hooks{Client: func([]byte) ([]byte, error) { return nil, ErrInvalidEvent }})
-	}()
+	go runSessionForTest(t, done, func() error {
+		return Run(ctx, downstream, upstream, Options{IdleTimeout: time.Second}, Hooks{Client: func([]byte) ([]byte, error) { return nil, ErrInvalidEvent }})
+	})
 	require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"invalid"}`)))
 	client.SetReadDeadline(time.Now().Add(time.Second))
 	_, data, err := client.ReadMessage()
@@ -213,9 +224,9 @@ func TestSessionClosesPeerOnEitherDisconnect(t *testing.T) {
 			client, downstream := socketPair(t)
 			upstream, provider := socketPair(t)
 			done := make(chan error, 1)
-			go func() {
-				done <- Run(context.Background(), downstream, upstream, Options{IdleTimeout: time.Second}, Hooks{})
-			}()
+			go runSessionForTest(t, done, func() error {
+				return Run(context.Background(), downstream, upstream, Options{IdleTimeout: time.Second}, Hooks{})
+			})
 			peer := provider
 			if upstreamDisconnect {
 				provider.Close()
@@ -240,7 +251,7 @@ func TestSessionEnforcesMessageAndDurationBounds(t *testing.T) {
 		client, downstream := socketPair(t)
 		upstream, _ := socketPair(t)
 		done := make(chan error, 1)
-		go func() { done <- Run(context.Background(), downstream, upstream, Options{}, Hooks{}) }()
+		go runSessionForTest(t, done, func() error { return Run(context.Background(), downstream, upstream, Options{}, Hooks{}) })
 		_ = client.WriteMessage(websocket.TextMessage, []byte(strings.Repeat("a", MaxMessageBytes+1)))
 		select {
 		case err := <-done:
