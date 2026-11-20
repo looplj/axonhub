@@ -20,6 +20,8 @@ The environment's OpenAI credential belongs to a third-party relay and must not 
 
 Endpoint management does not offer Realtime protocols. Sending `openai/realtime-ws` or `qwen/realtime-ws` through `saveChannelEndpoints` or another endpoint-writing input is rejected with HTTP `422` and code `ENDPOINT_REALTIME_NOT_ALLOWED`; the server does not ignore or persist it. Set `settings.realtime.enabled` to `false`, or switch the main form to a non-Realtime protocol, to stop new Realtime sessions without deleting HTTP endpoints.
 
+Realtime channel configuration is available on the existing OpenAI and Bailian channel types. xAI Subscription channels use their provider-managed endpoint and reject custom Realtime endpoint input.
+
 The existing startup data-migration pipeline moves legacy Realtime entries from `endpoints` to `settings.realtime` before the channel cache loads. Each channel update moves the configuration and removes the legacy entries atomically, while preserving ordinary endpoints and unrelated settings. An existing channel-owned Realtime setting wins, including an explicit disabled setting. Re-running the migration makes no further channel writes. This changes the JSON configuration shape and adds no database table or column.
 
 This follows the existing database auto-migration setting: if it is disabled, run a controlled startup with migration enabled before serving migrated Realtime channels. Drain Realtime traffic during a mixed-version deployment and finish upgrading all instances before reopening it; older binaries cannot read the new channel configuration.

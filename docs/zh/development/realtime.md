@@ -21,6 +21,8 @@
 
 端点管理不提供 Realtime 协议。通过 `saveChannelEndpoints` 或其他端点写入输入传入 `openai/realtime-ws`、`qwen/realtime-ws`，服务端会返回 HTTP `422` 和错误码 `ENDPOINT_REALTIME_NOT_ALLOWED`，不会忽略或保存。将 `settings.realtime.enabled` 设为 `false`，或在渠道主表单切换到非 Realtime 协议，即可停止新实时会话，无需删除 HTTP 端点。
 
+Realtime 渠道配置适用于现有 OpenAI 和百炼渠道类型。xAI Subscription 使用服务商管理的端点，不接受自定义 Realtime 端点。
+
 现有启动数据迁移流程会在渠道缓存加载之前，把历史 `endpoints` 中的 Realtime 配置搬到 `settings.realtime`。每个渠道的配置搬迁与旧条目清理原子完成，保留普通端点及其他设置。已有渠道级 Realtime 设置优先，包括显式禁用状态；重复执行不再写入渠道。该迁移只改变 JSON 配置结构，不新增数据库表或列。
 
 迁移遵循现有数据库自动迁移开关；若已关闭，需要先受控启用迁移启动一次，再开放迁移后的 Realtime 渠道。混合版本发布时先排空 Realtime 流量，完成全部实例升级后再开放，旧二进制不能读取新的渠道配置。
