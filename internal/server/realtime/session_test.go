@@ -2,14 +2,13 @@
 // 关联文件:
 //
 //	internal/server/realtime/session.go
+
 package realtime
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/stretchr/testify/require"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +16,9 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSessionSlowConsumerReceivesBackpressureCloseAndFlushes(t *testing.T) {
@@ -43,7 +45,7 @@ func TestSessionSlowConsumerReceivesBackpressureCloseAndFlushes(t *testing.T) {
 	}()
 	// One frame in flight, one queued, the third blocks the production queue.
 	payload := []byte(strings.Repeat("x", 64<<10))
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		require.NoError(t, provider.WriteMessage(websocket.TextMessage, payload))
 	}
 	select {
@@ -151,6 +153,7 @@ func socketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
 	t.Cleanup(func() { client.Close(); server.Close() })
 	return client, server
 }
+
 func TestSessionBidirectionalAndCancellation(t *testing.T) {
 	client, downstream := socketPair(t)
 	upstream, provider := socketPair(t)
@@ -178,6 +181,7 @@ func TestSessionBidirectionalAndCancellation(t *testing.T) {
 	_, _, err = provider.ReadMessage()
 	require.Error(t, err)
 }
+
 func TestSessionDoesNotForwardRejectedEvent(t *testing.T) {
 	client, downstream := socketPair(t)
 	upstream, provider := socketPair(t)
@@ -230,6 +234,7 @@ func TestSessionClosesPeerOnEitherDisconnect(t *testing.T) {
 		})
 	}
 }
+
 func TestSessionEnforcesMessageAndDurationBounds(t *testing.T) {
 	t.Run("message", func(t *testing.T) {
 		client, downstream := socketPair(t)
@@ -253,20 +258,21 @@ func TestSessionEnforcesMessageAndDurationBounds(t *testing.T) {
 		require.Less(t, time.Since(start), time.Second)
 	})
 }
+
 func TestSendQueueFullBlocksThenReturnsBackpressure(t *testing.T) {
 	const capacity = 3
 	const wait = 80 * time.Millisecond
 	q := newSendQueue(capacity, wait)
 	// The first capacity frames succeed without a consumer; only the next frame
 	// may time out. No session deadline or input-rate limiter participates.
-	for i := 0; i < capacity; i++ {
+	for i := range capacity {
 		require.NoError(t, q.enqueue(context.Background(), []byte{byte(i)}))
 	}
 	started := time.Now()
 	err := q.enqueue(context.Background(), []byte{capacity})
 	require.ErrorIs(t, err, ErrBackpressure)
 	require.GreaterOrEqual(t, time.Since(started), wait*3/4, "full queue must actually block the producer")
-	for i := 0; i < capacity; i++ {
+	for i := range capacity {
 		require.Equal(t, []byte{byte(i)}, <-q.frames, "timeout must preserve accepted frames")
 	}
 }
@@ -333,7 +339,7 @@ func TestSessionSlowClientBoundedBackpressure(t *testing.T) {
 	payload := []byte(strings.Repeat("x", 200<<10))
 	started := time.Now()
 	require.NoError(t, provider.SetWriteDeadline(started.Add(8*time.Second)))
-	for i := 0; i < 128; i++ {
+	for range 128 {
 		if err := provider.WriteMessage(websocket.TextMessage, payload); err != nil {
 			break
 		}

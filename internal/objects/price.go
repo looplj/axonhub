@@ -256,7 +256,8 @@ const (
 	//nolint:gosec // not token.
 	PriceItemCodeWriteCachedTokens PriceItemCode = "prompt_write_cached_tokens"
 
-	// The four realtime codes bill a realtime session by input/output modality.
+	// PriceItemCodeRealtimeInputText is the first realtime price item code.
+	// The realtime codes bill a session by input/output modality.
 	// They are independent of prompt_tokens/completion_tokens: a realtime price
 	// uses only these codes, and the legacy codes keep their historical meaning.
 	PriceItemCodeRealtimeInputText   PriceItemCode = "realtime_input_text_tokens"

@@ -12,6 +12,8 @@
 //	首期仅支持带 Authorization 的服务端客户端，拒绝 Origin 和查询凭证。
 //	Redis 按首次实时调用延迟初始化；无实时端点使用时不建立额外连接或后台任务。
 //	传输退出后先释放连接租约，再收尾审计；握手等待交接不提高并发上限。
+
+// Package api exposes authenticated HTTP and WebSocket API handlers.
 package api
 
 import (
@@ -127,6 +129,7 @@ func RealtimeBoundary() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
 func (h *RealtimeHandlers) limiter(config rt.Config) (*rt.Admission, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -144,6 +147,7 @@ func (h *RealtimeHandlers) limiter(config rt.Config) (*rt.Admission, error) {
 	h.admission = rt.NewAdmission(h.redis, config.Limits, config.MaxDuration+config.HandshakeTimeout+time.Minute+10*time.Second)
 	return h.admission, nil
 }
+
 func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFunc {
 	config = config.Defaults()
 	return func(c *gin.Context) {
@@ -204,8 +208,7 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 		if err != nil {
 			metrics.Metrics.RealtimeEvent(ctx, "upstream_handshake_failed")
 			status := 0
-			var handshake *rt.HandshakeError
-			if errors.As(err, &handshake) {
+			if handshake, ok := errors.AsType[*rt.HandshakeError](err); ok {
 				status = handshake.Status
 			}
 			log.Warn(ctx, "realtime upstream establishment failed", log.Int("channel_id", target.Channel.ID), log.Int("upstream_status", status))
@@ -246,8 +249,7 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 			if rt.IsAbnormal(err) {
 				metrics.Metrics.RealtimeEvent(context.WithoutCancel(ctx), "session_abnormal")
 			}
-			var end *rt.SessionError
-			if errors.As(err, &end) {
+			if end, ok := errors.AsType[*rt.SessionError](err); ok {
 				metrics.Metrics.RealtimeEvent(context.WithoutCancel(ctx), end.Side+"_disconnected")
 			}
 			if errors.Is(err, rt.ErrBackpressure) {

@@ -6,11 +6,12 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRealtimeStrictAuthorizationBeforeUpgrade(t *testing.T) {
@@ -25,7 +26,7 @@ func TestRealtimeStrictAuthorizationBeforeUpgrade(t *testing.T) {
 		status        int
 	}{{"", 401}, {"Bearer invalid", 401}, {fixture.userKey, 401}, {"Bearer " + fixture.userKey, 204}} {
 		upgraded = false
-		req := httptest.NewRequest("GET", "/v1/realtime?model=voice", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v1/realtime?model=voice", nil)
 		req.Header.Set("Authorization", tc.authorization)
 		res := httptest.NewRecorder()
 		router.ServeHTTP(res, req)

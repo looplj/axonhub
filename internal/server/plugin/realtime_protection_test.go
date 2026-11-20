@@ -3,13 +3,16 @@
 //
 //	internal/server/plugin/protected_fields.go
 //	llm/constants.go
+
 package plugin
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestRealtimeControlEnvelopesRemainHostOwned(t *testing.T) {

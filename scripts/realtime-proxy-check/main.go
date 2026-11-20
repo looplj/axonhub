@@ -10,9 +10,9 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,6 +21,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 func main() {
@@ -29,11 +31,14 @@ func main() {
 		os.Exit(1)
 	}
 }
+
 func run() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 	var authenticated atomic.Bool
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/realtime" || r.URL.Query().Get("model") != "synthetic" || r.Header.Get("Authorization") != "Bearer synthetic-proxy-check" {
-			http.Error(w, "invalid proxy forwarding", 400)
+			http.Error(w, "invalid proxy forwarding", http.StatusBadRequest)
 			return
 		}
 		authenticated.Store(true)
@@ -59,26 +64,36 @@ func run() error {
 	reserve.Listener.Close()
 	conf := fmt.Sprintf("events {}\nhttp { map $http_upgrade $realtime_connection { default upgrade; '' close; } server { listen %s; location /v1/realtime { proxy_pass %s; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $realtime_connection; proxy_set_header Authorization $http_authorization; proxy_set_header Host $host; proxy_read_timeout 20m; proxy_send_timeout 20m; proxy_buffering off; } } }\n", address, upstream.URL)
 	path := filepath.Join(root, "nginx.conf")
-	if err := os.WriteFile(path, []byte(conf), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(conf), 0o600); err != nil {
 		return err
 	}
 	mount := path + ":/etc/nginx/nginx.conf:ro"
-	syntax := exec.Command("docker", "run", "--rm", "--network", "host", "-v", mount, "nginx:alpine", "nginx", "-t")
+	syntax := exec.CommandContext(ctx, "docker", "run", "--rm", "--network", "host", "-v", mount, "nginx:alpine", "nginx", "-t")
 	if output, err := syntax.CombinedOutput(); err != nil {
 		return fmt.Errorf("Nginx syntax check failed: %s", output)
 	}
 	fmt.Println("PASS Nginx configuration syntax")
 	name := fmt.Sprintf("axonhub-realtime-proxy-%d", os.Getpid())
-	start := exec.Command("docker", "run", "--rm", "-d", "--name", name, "--network", "host", "-v", mount, "nginx:alpine")
+	start := exec.CommandContext(ctx, "docker", "run", "--rm", "-d", "--name", name, "--network", "host", "-v", mount, "nginx:alpine")
 	if output, err := start.CombinedOutput(); err != nil {
 		return fmt.Errorf("Nginx start failed: %s", output)
 	}
-	defer exec.Command("docker", "rm", "-f", name).Run()
+	defer func() {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cleanupCancel()
+		if err := exec.CommandContext(cleanupCtx, "docker", "rm", "-f", name).Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Nginx cleanup failed: %v\n", err)
+		}
+	}()
 	var conn *websocket.Conn
-	for attempt := 0; attempt < 50; attempt++ {
-		conn, _, err = websocket.DefaultDialer.Dial("ws://"+address+"/v1/realtime?model=synthetic", http.Header{"Authorization": []string{"Bearer synthetic-proxy-check"}})
+	for range 50 {
+		var response *http.Response
+		conn, response, err = websocket.DefaultDialer.Dial("ws://"+address+"/v1/realtime?model=synthetic", http.Header{"Authorization": []string{"Bearer synthetic-proxy-check"}})
 		if err == nil {
 			break
+		}
+		if response != nil && response.Body != nil {
+			_ = response.Body.Close()
 		}
 		time.Sleep(100 * time.Millisecond)
 	}

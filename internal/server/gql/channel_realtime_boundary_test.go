@@ -6,6 +6,7 @@
 //	internal/server/biz/channel_settings.go
 //
 // 注意事项: 端点拒绝必须是非200且数据库不变，不能只验证客户端下拉或错误字符串。
+
 package gql
 
 import (
@@ -16,6 +17,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -23,8 +27,6 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 )
 
 func realtimeConfigGraphQLFixture(t *testing.T) (*ent.Client, context.Context, func(string, map[string]any) (int, []byte)) {

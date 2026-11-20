@@ -3,18 +3,20 @@
 //
 //	internal/server/biz/channel_duplicate.go
 //	internal/objects/channel_realtime.go
+
 package biz
 
 import (
 	"context"
 	"testing"
 
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/samber/lo"
-	"github.com/stretchr/testify/require"
 )
 
 func TestDuplicateChannelInheritsOnlyRealtimeWhenSettingsAbsent(t *testing.T) {

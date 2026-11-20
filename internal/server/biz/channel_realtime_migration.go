@@ -8,6 +8,7 @@
 //	internal/ent/schema/schematype/soft_delete.go
 //
 // 注意事项: 包括软删除渠道但不恢复其状态；无历史实时端点时不写入，重复执行不改变配置或更新时间。
+
 package biz
 
 import (
@@ -28,7 +29,7 @@ import (
 func MigrateChannelRealtime(ctx context.Context, db *ent.Client) error {
 	_, err := authz.RunAsHost(ctx, db, "channel-realtime-migration", func(host context.Context) (struct{}, error) {
 		service := &AbstractService{db: db}
-		for attempt := 0; attempt < 3; attempt++ {
+		for attempt := range 3 {
 			err := service.RunInTransaction(host, func(txctx context.Context) error {
 				return migrateChannelRealtimeRows(txctx, service.entFromContext(txctx))
 			})

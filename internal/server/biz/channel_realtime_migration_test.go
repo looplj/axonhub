@@ -3,6 +3,7 @@
 //
 //	internal/server/biz/channel_realtime_migration.go
 //	internal/server/biz/channel_realtime.go
+
 package biz
 
 import (
@@ -10,13 +11,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/stretchr/testify/require"
 )
 
 func realtimeMigrationFixture(t *testing.T) (*ent.Client, context.Context) {

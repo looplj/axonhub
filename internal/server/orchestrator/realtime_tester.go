@@ -7,21 +7,24 @@
 // 注意事项:
 //
 //	测试成功不代表语音质量或真实用量验收通过；此探测不触发模型生成。
+
 package orchestrator
 
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/gorilla/websocket"
+	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/internal/server/biz"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	protocol "github.com/looplj/axonhub/llm/realtime"
 	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
-	"github.com/samber/lo"
-	"github.com/tidwall/gjson"
-	"time"
 )
 
 func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *biz.Channel, model string, proxy *httpclient.ProxyConfig) (*TestChannelResult, error) {
@@ -90,7 +93,7 @@ func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *b
 		if err := conn.WriteMessage(websocket.TextMessage, event); err != nil {
 			return fail()
 		}
-		for i := 0; i < 8; i++ {
+		for range 8 {
 			_, data, err := conn.ReadMessage()
 			if err != nil {
 				return fail()

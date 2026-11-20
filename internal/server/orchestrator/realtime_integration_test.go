@@ -4,6 +4,7 @@
 //	internal/server/orchestrator/realtime.go
 //	internal/server/biz/realtime_billing.go
 //	internal/server/realtime/session.go
+
 package orchestrator
 
 import (
@@ -17,6 +18,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -28,8 +32,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm"
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/require"
 )
 
 func realtimeSocketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
@@ -48,6 +50,7 @@ func realtimeSocketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
 	t.Cleanup(func() { conn.Close(); peer.Close() })
 	return conn, peer
 }
+
 func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 	for _, model := range []string{"gpt-realtime-2.1", "gpt-realtime-2.1-mini"} {
 		t.Run(model, func(t *testing.T) {

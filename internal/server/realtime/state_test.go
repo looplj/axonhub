@@ -2,11 +2,13 @@
 // 关联文件:
 //
 //	internal/server/realtime/state.go
+
 package realtime
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestStateRequiresConfigurationAcknowledgement(t *testing.T) {

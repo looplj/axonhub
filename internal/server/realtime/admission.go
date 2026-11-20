@@ -9,6 +9,7 @@
 //	内存模式仅约束单进程；多实例必须共享 Redis。同槽 Lua 原子获取所有维度。
 //	租约存活超过会话硬超时；进程崩溃后自动过期，释放按随机会话标识幂等执行。
 //	断线交接最多等待一秒；等待不撤销旧租约、不提高上限，每个密钥仅允许一个等待者。
+
 package realtime
 
 import (
@@ -209,6 +210,7 @@ func (a *Admission) Acquire(ctx context.Context, key, project, channel int, sess
 	}, nil
 }
 
+//nolint:dupword,intrange // This is Redis Lua; Go loop linters do not apply to its syntax.
 const acquireScript = `
 local t=redis.call('TIME')
 local now=t[1]*1000+math.floor(t[2]/1000)

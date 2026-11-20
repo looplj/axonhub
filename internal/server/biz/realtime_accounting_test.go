@@ -3,19 +3,22 @@
 //
 //	internal/server/biz/realtime_accounting.go
 //	internal/server/biz/realtime_billing.go
+
 package biz
 
 import (
 	"context"
 	"encoding/json"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestRealtimeReconcileAuditsRequiresOwnerAndPreservesUsage(t *testing.T) {
@@ -66,6 +69,7 @@ func TestRealtimeUnknownUsageDoesNotDeclareDebtOrLockKey(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, f.svc.EnsureRealtimeUsageReconciled(f.ctx, key.ID))
 }
+
 func TestRealtimePriceFreezesEffectiveScheduleAtConnection(t *testing.T) {
 	price := realtimePrice("1", "2", "3", "4")
 	price.Schedule = &objects.PriceSchedule{Timezone: "UTC", Overrides: []objects.PriceOverride{{Name: "all-day", Priority: 1, When: objects.OverrideWhen{Weekdays: []int{1, 2, 3, 4, 5, 6, 7}}, Items: realtimePrice("10", "20", "30", "40").Items}}}

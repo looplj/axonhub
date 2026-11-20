@@ -2,16 +2,18 @@
 // 关联文件:
 //
 //	internal/server/realtime/admission.go
+
 package realtime
 
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestAdmissionReconnectHandoffLocalAndShared(t *testing.T) {
@@ -106,6 +108,7 @@ func TestAdmissionLocalAndShared(t *testing.T) {
 		})
 	}
 }
+
 func TestAdmissionConnectionRate(t *testing.T) {
 	a := NewAdmission(nil, Limits{Global: 4, APIKey: 1, Project: 4, Channel: 4, ConnectionsPerMinute: 1}, time.Minute)
 	release, err := a.Acquire(context.Background(), 1, 1, 1)

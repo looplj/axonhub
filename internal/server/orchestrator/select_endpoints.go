@@ -214,6 +214,25 @@ func applyForcedAPIFormatsForRequest(
 	requestType llm.RequestType,
 	endpoints []objects.ChannelEndpoint,
 ) ([]objects.ChannelEndpoint, bool) {
+	if requestType == llm.RequestTypeRealtime {
+		if ch == nil {
+			return nil, true
+		}
+
+		configuredRealtime := ch.RealtimeEndpoint()
+		if configuredRealtime == nil {
+			return nil, true
+		}
+
+		for _, endpoint := range endpoints {
+			if endpoint.APIFormat == configuredRealtime.APIFormat {
+				return []objects.ChannelEndpoint{endpoint}, true
+			}
+		}
+
+		return nil, true
+	}
+
 	forced := forcedAPIFormatsForCandidate(ch, entries, requestModel)
 	filtered, forcedActive := applyForcedAPIFormats(ctx, ch, entries, requestModel, endpoints)
 	if len(forced) > 0 && len(filtered) == len(endpoints) && requiresExplicitEndpoint(requestType) && len(FilterEndpointsByAPIFormats(endpoints, forced)) == 0 {

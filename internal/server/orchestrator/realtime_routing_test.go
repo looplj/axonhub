@@ -3,10 +3,18 @@
 //
 //	internal/server/orchestrator/realtime.go
 //	internal/server/orchestrator/candidates.go
+
 package orchestrator
 
 import (
 	"context"
+	"testing"
+	"time"
+
+	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -14,11 +22,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm"
-	"github.com/samber/lo"
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
@@ -26,7 +29,7 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	project := db.Project.Create().SetName("route-project").SaveX(ctx)
 	ctx = contexts.WithProjectID(ctx, project.ID)
 	actual := "gpt-realtime-2.1-mini"
-	row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("route-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream"}).SetSupportedModels([]string{actual}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime", HandshakeTimeoutMs: lo.ToPtr(int64(30000))}}).SaveX(ctx)
+	row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("route-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream"}).SetSupportedModels([]string{actual}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime", HandshakeTimeoutMs: lo.ToPtr(int64(30000))}, ModelProtocols: []objects.ModelProtocol{{Model: actual, APIFormats: []string{"openai/chat_completions"}, Enabled: lo.ToPtr(true)}}}).SaveX(ctx)
 	price := objects.ModelPrice{}
 	for _, code := range objects.AllRealtimePriceItemCodes() {
 		rate := decimal.NewFromInt(1)
@@ -57,6 +60,10 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	require.Equal(t, "wss://api.openai.com/v1/realtime?model="+actual, target.URL)
 	require.NotContains(t, target.SafetyIdentifier, key.Key)
 	require.Len(t, target.SafetyIdentifier, 64)
+	chatCandidates, err := service.Selector.Select(ctx, &llm.Request{Model: actual, RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIChatCompletion})
+	require.NoError(t, err)
+	require.Len(t, chatCandidates, 1)
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion.String(), chatCandidates[0].APIFormat, "ordinary requests must continue to honor the model's fixed HTTP protocol")
 	_, err = service.Prepare(ctx, "voice", true)
 	require.Error(t, err, "native Qwen entry must not select official OpenAI")
 	key.Profiles.Profiles[0].ChannelIDs = []int{999}
@@ -73,7 +80,6 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	target, err = service.Prepare(ctx, "voice", false)
 	require.NoError(t, err)
 	require.Equal(t, row.ID, target.Channel.ID, "an incomplete candidate must not hide the healthy one")
-
 }
 
 func TestRealtimeReservedRequestDoesNotCancelItsOwnQuotaSlot(t *testing.T) {

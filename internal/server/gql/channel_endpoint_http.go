@@ -5,6 +5,8 @@
 //	internal/objects/channel_realtime.go
 //
 // 注意事项: 不缓冲响应体；只在目标错误且尚未输出JSON时设置状态码。
+
+// Package gql serves the GraphQL API and its HTTP integration.
 package gql
 
 import (
@@ -12,6 +14,7 @@ import (
 	"net/http"
 
 	"github.com/99designs/gqlgen/graphql"
+
 	"github.com/looplj/axonhub/internal/objects"
 )
 
