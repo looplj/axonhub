@@ -344,6 +344,11 @@ type realtimeResponse struct {
 	hadFunctionCall bool
 	observedUsage   *llm.Usage
 }
+type realtimeAudioCommit struct {
+	eventID  string
+	reserved bool
+}
+
 type RealtimeConversation struct {
 	pendingConfigurationID string
 	pendingClearID         string
@@ -351,6 +356,8 @@ type RealtimeConversation struct {
 	clearingInput          *realtimeResponse
 	auditsCreated          int
 	pendingInput           *realtimeResponse
+	committedInputs        []*realtimeResponse
+	pendingCommits         []realtimeAudioCommit
 	pendingResponses       []*realtimeResponse
 	service                *RealtimeService
 	target                 *RealtimeTarget
@@ -446,7 +453,7 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 		return nil, errors.New("session configuration pending")
 	}
 	var eventID string
-	if kind == "session.update" || kind == "response.create" || kind == "input_audio_buffer.clear" {
+	if kind == "session.update" || kind == "response.create" || kind == "input_audio_buffer.clear" || kind == "input_audio_buffer.commit" {
 		eventID = gjson.GetBytes(data, "event_id").String()
 		if eventID == "" {
 			eventID = "evt_axonhub_" + uuid.NewString()
@@ -457,11 +464,14 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 			}
 		}
 	}
-	if kind == "session.update" || kind == "input_audio_buffer.clear" {
+	if kind == "session.update" || kind == "input_audio_buffer.clear" || kind == "input_audio_buffer.commit" {
 		c.mu.Lock()
 		defer c.mu.Unlock()
-		if c.hasPendingCreate(eventID) || eventID == c.pendingClearID {
+		if c.hasPendingCreate(eventID) || eventID == c.pendingClearID || eventID == c.pendingConfigurationID || c.pendingCommitIndex(eventID) >= 0 {
 			return nil, errors.New("realtime event ID is already pending")
+		}
+		if kind == "input_audio_buffer.commit" && (len(c.committedInputs) >= 8 || len(c.pendingCommits) >= 8) {
+			return nil, errors.New("too many outstanding realtime audio commits")
 		}
 		if kind == "input_audio_buffer.clear" && c.pendingClearID != "" {
 			return nil, errors.New("audio buffer clear is pending")
@@ -482,6 +492,13 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 	switch kind {
 	case "session.update":
 		c.pendingConfigurationID = eventID
+	case "input_audio_buffer.commit":
+		c.pendingCommits = append(c.pendingCommits, realtimeAudioCommit{eventID: eventID, reserved: c.pendingInput != nil})
+		if c.pendingInput != nil {
+			c.committedInputs = append(c.committedInputs, c.pendingInput)
+			c.pendingInput = nil
+		}
+		c.audioBytes = 0
 	case "input_audio_buffer.clear":
 		c.pendingClearID = eventID
 		c.preClearCreates = len(c.pendingResponses)
@@ -497,7 +514,7 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 		}
 		c.checkMu.Unlock()
 		c.mu.Lock()
-		if eventID != "" && (eventID == c.pendingConfigurationID || eventID == c.pendingClearID || c.hasPendingCreate(eventID)) {
+		if eventID != "" && (eventID == c.pendingConfigurationID || eventID == c.pendingClearID || c.hasPendingCreate(eventID) || c.pendingCommitIndex(eventID) >= 0) {
 			c.mu.Unlock()
 			return nil, errors.New("realtime event ID is already pending")
 		}
@@ -505,25 +522,9 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 			c.mu.Unlock()
 			return nil, rt.ErrAccountingUnavailable
 		}
-		if c.pendingInput == nil {
-			quotaCtx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
-			err := c.service.checkQuota(quotaCtx, quotaKey)
-			cancel()
-			if err != nil {
-				c.mu.Unlock()
-				return nil, err
-			}
-			pending, err := c.createResponse("pending")
-			if err != nil {
-				c.mu.Unlock()
-				return nil, rt.ErrAccountingUnavailable
-			}
-			c.pendingInput = pending
-		}
-		if kind == "response.create" {
-			c.pendingInput.createEventID = eventID
-			c.pendingResponses = append(c.pendingResponses, c.pendingInput)
-			c.pendingInput = nil
+		if err := c.reserveClientInput(kind, eventID, quotaKey); err != nil {
+			c.mu.Unlock()
+			return nil, err
 		}
 		c.mu.Unlock()
 	}
@@ -536,12 +537,38 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 			return nil, rt.ErrBackpressure
 		}
 	}
-	if kind == "input_audio_buffer.commit" {
-		c.mu.Lock()
-		c.audioBytes = 0
-		c.mu.Unlock()
-	}
 	return wire, nil
+}
+
+// reserveClientInput runs with c.mu held. A manual generation consumes committed
+// audio, leaving any uncommitted buffer reserved for a later turn.
+func (c *RealtimeConversation) reserveClientInput(kind, eventID string, key *ent.APIKey) error {
+	if kind == "input_audio_buffer.append" && c.pendingInput != nil {
+		return nil
+	}
+	if kind == "response.create" && len(c.committedInputs) > 0 {
+		reservation := c.committedInputs[0]
+		c.committedInputs = slices.Delete(c.committedInputs, 0, 1)
+		reservation.createEventID = eventID
+		c.pendingResponses = append(c.pendingResponses, reservation)
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+	defer cancel()
+	if err := c.service.checkQuota(ctx, key); err != nil {
+		return err
+	}
+	reservation, err := c.createResponse("pending")
+	if err != nil {
+		return rt.ErrAccountingUnavailable
+	}
+	if kind == "response.create" {
+		reservation.createEventID = eventID
+		c.pendingResponses = append(c.pendingResponses, reservation)
+	} else {
+		c.pendingInput = reservation
+	}
+	return nil
 }
 
 func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
@@ -561,7 +588,7 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 			return nil, nil
 		}
 	}
-	responseQueued := c.clearingInput != nil || c.preClearCreates > 0 ||
+	responseQueued := c.clearingInput != nil || c.preClearCreates > 0 || len(c.committedInputs) > 0 ||
 		(c.pendingClearID == "" && (len(c.pendingResponses) > 0 || c.pendingInput != nil))
 	if err := c.state.ObserveServer(kind, responseQueued); err != nil {
 		return nil, err
@@ -572,7 +599,12 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 		}
 	}
 	if kind == "input_audio_buffer.committed" {
-		c.audioBytes = 0
+		if len(c.pendingCommits) > 0 {
+			// A delayed manual acknowledgement does not clear post-commit bytes.
+			c.pendingCommits = slices.Delete(c.pendingCommits, 0, 1)
+		} else {
+			c.audioBytes = 0
+		}
 	}
 	id := gjson.GetBytes(data, "response.id").String()
 	if kind == "response.created" {
@@ -693,11 +725,26 @@ func (c *RealtimeConversation) hasPendingCreate(eventID string) bool {
 	})
 }
 
+func (c *RealtimeConversation) pendingCommitIndex(eventID string) int {
+	return slices.IndexFunc(c.pendingCommits, func(commit realtimeAudioCommit) bool {
+		return commit.eventID == eventID
+	})
+}
+
 // rejectPendingEvent finalizes only the reservation named by the provider.
 // The caller holds c.mu to serialize this with response admission.
 func (c *RealtimeConversation) rejectPendingEvent(eventID string) error {
 	if eventID == "" {
 		return nil
+	}
+	if index := c.pendingCommitIndex(eventID); index >= 0 {
+		if !c.pendingCommits[index].reserved {
+			c.pendingCommits = slices.Delete(c.pendingCommits, index, index+1)
+			return nil
+		}
+		// Upstream buffer boundaries are uncertain after a rejected commit.
+		// Keep both reservations for Close to reconcile.
+		return errors.New("upstream rejected realtime audio buffer commit")
 	}
 	if eventID == c.pendingClearID {
 		// The adapter may already have reset its PCM buffer. Stop forwarding and
@@ -745,6 +792,9 @@ func (c *RealtimeConversation) admitResponse(id string) error {
 		}
 		r = c.pendingResponses[0]
 		c.pendingResponses = c.pendingResponses[1:]
+	} else if len(c.committedInputs) > 0 {
+		r = c.committedInputs[0]
+		c.committedInputs = slices.Delete(c.committedInputs, 0, 1)
 	} else if c.clearingInput != nil {
 		r = c.clearingInput
 		c.clearingInput = nil
@@ -820,6 +870,7 @@ func (c *RealtimeConversation) Close() {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 10*time.Second)
 	defer cancel()
 	pending := append([]*realtimeResponse{}, c.pendingResponses...)
+	pending = append(pending, c.committedInputs...)
 	if c.clearingInput != nil {
 		pending = append(pending, c.clearingInput)
 	}
@@ -835,6 +886,8 @@ func (c *RealtimeConversation) Close() {
 		}
 	}
 	c.pendingResponses = nil
+	c.committedInputs = nil
+	c.pendingCommits = nil
 	c.pendingInput = nil
 	c.clearingInput = nil
 	c.pendingClearID = ""

@@ -180,4 +180,4 @@ A channel retains one credential pool. Its HTTP configuration and channel-owned 
 
 ## Native fidelity and the safety boundary
 
-The OpenAI native adapter returns each valid JSON message byte for byte, including error messages. The gateway adds an event ID to a client session.update, response.create, or input_audio_buffer.clear when its ID is missing or empty, so upstream rejections can be matched to the client event. The gateway also redacts upstream error and status_details.error details. WebSocket transport preserves JSON message boundaries, not physical RFC6455 fragmentation or TCP packet boundaries.
+The OpenAI native adapter returns each valid JSON message byte for byte, including error messages. The gateway adds an event ID to a client session.update, response.create, input_audio_buffer.clear, or input_audio_buffer.commit when its ID is missing or empty, so upstream rejections can be matched to the client event. The gateway also redacts upstream error and status_details.error details. WebSocket transport preserves JSON message boundaries, not physical RFC6455 fragmentation or TCP packet boundaries.
