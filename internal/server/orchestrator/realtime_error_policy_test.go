@@ -24,3 +24,10 @@ func TestRealtimeExplicitErrorBoundaryPreservesNormalBytes(t *testing.T) {
 		require.Contains(t, string(actual), "upstream_error")
 	}
 }
+
+func TestRealtimeErrorRedactionRetainsRejectedEventID(t *testing.T) {
+	raw := []byte(`{"type":"error","event_id":"server-event","error":{"event_id":"client-event","message":"private","param":"private"}}`)
+	actual, err := applyRealtimeErrorPolicy(raw)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"type":"error","event_id":"server-event","error":{"event_id":"client-event","type":"invalid_request_error","code":"upstream_error","message":"The upstream Realtime service rejected an event."}}`, string(actual))
+}

@@ -101,3 +101,13 @@ func TestNativeQwenNegotiatesInputAndOutputRatesIndependently(t *testing.T) {
 		require.NoError(t, err, model)
 	}
 }
+
+func TestQwenErrorRedactionRetainsRejectedEventID(t *testing.T) {
+	for _, native := range []bool{false, true} {
+		adapter, err := NewAdapter("qwen3.8-omni-flash-realtime", native)
+		require.NoError(t, err)
+		raw, err := adapter.Server([]byte(`{"type":"error","event_id":"server-event","error":{"event_id":"client-event","message":"private","param":"private"}}`))
+		require.NoError(t, err)
+		require.JSONEq(t, `{"type":"error","event_id":"server-event","error":{"event_id":"client-event","type":"invalid_request_error","code":"upstream_error","message":"The Qwen Realtime service rejected an event."}}`, string(raw))
+	}
+}

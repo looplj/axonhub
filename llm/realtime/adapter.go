@@ -553,7 +553,13 @@ func (a *Adapter) Server(data []byte) ([]byte, error) {
 	if event.Type == "error" {
 		a.inputRate = a.confirmedInput
 		a.outputRate = a.confirmedOutput
-		e["error"] = map[string]any{"type": "invalid_request_error", "code": "upstream_error", "message": "The Qwen Realtime service rejected an event."}
+		safe := map[string]any{"type": "invalid_request_error", "code": "upstream_error", "message": "The Qwen Realtime service rejected an event."}
+		if upstream, ok := e["error"].(map[string]any); ok {
+			if id, ok := upstream["event_id"].(string); ok && id != "" {
+				safe["event_id"] = id
+			}
+		}
+		e["error"] = safe
 		return json.Marshal(e)
 	}
 	if a.native {

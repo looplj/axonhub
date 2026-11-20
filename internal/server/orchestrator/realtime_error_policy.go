@@ -20,7 +20,15 @@ func applyRealtimeErrorPolicy(data []byte) ([]byte, error) {
 	var kind string
 	_ = json.Unmarshal(event["type"], &kind)
 	if kind == "error" {
-		event["error"] = json.RawMessage(`{"type":"invalid_request_error","code":"upstream_error","message":"The upstream Realtime service rejected an event."}`)
+		var upstream struct {
+			EventID string `json:"event_id"`
+		}
+		_ = json.Unmarshal(event["error"], &upstream)
+		safe := map[string]string{"type": "invalid_request_error", "code": "upstream_error", "message": "The upstream Realtime service rejected an event."}
+		if upstream.EventID != "" {
+			safe["event_id"] = upstream.EventID
+		}
+		event["error"], _ = json.Marshal(safe)
 		return json.Marshal(event)
 	}
 	if kind == "response.done" {
