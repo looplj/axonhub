@@ -347,6 +347,7 @@ type realtimeResponse struct {
 type RealtimeConversation struct {
 	pendingConfigurationID string
 	pendingClearID         string
+	preClearCreates        int
 	clearingInput          *realtimeResponse
 	auditsCreated          int
 	pendingInput           *realtimeResponse
@@ -483,6 +484,7 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 		c.pendingConfigurationID = eventID
 	case "input_audio_buffer.clear":
 		c.pendingClearID = eventID
+		c.preClearCreates = len(c.pendingResponses)
 		c.clearingInput = c.pendingInput
 		c.pendingInput = nil
 		c.audioBytes = 0
@@ -559,7 +561,8 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 			return nil, nil
 		}
 	}
-	responseQueued := len(c.pendingResponses) > 0 || c.pendingInput != nil || c.clearingInput != nil
+	responseQueued := c.clearingInput != nil || c.preClearCreates > 0 ||
+		(c.pendingClearID == "" && (len(c.pendingResponses) > 0 || c.pendingInput != nil))
 	if err := c.state.ObserveServer(kind, responseQueued); err != nil {
 		return nil, err
 	}
@@ -655,6 +658,18 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	return c.aliasModel(converted), nil
 }
 
+// ServerFollowup completes the GA lifecycle for a fully formed Qwen item.
+func (c *RealtimeConversation) ServerFollowup(data []byte) ([]byte, error) {
+	if c.target.Native || c.target.APIFormat != llm.APIFormatQwenRealtimeWebSocket || gjson.GetBytes(data, "type").String() != "conversation.item.added" {
+		return nil, nil
+	}
+	done, err := sjson.SetBytes(data, "type", "conversation.item.done")
+	if err != nil {
+		return nil, err
+	}
+	return sjson.SetBytes(done, "event_id", "evt_axonhub_"+uuid.NewString())
+}
+
 // confirmAudioClear finalizes the audio reserved before the clear was sent.
 func (c *RealtimeConversation) confirmAudioClear() error {
 	if pending := c.clearingInput; pending != nil {
@@ -667,6 +682,7 @@ func (c *RealtimeConversation) confirmAudioClear() error {
 	}
 	c.clearingInput = nil
 	c.pendingClearID = ""
+	c.preClearCreates = 0
 	return nil
 }
 
@@ -706,6 +722,9 @@ func (c *RealtimeConversation) rejectPendingEvent(eventID string) error {
 	if err := c.service.Requests.UpdateRealtimeAudit(ctx, pending.request, request.StatusFailed, "", summary, nil, nil); err != nil {
 		return errors.New("realtime rejected-response audit failed")
 	}
+	if index < c.preClearCreates {
+		c.preClearCreates--
+	}
 	c.pendingResponses = slices.Delete(c.pendingResponses, index, index+1)
 	return nil
 }
@@ -720,7 +739,10 @@ func (c *RealtimeConversation) admitResponse(id string) error {
 		return errors.New("realtime response limit reached")
 	}
 	var r *realtimeResponse
-	if len(c.pendingResponses) > 0 {
+	if len(c.pendingResponses) > 0 && (c.pendingClearID == "" || c.preClearCreates > 0) {
+		if c.preClearCreates > 0 {
+			c.preClearCreates--
+		}
 		r = c.pendingResponses[0]
 		c.pendingResponses = c.pendingResponses[1:]
 	} else if c.clearingInput != nil {
@@ -816,6 +838,7 @@ func (c *RealtimeConversation) Close() {
 	c.pendingInput = nil
 	c.clearingInput = nil
 	c.pendingClearID = ""
+	c.preClearCreates = 0
 	for id, r := range c.responses {
 		if r.auditFinalized {
 			continue

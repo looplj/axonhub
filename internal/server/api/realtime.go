@@ -239,7 +239,7 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 		metrics.Metrics.RealtimeActive(ctx, 1)
 		defer metrics.Metrics.RealtimeActive(context.WithoutCancel(ctx), -1)
 		started := time.Now()
-		err = rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: config.IdleTimeout, MaxDuration: config.MaxDuration}, rt.Hooks{BindContext: conversation.WithContext, Client: conversation.Client, Server: conversation.Server, Check: conversation.Check})
+		err = rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: config.IdleTimeout, MaxDuration: config.MaxDuration}, rt.Hooks{BindContext: conversation.WithContext, Client: conversation.Client, Server: conversation.Server, ServerFollowup: conversation.ServerFollowup, Check: conversation.Check})
 		release() // Run has closed both peers and joined every worker.
 		metrics.Metrics.RealtimeDuration(context.WithoutCancel(ctx), time.Since(started).Seconds())
 		if err != nil {

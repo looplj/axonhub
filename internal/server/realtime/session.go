@@ -68,6 +68,8 @@ type Hooks struct {
 	BindContext func(context.Context)
 	Client      func([]byte) ([]byte, error)
 	Server      func([]byte) ([]byte, error)
+	// ServerFollowup optionally emits another message after a converted upstream event.
+	ServerFollowup func([]byte) ([]byte, error)
 	// Check runs periodically, including while server VAD can generate autonomously.
 	Check func(context.Context) error
 }
@@ -224,6 +226,15 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 						continue
 					}
 					return err
+				}
+				if !client && data != nil && hooks.ServerFollowup != nil {
+					followup, err := hooks.ServerFollowup(data)
+					if err != nil {
+						return err
+					}
+					if err := q.enqueue(ctx, followup); err != nil {
+						return err
+					}
 				}
 			}
 		}
