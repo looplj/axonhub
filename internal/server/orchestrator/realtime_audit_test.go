@@ -158,3 +158,34 @@ func TestAutomaticRealtimeTurnChecksRequestQuota(t *testing.T) {
 	_, err = c.Server([]byte(`{"type":"response.created","response":{"id":"r2"}}`))
 	require.ErrorIs(t, err, rt.ErrQuotaExceeded, "an automatic turn without a client reservation must check request quota")
 }
+
+func TestQueuedResponseCreatedDuringSessionUpdate(t *testing.T) {
+	unrequestedState := rt.NewState()
+	require.NoError(t, unrequestedState.Connecting())
+	require.NoError(t, unrequestedState.ObserveServer("session.created"))
+	require.NoError(t, unrequestedState.ObserveServer("session.updated"))
+	require.NoError(t, unrequestedState.Update())
+	unrequestedAdapter, err := openairt.NewAdapter("gpt-realtime-2.1-mini")
+	require.NoError(t, err)
+	unrequested := &RealtimeConversation{state: unrequestedState, adapter: unrequestedAdapter, target: &RealtimeTarget{APIFormat: llm.APIFormatOpenAIRealtimeWebSocket}, responses: map[string]*realtimeResponse{}}
+	_, err = unrequested.Server([]byte(`{"type":"response.created","response":{"id":"not-queued"}}`))
+	require.Error(t, err, "an unrequested response must remain blocked during session.update")
+
+	state := rt.NewState()
+	require.NoError(t, state.Connecting())
+	require.NoError(t, state.ObserveServer("session.created"))
+	require.NoError(t, state.ObserveServer("session.updated"))
+	require.NoError(t, state.Update())
+	adapter, err := openairt.NewAdapter("gpt-realtime-2.1-mini")
+	require.NoError(t, err)
+	pending := &realtimeResponse{}
+	c := &RealtimeConversation{
+		state: state, adapter: adapter,
+		target:    &RealtimeTarget{APIFormat: llm.APIFormatOpenAIRealtimeWebSocket},
+		responses: map[string]*realtimeResponse{}, pendingResponses: []*realtimeResponse{pending},
+	}
+
+	_, err = c.Server([]byte(`{"type":"response.created","response":{"id":"queued-before-update"}}`))
+	require.NoError(t, err, "the server must accept an acknowledgement for a response queued before session.update")
+	require.Same(t, pending, c.responses["queued-before-update"])
+}
