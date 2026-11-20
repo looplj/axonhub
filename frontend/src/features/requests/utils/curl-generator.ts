@@ -1,5 +1,6 @@
 import { CHANNEL_CONFIGS } from '@/features/channels/data/config_channels';
 import { ApiFormat } from '@/features/channels/data/schema';
+import { appPath } from '@/lib/app-path';
 import { getApiPath } from './curl-paths';
 import { escapeShellValue } from './curl-shell';
 
@@ -46,7 +47,7 @@ function resolveExecutionURL(options: CurlGeneratorOptions, apiFormat?: ApiForma
     return `${cleanBaseUrl}${combinedPath}`;
   }
 
-  return `${typeof window !== 'undefined' ? window.location.origin : ''}${apiPath}`;
+  return `${typeof window !== 'undefined' ? window.location.origin : ''}${appPath(apiPath)}`;
 }
 
 export function generateCurlCommand(options: CurlGeneratorOptions): string {

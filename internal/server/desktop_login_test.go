@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/looplj/axonhub/internal/contexts"
 )
 
 func TestDesktopLoginFirstRedeemSetsSession(t *testing.T) {
@@ -124,6 +126,26 @@ func TestMintDesktopLoginAcceptsRequestDetailPath(t *testing.T) {
 		t.Fatalf("status = %d, want 200, body = %s", rec.Code, rec.Body.String())
 	}
 	want := `location.replace(` + mustJSONString(t, nextPath) + `);`
+	if !strings.Contains(rec.Body.String(), want) {
+		t.Fatalf("body missing %s\n%s", want, rec.Body.String())
+	}
+}
+
+func TestDesktopLoginRedirectsUnderBasePath(t *testing.T) {
+	engine := newDesktopLoginEngine(t)
+	const basePath = "/services/axonhub"
+	const nextPath = "/project/requests/gid:%2F%2Faxonhub%2FRequest%2F1?view=detail"
+	path := mintDesktopLogin(t, "token", "gid://axonhub/Project/4", nextPath)
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	req.RemoteAddr = "127.0.0.1:12345"
+	req = req.WithContext(contexts.WithBasePath(req.Context(), basePath))
+	rec := httptest.NewRecorder()
+	engine.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	want := `location.replace(` + mustJSONString(t, basePath+nextPath) + `);`
 	if !strings.Contains(rec.Body.String(), want) {
 		t.Fatalf("body missing %s\n%s", want, rec.Body.String())
 	}

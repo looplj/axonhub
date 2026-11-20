@@ -29,6 +29,8 @@ oidc:
       icon_url: "https://www.google.com/favicon.ico" # UI Customization: Icon URL
 ```
 
+For a deployment with `server.base_path: /axonhub`, the callback registered with your identity provider includes the prefix, for example `https://axonhub.example.com/axonhub/oauth/oidc/callback`. AxonHub appends the prefix to an origin-only `server.public_url` and uses any path you explicitly include in that URL.
+
 ### Provider Options
 
 | Option | Description |

@@ -19,14 +19,29 @@ const transpiled = ts
     "import { getTokenFromStorage, removeTokenFromStorage } from '@/stores/authStore';",
     'const getTokenFromStorage = () => ""; const removeTokenFromStorage = () => {};'
   )
-  .replaceAll(
-    "import { shouldRedirectUnauthorizedToSignIn } from '@/lib/auth-redirect';",
-    'const shouldRedirectUnauthorizedToSignIn = (token, pathname) => token.length > 0 && !pathname.startsWith("/oauth/");'
-  )
+  .replace("'@/lib/app-path'", JSON.stringify(new URL('../lib/app-path.ts', import.meta.url).href))
+  .replace("'@/lib/auth-redirect'", JSON.stringify(new URL('../lib/auth-redirect.ts', import.meta.url).href))
   .replaceAll("import i18n from '@/lib/i18n';", 'const i18n = { t: (key) => key };');
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(transpiled).toString('base64')}`;
 const { graphqlRequest, isUnauthorizedGraphQLError } = await import(moduleUrl);
+
+test('sends GraphQL requests to the current deployment', async (t) => {
+  const previousDocument = globalThis.document;
+  const previousFetch = globalThis.fetch;
+  globalThis.document = { querySelector: () => ({ content: '/apps/axonhub' }) };
+  globalThis.fetch = async (url) => {
+    assert.equal(url, '/apps/axonhub/admin/graphql');
+    return Response.json({ data: { version: 'test' } });
+  };
+  t.after(() => {
+    globalThis.document = previousDocument;
+    globalThis.fetch = previousFetch;
+  });
+
+  const { graphqlRequest: request } = await import(`${moduleUrl}#prefixed`);
+  assert.deepEqual(await request('query Version { version }'), { version: 'test' });
+});
 
 test('does not classify upstream unauthorized provider failures as login expiration', () => {
   const error = {

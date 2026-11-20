@@ -63,7 +63,7 @@ export interface PiModelsConfig {
 }
 
 export interface BuildPiModelsConfigParams {
-  origin: string;
+  baseUrl: string;
   apiKey: string;
   models: Model[];
 }
@@ -125,7 +125,7 @@ function buildPiProviderModel(model: Model): PiProviderModel | undefined {
   return entry;
 }
 
-export function buildPiModelsConfig({ origin, apiKey, models }: BuildPiModelsConfigParams): PiModelsConfig {
+export function buildPiModelsConfig({ baseUrl, apiKey, models }: BuildPiModelsConfigParams): PiModelsConfig {
   const entries = models
     .map((model) => buildPiProviderModel(model))
     .filter((entry): entry is PiProviderModel => !!entry)
@@ -136,7 +136,7 @@ export function buildPiModelsConfig({ origin, apiKey, models }: BuildPiModelsCon
       [PI_PROVIDER_KEY]: {
         api: 'openai-completions',
         apiKey,
-        baseUrl: `${origin}/v1`,
+        baseUrl,
         models: entries,
       },
     },

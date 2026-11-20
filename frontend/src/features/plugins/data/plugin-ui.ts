@@ -1,6 +1,7 @@
 // 职责: 读取插件贡献的页面和顶栏动作，并创建插件 UI 会话。
 // 关联文件:
 //   frontend/src/gql/graphql.ts
+//   frontend/src/lib/app-path.ts
 //   frontend/src/sidebar.ts
 //   frontend/src/components/command-menu.tsx
 //   frontend/src/stores/authStore.ts
@@ -10,6 +11,7 @@
 //   没有 access token 时不能请求 /admin/graphql。命令菜单在登录完成前也会调用本查询。
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
+import { appPath } from '@/lib/app-path';
 import { useAuthStore } from '@/stores/authStore';
 
 const PLUGIN_UI_ENTRIES_QUERY = `
@@ -100,5 +102,5 @@ export function pluginFrameSrc(token: string, entry: string) {
     .filter((part) => part.length > 0)
     .map((part) => encodeURIComponent(part))
     .join('/');
-  return `/admin/plugin-ui/${encodeURIComponent(token)}/${path}`;
+  return appPath(`/admin/plugin-ui/${encodeURIComponent(token)}/${path}`);
 }

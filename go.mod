@@ -29,6 +29,7 @@ require (
 	github.com/expr-lang/expr v1.17.8
 	github.com/gin-contrib/cors v1.7.11
 	github.com/gin-contrib/sse v1.1.1
+	github.com/felixge/httpsnoop v1.1.0
 	github.com/gin-contrib/static v1.1.10
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-sql-driver/mysql v1.10.1
@@ -126,7 +127,6 @@ require (
 	github.com/envoyproxy/go-control-plane/envoy v1.39.1-0.20260819172001-e6e3fd93e4be // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
 	github.com/fatih/color v1.18.0 // indirect
-	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.6 // indirect

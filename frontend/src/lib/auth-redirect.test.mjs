@@ -8,9 +8,11 @@ import {
   storeOIDCRedirect,
 } from './auth-redirect.ts';
 
-function setup(t) {
+function setup(t, basePath) {
   const values = new Map();
   const previousWindow = globalThis.window;
+  const previousDocument = globalThis.document;
+  globalThis.document = { querySelector: () => (basePath ? { content: basePath } : null) };
   globalThis.window = {
     location: { origin: 'https://axonhub.example' },
     sessionStorage: {
@@ -21,6 +23,7 @@ function setup(t) {
   };
   t.after(() => {
     globalThis.window = previousWindow;
+    globalThis.document = previousDocument;
   });
   return values;
 }
@@ -58,6 +61,23 @@ test('OIDC retains the return path across navigation and consumes it only once',
   window.location.pathname = '/oauth/oidc/idp-callback';
   assert.equal(consumeOIDCRedirect(), '/project/requests?status=error#details');
   assert.equal(consumeOIDCRedirect(), undefined);
+});
+
+test('only returns to paths in the current deployment', (t) => {
+  setup(t, '/apps/axonhub');
+  const redirect = '/apps/axonhub/project/requests?status=error#details';
+  assert.equal(getSafeRedirect(redirect), redirect);
+  assert.equal(getSafeRedirect('/apps/axonhub'), '/apps/axonhub');
+  assert.equal(getSafeRedirect('/apps/axonhub/'), '/apps/axonhub/');
+
+  for (const path of ['/project/requests', '/apps/axonhub2/settings', '/apps/axonhub/../settings', '/apps/axonhub/%73ign-in']) {
+    assert.equal(getSafeRedirect(path), undefined, path);
+  }
+
+  storeOIDCRedirect(redirect);
+  assert.equal(consumeOIDCRedirect(), redirect);
+  assert.equal(shouldRedirectUnauthorizedToSignIn('session-token', '/apps/axonhub/oauth/oidc/idp-callback'), false);
+  assert.equal(shouldRedirectUnauthorizedToSignIn('session-token', '/apps/axonhub/project/requests'), true);
 });
 
 test('a new OIDC login without a valid return path clears an earlier destination', (t) => {

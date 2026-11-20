@@ -271,17 +271,6 @@ func NewOIDCService(params OIDCServiceParams) (*OIDCService, error) {
 			svc.cfg.Providers[i].IconURL = resolved
 		}
 
-		// This redirect URI is for IdP -> backend callback handling.
-		// The backend will then issue a short-lived exchange code and redirect to
-		// the frontend callback route: /oauth/oidc/idp-callback?code=...
-		redirectURL := p.RedirectURL
-		if redirectURL == "" {
-			redirectURL = "/oauth/oidc/callback"
-			if numProviders > 1 {
-				redirectURL = fmt.Sprintf("/oauth/oidc/callback/%s", providerID)
-			}
-		}
-
 		scopes := p.ExtraScopes
 		if len(scopes) == 0 {
 			scopes = []string{oidc.ScopeOpenID, "profile", "email"}
@@ -289,7 +278,7 @@ func NewOIDCService(params OIDCServiceParams) (*OIDCService, error) {
 
 		oauth2Config.ClientID = p.ClientID
 		oauth2Config.ClientSecret = p.ClientSecret
-		oauth2Config.RedirectURL = redirectURL
+		oauth2Config.RedirectURL = oidcProviderRedirectURL(p, numProviders)
 		oauth2Config.Scopes = scopes
 
 		svc.providers[providerID] = &oidcProvider{
@@ -301,6 +290,17 @@ func NewOIDCService(params OIDCServiceParams) (*OIDCService, error) {
 	}
 
 	return svc, nil
+}
+
+// oidcProviderRedirectURL is the IdP's callback target on the backend.
+func oidcProviderRedirectURL(provider OIDCProvider, numProviders int) string {
+	if provider.RedirectURL != "" {
+		return provider.RedirectURL
+	}
+	if numProviders > 1 {
+		return "/oauth/oidc/callback/" + provider.providerID()
+	}
+	return "/oauth/oidc/callback"
 }
 
 // resolveIconURL normalises the icon_url field.
@@ -522,13 +522,6 @@ func (s *OIDCService) GetAuthorizeURL(ctx context.Context, providerIdentifier st
 			return "", "", fmt.Errorf("Please wait %d seconds before retrying this provider", remaining)
 		}
 
-		numProviders := len(s.cfg.Providers)
-
-		redirectURL := "/oauth/oidc/callback"
-		if numProviders > 1 {
-			redirectURL = fmt.Sprintf("/oauth/oidc/callback/%s", providerID)
-		}
-
 		scopes := cfgProvider.ExtraScopes
 		if len(scopes) == 0 {
 			scopes = []string{oidc.ScopeOpenID, "profile", "email"}
@@ -543,7 +536,7 @@ func (s *OIDCService) GetAuthorizeURL(ctx context.Context, providerIdentifier st
 			ClientID:     cfgProvider.ClientID,
 			ClientSecret: cfgProvider.ClientSecret,
 			Endpoint:     provider.Endpoint(),
-			RedirectURL:  redirectURL,
+			RedirectURL:  oidcProviderRedirectURL(*cfgProvider, len(s.cfg.Providers)),
 			Scopes:       scopes,
 		}
 

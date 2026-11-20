@@ -29,6 +29,8 @@ oidc:
       icon_url: "https://www.google.com/favicon.ico" # UI 自定义：图标 URL
 ```
 
+若设置了 `server.base_path: /axonhub`，请在身份提供商中注册带前缀的回调地址，例如 `https://axonhub.example.com/axonhub/oauth/oidc/callback`。如果 `server.public_url` 只包含协议和主机，AxonHub 会追加此前缀。如果已显式设置路径，则使用该路径。
+
 ### 提供商选项 (Provider Options)
 
 | 选项 | 描述 |

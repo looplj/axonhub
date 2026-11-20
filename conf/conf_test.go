@@ -389,3 +389,22 @@ func TestLLMTimeoutConfigFromEnvironment(t *testing.T) {
 		t.Fatalf("LLM timeouts = (%s, %s, %s), want (0s, 25m, 45s)", cfg.APIServer.LLMRequestTimeout, cfg.APIServer.LLMStreamRequestTimeout, cfg.APIServer.LLMStreamIdleTimeout)
 	}
 }
+
+func TestServerBasePathConfig(t *testing.T) {
+	configFile := writeTestConfig(t, "server:\n  base_path: /tools/axonhub/\n")
+	cfg, _, err := loadConfig(configFile)
+	if err != nil || cfg.APIServer.BasePath != "/tools/axonhub" {
+		t.Fatalf("YAML base_path = %q, error = %v", cfg.APIServer.BasePath, err)
+	}
+
+	t.Setenv("AXONHUB_SERVER_BASE_PATH", "/gateway/")
+	cfg, _, err = loadConfig(configFile)
+	if err != nil || cfg.APIServer.BasePath != "/gateway" {
+		t.Fatalf("environment base_path = %q, error = %v", cfg.APIServer.BasePath, err)
+	}
+
+	t.Setenv("AXONHUB_SERVER_BASE_PATH", "https://example.com")
+	if _, _, err = loadConfig(configFile); err == nil {
+		t.Fatal("invalid base_path was accepted")
+	}
+}

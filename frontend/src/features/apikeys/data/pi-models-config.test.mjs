@@ -53,7 +53,7 @@ function buildModel({ modelID, developer, name, card, reasoningEfforts }) {
 }
 
 function buildConfig(models) {
-  return buildPiModelsConfig({ origin: 'http://localhost:8090', apiKey: 'ah-test', models });
+  return buildPiModelsConfig({ baseUrl: 'http://localhost:8090/axonhub/v1', apiKey: 'ah-test', models });
 }
 
 test('pi thinking levels follow the unified AxonHub vocabulary', () => {
@@ -149,7 +149,7 @@ test('provider config carries the key, the /v1 endpoint and only chat models', (
 
   assert.equal(provider.api, 'openai-completions');
   assert.equal(provider.apiKey, 'ah-test');
-  assert.equal(provider.baseUrl, 'http://localhost:8090/v1');
+  assert.equal(provider.baseUrl, 'http://localhost:8090/axonhub/v1');
   assert.deepEqual(
     provider.models.map((model) => model.id),
     ['grok-4.6', 'unpriced']

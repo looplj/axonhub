@@ -35,7 +35,7 @@ func TestHandler_ReturnsJSON404ForUnknownAPIPaths(t *testing.T) {
 	useTestStaticFS(t)
 
 	router := gin.New()
-	router.NoRoute(Handler())
+	router.NoRoute(Handler(""))
 
 	for _, path := range []string{"/v1/not-found", "/anthropic/not-found", "/admin/not-found"} {
 		t.Run(path, func(t *testing.T) {
@@ -61,7 +61,7 @@ func TestHandler_ServesSPAIndexForFrontendRoutes(t *testing.T) {
 	useTestStaticFS(t)
 
 	router := gin.New()
-	router.NoRoute(Handler())
+	router.NoRoute(Handler(""))
 
 	recorder := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/settings/profile", nil)
@@ -77,7 +77,7 @@ func TestCodexPrefixAPINotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	useTestStaticFS(t)
 	router := gin.New()
-	router.NoRoute(Handler())
+	router.NoRoute(Handler(""))
 	result := httptest.NewRecorder()
 	router.ServeHTTP(result, httptest.NewRequest(http.MethodGet, "/codex/alpha/notes/v2/unknown", nil))
 	require.Equal(t, http.StatusNotFound, result.Code)
@@ -90,7 +90,7 @@ func TestHandler_DoesNotFallbackMissingStaticAssetToSPAIndex(t *testing.T) {
 	useTestStaticFS(t)
 
 	router := gin.New()
-	router.NoRoute(Handler())
+	router.NoRoute(Handler(""))
 
 	recorder := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/assets/definitely-missing.js", nil)
@@ -99,4 +99,37 @@ func TestHandler_DoesNotFallbackMissingStaticAssetToSPAIndex(t *testing.T) {
 
 	require.Equal(t, http.StatusNotFound, recorder.Code)
 	require.NotContains(t, recorder.Header().Get("Content-Type"), "text/html")
+}
+
+func TestHandlerRendersSPABasePath(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	tempDir := t.TempDir()
+	require.NoError(t, os.WriteFile(tempDir+"/index.html", []byte(`<html><head>
+<link rel="icon" href="/favicon">
+<link rel="modulepreload" href="./assets/shared.js">
+<link rel="stylesheet" href="/assets/main.css">
+<script type="module" src="./assets/main.js"></script>
+</head><body></body></html>`), 0o644))
+
+	originalStaticFS := staticFS
+	staticFS = ginstatic.LocalFile(tempDir, false)
+	t.Cleanup(func() { staticFS = originalStaticFS })
+
+	for _, prefix := range []string{"", "/tools/axonhub"} {
+		router := gin.New()
+		router.NoRoute(Handler(prefix))
+		result := httptest.NewRecorder()
+		router.ServeHTTP(result, httptest.NewRequest(http.MethodGet, "/settings/profile", nil))
+		require.Equal(t, http.StatusOK, result.Code)
+		page := result.Body.String()
+		if prefix != "" {
+			require.Contains(t, page, `<meta name="axonhub-base-path" content="/tools/axonhub">`)
+		} else {
+			require.NotContains(t, page, "axonhub-base-path")
+		}
+		require.Contains(t, page, `src="`+prefix+`/assets/main.js"`)
+		require.Contains(t, page, `href="`+prefix+`/assets/shared.js"`)
+		require.Contains(t, page, `href="`+prefix+`/assets/main.css"`)
+		require.Contains(t, page, `href="`+prefix+`/favicon"`)
+	}
 }
