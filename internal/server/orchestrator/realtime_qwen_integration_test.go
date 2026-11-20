@@ -38,6 +38,7 @@ func TestRealtimeQwenConfigurationDuplexAndTools(t *testing.T) {
 			go func() {
 				defer func() {
 					if r := recover(); r != nil {
+						t.Errorf("Qwen configuration mock panic: %T", r)
 						ackResult <- fmt.Errorf("mock panic: %T", r)
 					}
 				}()
@@ -65,6 +66,7 @@ func TestRealtimeQwenConfigurationDuplexAndTools(t *testing.T) {
 			go func() {
 				defer func() {
 					if r := recover(); r != nil {
+						t.Errorf("Qwen bridge panic: %T", r)
 						done <- fmt.Errorf("bridge panic: %T", r)
 					}
 				}()
