@@ -66,7 +66,7 @@ func (s *State) Update() error {
 	return nil
 }
 
-func (s *State) ObserveServer(kind string) error {
+func (s *State) ObserveServer(kind string, responseQueuedBeforeUpdate ...bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.phase == Closed || s.phase == Closing {
@@ -88,7 +88,8 @@ func (s *State) ObserveServer(kind string) error {
 			s.phase = Active
 		}
 	case "response.created":
-		if (s.pending && s.active == 0) || (s.phase != Configured && s.phase != Active) {
+		queuedBeforeUpdate := len(responseQueuedBeforeUpdate) > 0 && responseQueuedBeforeUpdate[0]
+		if (s.pending && s.active == 0 && !queuedBeforeUpdate) || (s.phase != Configured && s.phase != Active) {
 			return errors.New("response before configuration or concurrent responses")
 		}
 		s.phase = Active

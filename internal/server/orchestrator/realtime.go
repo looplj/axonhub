@@ -365,7 +365,8 @@ func (c *RealtimeConversation) Check(ctx context.Context) error {
 	if c.state.ConfigurationExpired(15 * time.Second) {
 		return errors.New("realtime configuration acknowledgement timed out")
 	}
-	if c.service.Channels.GetEnabledChannel(c.target.Channel.ID) == nil {
+	currentChannel := c.service.Channels.GetEnabledChannel(c.target.Channel.ID)
+	if currentChannel == nil {
 		return errors.New("realtime channel disabled")
 	}
 	c.checkMu.Lock()
@@ -394,7 +395,7 @@ func (c *RealtimeConversation) Check(ctx context.Context) error {
 		c.lastCheckErr = errors.New("realtime model permission revoked")
 		return c.lastCheckErr
 	}
-	if !realtimeProfilesAllowChannel(current, c.target.Channel) {
+	if !realtimeProfilesAllowChannel(current, currentChannel) {
 		c.lastCheckErr = errors.New("realtime channel permission revoked")
 		return c.lastCheckErr
 	}
@@ -511,7 +512,7 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 			return nil, nil
 		}
 	}
-	if err := c.state.ObserveServer(kind); err != nil {
+	if err := c.state.ObserveServer(kind, len(c.pendingResponses) > 0 || c.pendingInput != nil); err != nil {
 		return nil, err
 	}
 	if kind == "input_audio_buffer.cleared" && c.pendingInput != nil {

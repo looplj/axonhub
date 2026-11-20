@@ -51,6 +51,38 @@ func realtimeSocketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
 	return conn, peer
 }
 
+func TestRealtimeCheckRevalidatesCurrentChannelTags(t *testing.T) {
+	ctx, db := setupTest(t)
+	project := db.Project.Create().SetName("Realtime tag refresh").SaveX(ctx)
+	profile := &objects.APIKeyProfiles{ActiveProfile: "tag-limited", Profiles: []objects.APIKeyProfile{{
+		Name: "tag-limited", ChannelTags: []string{"allowed"}, ChannelTagsMatchMode: objects.ChannelTagsMatchModeAny,
+	}}}
+	key := db.APIKey.Create().SetName("Realtime tag refresh").SetKey("synthetic-tag-client-key").SetUserID(1).SetProjectID(project.ID).SetType(apikey.TypeUser).SetScopes([]string{"read_channels", "write_requests"}).SetProfiles(profile).SetStatus(apikey.StatusEnabled).SaveX(ctx)
+	row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("Realtime tag refresh").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream-key"}).SetSupportedModels([]string{"voice"}).SetDefaultTestModel("voice").SetStatus(channel.StatusEnabled).SetTags([]string{"allowed"}).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}).SaveX(ctx)
+	channels := newTestChannelServiceForChannels(db)
+	channelAtConnect, err := channels.GetChannel(ctx, row.ID)
+	require.NoError(t, err)
+	channels.SetEnabledChannelsForTest([]*biz.Channel{channelAtConnect})
+	system := newTestSystemService(db)
+	cache := xcache.Config{Mode: xcache.ModeMemory}
+	projects := biz.NewProjectService(biz.ProjectServiceParams{CacheConfig: cache, Ent: db})
+	keys := biz.NewAPIKeyService(biz.APIKeyServiceParams{CacheConfig: cache, Ent: db, ProjectService: projects, KeyPrefix: "ah"})
+	t.Cleanup(keys.Stop)
+	auth := biz.NewAuthService(biz.AuthServiceParams{SystemService: system, APIKeyService: keys, Ent: db})
+	key.Edges.Project = project
+	requestCtx := contexts.WithProjectID(contexts.WithAPIKey(ent.NewContext(context.Background(), db), key), project.ID)
+	requestCtx, err = authz.WithPrincipal(requestCtx, authz.Principal{Type: authz.PrincipalTypeAPIKey, APIKeyID: &key.ID, ProjectID: &project.ID})
+	require.NoError(t, err)
+	service := &RealtimeService{Auth: auth, Channels: channels, Usage: biz.NewUsageLogService(db, system, channels)}
+	c := &RealtimeConversation{service: service, ctx: requestCtx, state: rt.NewState(), target: &RealtimeTarget{Channel: channelAtConnect, APIKey: key}, lastCheck: time.Time{}}
+	require.NoError(t, c.Check(requestCtx))
+
+	currentChannel := &biz.Channel{Channel: &ent.Channel{ID: row.ID, Type: channel.TypeOpenai, Tags: []string{"forbidden"}}}
+	channels.SetEnabledChannelsForTest([]*biz.Channel{currentChannel})
+	c.lastCheck = time.Time{}
+	require.ErrorContains(t, c.Check(requestCtx), "realtime channel permission revoked")
+}
+
 func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 	for _, model := range []string{"gpt-realtime-2.1", "gpt-realtime-2.1-mini"} {
 		t.Run(model, func(t *testing.T) {

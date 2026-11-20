@@ -42,7 +42,6 @@ func TestNativeStateAllowsInitialClientConfiguration(t *testing.T) {
 	require.NoError(t, s.ObserveServer("session.updated"))
 	require.True(t, s.Ready())
 }
-
 func TestNativeProviderConfirmedDefaultsAreUsable(t *testing.T) {
 	s := NewState()
 	require.NoError(t, s.Connecting())
