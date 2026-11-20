@@ -68,6 +68,7 @@ type Adapter struct {
 	mediaStarted                    bool
 	inputRate, outputRate           int
 	confirmedInput, confirmedOutput int
+	pendingUpdateID                 string
 }
 
 func NewAdapter(model string, native bool) (*Adapter, error) {
@@ -162,7 +163,7 @@ func (a *Adapter) Client(data []byte) (result []byte, clientErr error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := validateItem(item); err != nil {
+		if err := validateItem(item, !a.native); err != nil {
 			return nil, err
 		}
 	default:
@@ -172,9 +173,13 @@ func (a *Adapter) Client(data []byte) (result []byte, clientErr error) {
 		session, _ := object(e["session"])
 		flattenFixedPCM(session)
 	}
-	return json.Marshal(e)
+	wire, err := json.Marshal(e)
+	if err == nil && event.Type == "session.update" {
+		a.pendingUpdateID, _ = e["event_id"].(string)
+	}
+	return wire, err
 }
-func validateItem(item map[string]any) error {
+func validateItem(item map[string]any, ga bool) error {
 	if err := only(item, "id", "type", "role", "content", "call_id", "output"); err != nil {
 		return err
 	}
@@ -202,6 +207,9 @@ func validateItem(item map[string]any) error {
 			}
 			if err := only(p, "type", "text"); err != nil {
 				return err
+			}
+			if ga && item["role"] == "assistant" && p["type"] == "output_text" {
+				p["type"] = "text"
 			}
 			if p["type"] != "input_text" && p["type"] != "text" {
 				return errors.New("only text conversation items are supported")
@@ -551,12 +559,15 @@ func (a *Adapter) Server(data []byte) ([]byte, error) {
 	}
 	e := event.Fields
 	if event.Type == "error" {
-		a.inputRate = a.confirmedInput
-		a.outputRate = a.confirmedOutput
 		safe := map[string]any{"type": "invalid_request_error", "code": "upstream_error", "message": "The Qwen Realtime service rejected an event."}
 		if upstream, ok := e["error"].(map[string]any); ok {
 			if id, ok := upstream["event_id"].(string); ok && id != "" {
 				safe["event_id"] = id
+				if id == a.pendingUpdateID {
+					a.inputRate = a.confirmedInput
+					a.outputRate = a.confirmedOutput
+					a.pendingUpdateID = ""
+				}
 			}
 		}
 		e["error"] = safe
@@ -640,6 +651,7 @@ func (a *Adapter) Server(data []byte) ([]byte, error) {
 	return json.Marshal(e)
 }
 func (a *Adapter) verifyAudioAck(session map[string]any) error {
+	a.pendingUpdateID = ""
 	if !a.cap.FreeAudioTranscript {
 		if _, nested := session["audio"]; !nested && session["input_audio_format"] == "pcm" && session["output_audio_format"] == "pcm" {
 			a.confirmedInput = a.inputRate
