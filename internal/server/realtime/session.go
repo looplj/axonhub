@@ -9,6 +9,8 @@
 //	每个连接只有一个数据写入协程；队列满时关闭会话，不丢弃音频或无限缓存。
 //	钩子只能返回经过脱敏的错误；音视频消息不得记录到日志或追踪。
 //	关闭握手有界等待写出与对端确认；等待期间只排空输入，不再转换或转发媒体。
+
+// Package realtime manages bounded realtime WebSocket sessions.
 package realtime
 
 import (
@@ -22,6 +24,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+
 	"github.com/looplj/axonhub/internal/log"
 )
 
@@ -29,8 +32,10 @@ var ErrQuotaExceeded = errors.New("realtime quota exceeded")
 
 var ErrAccountingUnavailable = errors.New("realtime accounting unavailable")
 
-var ErrInvalidEvent = errors.New("unsupported or invalid realtime event")
-var ErrBackpressure = errors.New("realtime send queue exhausted")
+var (
+	ErrInvalidEvent = errors.New("unsupported or invalid realtime event")
+	ErrBackpressure = errors.New("realtime send queue exhausted")
+)
 
 const MaxMessageBytes = 256 << 10
 
@@ -101,6 +106,8 @@ func (q *sendQueue) enqueue(ctx context.Context, data []byte) error {
 
 // Run owns both connections, joins every worker and closes the peer on any failure.
 // Client validation errors are reported without forwarding the rejected event.
+//
+//nolint:maintidx // Keep session orchestration together so cancellation and close ordering stay visible.
 func Run(parent context.Context, downstream, upstream *websocket.Conn, options Options, hooks Hooks) error {
 	o := options.defaults()
 	ctx, cancel := context.WithTimeout(parent, o.MaxDuration)
@@ -124,9 +131,7 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 		return nil
 	})
 	launch := func(side string, fn func() error) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			defer func() {
 				if r := recover(); r != nil {
 					log.Error(ctx, "realtime worker panicked", log.Any("panic", fmt.Sprintf("%T", r)))
@@ -146,7 +151,7 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 			default:
 			}
 			cancel()
-		}()
+		})
 	}
 	read := func(conn *websocket.Conn, q *sendQueue, transform func([]byte) ([]byte, error), client bool) func() error {
 		return func() error {

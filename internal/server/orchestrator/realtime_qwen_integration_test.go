@@ -4,6 +4,7 @@
 //	internal/server/orchestrator/realtime.go
 //	llm/realtime/adapter.go
 //	internal/server/realtime/session.go
+
 package orchestrator
 
 import (
@@ -11,14 +12,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/internal/server/biz"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm"
-	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
-	"testing"
-	"time"
 )
 
 func TestRealtimeQwenConfigurationDuplexAndTools(t *testing.T) {
@@ -57,8 +60,7 @@ func TestRealtimeQwenConfigurationDuplexAndTools(t *testing.T) {
 			require.Equal(t, "session.created", gjson.GetBytes(initial[0], "type").String())
 			require.EqualValues(t, 24000, gjson.GetBytes(initial[0], "session.audio.input.format.rate").Int())
 			client, downstream := realtimeSocketPair(t)
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 			done := make(chan error, 1)
 			go func() {
 				defer func() {

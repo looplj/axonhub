@@ -2,6 +2,7 @@
 // 关联文件:
 //
 //	internal/objects/price.go
+
 package objects
 
 import (

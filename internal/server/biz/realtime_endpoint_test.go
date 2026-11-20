@@ -4,15 +4,18 @@
 //	internal/server/biz/channel_endpoint.go
 //	internal/server/biz/channel_realtime.go
 //	internal/server/biz/channel_llm.go
+
 package biz
 
 import (
+	"testing"
+
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
-	"github.com/samber/lo"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestRealtimeEndpointExplicitAndTrusted(t *testing.T) {

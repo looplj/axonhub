@@ -6,6 +6,7 @@
 //	internal/server/orchestrator/realtime.go
 //
 // 注意事项: 只将上游网络替换为本地 WS；鉴权、选路、租约和数据库执行生产路径。
+
 package api
 
 import (
@@ -21,6 +22,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -33,8 +37,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/require"
 )
 
 type reconnectDialer struct{ url string }

@@ -8,6 +8,7 @@
 // 注意事项:
 //
 //	TLS 证书验证始终启用；直连解析后固定公网 IP，禁止回环和私网探测。
+
 package realtime
 
 import (
@@ -21,6 +22,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -64,7 +66,7 @@ func Dial(ctx context.Context, target, key string, proxy *httpclient.ProxyConfig
 	}
 	headers := http.Header{"Authorization": []string{"Bearer " + key}}
 	if len(safetyIdentifier) > 0 && safetyIdentifier[0] != "" {
-		headers.Set("OpenAI-Safety-Identifier", safetyIdentifier[0])
+		headers.Set("Openai-Safety-Identifier", safetyIdentifier[0])
 	}
 	conn, response, err := d.DialContext(ctx, target, headers)
 	if response != nil && response.Body != nil {
@@ -79,6 +81,7 @@ func Dial(ctx context.Context, target, key string, proxy *httpclient.ProxyConfig
 	}
 	return conn, nil
 }
+
 func publicDial(ctx context.Context, network, address string) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {

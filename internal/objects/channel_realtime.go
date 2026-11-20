@@ -6,6 +6,7 @@
 //	internal/server/gql/axonhub.graphql
 //
 // 注意事项: 数据库存储的旧端点仍可解码迁移；只有管理输入使用受限标量。
+
 package objects
 
 import (

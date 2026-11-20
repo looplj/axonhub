@@ -7,6 +7,10 @@
 //	internal/server/biz/channel_endpoint.go
 //
 // 注意事项: Realtime 不作为持久化端点协议；禁用配置不会产生可选运行时端点。
+
+// Package biz implements AxonHub business services and domain rules.
+//
+//nolint:godoclint // The repository requires a responsibility header before the package comment.
 package biz
 
 import (

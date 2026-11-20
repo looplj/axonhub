@@ -4,6 +4,7 @@
 //	internal/objects/price.go
 //	internal/server/biz/realtime_billing.go
 //	llm/model.go
+
 package objects
 
 import "fmt"
@@ -18,6 +19,7 @@ const (
 func AllRealtimePriceItemCodes() []PriceItemCode {
 	return append(RealtimePriceItemCodes(), PriceItemCodeRealtimeInputImage, PriceItemCodeRealtimeCachedInputText, PriceItemCodeRealtimeCachedInputAudio, PriceItemCodeRealtimeCachedInputImage)
 }
+
 func ValidateOpenAIRealtimePrice(price ModelPrice) error {
 	if err := ValidateRealtimePrice(price); err != nil {
 		return err

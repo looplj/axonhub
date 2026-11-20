@@ -3,6 +3,7 @@
 //
 //	internal/server/backup/restore.go
 //	internal/server/biz/channel_realtime.go
+
 package backup
 
 import (
@@ -10,10 +11,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/looplj/axonhub/internal/ent"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRestoreRejectsRealtimeEndpointsAndInvalidChannelRealtime(t *testing.T) {
@@ -31,7 +32,7 @@ func TestRestoreRejectsRealtimeEndpointsAndInvalidChannelRealtime(t *testing.T) 
 		t.Run(tc.name, func(t *testing.T) {
 			db, service, ctx := setupBackupTest(t)
 			defer db.Close()
-			data, err := json.Marshal(BackupData{Version: BackupVersion, Channels: []*BackupChannel{{Channel: ent.Channel{Name: tc.name, Type: channel.TypeOpenai, BaseURL: "https://api.openai.com/v1", Status: channel.StatusEnabled, SupportedModels: []string{"voice"}, DefaultTestModel: "voice", Settings: &objects.ChannelSettings{Realtime: tc.config}, Endpoints: tc.endpoint}, Credentials: objects.ChannelCredentials{APIKey: "synthetic-restore"}}}})
+			data, err := json.Marshal(BackupData{Version: BackupVersion, Channels: []*BackupChannel{{Name: tc.name, Type: channel.TypeOpenai, BaseURL: "https://api.openai.com/v1", Status: channel.StatusEnabled, SupportedModels: []string{"voice"}, DefaultTestModel: "voice", Settings: &objects.ChannelSettings{Realtime: tc.config}, Endpoints: tc.endpoint, Credentials: objects.ChannelCredentials{APIKey: "synthetic-restore"}}}})
 			require.NoError(t, err)
 			err = service.Restore(ctx, bytes.NewReader(data), RestoreOptions{IncludeChannels: true, ChannelConflictStrategy: ConflictStrategyOverwrite})
 			if tc.wantError {

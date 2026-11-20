@@ -6,6 +6,7 @@
 // 注意事项:
 //
 //	仅 session.updated 确认配置；session.created 和 WebSocket 握手均不代表可发送媒体。
+
 package realtime
 
 import (
@@ -41,6 +42,7 @@ func (s *State) Ready() bool {
 	defer s.mu.Unlock()
 	return !s.pending && (s.phase == Configured || s.phase == Active)
 }
+
 func (s *State) Connecting() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -52,16 +54,18 @@ func (s *State) Connecting() error {
 	s.pendingSince = time.Now()
 	return nil
 }
+
 func (s *State) Update() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if (s.phase != Configured && s.phase != Active && !(s.phase == Connecting && s.seenCreated)) || s.pending {
+	if (s.phase != Configured && s.phase != Active && (s.phase != Connecting || !s.seenCreated)) || s.pending {
 		return errors.New("session cannot be updated before configuration acknowledgement or during generation")
 	}
 	s.pending = true
 	s.pendingSince = time.Now()
 	return nil
 }
+
 func (s *State) ObserveServer(kind string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -99,6 +103,7 @@ func (s *State) ObserveServer(kind string) error {
 	}
 	return nil
 }
+
 func (s *State) Close() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

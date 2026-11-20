@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { realtimeForSelection, hasLegacyRealtimeEndpoints, withoutRealtimeModelProtocols } from './channel-realtime.ts';
 import { getInitialApiFormatForChannel, getAvailableProtocolFormats } from './protocol-options.ts';
@@ -30,4 +31,12 @@ test('switching to an incompatible channel type removes only obsolete Realtime m
   const source = [{ model: 'voice', apiFormats: ['qwen/realtime-ws'], enabled: true }, { model: 'mixed', apiFormats: ['qwen/realtime-ws', 'openai/chat_completions'], enabled: true }];
   assert.deepEqual(withoutRealtimeModelProtocols(source), [{ model: 'mixed', apiFormats: ['openai/chat_completions'], enabled: true }]);
   assert.deepEqual(source[0].apiFormats, ['qwen/realtime-ws']);
+});
+
+test('channel change snapshot detects Realtime host and timeout edits', () => {
+  const actionDialog = readFileSync(new URL('../components/channels-action-dialog.tsx', import.meta.url), 'utf8');
+  const snapshot = actionDialog.match(/const localSettingsSnapshot = JSON.stringify\(\{([\s\S]*?)\n  \}\);/)?.[1];
+  assert.ok(snapshot, 'local settings snapshot should exist');
+  assert.match(snapshot, /\brealtimeHost,/);
+  assert.match(snapshot, /\brealtimeTimeout,/);
 });

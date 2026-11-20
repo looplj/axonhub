@@ -9,6 +9,8 @@
 // 注意事项:
 //
 //	会话固定模型、渠道与价格；不记录音视频或对话内容，不进入一次性请求 Transformer。
+
+// Package orchestrator coordinates provider selection and request execution.
 package orchestrator
 
 import (
@@ -57,6 +59,7 @@ type RealtimeService struct {
 
 type RealtimeServiceParams struct {
 	fx.In
+
 	Transport rt.Dialer
 	Auth      *biz.AuthService
 	Selector  *DefaultSelector
@@ -188,6 +191,7 @@ func (s *RealtimeService) Prepare(ctx context.Context, model string, native bool
 	}
 	return nil, biz.ErrInvalidModel
 }
+
 func (s *RealtimeService) checkQuota(ctx context.Context, key *ent.APIKey, includeRequests ...bool) error {
 	p := key.GetActiveProfile()
 	if p == nil || p.Quota == nil {
@@ -236,6 +240,7 @@ func (s *RealtimeService) Connect(ctx context.Context, target *RealtimeTarget, c
 	conversation.credential = key
 	return upstream, conversation, initial, nil
 }
+
 func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Conn, target *RealtimeTarget, config rt.Config) (*RealtimeConversation, [][]byte, error) {
 	var adapter realtimeAdapter
 	var err error
@@ -401,6 +406,7 @@ func (c *RealtimeConversation) Check(ctx context.Context) error {
 	c.lastCheckErr = c.service.checkQuota(checkCtx, current, false)
 	return c.lastCheckErr
 }
+
 func realtimeProfilesAllowChannel(key *ent.APIKey, ch *biz.Channel) bool {
 	if p := key.GetActiveProfile(); p != nil {
 		if len(p.ChannelIDs) > 0 && !slices.Contains(p.ChannelIDs, ch.ID) {
@@ -492,6 +498,7 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 	}
 	return wire, nil
 }
+
 func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	kind := gjson.GetBytes(data, "type").String()
 	if kind == "error" {
@@ -620,6 +627,7 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	}
 	return c.aliasModel(converted), nil
 }
+
 func (c *RealtimeConversation) createResponse(id string) (*realtimeResponse, error) {
 	if c.auditsCreated >= 512 {
 		return nil, errors.New("realtime audit limit reached")
@@ -636,6 +644,7 @@ func (c *RealtimeConversation) createResponse(id string) (*realtimeResponse, err
 	c.auditsCreated++
 	return &realtimeResponse{request: req, started: time.Now()}, nil
 }
+
 func (c *RealtimeConversation) aliasModel(data []byte) []byte {
 	if c.target.Native || c.target.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket || data == nil {
 		return data
@@ -657,6 +666,7 @@ func (c *RealtimeConversation) aliasModel(data []byte) []byte {
 	}
 	return result
 }
+
 func (c *RealtimeConversation) Close() {
 	c.state.Close()
 	c.mu.Lock()

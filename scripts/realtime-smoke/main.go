@@ -16,18 +16,22 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/gorilla/websocket"
-	protocol "github.com/looplj/axonhub/llm/realtime"
 	"net/http"
 	"net/url"
 	"os"
 	"time"
+
+	"github.com/gorilla/websocket"
+
+	protocol "github.com/looplj/axonhub/llm/realtime"
 )
 
-var model = flag.String("model", "gpt-realtime-2.1-mini", "Explicitly configured Gateway model or alias")
-var endpoint = flag.String("url", "ws://127.0.0.1:8090/v1/realtime", "Gateway WebSocket URL without query credentials")
-var audioFile = flag.String("audio-pcm", "", "Headerless, mono signed PCM16 LE at 24000 Hz; required for audio acceptance")
-var native = flag.Bool("qwen-native", false, "Use the explicitly enabled /v1/realtime/qwen route")
+var (
+	model     = flag.String("model", "gpt-realtime-2.1-mini", "Explicitly configured Gateway model or alias")
+	endpoint  = flag.String("url", "ws://127.0.0.1:8090/v1/realtime", "Gateway WebSocket URL without query credentials")
+	audioFile = flag.String("audio-pcm", "", "Headerless, mono signed PCM16 LE at 24000 Hz; required for audio acceptance")
+	native    = flag.Bool("qwen-native", false, "Use the explicitly enabled /v1/realtime/qwen route")
+)
 
 func main() {
 	flag.Parse()
@@ -36,6 +40,8 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+//nolint:maintidx // Keep this standalone smoke flow in its observed protocol order.
 func run() error {
 	key := os.Getenv("AXONHUB_API_KEY")
 	if key == "" {
@@ -60,6 +66,9 @@ func run() error {
 	}
 	u.RawQuery = url.Values{"model": []string{*model}}.Encode()
 	conn, resp, err := (&websocket.Dialer{HandshakeTimeout: 15 * time.Second}).Dial(u.String(), http.Header{"Authorization": []string{"Bearer " + key}})
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		if resp != nil {
 			return fmt.Errorf("gateway handshake status %d", resp.StatusCode)
@@ -74,7 +83,7 @@ func run() error {
 	}
 	wait := func(want string) (map[string]any, error) {
 		_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-		for i := 0; i < 10000; i++ {
+		for range 10000 {
 			_, data, err := conn.ReadMessage()
 			if err != nil {
 				return nil, errors.New("socket closed or timed out before " + want)

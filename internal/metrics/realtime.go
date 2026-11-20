@@ -8,13 +8,17 @@
 // 注意事项:
 //
 //	标签不包含会话标识、API Key、对话或音视频内容，避免泄露与高基数。
+
+// Package metrics records application metrics.
 package metrics
 
 import (
 	"context"
-	"github.com/looplj/axonhub/llm"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+
+	"github.com/looplj/axonhub/llm"
 )
 
 type realtimeMetrics struct {
@@ -45,15 +49,19 @@ func newRealtimeMetrics(meter metric.Meter) (*realtimeMetrics, error) {
 	}
 	return r, nil
 }
+
 func (sm *_Metrics) RealtimeEvent(ctx context.Context, event string) {
 	sm.realtime.events.Add(ctx, 1, metric.WithAttributes(attribute.String("event", event)))
 }
+
 func (sm *_Metrics) RealtimeActive(ctx context.Context, delta int64) {
 	sm.realtime.active.Add(ctx, delta)
 }
+
 func (sm *_Metrics) RealtimeDuration(ctx context.Context, seconds float64) {
 	sm.realtime.duration.Record(ctx, seconds)
 }
+
 func (sm *_Metrics) RealtimeUsage(ctx context.Context, usage *llm.Usage, firstOutput *int64) {
 	if usage == nil {
 		return

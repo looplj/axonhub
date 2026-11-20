@@ -3,11 +3,19 @@
 //
 //	internal/server/orchestrator/realtime.go
 //	internal/server/biz/realtime_billing.go
+
 package orchestrator
 
 import (
 	"context"
 	"errors"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -16,11 +24,6 @@ import (
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm"
 	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/require"
-	"sync/atomic"
-	"testing"
-	"time"
 )
 
 func TestRealtimeAuditRetryDoesNotRepeatUsage(t *testing.T) {
@@ -95,5 +98,4 @@ func TestRealtimeAuditRetryDoesNotRepeatUsage(t *testing.T) {
 	interrupted.Close()
 	require.NoError(t, usage.EnsureRealtimeUsageReconciled(ctx, key.ID), "an interrupted response must not permanently lock the key")
 	require.Equal(t, 1, db.UsageLog.Query().CountX(ctx), "pending requests must never become fabricated zero-cost usage")
-
 }

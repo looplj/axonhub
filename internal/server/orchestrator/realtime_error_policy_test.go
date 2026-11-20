@@ -3,11 +3,13 @@
 //
 //	internal/server/orchestrator/realtime_error_policy.go
 //	internal/server/orchestrator/realtime.go
+
 package orchestrator
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRealtimeExplicitErrorBoundaryPreservesNormalBytes(t *testing.T) {

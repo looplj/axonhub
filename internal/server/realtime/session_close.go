@@ -5,6 +5,7 @@
 //	internal/log/global.go
 //
 // 注意事项: 背压排队等待保持原有一秒；此处的一秒只用于关闭握手，不延长无限期停读的连接。
+
 package realtime
 
 import (
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
 	"github.com/looplj/axonhub/internal/log"
 )
 

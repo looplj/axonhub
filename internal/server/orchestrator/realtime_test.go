@@ -3,16 +3,19 @@
 //
 //	internal/server/orchestrator/select_endpoints.go
 //	internal/server/orchestrator/realtime.go
+
 package orchestrator
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/fx"
+
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/fx"
-	"testing"
 )
 
 func TestRealtimeNeverFallsBackToHTTP(t *testing.T) {

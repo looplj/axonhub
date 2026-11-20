@@ -102,8 +102,6 @@ import { ChannelModelAliases } from './channel-model-preview';
 import { ProxyType } from './channels-proxy-dialog';
 import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ManualModelBadge } from './manual-model-badge';
-import { filterChannelModelGroups, groupChannelModelEntries } from '../data/channel-model-aliases';
-import { useChannelModelPreview } from '../data/use-channel-model-preview';
 import { isRealtimeProtocol, realtimeForSelection, withoutRealtimeModelProtocols } from '../data/channel-realtime';
 
 interface Props {
@@ -1083,6 +1081,8 @@ export function ChannelsActionDialog({
     xaiSSOToken,
     selectedProvider,
     selectedApiFormat,
+    realtimeHost,
+    realtimeTimeout,
     responsesTransport,
     codexResponsesWebSocket,
     useGeminiVertex,
