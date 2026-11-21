@@ -102,7 +102,7 @@ import { ChannelModelAliases } from './channel-model-preview';
 import { ProxyType } from './channels-proxy-dialog';
 import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ManualModelBadge } from './manual-model-badge';
-import { getChannelBaseURLInputValue, getRealtimeHandshakeTimeoutInputValue, getRealtimeQuickModels, isRealtimeProtocol, isRealtimeQuickModel, realtimeForSelection, withoutRealtimeModelProtocols } from '../data/channel-realtime';
+import { getChannelBaseURLInputValue, getModelFetchBaseURL, getRealtimeHandshakeTimeoutInputValue, getRealtimeQuickModels, isRealtimeProtocol, isRealtimeQuickModel, realtimeForSelection, withoutRealtimeModelProtocols } from '../data/channel-realtime';
 
 interface Props {
   currentRow?: Channel;
@@ -1966,7 +1966,7 @@ export function ChannelsActionDialog({
 
   const handleFetchModels = useCallback(async () => {
     const channelType = form.getValues('type');
-    const baseURL = form.getValues('baseURL');
+    const baseURL = getModelFetchBaseURL(selectedApiFormat, form.getValues('baseURL'), realtimeHost);
     const apiKeys = form.getValues('credentials.apiKeys');
     const oauthApiKey = form.getValues('credentials.apiKey');
     const vertexApiKeys = channelType === 'gemini_vertex' ? form.getValues('credentials.vertexApiKeys') : undefined;
@@ -2039,7 +2039,7 @@ export function ChannelsActionDialog({
     } catch (_error) {
       // Error is already handled by the mutation
     }
-  }, [fetchModels, form, isEdit, currentRow, authMode]);
+  }, [fetchModels, form, isEdit, currentRow, authMode, selectedApiFormat, realtimeHost]);
 
   const handleSyncNow = useCallback(async () => {
     if (!currentRow) return [];
@@ -2064,7 +2064,7 @@ export function ChannelsActionDialog({
   }, [currentRow, form, patternError, syncChannelModels]);
 
   const canFetchModels = () => {
-    const baseURL = form.watch('baseURL');
+    const baseURL = getModelFetchBaseURL(selectedApiFormat, form.watch('baseURL'), realtimeHost);
     const apiKeys = form.watch('credentials.apiKeys');
     const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
     const vertexApiKeys = form.watch('credentials.vertexApiKeys');
@@ -2907,7 +2907,7 @@ export function ChannelsActionDialog({
 
                       {isRealtimeProtocol(selectedApiFormat) && (
                         <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8' data-testid='channel-realtime-timeout'>
-                          <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
+                          <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
                             <FormLabel className='font-medium'>{t('channels.endpoints.realtime.handshakeTimeout')}</FormLabel>
                             <Tooltip>
                               <TooltipTrigger asChild>

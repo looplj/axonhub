@@ -11,6 +11,11 @@ const realtimeQuickModels: Readonly<Record<string, readonly string[]>> = {
   'qwen/realtime-ws': ['qwen3.8-omni-flash-realtime', 'qwen3.5-omni-plus-realtime', 'qwen3.5-omni-flash-realtime'],
 };
 
+const REALTIME_PROVIDER_BADGE_CLASSES: Readonly<Record<'openai/realtime-ws' | 'qwen/realtime-ws', string>> = {
+  'openai/realtime-ws': 'border-teal-500/30 bg-teal-500/15 text-teal-700 dark:text-teal-300',
+  'qwen/realtime-ws': 'border-fuchsia-500/30 bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300',
+};
+
 export function getRealtimeQuickModels(format: string): readonly string[] | undefined {
   return Object.hasOwn(realtimeQuickModels, format) ? realtimeQuickModels[format] : undefined;
 }
@@ -30,6 +35,18 @@ export function getChannelBaseURLInputValue(format: string, channelBaseURL: stri
   if (format === 'openai/realtime-ws') return OPENAI_REALTIME_HOST;
   if (format === 'qwen/realtime-ws') return qwenRealtimeHost;
   return channelBaseURL ?? '';
+}
+
+export function getModelFetchBaseURL(format: string, channelBaseURL: string | null | undefined, qwenRealtimeHost: string): string {
+  if (format !== 'openai/realtime-ws' && format !== 'qwen/realtime-ws') return channelBaseURL ?? '';
+  return getChannelBaseURLInputValue(format, channelBaseURL, qwenRealtimeHost).replace(/^wss:/i, 'https:').replace(/^ws:/i, 'http:');
+}
+
+export function getRealtimeProviderBadgeClass(realtime: Pick<ChannelRealtime, 'enabled' | 'protocol'> | null | undefined): string | undefined {
+  if (!realtime?.enabled) return undefined;
+  return realtime.protocol === 'openai/realtime-ws' || realtime.protocol === 'qwen/realtime-ws'
+    ? REALTIME_PROVIDER_BADGE_CLASSES[realtime.protocol]
+    : undefined;
 }
 
 export function isRealtimeProtocol(format: string): boolean {

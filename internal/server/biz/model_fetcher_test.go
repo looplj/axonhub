@@ -459,6 +459,12 @@ func TestPrepareModelsEndpoint(t *testing.T) {
 			expectedURL: "http://api.example.com/v1/models",
 		},
 		{
+			name:        "Bailian realtime WebSocket host",
+			channelType: channel.TypeBailian,
+			baseURL:     "wss://workspace.cn-beijing.maas.aliyuncs.com",
+			expectedURL: "https://workspace.cn-beijing.maas.aliyuncs.com/v1/models",
+		},
+		{
 			name:        "Deepseek",
 			channelType: channel.TypeDeepseek,
 			baseURL:     "https://api.deepseek.com",
