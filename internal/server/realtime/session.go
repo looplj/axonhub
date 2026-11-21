@@ -131,6 +131,7 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 	closeACK := make(chan struct{})
 	var closeOnce sync.Once
 	downstreamReaderDone := make(chan struct{})
+	tailWritten := make(chan struct{})
 	// The session owner sends the classified reply. Gorilla's default handler
 	// would send a close before that owner can serialize shutdown.
 	downstream.SetCloseHandler(func(int, string) error {
@@ -157,7 +158,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 			case errs <- err:
 			default:
 			}
-			cancel()
+			if !isOrderlyUpstreamClose(err) {
+				cancel()
+			}
 		})
 	}
 	read := func(conn *websocket.Conn, q *sendQueue, transform func([]byte) ([]byte, error), client bool) func() error {
@@ -251,6 +254,11 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 				case <-ctx.Done():
 					return ctx.Err()
 				case data := <-q:
+					if data == nil {
+						close(tailWritten)
+						<-ctx.Done()
+						return ctx.Err()
+					}
 					if err := conn.SetWriteDeadline(time.Now().Add(o.WriteTimeout)); err != nil {
 						return err
 					}
@@ -299,6 +307,19 @@ loop:
 			}
 		}
 	}
+	closing.Store(true)
+	if isOrderlyUpstreamClose(result) {
+		if err := drainUpstreamTail(ctx, toClient.frames, tailWritten, min(o.WriteTimeout, time.Second)); err != nil {
+			result = err
+			// Preserve a transport failure that canceled the drain.
+			if errors.Is(err, context.Canceled) {
+				select {
+				case result = <-errs:
+				default:
+				}
+			}
+		}
+	}
 	code := websocket.CloseInternalServerErr
 	reason := "internal_error"
 	if !IsAbnormal(result) {
@@ -309,7 +330,6 @@ loop:
 		code = websocket.CloseTryAgainLater
 		reason = "backpressure"
 	}
-	closing.Store(true)
 	cancel()
 	upstream.Close() // Stop provider work while the downstream completes its close handshake.
 	flushDownstreamClose(ctx, downstream, code, reason, closeACK, downstreamReaderDone)
@@ -333,6 +353,35 @@ func clientError(data []byte, cause ...error) []byte {
 	}
 	result, _ := json.Marshal(map[string]any{"type": "error", "event_id": "event_" + uuid.NewString(), "error": map[string]any{"type": "invalid_request_error", "code": code, "event_id": original.ID, "message": message}})
 	return result
+}
+
+// drainUpstreamTail runs after the upstream reader has queued its final frame.
+func drainUpstreamTail(ctx context.Context, frames chan<- []byte, written <-chan struct{}, timeout time.Duration) error {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	// Only the downstream queue accepts a nil marker. enqueue filters nil events.
+	select {
+	case frames <- nil:
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return ErrBackpressure
+	}
+	select {
+	case <-written:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return ErrBackpressure
+	}
+}
+
+func isOrderlyUpstreamClose(err error) bool {
+	var side *SessionError
+	var closed *websocket.CloseError
+	return errors.As(err, &side) && side.Side == "upstream" && errors.As(err, &closed) &&
+		(closed.Code == websocket.CloseNormalClosure || closed.Code == websocket.CloseGoingAway)
 }
 
 // SessionError classifies the disconnected side without exposing provider payloads.

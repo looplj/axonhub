@@ -109,10 +109,8 @@ type ChannelEndpoint {
   handshakeTimeoutMs: Int
 }
 
-scalar EndpointAPIFormat
-
 input ChannelEndpointInput {
-  apiFormat: EndpointAPIFormat!
+  apiFormat: String!
   path: String
   baseURL: String
   transport: String

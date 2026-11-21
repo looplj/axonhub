@@ -74211,7 +74211,7 @@ func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Conte
 		switch k {
 		case "apiFormat":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiFormat"))
-			data, err := ec.unmarshalNEndpointAPIFormat2string(ctx, v)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -124814,22 +124814,6 @@ func (ec *executionContext) marshalNDisabledAPIKey2ᚖgithubᚗcomᚋloopljᚋax
 		return graphql.Null
 	}
 	return ec._DisabledAPIKey(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNEndpointAPIFormat2string(ctx context.Context, v any) (string, error) {
-	res, err := objects.UnmarshalEndpointAPIFormat(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNEndpointAPIFormat2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
-	_ = sel
-	res := objects.MarshalEndpointAPIFormat(v)
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
 }
 
 func (ec *executionContext) marshalNExcludeAssociation2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐExcludeAssociation(ctx context.Context, sel ast.SelectionSet, v *objects.ExcludeAssociation) graphql.Marshaler {

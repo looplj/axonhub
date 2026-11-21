@@ -126,16 +126,21 @@ func TestMigrateChannelRealtimeIncludesSoftDeletedChannels(t *testing.T) {
 	require.Equal(t, moved.Status, again.Status)
 }
 
-func TestMigrateChannelRealtimeRollsBackInvalidProvider(t *testing.T) {
+func TestMigrateChannelRealtimeLeavesInvalidProviderInactive(t *testing.T) {
 	db, ctx := realtimeMigrationFixture(t)
 	good := seedLegacyRealtimeChannel(t, db, ctx, channel.TypeOpenai, objects.ChannelEndpoint{APIFormat: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}, nil)
 	bad := seedLegacyRealtimeChannel(t, db, ctx, channel.TypeOpenai, objects.ChannelEndpoint{APIFormat: "qwen/realtime-ws", BaseURL: "wss://llm-invalid.cn-beijing.maas.aliyuncs.com", Path: "/api-ws/v1/realtime"}, nil)
-	require.Error(t, MigrateChannelRealtime(context.Background(), db))
-	for _, row := range []*ent.Channel{good, bad} {
-		unchanged := db.Channel.GetX(ctx, row.ID)
-		require.Equal(t, row.Endpoints, unchanged.Endpoints)
-		require.Equal(t, row.Settings, unchanged.Settings)
-	}
+	require.NoError(t, MigrateChannelRealtime(context.Background(), db))
+	migrated := db.Channel.GetX(ctx, good.ID)
+	require.True(t, migrated.Settings.Realtime.Enabled)
+	require.Len(t, migrated.Endpoints, 1)
+	unchanged := db.Channel.GetX(ctx, bad.ID)
+	require.Equal(t, bad.Endpoints, unchanged.Endpoints)
+	require.Equal(t, bad.Settings, unchanged.Settings)
+	require.Nil(t, (&Channel{Channel: unchanged}).RealtimeEndpoint())
+	require.NoError(t, MigrateChannelRealtime(context.Background(), db))
+	require.Equal(t, migrated.UpdatedAt, db.Channel.GetX(ctx, good.ID).UpdatedAt)
+	require.Equal(t, bad.UpdatedAt, db.Channel.GetX(ctx, bad.ID).UpdatedAt)
 }
 
 func TestChannelRealtimeRuntimeDescriptionDoesNotReadLegacyEndpoints(t *testing.T) {

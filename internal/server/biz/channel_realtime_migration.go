@@ -22,8 +22,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/llm"
 )
 
 func MigrateChannelRealtime(ctx context.Context, db *ent.Client) error {
@@ -61,35 +61,15 @@ func migrateChannelRealtimeRows(ctx context.Context, db *ent.Client) error {
 		return fmt.Errorf("load channels for Realtime migration: %w", err)
 	}
 	for _, row := range rows {
-		legacy := make([]objects.ChannelEndpoint, 0, 1)
-		ordinary := make([]objects.ChannelEndpoint, 0, len(row.Endpoints))
-		for _, ep := range row.Endpoints {
-			if ep.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() || ep.APIFormat == llm.APIFormatQwenRealtimeWebSocket.String() {
-				legacy = append(legacy, ep)
-			} else {
-				ordinary = append(ordinary, ep)
-			}
-		}
-		if len(legacy) == 0 {
+		settings, ordinary, changed, err := ConvertLegacyChannelRealtime(row.Type, row.Settings, row.Endpoints)
+		if err != nil {
+			log.Warn(ctx, "legacy Realtime configuration left inactive", log.Int("channel_id", row.ID), log.Cause(err))
 			continue
 		}
-		settings := objects.ChannelSettings{}
-		if row.Settings != nil {
-			settings = *row.Settings
+		if !changed {
+			continue
 		}
-		// An explicitly saved channel setting wins over the stale endpoint, including
-		// a deliberate disabled setting. Never reactivate an operator-disabled channel.
-		if settings.Realtime == nil {
-			migrated, err := realtimeConfigFromLegacy(row.Type, legacy)
-			if err != nil {
-				return fmt.Errorf("channel %d Realtime migration: %w", row.ID, err)
-			}
-			settings.Realtime = migrated
-		}
-		if err := ValidateChannelRealtime(row.Type, settings.Realtime); err != nil {
-			return fmt.Errorf("channel %d Realtime setting: %w", row.ID, err)
-		}
-		_, err = db.Channel.UpdateOneID(row.ID).Where(channel.UpdatedAtEQ(row.UpdatedAt)).SetSettings(&settings).SetEndpoints(ordinary).Save(ctx)
+		_, err = db.Channel.UpdateOneID(row.ID).Where(channel.UpdatedAtEQ(row.UpdatedAt)).SetSettings(settings).SetEndpoints(ordinary).Save(ctx)
 		if ent.IsNotFound(err) {
 			return ErrChannelUpdatedConcurrently
 		}
@@ -98,6 +78,41 @@ func migrateChannelRealtimeRows(ctx context.Context, db *ent.Client) error {
 		}
 	}
 	return nil
+}
+
+// ConvertLegacyChannelRealtime moves legacy endpoint config without mutating its inputs.
+func ConvertLegacyChannelRealtime(kind channel.Type, current *objects.ChannelSettings, endpoints []objects.ChannelEndpoint) (*objects.ChannelSettings, []objects.ChannelEndpoint, bool, error) {
+	var legacy []objects.ChannelEndpoint
+	for _, ep := range endpoints {
+		if objects.IsRealtimeAPIFormat(ep.APIFormat) {
+			legacy = append(legacy, ep)
+		}
+	}
+	if len(legacy) == 0 {
+		return current, endpoints, false, nil
+	}
+	settings := objects.ChannelSettings{}
+	if current != nil {
+		settings = *current
+	}
+	// A saved setting, including a deliberate disable, takes precedence.
+	if settings.Realtime == nil {
+		migrated, err := realtimeConfigFromLegacy(kind, legacy)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		settings.Realtime = migrated
+	}
+	if err := ValidateChannelRealtime(kind, settings.Realtime); err != nil {
+		return nil, nil, false, err
+	}
+	ordinary := make([]objects.ChannelEndpoint, 0, len(endpoints)-len(legacy))
+	for _, ep := range endpoints {
+		if !objects.IsRealtimeAPIFormat(ep.APIFormat) {
+			ordinary = append(ordinary, ep)
+		}
+	}
+	return &settings, ordinary, true, nil
 }
 
 func realtimeConfigFromLegacy(kind channel.Type, legacy []objects.ChannelEndpoint) (*objects.ChannelRealtimeConfig, error) {

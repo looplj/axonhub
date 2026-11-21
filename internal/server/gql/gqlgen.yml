@@ -73,9 +73,6 @@ converters:
 
 # This section declares type mapping between the GraphQL and Go type systems.
 models:
-  EndpointAPIFormat:
-    model:
-      - github.com/looplj/axonhub/internal/objects.EndpointAPIFormat
   ChannelRealtimeConfig:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelRealtimeConfig

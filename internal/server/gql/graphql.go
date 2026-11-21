@@ -38,6 +38,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -229,6 +230,9 @@ func presentGraphqlError(ctx context.Context, err error) *gqlerror.Error {
 				"code": xerrors.ErrCodeForbidden,
 			},
 		}
+	}
+	if endpointErr, ok := errors.AsType[*gqlerror.Error](err); ok && endpointErr.Extensions["code"] == objects.ErrCodeEndpointRealtimeNotAllowed {
+		return graphql.DefaultErrorPresenter(ctx, endpointErr)
 	}
 	return graphql.DefaultErrorPresenter(ctx, err)
 }
