@@ -979,6 +979,133 @@ test.describe('Admin Channels Management', () => {
     }
   })
 
+  test.describe('Model price exchange rate', () => {
+    const modelId = 'pw-exchange-rate-model'
+    let channelIds: string[]
+
+    test.beforeEach(async ({ page }) => {
+      channelIds = []
+      for (const testId of ['onboarding-skip-tour', 'auto-disable-onboarding-skip-tour']) {
+        const skipTour = page.getByTestId(testId)
+        await page.addLocatorHandler(skipTour, () => skipTour.click())
+      }
+    })
+    test.afterEach(async ({ page }) => {
+      if (channelIds.length) {
+        await adminGraphQL(page, 'mutation ($ids: [ID!]!) { bulkArchiveChannels(ids: $ids) }', { ids: channelIds })
+      }
+    })
+
+    async function createPriceChannel(page: Page) {
+      const channel = await seedChannel(page, {
+        type: 'openai',
+        name: `pw-rate-${uniqueSuffix()}`,
+        baseURL: 'https://example.com/v1',
+        credentials: { apiKey: 'test' },
+        supportedModels: [modelId],
+        defaultTestModel: modelId,
+      })
+      channelIds.push(channel.id)
+      return channel.name
+    }
+
+    test('shares the explicit default across channels and uses a temporary rate for filling', async ({ page }) => {
+      const channelA = await createPriceChannel(page)
+      const channelB = await createPriceChannel(page)
+      const dialog = page.getByTestId('channel-price-dialog')
+      const rate = dialog.getByTestId('price-exchange-rate')
+      const priceAction = /模型价格|Model Price/i
+      await openRowAction(page, await showChannel(page, channelA), priceAction)
+      await expect(rate).toHaveValue('7.14')
+      await rate.fill('7.2')
+      await dialog.getByTestId('price-set-default-exchange-rate').click()
+      await page.keyboard.press('Escape')
+      await expect(dialog).toBeHidden()
+
+      // Hold the remote catalog across the page navigation and the first edit in channel B.
+      let releaseCatalog!: () => void
+      const catalog = new Promise<void>(resolve => {
+        releaseCatalog = resolve
+      })
+      await page.route('**/admin/graphql', async route => {
+        if (!isGraphQLOperation(route.request(), 'ProvidersCatalog')) return route.fallback()
+        await catalog
+        const providers = { openai: { name: 'Test catalog', models: [{ id: modelId, cost: { input: 2 } }] } }
+        await route.fulfill({ json: { data: { providersCatalog: { data: { providers }, source: 'test', filtered: false } } } })
+      })
+
+      const rowB = await showChannel(page, channelB)
+      await openRowAction(page, rowB, priceAction)
+      await expect(rate).toHaveValue('7.2')
+      await rate.fill('7.0')
+      releaseCatalog()
+      await expect(dialog.getByTestId('price-provider').getByRole('combobox')).toHaveValue('Test catalog')
+      await expect(rate).toHaveJSProperty('valueAsNumber', 7)
+      const fill = dialog.getByRole('button', { name: /Match & Fill|一键匹配并填充/i })
+      const price = dialog.getByTestId('price-list').locator('input[name="prices.0.price.items.0.pricing.usagePerUnit"]')
+      await fill.click()
+      await expect(price).toHaveValue('14.0000')
+      await dialog.getByRole('button', { name: /^(Save|保存)$/i }).click()
+      await expect(dialog).toBeHidden()
+      await openRowAction(page, rowB, priceAction)
+      await expect(rate).toHaveValue('7.2')
+      await expect(price).toHaveValue(/^14(?:\.0+)?$/)
+      await rate.fill('0')
+      await expect(dialog.getByTestId('price-set-default-exchange-rate')).toBeDisabled()
+      await fill.click()
+      await expect(price).toHaveValue('0.0000')
+    })
+
+    test('falls back when the default is invalid or browser storage is unavailable', async ({ page }) => {
+      const row = await showChannel(page, await createPriceChannel(page))
+      const dialog = page.getByTestId('channel-price-dialog')
+      const rate = dialog.getByTestId('price-exchange-rate')
+      const saveDefault = dialog.getByTestId('price-set-default-exchange-rate')
+      const key = 'channels-model-price-default-exchange-rate'
+      const priceAction = /模型价格|Model Price/i
+
+      for (const stored of ['invalid', '0', '-1', '"7.2"', '1e999']) {
+        await page.evaluate(([key, value]) => localStorage.setItem(key, value), [key, stored])
+        await openRowAction(page, row, priceAction)
+        await expect(rate).toHaveValue('7.14')
+        await page.keyboard.press('Escape')
+        await expect(dialog).toBeHidden()
+      }
+
+      await page.evaluate(key => {
+        localStorage.setItem(key, '7.2')
+        const { setItem } = Storage.prototype
+        Storage.prototype.setItem = function (name, value) {
+          if (name === key) throw new Error('Storage unavailable')
+          setItem.call(this, name, value)
+        }
+      }, key)
+      await openRowAction(page, row, priceAction)
+      await expect(rate).toHaveValue('7.2')
+      await rate.fill('7.0')
+      await saveDefault.click()
+      await expect(page.getByText(/save the default exchange rate in this browser|无法在此浏览器中保存默认汇率/)).toBeVisible()
+      await expect(rate).toHaveJSProperty('valueAsNumber', 7)
+
+      await page.keyboard.press('Escape')
+      await expect(dialog).toBeHidden()
+      await openRowAction(page, row, priceAction)
+      await expect(rate).toHaveValue('7.2')
+      await page.keyboard.press('Escape')
+      await expect(dialog).toBeHidden()
+
+      await page.evaluate(key => {
+        const { getItem } = Storage.prototype
+        Storage.prototype.getItem = function (name) {
+          if (name === key) throw new Error('Storage unavailable')
+          return getItem.call(this, name)
+        }
+      }, key)
+      await openRowAction(page, row, priceAction)
+      await expect(rate).toHaveValue('7.14')
+    })
+  })
+
   test.describe('Codex Responses endpoints', () => {
     test('Codex WebSocket checkbox persists dual endpoints', async ({ page }) => {
       const suffix = uniqueSuffix()
