@@ -840,6 +840,7 @@ type ComplexityRoot struct {
 		CodexCatalogVersion       func(childComplexity int) int
 		Error                     func(childComplexity int) int
 		Fallback                  func(childComplexity int) int
+		FallbackReason            func(childComplexity int) int
 		Models                    func(childComplexity int) int
 	}
 
@@ -5654,6 +5655,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.FetchModelsPayload.Fallback(childComplexity), true
+	case "FetchModelsPayload.fallbackReason":
+		if e.complexity.FetchModelsPayload.FallbackReason == nil {
+			break
+		}
+
+		return e.complexity.FetchModelsPayload.FallbackReason(childComplexity), true
 	case "FetchModelsPayload.models":
 		if e.complexity.FetchModelsPayload.Models == nil {
 			break
@@ -31917,6 +31924,35 @@ func (ec *executionContext) fieldContext_FetchModelsPayload_fallback(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _FetchModelsPayload_fallbackReason(ctx context.Context, field graphql.CollectedField, obj *FetchModelsPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FetchModelsPayload_fallbackReason,
+		func(ctx context.Context) (any, error) {
+			return obj.FallbackReason, nil
+		},
+		nil,
+		ec.marshalOModelCatalogFallbackReason2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelCatalogFallbackReason,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_FetchModelsPayload_fallbackReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FetchModelsPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ModelCatalogFallbackReason does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _FetchModelsPayload_codexCatalogVersion(ctx context.Context, field graphql.CollectedField, obj *FetchModelsPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -54453,6 +54489,8 @@ func (ec *executionContext) fieldContext_Query_fetchModels(ctx context.Context, 
 				return ec.fieldContext_FetchModelsPayload_error(ctx, field)
 			case "fallback":
 				return ec.fieldContext_FetchModelsPayload_fallback(ctx, field)
+			case "fallbackReason":
+				return ec.fieldContext_FetchModelsPayload_fallbackReason(ctx, field)
 			case "codexCatalogVersion":
 				return ec.fieldContext_FetchModelsPayload_codexCatalogVersion(ctx, field)
 			case "codexCatalogSkippedReason":
@@ -106005,6 +106043,8 @@ func (ec *executionContext) _FetchModelsPayload(ctx context.Context, sel ast.Sel
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "fallbackReason":
+			out.Values[i] = ec._FetchModelsPayload_fallbackReason(ctx, field, obj)
 		case "codexCatalogVersion":
 			out.Values[i] = ec._FetchModelsPayload_codexCatalogVersion(ctx, field, obj)
 		case "codexCatalogSkippedReason":
@@ -132056,6 +132096,25 @@ func (ec *executionContext) unmarshalOModelCardModalitiesInput2githubᚗcomᚋlo
 func (ec *executionContext) unmarshalOModelCardReasoningInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardReasoning(ctx context.Context, v any) (objects.ModelCardReasoning, error) {
 	res, err := ec.unmarshalInputModelCardReasoningInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOModelCatalogFallbackReason2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelCatalogFallbackReason(ctx context.Context, v any) (*biz.ModelCatalogFallbackReason, error) {
+	if v == nil {
+		return nil, nil
+	}
+	tmp, err := graphql.UnmarshalString(v)
+	res := biz.ModelCatalogFallbackReason(tmp)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOModelCatalogFallbackReason2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelCatalogFallbackReason(ctx context.Context, sel ast.SelectionSet, v *biz.ModelCatalogFallbackReason) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(string(*v))
+	return res
 }
 
 func (ec *executionContext) marshalOModelEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModelEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.ModelEdge) graphql.Marshaler {

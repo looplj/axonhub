@@ -20,12 +20,12 @@ let dialogHelpers;
 async function loadDialogHelpers() {
   if (dialogHelpers) return dialogHelpers;
 
-  const helperNames = ['isOfficialCodexChannel', 'getCodexThirdPartySubmitCredentials', 'getFetchModelsApiKey', 'getCodexThirdPartyCredentialError', 'parseOauthToken'];
+  const helperNames = ['isOfficialClaudeCodeChannel', 'isClaudeCodeOAuthCredential', 'isOfficialCodexChannel', 'getCodexThirdPartySubmitCredentials', 'getFetchModelsApiKey', 'getCodexThirdPartyCredentialError', 'parseOauthToken'];
   const helperNodes = ast.statements.filter((node) => ts.isFunctionDeclaration(node) && helperNames.includes(node.name?.text));
   assert.equal(helperNodes.length, helperNames.length, 'Codex credential-mode helpers must stay in channels-action-dialog.tsx');
 
   const helperModule = [
-    `const getDefaultBaseURL = (type) => (type === 'codex' ? '${CODEX_BASE}' : '');`,
+    `const getDefaultBaseURL = (type) => (type === 'codex' ? '${CODEX_BASE}' : 'https://api.anthropic.com/v1');`,
     ...helperNodes.map((node) => `export ${node.getText(ast).replace(/^export\s+/, '')}`),
   ].join('\n');
   const { outputText } = ts.transpileModule(helperModule, {
@@ -151,4 +151,17 @@ test('schema does not validate inherited Codex OAuth JSON when a third-party key
     /\(data\.type === 'codex' && !hasApiKeys\)/,
     'Codex OAuth JSON validation must be skipped when third-party apiKeys are present'
   );
+});
+
+test('Claude Code fetch uses the selected authentication mode on the official URL and on relays', async () => {
+  const { getFetchModelsApiKey, isOfficialClaudeCodeChannel } = await loadDialogHelpers();
+  const baseURL = 'https://api.anthropic.com/v1';
+  const input = { type: 'claudecode', oauthApiKey: OAUTH_JSON, apiKeys: ['relay-key'] };
+  assert.equal(getFetchModelsApiKey({ ...input, authMode: 'official' }), OAUTH_JSON);
+  assert.equal(getFetchModelsApiKey({ ...input, authMode: 'third-party' }), 'relay-key');
+  assert.equal(getFetchModelsApiKey({ ...input, apiKeys: [], authMode: 'third-party' }), '');
+  assert.equal(getFetchModelsApiKey({ ...input, oauthApiKey: '', authMode: 'official' }), '');
+  assert.equal(isOfficialClaudeCodeChannel({ baseURL, credentials: { apiKeys: ['relay-key'] } }), false);
+  assert.equal(isOfficialClaudeCodeChannel({ baseURL, credentials: { apiKey: OAUTH_JSON } }), true);
+  assert.equal(isOfficialClaudeCodeChannel({ baseURL, credentials: { oauth: { accessToken: 'fake' } } }), true);
 });

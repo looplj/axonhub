@@ -1104,6 +1104,7 @@ const FETCH_MODELS_QUERY = `
       }
       error
       fallback
+      fallbackReason
       codexCatalogVersion {
         version
         source
@@ -2408,6 +2409,8 @@ export type CodexCatalogVersion = z.infer<typeof codexCatalogVersionSchema>;
 const codexCatalogSkippedReasonSchema = z.enum(['no_credentials', 'unsupported_url']);
 export type CodexCatalogSkippedReason = z.infer<typeof codexCatalogSkippedReasonSchema>;
 
+export type ModelCatalogFallbackReason = 'NO_CREDENTIALS' | 'AUTHORIZATION' | 'UNAVAILABLE';
+
 const syncChannelModelsPayloadSchema = z.object({
   channelID: z.string(),
   supportedModels: z.array(z.string()),
@@ -2472,6 +2475,7 @@ export function useFetchModels() {
             models: Array<{ id: string; pricing?: ModelPrice | null }>;
             error?: string | null;
             fallback: boolean;
+            fallbackReason: ModelCatalogFallbackReason | null;
             codexCatalogVersion: CodexCatalogVersion | null;
             codexCatalogSkippedReason: CodexCatalogSkippedReason | null;
           };
@@ -2485,7 +2489,7 @@ export function useFetchModels() {
     onSuccess: (data, input) => {
       if (data.error) {
         toast.error(t('common.errors.internalServerError'));
-      } else if (input.channelType !== 'codex' || !data.fallback) {
+      } else if (!(data.fallback && (input.channelType === 'codex' || input.channelType === 'claudecode'))) {
         const count = data.models.length;
         if (count > 100) {
           toast.success(t('channels.messages.fetchModelsSuccessLarge', { count }));

@@ -20,7 +20,6 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
-	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 	"github.com/looplj/axonhub/llm/transformer/cline"
 	"github.com/looplj/axonhub/llm/transformer/gemini/vertex"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
@@ -175,6 +174,7 @@ type FetchModelsResult struct {
 	Models                    []ModelIdentify
 	Error                     *string
 	Fallback                  bool
+	FallbackReason            *ModelCatalogFallbackReason
 	CodexCatalogVersion       *CodexCatalogVersion
 	CodexCatalogSkippedReason *string
 }
@@ -230,7 +230,7 @@ func (f *ModelFetcher) getDefaultModelsByType(ctx context.Context, typ channel.T
 	case channel.TypeCodex:
 		return lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
 	case channel.TypeClaudecode:
-		return lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
+		return defaultClaudeCodeModels()
 	case channel.TypeXaiSubscription:
 		return lo.Map(subscription.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
 	case channel.TypeGithubCopilot:
@@ -377,12 +377,20 @@ func fetchModelsInputMatchesChannel(input FetchModelsInput, ch *ent.Channel) boo
 		strings.TrimRight(input.BaseURL, "/") == strings.TrimRight(ch.BaseURL, "/")
 }
 
+type modelFetchMode int
+
+const (
+	previewModels modelFetchMode = iota
+	syncModelsNow
+	syncModelsPeriodically
+)
+
 func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsResult, error) {
-	return f.fetchModels(ctx, input, true)
+	return f.fetchModels(ctx, input, previewModels)
 }
 
 //nolint:maintidx // Handles every channel type in one pass and is hard to split.
-func (f *ModelFetcher) fetchModels(ctx context.Context, input FetchModelsInput, refreshCodexVersion bool) (*FetchModelsResult, error) {
+func (f *ModelFetcher) fetchModels(ctx context.Context, input FetchModelsInput, mode modelFetchMode) (*FetchModelsResult, error) {
 	if input.ChannelType == channel.TypeAntigravity.String() {
 		models, err := f.fetchAntigravityModels(ctx, input)
 		if err != nil {
@@ -424,6 +432,7 @@ func (f *ModelFetcher) fetchModels(ctx context.Context, input FetchModelsInput, 
 		proxyConfig       *httpclient.ProxyConfig
 		headerOverrideOps []objects.OverrideOperation
 		codexChannel      *ent.Channel
+		savedChannel      *ent.Channel
 	)
 
 	if input.APIKey != nil && *input.APIKey != "" {
@@ -439,7 +448,13 @@ func (f *ModelFetcher) fetchModels(ctx context.Context, input FetchModelsInput, 
 			}, nil
 		}
 
-		if ch.Credentials.IsOAuth() && (ch.Type != channel.TypeCodex ||
+		savedChannel = ch
+		if ch.Type == channel.TypeClaudecode && apiKey == "" &&
+			ch.Credentials.IsOAuth() && fetchModelsInputMatchesChannel(input, ch) {
+			return f.claudeCodeCatalog(ctx, input.BaseURL, "", ch, mode), nil
+		}
+
+		if input.ChannelType != channel.TypeClaudecode.String() && ch.Type != channel.TypeClaudecode && ch.Credentials.IsOAuth() && (ch.Type != channel.TypeCodex ||
 			(apiKey == "" && fetchModelsInputMatchesChannel(input, ch))) {
 			if ch.Type == channel.TypeCodex && codex.SupportsModelCatalog(ch.BaseURL) {
 				codexChannel = ch
@@ -486,6 +501,14 @@ func (f *ModelFetcher) fetchModels(ctx context.Context, input FetchModelsInput, 
 	}
 
 	channelType := channel.Type(input.ChannelType)
+	if channelType == channel.TypeClaudecode {
+		if apiKey == "" {
+			return claudeCodePreset(catalogNoCredentials), nil
+		}
+		if isClaudeCodeCatalogCredential(apiKey) {
+			return f.claudeCodeCatalog(ctx, input.BaseURL, apiKey, savedChannel, mode), nil
+		}
+	}
 	thirdPartyCodexCatalog := channelType == channel.TypeCodex && codexChannel == nil && !isOAuthJSON(apiKey)
 
 	if apiKey == "" && codexChannel == nil {
@@ -577,7 +600,7 @@ func (f *ModelFetcher) fetchModels(ctx context.Context, input FetchModelsInput, 
 
 	var catalogVersion *CodexCatalogVersion
 	if codexChannel != nil || thirdPartyCodexCatalog {
-		if refreshCodexVersion && f.channelService != nil {
+		if mode != syncModelsPeriodically && f.channelService != nil {
 			f.channelService.refreshCodexRelease(ctx)
 		}
 		version := f.channelService.resolveCodexClientVersion(headerOverrideOps)
