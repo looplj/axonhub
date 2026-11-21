@@ -66,7 +66,14 @@ test('Realtime Host reuses the channel Base URL control without a separate panel
   const actionDialog = readFileSync(new URL('../components/channels-action-dialog.tsx', import.meta.url), 'utf8');
   assert.match(actionDialog, /name='baseURL'/);
   assert.match(actionDialog, /getChannelBaseURLInputValue\(selectedApiFormat/);
+  assert.doesNotMatch(actionDialog, /isRealtimeProtocol\(selectedApiFormat\) \? t\('channels\.realtime\.host'\)/);
   assert.doesNotMatch(actionDialog, /data-testid='channel-realtime-config'/);
   assert.doesNotMatch(actionDialog, /data-testid='channel-realtime-host'/);
   assert.match(actionDialog, /data-testid='channel-realtime-timeout'/);
+});
+
+test('Realtime handshake timeout uses an info tooltip with localized default guidance', () => {
+  const actionDialog = readFileSync(new URL('../components/channels-action-dialog.tsx', import.meta.url), 'utf8');
+  assert.match(actionDialog, /aria-label=\{t\('channels\.endpoints\.realtime\.handshakeTimeoutHint'\)\}/);
+  assert.match(actionDialog, /<p>\{t\('channels\.endpoints\.realtime\.handshakeTimeoutHint'\)\}<\/p>/);
 });

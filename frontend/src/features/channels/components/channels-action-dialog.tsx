@@ -2865,7 +2865,7 @@ export function ChannelsActionDialog({
                           return (
                             <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
                               <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                                {isRealtimeProtocol(selectedApiFormat) ? t('channels.realtime.host') : t('channels.dialogs.fields.baseURL.label')}
+                                {t('channels.dialogs.fields.baseURL.label')}
                               </FormLabel>
                               <div className='space-y-1 md:col-span-6'>
                                 {selectedProvider === 'antigravity' ? (
@@ -2907,9 +2907,23 @@ export function ChannelsActionDialog({
 
                       {isRealtimeProtocol(selectedApiFormat) && (
                         <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8' data-testid='channel-realtime-timeout'>
-                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                            {t('channels.endpoints.realtime.handshakeTimeout')}
-                          </FormLabel>
+                          <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
+                            <FormLabel className='font-medium'>{t('channels.endpoints.realtime.handshakeTimeout')}</FormLabel>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type='button'
+                                  className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                  aria-label={t('channels.endpoints.realtime.handshakeTimeoutHint')}
+                                >
+                                  <Info className='h-3.5 w-3.5' />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className='max-w-sm'>
+                                <p>{t('channels.endpoints.realtime.handshakeTimeoutHint')}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
                           <div className='space-y-1 md:col-span-6'>
                             <Input
                               type='number'
@@ -2917,7 +2931,6 @@ export function ChannelsActionDialog({
                               max={60000}
                               value={realtimeTimeout}
                               onChange={(event) => setRealtimeTimeout(event.target.value)}
-                              placeholder={t('channels.endpoints.realtime.handshakeTimeoutHint')}
                             />
                           </div>
                         </FormItem>

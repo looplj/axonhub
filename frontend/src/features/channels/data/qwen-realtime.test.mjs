@@ -121,8 +121,8 @@ test('localizes the realtime formats distinctly from Responses WebSocket', () =>
     assert.notEqual(openaiRealtime, responsesWebSocket);
     assert.notEqual(qwenRealtime, responsesWebSocket);
     assert.equal(qwenRealtime, 'Qwen (Realtime WebSocket)');
-    assert.equal(channels['channels.endpoints.realtime.handshakeTimeout'], locale === 'zh-CN' ? '握手超时（毫秒）' : 'Handshake timeout (ms)');
-    assert.doesNotMatch(channels['channels.endpoints.realtime.handshakeTimeout'], /可选|optional/i);
+    assert.equal(channels['channels.endpoints.realtime.handshakeTimeout'], locale === 'zh-CN' ? '握手超时' : 'Handshake timeout');
+    assert.match(channels['channels.endpoints.realtime.handshakeTimeoutHint'], locale === 'zh-CN' ? /毫秒/ : /ms/);
 
     assert.ok(models['models.dialogs.association.conditions.formatOptions.openai/realtime'], `${locale} model format label missing`);
   }
