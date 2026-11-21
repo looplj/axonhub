@@ -56,12 +56,21 @@ export function onEvent(ctx, op) { return ctx.kv.get("key"); }
 
 func TestFetchAsyncDoesNotLeakIntoNextCall(t *testing.T) {
 	manager := newTestManager(t, newPluginDB(t))
-	gate := &gateTripper{hold: map[string]chan struct{}{
-		"/v1/check": make(chan struct{}),
-		"/slow":     make(chan struct{}),
-	}}
+	const cancelURL = "https://moderation.example.com/cancel"
+	const timeoutURL = "https://moderation.example.com/timeout"
+	cancelEntered, timeoutEntered := make(chan struct{}), make(chan struct{})
+	release := make(chan struct{})
+	gate := &gateTripper{
+		hold: map[string]chan struct{}{
+			"/v1/check": make(chan struct{}),
+			"/slow":     make(chan struct{}),
+			"/cancel":   make(chan struct{}),
+			"/timeout":  release,
+		},
+		entered: map[string]chan struct{}{"/cancel": cancelEntered, "/timeout": timeoutEntered},
+	}
 	manager.SetOutboundTransport(gate)
-	installed := installGrantedJS(t, manager, "acme.fetch", fetchAsyncScript, []string{fetchExact, fetchFast, fetchSlow})
+	installed := installGrantedJS(t, manager, "acme.fetch", fetchAsyncScript, []string{fetchExact, fetchFast, fetchSlow, cancelURL, timeoutURL})
 
 	fired, err := invokeCall(t, manager, installed.ID, map[string]any{"op": "forget", "url": fetchExact}, map[string]any{}, nil, time.Second)
 	require.NoError(t, err)
@@ -85,48 +94,35 @@ func TestFetchAsyncDoesNotLeakIntoNextCall(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, float64(0), decodeValue(t, afterRace.Value).(map[string]any)["mark"])
 
-	ctx, cancel := context.WithCancel(context.Background())
-	gate.setHold("/v1/check", make(chan struct{}))
-	gate.mu.Lock()
-	gate.entered = make(chan struct{})
-	gate.mu.Unlock()
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
 	done := make(chan error, 1)
-	req := invokeRequest(t, installed.ID, map[string]any{"op": "wait", "url": fetchExact}, map[string]any{"keep": true}, nil, 0)
-	go func() {
-		_, err := manager.Invoke(ctx, req)
-		done <- err
-	}()
+	req := invokeRequest(t, installed.ID, map[string]any{"op": "wait", "url": cancelURL}, map[string]any{"keep": true}, nil, 0)
+	go invokeFetchForTest(t, manager, ctx, req, done)
 	select {
-	case <-gate.entered:
+	case <-cancelEntered:
 	case <-time.After(2 * time.Second):
 		t.Fatal("fetch did not start")
 	}
 	cancel()
-	require.ErrorIs(t, <-done, context.Canceled)
+	require.ErrorIs(t, waitFetchForTest(t, done), context.Canceled)
 	require.Zero(t, manager.VMCount())
 	kept, err := invokeCall(t, manager, installed.ID, map[string]any{"op": "read"}, map[string]any{"keep": true}, nil, time.Second)
 	require.NoError(t, err)
 	require.Equal(t, false, decodeValue(t, kept.Value).(map[string]any)["late"])
 	require.Equal(t, true, decodeValue(t, kept.Value).(map[string]any)["earlyKeep"])
 
-	release := make(chan struct{})
-	entered := make(chan struct{})
-	gate.setHold("/v1/check", release)
-	gate.mu.Lock()
-	gate.entered = entered
-	gate.mu.Unlock()
+	timeoutCtx, cancelTimeout := context.WithCancel(t.Context())
+	defer cancelTimeout()
 	started := time.Now()
-	timeoutReq := invokeRequest(t, installed.ID, map[string]any{"op": "wait", "url": fetchExact}, map[string]any{"keep": true}, nil, 2*time.Second)
-	go func() {
-		_, err := manager.Invoke(context.Background(), timeoutReq)
-		done <- err
-	}()
+	timeoutReq := invokeRequest(t, installed.ID, map[string]any{"op": "wait", "url": timeoutURL}, map[string]any{"keep": true}, nil, 2*time.Second)
+	go invokeFetchForTest(t, manager, timeoutCtx, timeoutReq, done)
 	select {
-	case <-entered:
+	case <-timeoutEntered:
 	case <-time.After(5 * time.Second):
 		t.Fatal("timed-out fetch did not start")
 	}
-	err = <-done
+	err = waitFetchForTest(t, done)
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	require.GreaterOrEqual(t, time.Since(started), 1500*time.Millisecond)
 	require.Zero(t, manager.VMCount())
@@ -136,6 +132,28 @@ func TestFetchAsyncDoesNotLeakIntoNextCall(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, float64(0), decodeValue(t, afterTimeout.Value).(map[string]any)["mark"])
 	require.Equal(t, false, decodeValue(t, afterTimeout.Value).(map[string]any)["late"])
+}
+
+func invokeFetchForTest(t *testing.T, manager *Manager, ctx context.Context, req InvokeRequest, done chan<- error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			t.Errorf("fetch test worker panic: %T", recovered)
+			done <- errors.New("fetch test worker panicked")
+		}
+	}()
+	_, err := manager.Invoke(ctx, req)
+	done <- err
+}
+
+func waitFetchForTest(t *testing.T, done <-chan error) error {
+	t.Helper()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(5 * time.Second):
+		t.Fatal("fetch invocation did not return")
+		return nil
+	}
 }
 
 func TestFetchOnRequestAndAttempt(t *testing.T) {
@@ -245,7 +263,7 @@ type gateTripper struct {
 	mu      sync.Mutex
 	hold    map[string]chan struct{}
 	hits    map[string]int
-	entered chan struct{}
+	entered map[string]chan struct{}
 }
 
 func (g *gateTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -255,9 +273,9 @@ func (g *gateTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	g.hits[req.URL.Path]++
 	hold := g.hold[req.URL.Path]
-	if g.entered != nil {
-		close(g.entered)
-		g.entered = nil
+	if entered := g.entered[req.URL.Path]; entered != nil {
+		close(entered)
+		delete(g.entered, req.URL.Path)
 	}
 	g.mu.Unlock()
 	if hold != nil {
@@ -273,15 +291,6 @@ func (g *gateTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 		Body:       io.NopCloser(strings.NewReader("ok")),
 		Request:    req,
 	}, nil
-}
-
-func (g *gateTripper) setHold(path string, hold chan struct{}) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.hold == nil {
-		g.hold = map[string]chan struct{}{}
-	}
-	g.hold[path] = hold
 }
 
 func (g *gateTripper) total() int {

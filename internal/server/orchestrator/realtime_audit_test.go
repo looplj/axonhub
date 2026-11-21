@@ -104,6 +104,23 @@ func TestRealtimeAuditRetryDoesNotRepeatUsage(t *testing.T) {
 	require.Equal(t, request.StatusCompleted, db.Request.GetX(ctx, firstAudio.request.ID).Status)
 	require.Equal(t, request.StatusFailed, db.Request.GetX(ctx, secondAudio.request.ID).Status)
 
+	// A's acknowledgement may arrive after B has been committed.
+	ordered := newConversation()
+	_, err = ordered.Client([]byte(`{"type":"response.create","event_id":"explicit-a"}`))
+	require.NoError(t, err)
+	explicit := ordered.pendingResponses[0]
+	_, err = ordered.Client([]byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`))
+	require.NoError(t, err)
+	audio := ordered.pendingInput
+	require.NotNil(t, audio)
+	_, err = ordered.Client([]byte(`{"type":"input_audio_buffer.commit"}`))
+	require.NoError(t, err)
+	_, err = ordered.Server([]byte(`{"type":"response.created","response":{"id":"explicit-a"}}`))
+	require.NoError(t, err)
+	require.Same(t, explicit, ordered.responses["explicit-a"])
+	require.Equal(t, []*realtimeResponse{audio}, ordered.committedInputs)
+	ordered.Close()
+
 	cleared := newConversation()
 	_, err = cleared.Client([]byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`))
 	require.NoError(t, err)
@@ -343,8 +360,8 @@ func TestServerVadCommitKeepsPreClearTurnAheadOfPostClearCreate(t *testing.T) {
 	require.NoError(t, state.ObserveServer("session.updated"))
 	adapter, err := openairt.NewAdapter("gpt-realtime-2.1-mini")
 	require.NoError(t, err)
-	beforeClear := &realtimeResponse{request: requestRow}
-	postClearCreate := &realtimeResponse{createEventID: "post-clear-create"}
+	beforeClear := &realtimeResponse{request: requestRow, reservationOrder: 1}
+	postClearCreate := &realtimeResponse{createEventID: "post-clear-create", reservationOrder: 2}
 	c := &RealtimeConversation{
 		ctx: ctx, service: &RealtimeService{Requests: requests}, state: state, adapter: adapter, target: &RealtimeTarget{APIFormat: llm.APIFormatOpenAIRealtimeWebSocket},
 		pendingClearID: "clear-event", clearingInput: beforeClear,
