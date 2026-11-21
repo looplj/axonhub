@@ -55,6 +55,7 @@ import { ChannelLimiterCell } from './channel-limiter-cell';
 import { ChannelsStatusDialog } from './channels-status-dialog';
 import { ChatProtocolIcon, MessagesProtocolIcon, ResponsesProtocolIcon } from './endpoint-protocol-icons';
 import { RELAY_PROTOCOLS, RELAY_PROTOCOL_LABEL_KEYS, getChannelRelayProtocols, type RelayProtocol } from '../data/relay-protocols';
+import { getRealtimeProviderBadgeClass } from '../data/channel-realtime';
 
 const WEIGHT_PRECISION = 4;
 const MIN_WEIGHT = 0;
@@ -477,9 +478,10 @@ const ProviderCell = memo(({ row }: { row: Row<Channel> }) => {
   const config = CHANNEL_CONFIGS[type];
   const provider = getProvider(type);
   const IconComponent = config.icon;
+  const realtimeBadgeClass = getRealtimeProviderBadgeClass(row.original.settings?.realtime);
   return (
     <div className='flex justify-center'>
-      <Badge variant='outline' className={cn('capitalize', config.color)}>
+      <Badge variant='outline' className={cn('capitalize', realtimeBadgeClass ?? config.color)}>
         <div className='flex items-center gap-2'>
           <IconComponent size={16} className='shrink-0' />
           <span>{t(`channels.providers.${provider}`)}</span>
@@ -756,11 +758,6 @@ const RELAY_PROTOCOL_ACTIVE_CLASSES: Record<RelayProtocol, string> = {
   'gemini/contents': 'border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
 };
 
-const REALTIME_PROTOCOL_CLASSES = {
-  'openai/realtime-ws': 'border-teal-500/30 bg-teal-500/15 text-teal-700 dark:text-teal-300',
-  'qwen/realtime-ws': 'border-fuchsia-500/30 bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300',
-};
-
 /**
  * Renders the relay protocols as icons. Configured protocols are colored,
  * the rest are dimmed, so a channel that speaks all of them is recognizable at a
@@ -772,18 +769,6 @@ const EndpointProtocolsCell = memo(({ channel }: { channel: Channel }) => {
     () => getChannelRelayProtocols(channel.defaultEndpoints, channel.endpoints),
     [channel.defaultEndpoints, channel.endpoints]
   );
-
-  const realtime = channel.settings?.realtime;
-  const realtimeProtocol = realtime?.protocol;
-  if (realtime?.enabled && (realtimeProtocol === 'openai/realtime-ws' || realtimeProtocol === 'qwen/realtime-ws')) {
-    return (
-      <div className='flex justify-center'>
-        <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', REALTIME_PROTOCOL_CLASSES[realtimeProtocol])}>
-          {t('channels.dialogs.fields.apiFormat.formats.' + realtimeProtocol)}
-        </span>
-      </div>
-    );
-  }
 
   return (
     <div className='flex items-center justify-center gap-1.5'>

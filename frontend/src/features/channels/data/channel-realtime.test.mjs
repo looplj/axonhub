@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { getChannelBaseURLInputValue, getRealtimeHandshakeTimeoutInputValue, getRealtimeQuickModels, realtimeForSelection, hasLegacyRealtimeEndpoints, withoutRealtimeModelProtocols } from './channel-realtime.ts';
+import { getChannelBaseURLInputValue, getModelFetchBaseURL, getRealtimeHandshakeTimeoutInputValue, getRealtimeProviderBadgeClass, getRealtimeQuickModels, realtimeForSelection, hasLegacyRealtimeEndpoints, withoutRealtimeModelProtocols } from './channel-realtime.ts';
 import { getInitialApiFormatForChannel, getAvailableProtocolFormats } from './protocol-options.ts';
 
 test('channel Realtime configuration saves and echoes without an endpoint', () => {
@@ -55,6 +55,33 @@ test('Realtime reuses the Base URL field and keeps the saved HTTP value when tog
   assert.equal(getChannelBaseURLInputValue('openai/chat_completions', httpBaseURL, qwenHost), httpBaseURL);
 });
 
+test('Realtime model discovery uses the HTTP API host derived from the selected WebSocket host', () => {
+  const ordinaryBaseURL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+  const qwenHost = 'wss://llm-workspace.cn-beijing.maas.aliyuncs.com';
+  assert.equal(getModelFetchBaseURL('openai/realtime-ws', ordinaryBaseURL, ''), 'https://api.openai.com');
+  assert.equal(getModelFetchBaseURL('qwen/realtime-ws', ordinaryBaseURL, qwenHost), 'https://llm-workspace.cn-beijing.maas.aliyuncs.com');
+  assert.equal(getModelFetchBaseURL('openai/chat_completions', ordinaryBaseURL, qwenHost), ordinaryBaseURL);
+  assert.equal(getModelFetchBaseURL('qwen/realtime-ws', ordinaryBaseURL, ''), '');
+
+  const actionDialog = readFileSync(new URL('../components/channels-action-dialog.tsx', import.meta.url), 'utf8');
+  const fetchModelsHandler = actionDialog.match(/const handleFetchModels = useCallback\([\s\S]*?\n  \}, \[/)?.[0];
+  assert.ok(fetchModelsHandler, 'model fetch handler should exist');
+  assert.match(fetchModelsHandler, /getModelFetchBaseURL\(selectedApiFormat/);
+});
+
+test('Realtime provider badges vary by protocol while preserving the endpoint protocol column', () => {
+  assert.match(getRealtimeProviderBadgeClass({ enabled: true, protocol: 'openai/realtime-ws' }), /teal/);
+  assert.match(getRealtimeProviderBadgeClass({ enabled: true, protocol: 'qwen/realtime-ws' }), /fuchsia/);
+  assert.equal(getRealtimeProviderBadgeClass({ enabled: false, protocol: 'openai/realtime-ws' }), undefined);
+
+  const columns = readFileSync(new URL('../components/channels-columns.tsx', import.meta.url), 'utf8');
+  const providerCell = columns.match(/const ProviderCell[\s\S]*?ProviderCell\.displayName/)?.[0];
+  const endpointCell = columns.match(/const EndpointProtocolsCell[\s\S]*?EndpointProtocolsCell\.displayName/)?.[0];
+  assert.match(providerCell, /getRealtimeProviderBadgeClass\(row\.original\.settings\?\.realtime\)/);
+  assert.match(providerCell, /<span>\{t\(`channels\.providers\.\$\{provider\}`\)\}<\/span>/);
+  assert.doesNotMatch(endpointCell, /settings\?\.realtime|REALTIME_PROTOCOL_CLASSES/);
+});
+
 test('Realtime handshake timeout displays the server default unless the channel has an override', () => {
   assert.equal(getRealtimeHandshakeTimeoutInputValue(undefined), '15000');
   assert.equal(getRealtimeHandshakeTimeoutInputValue(null), '15000');
@@ -74,6 +101,9 @@ test('Realtime Host reuses the channel Base URL control without a separate panel
 
 test('Realtime handshake timeout uses an info tooltip with localized default guidance', () => {
   const actionDialog = readFileSync(new URL('../components/channels-action-dialog.tsx', import.meta.url), 'utf8');
-  assert.match(actionDialog, /aria-label=\{t\('channels\.endpoints\.realtime\.handshakeTimeoutHint'\)\}/);
-  assert.match(actionDialog, /<p>\{t\('channels\.endpoints\.realtime\.handshakeTimeoutHint'\)\}<\/p>/);
+  const timeoutRow = actionDialog.match(/data-testid='channel-realtime-timeout'>([\s\S]*?)<\/FormItem>/)?.[1];
+  assert.ok(timeoutRow, 'Realtime handshake timeout row should exist');
+  assert.match(timeoutRow, /md:justify-start/);
+  assert.match(timeoutRow, /aria-label=\{t\('channels\.endpoints\.realtime\.handshakeTimeoutHint'\)\}/);
+  assert.match(timeoutRow, /<p>\{t\('channels\.endpoints\.realtime\.handshakeTimeoutHint'\)\}<\/p>/);
 });
