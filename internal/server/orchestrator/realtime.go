@@ -583,51 +583,11 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	kind := gjson.GetBytes(data, "type").String()
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if kind == "error" {
-		if err := c.rejectPendingEvent(gjson.GetBytes(data, "error.event_id").String()); err != nil {
-			return nil, err
-		}
-	}
-	if kind == "session.updated" {
-		c.pendingConfigurationID = ""
-	}
-	if kind == "response.done" {
-		if previous := c.responses[gjson.GetBytes(data, "response.id").String()]; previous != nil && previous.done {
+	if err := c.prepareServerEvent(kind, data); err != nil {
+		if errors.Is(err, errDuplicateResponseDone) {
 			return nil, nil
 		}
-	}
-	responseQueued := c.clearingInput != nil || c.preClearCreates > 0 || len(c.committedInputs) > 0 ||
-		(c.pendingClearID == "" && (len(c.pendingResponses) > 0 || c.pendingInput != nil))
-	if err := c.state.ObserveServer(kind, responseQueued); err != nil {
 		return nil, err
-	}
-	if kind == "input_audio_buffer.cleared" {
-		if err := c.confirmAudioClear(); err != nil {
-			return nil, err
-		}
-	}
-	if kind == "input_audio_buffer.committed" {
-		if len(c.pendingCommits) > 0 {
-			// A delayed manual acknowledgement does not clear post-commit bytes.
-			c.pendingCommits = slices.Delete(c.pendingCommits, 0, 1)
-		} else if c.pendingClearID != "" && c.clearingInput != nil {
-			// This commit predates the clear and any commits queued after it.
-			index := slices.IndexFunc(c.committedInputs, func(input *realtimeResponse) bool {
-				return input.reservationOrder > c.clearingInput.reservationOrder
-			})
-			if index < 0 {
-				index = len(c.committedInputs)
-			}
-			c.committedInputs = slices.Insert(c.committedInputs, index, c.clearingInput)
-			c.clearingInput = nil
-		} else {
-			if c.pendingInput != nil {
-				c.pendingInput.reservationOrder = c.nextReservationOrder()
-				c.committedInputs = append(c.committedInputs, c.pendingInput)
-				c.pendingInput = nil
-			}
-			c.audioBytes = 0
-		}
 	}
 	id := gjson.GetBytes(data, "response.id").String()
 	if kind == "response.created" {
@@ -635,70 +595,11 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 			return nil, err
 		}
 	}
-	if kind == "response.audio.delta" || kind == "response.text.delta" || kind == "response.output_audio.delta" || kind == "response.output_text.delta" {
-		responseID := gjson.GetBytes(data, "response_id").String()
-		if r := c.responses[responseID]; r != nil && r.firstOutput == nil {
-			r.firstOutput = lo.ToPtr(time.Since(r.started).Milliseconds())
-		}
-	}
-	if kind == "response.function_call_arguments.delta" || kind == "response.function_call_arguments.done" || ((kind == "response.output_item.added" || kind == "response.output_item.done") && gjson.GetBytes(data, "item.type").String() == "function_call") {
-		if response := c.responses[gjson.GetBytes(data, "response_id").String()]; response != nil {
-			response.hadFunctionCall = true
-		}
-	}
+	c.observeResponseOutput(kind, data)
 	if kind == "response.done" {
-		parseUsage := protocol.ParseUsage
-		if c.target.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket {
-			parseUsage = openairt.ParseUsage
-		}
-		responseID, usage, err := parseUsage(data)
-		r := c.responses[id]
-		if r == nil {
-			return nil, errors.New("response.done without response.created")
-		}
-		if r.done {
-			return nil, nil
-		}
-		if err != nil || usage == nil || responseID != id {
-			return nil, errors.New("realtime response usage missing or invalid")
-		}
-		r.observedUsage = usage
-		for _, item := range gjson.GetBytes(data, "response.output").Array() {
-			if item.Get("type").String() == "function_call" {
-				r.hadFunctionCall = true
-			}
-		}
-		if err := applyRealtimeBillingPolicy(c.target, usage, r.hadFunctionCall); err != nil {
+		if err := c.finishResponse(data, id); err != nil {
 			return nil, err
 		}
-		// Persist confirmed usage even when the downstream has gone away.
-		billingCtx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 10*time.Second)
-		defer cancel()
-		projectID, _ := contexts.GetProjectID(c.ctx)
-		_, err = c.service.Usage.CreateRealtimeUsage(billingCtx, biz.CreateUsageLogParams{RequestID: r.request.ID, ProjectID: projectID, ChannelID: c.target.Channel.ID, ActualModelID: c.target.Model, Usage: usage, Source: usagelog.SourceAPI, Format: string(llm.APIFormatOpenAIRealtime), APIKeyID: lo.ToPtr(c.target.APIKey.ID)}, c.target.Price)
-		if err != nil {
-			return nil, errors.New("realtime usage persistence failed")
-		}
-		r.done = true
-		metrics.Metrics.RealtimeUsage(billingCtx, usage, r.firstOutput)
-		status := request.StatusCompleted
-		switch gjson.GetBytes(data, "response.status").String() {
-		case "cancelled", "canceled":
-			status = request.StatusCanceled
-		case "failed", "incomplete":
-			status = request.StatusFailed
-		}
-		if status == request.StatusCompleted && c.credential != "" {
-			c.service.Channels.RecordRealtimeCredentialSuccess(c.target.Channel.ID, c.credential)
-		}
-		summary := map[string]any{"response_id": id, "usage": usage, "realtime": true, "usage_confirmed": true, "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat, "price_reference_id": c.target.Price.ReferenceID, "price_snapshot": c.target.Price.Price, "price_quoted_at": c.target.Price.QuotedAt}
-		r.auditStatus = status
-		r.auditSummary = summary
-		err = c.service.Requests.UpdateRealtimeAudit(billingCtx, r.request, status, id, summary, &biz.LatencyMetrics{LatencyMs: lo.ToPtr(time.Since(r.started).Milliseconds()), FirstTokenLatencyMs: r.firstOutput}, nil)
-		if err != nil {
-			return nil, errors.New("realtime audit update failed")
-		}
-		r.auditFinalized = true
 	}
 	converted, err := c.adapter.Server(data)
 	if err != nil {
@@ -712,6 +613,146 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	}
 	return c.aliasModel(converted), nil
 }
+
+func (c *RealtimeConversation) prepareServerEvent(kind string, data []byte) error {
+	if kind == "error" {
+		if err := c.rejectPendingEvent(gjson.GetBytes(data, "error.event_id").String()); err != nil {
+			return err
+		}
+	}
+	if kind == "session.updated" {
+		c.pendingConfigurationID = ""
+	}
+	if kind == "response.done" {
+		if previous := c.responses[gjson.GetBytes(data, "response.id").String()]; previous != nil && previous.done {
+			return errDuplicateResponseDone
+		}
+	}
+	responseQueued := c.clearingInput != nil || c.preClearCreates > 0 || len(c.committedInputs) > 0 ||
+		(c.pendingClearID == "" && (len(c.pendingResponses) > 0 || c.pendingInput != nil))
+	if err := c.state.ObserveServer(kind, responseQueued); err != nil {
+		return err
+	}
+	if kind == "input_audio_buffer.cleared" {
+		return c.confirmAudioClear()
+	}
+	if kind == "input_audio_buffer.committed" {
+		c.confirmAudioCommit()
+	}
+	return nil
+}
+
+func (c *RealtimeConversation) confirmAudioCommit() {
+	if len(c.pendingCommits) > 0 {
+		// A delayed manual acknowledgement does not clear post-commit bytes.
+		c.pendingCommits = slices.Delete(c.pendingCommits, 0, 1)
+		return
+	}
+	if c.pendingClearID != "" && c.clearingInput != nil {
+		index := slices.IndexFunc(c.committedInputs, func(input *realtimeResponse) bool {
+			return input.reservationOrder > c.clearingInput.reservationOrder
+		})
+		if index < 0 {
+			index = len(c.committedInputs)
+		}
+		c.committedInputs = slices.Insert(c.committedInputs, index, c.clearingInput)
+		c.clearingInput = nil
+	} else if c.pendingInput != nil {
+		c.pendingInput.reservationOrder = c.nextReservationOrder()
+		c.committedInputs = append(c.committedInputs, c.pendingInput)
+		c.pendingInput = nil
+	}
+	c.audioBytes = 0
+}
+
+func (c *RealtimeConversation) observeResponseOutput(kind string, data []byte) {
+	if kind == "response.audio.delta" || kind == "response.text.delta" || kind == "response.output_audio.delta" || kind == "response.output_text.delta" {
+		responseID := gjson.GetBytes(data, "response_id").String()
+		if response := c.responses[responseID]; response != nil && response.firstOutput == nil {
+			response.firstOutput = lo.ToPtr(time.Since(response.started).Milliseconds())
+		}
+	}
+	if !isFunctionCallEvent(kind, data) {
+		return
+	}
+	if response := c.responses[gjson.GetBytes(data, "response_id").String()]; response != nil {
+		response.hadFunctionCall = true
+	}
+}
+
+func isFunctionCallEvent(kind string, data []byte) bool {
+	switch kind {
+	case "response.function_call_arguments.delta", "response.function_call_arguments.done":
+		return true
+	case "response.output_item.added", "response.output_item.done":
+		return gjson.GetBytes(data, "item.type").String() == "function_call"
+	default:
+		return false
+	}
+}
+
+func (c *RealtimeConversation) finishResponse(data []byte, id string) error {
+	parser := protocol.ParseUsage
+	if c.target.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket {
+		parser = openairt.ParseUsage
+	}
+	responseID, usage, err := parser(data)
+	response := c.responses[id]
+	if response == nil {
+		return errors.New("response.done without response.created")
+	}
+	if response.done {
+		return nil
+	}
+	if err != nil || usage == nil || responseID != id {
+		return errors.New("realtime response usage missing or invalid")
+	}
+	response.observedUsage = usage
+	for _, item := range gjson.GetBytes(data, "response.output").Array() {
+		if item.Get("type").String() == "function_call" {
+			response.hadFunctionCall = true
+		}
+	}
+	if err := applyRealtimeBillingPolicy(c.target, usage, response.hadFunctionCall); err != nil {
+		return err
+	}
+	// Persist confirmed usage even when the downstream has gone away.
+	billingCtx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 10*time.Second)
+	defer cancel()
+	projectID, _ := contexts.GetProjectID(c.ctx)
+	_, err = c.service.Usage.CreateRealtimeUsage(billingCtx, biz.CreateUsageLogParams{RequestID: response.request.ID, ProjectID: projectID, ChannelID: c.target.Channel.ID, ActualModelID: c.target.Model, Usage: usage, Source: usagelog.SourceAPI, Format: string(llm.APIFormatOpenAIRealtime), APIKeyID: lo.ToPtr(c.target.APIKey.ID)}, c.target.Price)
+	if err != nil {
+		return errors.New("realtime usage persistence failed")
+	}
+	response.done = true
+	metrics.Metrics.RealtimeUsage(billingCtx, usage, response.firstOutput)
+	status := realtimeResponseStatus(data)
+	if status == request.StatusCompleted && c.credential != "" {
+		c.service.Channels.RecordRealtimeCredentialSuccess(c.target.Channel.ID, c.credential)
+	}
+	summary := map[string]any{"response_id": id, "usage": usage, "realtime": true, "usage_confirmed": true, "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat, "price_reference_id": c.target.Price.ReferenceID, "price_snapshot": c.target.Price.Price, "price_quoted_at": c.target.Price.QuotedAt}
+	response.auditStatus = status
+	response.auditSummary = summary
+	err = c.service.Requests.UpdateRealtimeAudit(billingCtx, response.request, status, id, summary, &biz.LatencyMetrics{LatencyMs: lo.ToPtr(time.Since(response.started).Milliseconds()), FirstTokenLatencyMs: response.firstOutput}, nil)
+	if err != nil {
+		return errors.New("realtime audit update failed")
+	}
+	response.auditFinalized = true
+	return nil
+}
+
+func realtimeResponseStatus(data []byte) request.Status {
+	switch gjson.GetBytes(data, "response.status").String() {
+	case "cancelled", "canceled":
+		return request.StatusCanceled
+	case "failed", "incomplete":
+		return request.StatusFailed
+	default:
+		return request.StatusCompleted
+	}
+}
+
+var errDuplicateResponseDone = errors.New("duplicate response.done")
 
 // ServerFollowup completes the GA lifecycle for a fully formed Qwen item.
 func (c *RealtimeConversation) ServerFollowup(data []byte) ([]byte, error) {
