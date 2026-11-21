@@ -346,8 +346,9 @@ type realtimeResponse struct {
 	observedUsage    *llm.Usage
 }
 type realtimeAudioCommit struct {
-	eventID  string
-	reserved bool
+	eventID          string
+	reserved         bool
+	reservationOrder int
 }
 
 type RealtimeConversation struct {
@@ -495,12 +496,16 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 	case "session.update":
 		c.pendingConfigurationID = eventID
 	case "input_audio_buffer.commit":
-		c.pendingCommits = append(c.pendingCommits, realtimeAudioCommit{eventID: eventID, reserved: c.pendingInput != nil})
+		commit := realtimeAudioCommit{eventID: eventID, reserved: c.pendingInput != nil}
 		if c.pendingInput != nil {
 			c.pendingInput.reservationOrder = c.nextReservationOrder()
+			commit.reservationOrder = c.pendingInput.reservationOrder
 			c.committedInputs = append(c.committedInputs, c.pendingInput)
 			c.pendingInput = nil
+		} else {
+			commit.reservationOrder = c.nextReservationOrder()
 		}
+		c.pendingCommits = append(c.pendingCommits, commit)
 		c.audioBytes = 0
 	case "input_audio_buffer.clear":
 		c.pendingClearID = eventID
@@ -644,6 +649,13 @@ func (c *RealtimeConversation) prepareServerEvent(kind string, data []byte) erro
 
 func (c *RealtimeConversation) confirmAudioCommit() {
 	if c.pendingClearID != "" && c.clearingInput != nil {
+		preClearCommit := slices.IndexFunc(c.pendingCommits, func(commit realtimeAudioCommit) bool {
+			return commit.reservationOrder < c.clearingInput.reservationOrder
+		})
+		if preClearCommit >= 0 {
+			c.pendingCommits = slices.Delete(c.pendingCommits, preClearCommit, preClearCommit+1)
+			return
+		}
 		index := slices.IndexFunc(c.committedInputs, func(input *realtimeResponse) bool {
 			return input.reservationOrder > c.clearingInput.reservationOrder
 		})

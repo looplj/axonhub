@@ -24,11 +24,10 @@ func NewClientContext(ctx context.Context, cfg Config) (redis.UniversalClient, e
 }
 
 func newClient(ctx context.Context, cfg Config, contextTimeoutEnabled bool) (redis.UniversalClient, error) {
-	opts, err := newUniversalOptions(cfg)
+	opts, err := newClientOptions(cfg, contextTimeoutEnabled)
 	if err != nil {
 		return nil, err
 	}
-	opts.ContextTimeoutEnabled = contextTimeoutEnabled
 	client := redis.NewUniversalClient(opts)
 	if err := client.Ping(ctx).Err(); err != nil {
 		_ = client.Close()
@@ -36,6 +35,17 @@ func newClient(ctx context.Context, cfg Config, contextTimeoutEnabled bool) (red
 	}
 
 	return client, nil
+}
+
+func newClientOptions(cfg Config, forceContextTimeout bool) (*redis.UniversalOptions, error) {
+	opts, err := newUniversalOptions(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if forceContextTimeout {
+		opts.ContextTimeoutEnabled = true
+	}
+	return opts, nil
 }
 
 func newUniversalOptions(cfg Config) (*redis.UniversalOptions, error) {
