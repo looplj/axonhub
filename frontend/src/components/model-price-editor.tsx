@@ -283,6 +283,7 @@ const PriceItemRow = memo(function PriceItemRow({
                       )}
                       <Input
                         {...field}
+                        data-testid={itemCode && `price-per-unit-${itemCode}`}
                         value={(field.value as unknown as string | null | undefined) || ''}
                         placeholder='0.00'
                         className={`h-8 text-right ${currencyPrefix ? 'pl-8' : ''}`}
