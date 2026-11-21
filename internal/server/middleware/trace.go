@@ -96,6 +96,10 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 			traceID = tryExtractTraceIDFromCodexRequest(c)
 		}
 
+		if traceID == "" && config.DSHTraceEnabled {
+			traceID = tryExtractTraceIDFromDSHRequest(c)
+		}
+
 		if traceID == "" && len(config.ExtraTraceBodyFields) > 0 {
 			var err error
 
@@ -236,6 +240,18 @@ func tryExtractTraceIDFromCodexRequest(c *gin.Context) string {
 		traceSource = "codex turn metadata"
 	}
 	log.Debug(c.Request.Context(), "Extracted trace ID from "+traceSource, log.String("trace_id", traceID))
+
+	return traceID
+}
+
+// tryExtractTraceIDFromDSHRequest extracts the trace ID from the DeepSeek Harness session header.
+func tryExtractTraceIDFromDSHRequest(c *gin.Context) string {
+	traceID := strings.TrimSpace(c.GetHeader("x-deepseek-harness-session-id"))
+	if traceID == "" {
+		return ""
+	}
+
+	log.Debug(c.Request.Context(), "Extracted trace ID from dsh header", log.String("trace_id", traceID))
 
 	return traceID
 }

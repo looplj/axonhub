@@ -282,6 +282,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.trace.claude_code_trace_enabled", true)
 	v.SetDefault("server.trace.codex_trace_enabled", true)
 	v.SetDefault("server.trace.opencode_trace_enabled", true)
+	v.SetDefault("server.trace.dsh_trace_enabled", true)
 
 	// Server-side tool-review defaults. Register every key for env-only configuration.
 	v.SetDefault("server.safeguards.classifier_model", "")
