@@ -75,7 +75,7 @@ func (c *RealtimeConversation) ServerDone(data []byte) bool {
 
 func (c *RealtimeConversation) checkTranslationQuota(ctx context.Context, key *ent.APIKey) error {
 	profile := key.GetActiveProfile()
-	if profile == nil || profile.Quota == nil || profile.Quota.Cost == nil {
+	if c.target.Price == nil || profile == nil || profile.Quota == nil || profile.Quota.Cost == nil {
 		return c.service.checkQuota(ctx, key, false)
 	}
 	cost, err := biz.RealtimeTranslationCost(c.target.Price, c.translation.sentSamples.Load())
@@ -104,13 +104,12 @@ func (c *RealtimeConversation) closeTranslation(ctx context.Context) {
 	t.finalized = true
 	samples := t.sentSamples.Load()
 	projectID, _ := contexts.GetProjectID(ctx)
-	summary := map[string]any{
+	summary := c.withPriceAudit(map[string]any{
 		"realtime": true, "translation": true, "audio_samples_sent": samples,
 		"audio_sample_rate_hz": 24000, "usage_confirmed": false,
 		"metering_source": "gateway_sent_pcm", "provider_session_closed": t.closed,
-		"upstream_model": c.target.Model, "price_snapshot": c.target.Price.Price,
-		"price_reference_id": c.target.Price.ReferenceID, "price_quoted_at": c.target.Price.QuotedAt,
-	}
+		"upstream_model": c.target.Model,
+	})
 	status := request.StatusFailed
 	if samples > 0 {
 		_, err := c.service.Usage.CreateRealtimeTranslationUsage(ctx, biz.CreateUsageLogParams{

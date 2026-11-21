@@ -199,7 +199,7 @@ func TestUsageLogService_RealtimePrice_RejectsInvalidPrice(t *testing.T) {
 	require.Contains(t, err.Error(), "missing realtime item code")
 }
 
-func TestUsageLogService_RealtimePrice_RejectsLegacyLibraryFallback(t *testing.T) {
+func TestUsageLogService_RealtimePrice_IgnoresLegacyLibraryPrices(t *testing.T) {
 	f := newRealtimeBillingFixture(t, realtimePrice("1", "2", "3", "4"))
 
 	// Remove the channel price from the cache so resolution falls back to the
@@ -210,9 +210,9 @@ func TestUsageLogService_RealtimePrice_RejectsLegacyLibraryFallback(t *testing.T
 
 	createModelLibraryPriceEntry(t, f.ctx, f.client, f.model, model.StatusEnabled, objects.ModelCardCost{Input: 1, Output: 2})
 
-	_, err := f.svc.RealtimePrice(f.ctx, f.channelID, f.model)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "missing realtime item code")
+	snapshot, err := f.svc.RealtimePrice(f.ctx, f.channelID, f.model)
+	require.NoError(t, err)
+	require.Nil(t, snapshot)
 }
 
 func TestUsageLogService_RealtimePrice_NoPrice(t *testing.T) {
@@ -220,9 +220,9 @@ func TestUsageLogService_RealtimePrice_NoPrice(t *testing.T) {
 
 	f.channelService.SetEnabledChannelsForTest([]*Channel{})
 
-	_, err := f.svc.RealtimePrice(f.ctx, f.channelID, f.model)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "no realtime price")
+	snapshot, err := f.svc.RealtimePrice(f.ctx, f.channelID, f.model)
+	require.NoError(t, err)
+	require.Nil(t, snapshot)
 }
 
 func TestUsageLogService_RealtimePrice_SnapshotIsStable(t *testing.T) {
@@ -243,11 +243,12 @@ func TestUsageLogService_RealtimePrice_SnapshotIsStable(t *testing.T) {
 	require.True(t, snapshotInputText.Pricing.UsagePerUnit.Equal(decimal.RequireFromString("1.10")))
 	require.True(t, liveItems[liveIdx].Pricing.UsagePerUnit.Equal(decimal.RequireFromString("99")))
 
-	// A later price resolution now fails, yet the snapshot still bills.
+	// The original snapshot still bills after the current price becomes unavailable.
 	f.channelService.SetEnabledChannelsForTest([]*Channel{})
 
-	_, err = f.svc.RealtimePrice(f.ctx, f.channelID, f.model)
-	require.Error(t, err)
+	current, err := f.svc.RealtimePrice(f.ctx, f.channelID, f.model)
+	require.NoError(t, err)
+	require.Nil(t, current)
 
 	created, err := f.svc.CreateRealtimeUsage(f.ctx, f.createParams(realtimeUsageFixture()), snapshot)
 	require.NoError(t, err)
@@ -381,10 +382,14 @@ func TestUsageLogService_CreateRealtimeUsage_RejectsInvalidUsage(t *testing.T) {
 		require.Contains(t, err.Error(), "realtime usage is required")
 	})
 
-	t.Run("nil snapshot", func(t *testing.T) {
-		_, err := f.svc.CreateRealtimeUsage(f.ctx, f.createParams(realtimeUsageFixture()), nil)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "snapshot")
+	t.Run("unpriced usage retains tokens without a charge", func(t *testing.T) {
+		usage := realtimeUsageFixture()
+		row, err := f.svc.CreateRealtimeUsage(f.ctx, f.createParams(usage), nil)
+		require.NoError(t, err)
+		require.Equal(t, usage.TotalTokens, row.TotalTokens)
+		require.Nil(t, row.TotalCost)
+		require.Empty(t, row.CostItems)
+		require.Empty(t, row.CostPriceReferenceID)
 	})
 
 	t.Run("incomplete snapshot", func(t *testing.T) {

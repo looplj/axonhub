@@ -34,3 +34,15 @@ func TestRealtimeTranslationCost(t *testing.T) {
 	require.Error(t, validateTranslationPrice(objects.ModelPrice{}))
 	require.Error(t, validateTranslationPrice(objects.ModelPrice{Items: []objects.ModelPriceItem{item, item}}))
 }
+
+func TestRealtimeTranslationUsageWithoutPrice(t *testing.T) {
+	fixture := newRealtimeBillingFixture(t, realtimePrice("1", "2", "3", "4"))
+	snapshot, err := fixture.svc.RealtimeTranslationPrice(fixture.ctx, fixture.channelID, fixture.model)
+	require.NoError(t, err)
+	require.Nil(t, snapshot, "ordinary Realtime rates do not price translation")
+	row, err := fixture.svc.CreateRealtimeTranslationUsage(fixture.ctx, fixture.createParams(nil), snapshot, 24000)
+	require.NoError(t, err)
+	require.Nil(t, row.TotalCost)
+	require.Empty(t, row.CostItems)
+	require.Empty(t, row.CostPriceReferenceID)
+}

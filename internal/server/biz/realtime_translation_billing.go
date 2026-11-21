@@ -54,7 +54,9 @@ func validateTranslationPrice(price objects.ModelPrice) error {
 }
 
 func (s *UsageLogService) RealtimeTranslationPrice(ctx context.Context, channelID int, model string) (*RealtimePriceSnapshot, error) {
-	return s.realtimePrice(ctx, channelID, model, validateTranslationPrice)
+	return s.realtimePrice(ctx, channelID, model, validateTranslationPrice, func(code objects.PriceItemCode) bool {
+		return code == objects.PriceItemCodeRealtimeTranslationAudioSamples
+	})
 }
 
 func RealtimeTranslationCost(snapshot *RealtimePriceSnapshot, samples int64) (decimal.Decimal, error) {
@@ -69,11 +71,14 @@ func RealtimeTranslationCost(snapshot *RealtimePriceSnapshot, samples int64) (de
 }
 
 func (s *UsageLogService) CreateRealtimeTranslationUsage(ctx context.Context, params CreateUsageLogParams, snapshot *RealtimePriceSnapshot, samples int64) (*ent.UsageLog, error) {
+	params.Usage = &llm.Usage{}
+	if snapshot == nil && samples >= 0 {
+		return s.saveRealtimeUsage(ctx, params, nil, nil, decimal.Zero)
+	}
 	total, err := RealtimeTranslationCost(snapshot, samples)
 	if err != nil {
 		return nil, err
 	}
-	params.Usage = &llm.Usage{}
 	items := []objects.CostItem{{ItemCode: objects.PriceItemCodeRealtimeTranslationAudioSamples, Quantity: samples, Subtotal: total}}
 	return s.saveRealtimeUsage(ctx, params, snapshot, items, total)
 }

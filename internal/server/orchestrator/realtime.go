@@ -194,7 +194,7 @@ func (s *RealtimeService) prepare(ctx context.Context, model string, native, tra
 					log.Warn(ctx, "realtime candidate configuration rejected", log.Int("channel_id", ch.ID))
 					continue
 				}
-				if !translation && format == llm.APIFormatOpenAIRealtimeWebSocket.String() {
+				if price != nil && !translation && format == llm.APIFormatOpenAIRealtimeWebSocket.String() {
 					if err := objects.ValidateOpenAIRealtimePrice(price.Price); err != nil {
 						log.Warn(ctx, "realtime candidate configuration rejected", log.Int("channel_id", ch.ID))
 						continue
@@ -782,8 +782,10 @@ func (c *RealtimeConversation) finishResponse(data []byte, id string) error {
 			response.hadFunctionCall = true
 		}
 	}
-	if err := applyRealtimeBillingPolicy(c.target, usage, response.hadFunctionCall); err != nil {
-		return err
+	if c.target.Price != nil {
+		if err := applyRealtimeBillingPolicy(c.target, usage, response.hadFunctionCall); err != nil {
+			return err
+		}
 	}
 	// Persist confirmed usage even when the downstream has gone away.
 	billingCtx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 10*time.Second)
@@ -799,7 +801,7 @@ func (c *RealtimeConversation) finishResponse(data []byte, id string) error {
 	if status == request.StatusCompleted && c.credential != "" {
 		c.service.Channels.RecordRealtimeCredentialSuccess(c.target.Channel.ID, c.credential)
 	}
-	summary := map[string]any{"response_id": id, "usage": usage, "realtime": true, "usage_confirmed": true, "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat, "price_reference_id": c.target.Price.ReferenceID, "price_snapshot": c.target.Price.Price, "price_quoted_at": c.target.Price.QuotedAt}
+	summary := c.withPriceAudit(map[string]any{"response_id": id, "usage": usage, "realtime": true, "usage_confirmed": true, "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat})
 	response.auditStatus = status
 	response.auditSummary = summary
 	err = c.service.Requests.UpdateRealtimeAudit(billingCtx, response.request, status, id, summary, &biz.LatencyMetrics{LatencyMs: lo.ToPtr(time.Since(response.started).Milliseconds()), FirstTokenLatencyMs: response.firstOutput}, nil)
@@ -964,6 +966,15 @@ func (c *RealtimeConversation) admitResponse(id string) error {
 	return nil
 }
 
+func (c *RealtimeConversation) withPriceAudit(fields map[string]any) map[string]any {
+	if price := c.target.Price; price != nil {
+		fields["price_reference_id"] = price.ReferenceID
+		fields["price_snapshot"] = price.Price
+		fields["price_quoted_at"] = price.QuotedAt
+	}
+	return fields
+}
+
 func (c *RealtimeConversation) createResponse(id string) (*realtimeResponse, error) {
 	if c.auditsCreated >= 512 {
 		return nil, errors.New("realtime audit limit reached")
@@ -971,7 +982,7 @@ func (c *RealtimeConversation) createResponse(id string) (*realtimeResponse, err
 	if id == "" || len(id) > 256 {
 		return nil, errors.New("invalid upstream response id")
 	}
-	metadata, _ := json.Marshal(map[string]any{"model": c.target.ClientModel, "realtime": true, "native_qwen": c.target.Native, "channel_id": c.target.Channel.ID, "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat, "price_reference_id": c.target.Price.ReferenceID, "price_snapshot": c.target.Price.Price, "price_quoted_at": c.target.Price.QuotedAt})
+	metadata, _ := json.Marshal(c.withPriceAudit(map[string]any{"model": c.target.ClientModel, "realtime": true, "native_qwen": c.target.Native, "channel_id": c.target.Channel.ID, "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat}))
 	req, err := c.service.Requests.CreateRealtimeRequest(c.ctx, c.target.ClientModel, c.target.Channel.ID, c.target.SessionID, metadata)
 	if err != nil {
 		return nil, errors.New("realtime audit create failed")
@@ -1025,7 +1036,7 @@ func (c *RealtimeConversation) Close() {
 		if ctx.Err() != nil {
 			break
 		}
-		if err := c.service.Requests.UpdateRealtimeAudit(ctx, r.request, request.StatusFailed, "", map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before input or generation accounting was confirmed", "upstream_model": c.target.Model, "price_reference_id": c.target.Price.ReferenceID, "price_snapshot": c.target.Price.Price}, nil, nil); err != nil {
+		if err := c.service.Requests.UpdateRealtimeAudit(ctx, r.request, request.StatusFailed, "", c.withPriceAudit(map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before input or generation accounting was confirmed", "upstream_model": c.target.Model}), nil, nil); err != nil {
 			log.Warn(context.WithoutCancel(c.ctx), "realtime pending audit finalization failed", log.Int("request_id", r.request.ID))
 		}
 	}
@@ -1045,7 +1056,7 @@ func (c *RealtimeConversation) Close() {
 			break
 		}
 		status := request.StatusFailed
-		summary := map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before confirmed response usage", "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat, "price_reference_id": c.target.Price.ReferenceID, "price_snapshot": c.target.Price.Price, "price_quoted_at": c.target.Price.QuotedAt}
+		summary := c.withPriceAudit(map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before confirmed response usage", "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat})
 		if r.observedUsage != nil {
 			summary["observed_usage"] = r.observedUsage
 		}
