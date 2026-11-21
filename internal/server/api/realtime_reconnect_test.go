@@ -60,6 +60,10 @@ func newRealtimeReconnectFixtureWithDuration(t *testing.T, maxDuration time.Dura
 }
 
 func newRealtimeHTTPFixture(t *testing.T, maxDuration time.Duration, translation bool, configureKey ...func(*ent.APIKeyCreate)) (*ent.Client, func() (*websocket.Conn, *http.Response, error), *atomic.Int32, <-chan struct{}) {
+	return newRealtimeHTTPFixtureWithPrice(t, maxDuration, translation, true, configureKey...)
+}
+
+func newRealtimeHTTPFixtureWithPrice(t *testing.T, maxDuration time.Duration, translation, withPrice bool, configureKey ...func(*ent.APIKeyCreate)) (*ent.Client, func() (*websocket.Conn, *http.Response, error), *atomic.Int32, <-chan struct{}) {
 	t.Helper()
 	db := enttest.NewEntClient(t, "sqlite3", "file:"+t.Name()+"?mode=memory&_fk=1")
 	t.Cleanup(func() { _ = db.Close() })
@@ -84,7 +88,9 @@ func newRealtimeHTTPFixture(t *testing.T, maxDuration time.Duration, translation
 		rate := decimal.RequireFromString("0.034")
 		price.Items = []objects.ModelPriceItem{{ItemCode: objects.PriceItemCodeRealtimeTranslationAudioSamples, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: &rate}}}
 	}
-	db.ChannelModelPrice.Create().SetChannelID(row.ID).SetModelID(model).SetPrice(price).SetReferenceID("test").SaveX(seed)
+	if withPrice {
+		db.ChannelModelPrice.Create().SetChannelID(row.ID).SetModelID(model).SetPrice(price).SetReferenceID("test").SaveX(seed)
+	}
 	cache := xcache.Config{Mode: xcache.ModeMemory}
 	system := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cache, Ent: db})
 	require.NoError(t, system.SetModelSettings(seed, biz.SystemModelSettings{FallbackToChannelsOnModelNotFound: true, QueryAllChannelModels: true}))
@@ -119,8 +125,16 @@ func newRealtimeHTTPFixture(t *testing.T, maxDuration time.Duration, translation
 		}
 		_ = c.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.created","session":{"id":"s","type":"realtime","audio":{"input":{"format":{"type":"audio/pcm","rate":24000}},"output":{"format":{"type":"audio/pcm","rate":24000}}}}}`))
 		for {
-			if _, _, err := c.ReadMessage(); err != nil {
+			_, data, err := c.ReadMessage()
+			if err != nil {
 				return
+			}
+			if !withPrice && gjson.GetBytes(data, "type").String() == "response.create" {
+				created := []byte(`{"type":"response.created","response":{"id":"unpriced-response"}}`)
+				done := []byte(`{"type":"response.done","response":{"id":"unpriced-response","status":"completed","usage":{"input_tokens":11,"output_tokens":7,"total_tokens":18,"input_token_details":{"text_tokens":11,"audio_tokens":0},"output_token_details":{"text_tokens":7,"audio_tokens":0}}}}`)
+				if c.WriteMessage(websocket.TextMessage, created) != nil || c.WriteMessage(websocket.TextMessage, done) != nil {
+					return
+				}
 			}
 			select {
 			case observed <- struct{}{}:
@@ -396,13 +410,14 @@ func serveTranslationFixture(conn *websocket.Conn) {
 }
 
 func TestRealtimeHTTPTranslationLifecycleAndBilling(t *testing.T) {
-	t.Run("graceful", func(t *testing.T) { testRealtimeHTTPTranslationBilling(t, true) })
-	t.Run("disconnected", func(t *testing.T) { testRealtimeHTTPTranslationBilling(t, false) })
+	t.Run("graceful", func(t *testing.T) { testRealtimeHTTPTranslationBilling(t, true, true) })
+	t.Run("disconnected", func(t *testing.T) { testRealtimeHTTPTranslationBilling(t, false, true) })
+	t.Run("without-price", func(t *testing.T) { testRealtimeHTTPTranslationBilling(t, true, false) })
 }
 
-func testRealtimeHTTPTranslationBilling(t *testing.T, graceful bool) {
+func testRealtimeHTTPTranslationBilling(t *testing.T, graceful, withPrice bool) {
 	t.Helper()
-	db, dial, _, _ := newRealtimeHTTPFixture(t, 0, true)
+	db, dial, _, _ := newRealtimeHTTPFixtureWithPrice(t, 0, true, withPrice)
 	conn, response, err := dial()
 	require.NoError(t, err)
 	defer conn.Close()
@@ -446,14 +461,46 @@ func testRealtimeHTTPTranslationBilling(t *testing.T, graceful bool) {
 	usage := db.UsageLog.Query().OnlyX(ctx)
 	require.Equal(t, openairt.TranslationModel, usage.ModelID)
 	require.Zero(t, usage.TotalTokens)
-	require.Len(t, usage.CostItems, 1)
-	item := usage.CostItems[0]
-	require.Equal(t, objects.PriceItemCodeRealtimeTranslationAudioSamples, item.ItemCode)
-	require.EqualValues(t, 24000, item.Quantity)
-	require.Equal(t, "0.0005666666666667", item.Subtotal.String())
+	if withPrice {
+		require.Len(t, usage.CostItems, 1)
+		item := usage.CostItems[0]
+		require.Equal(t, objects.PriceItemCodeRealtimeTranslationAudioSamples, item.ItemCode)
+		require.EqualValues(t, 24000, item.Quantity)
+		require.Equal(t, "0.0005666666666667", item.Subtotal.String())
+		require.NotNil(t, usage.TotalCost)
+	} else {
+		require.Empty(t, usage.CostItems)
+		require.Nil(t, usage.TotalCost)
+	}
 	row := db.Request.Query().OnlyX(ctx)
 	require.Equal(t, "gateway_sent_pcm", gjson.GetBytes(row.ResponseBody, "metering_source").String())
 	require.NotContains(t, string(row.RequestBody), audio)
+}
+
+func TestRealtimeHTTPUnpricedOpenAIRecordsUsageWithoutCost(t *testing.T) {
+	db, dial, _, _ := newRealtimeHTTPFixtureWithPrice(t, 0, false, false)
+	conn, response, err := dial()
+	require.NoError(t, err)
+	defer conn.Close()
+	require.Equal(t, http.StatusSwitchingProtocols, response.StatusCode)
+	require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
+	_, created, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "session.created", gjson.GetBytes(created, "type").String())
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
+	for {
+		_, event, err := conn.ReadMessage()
+		require.NoError(t, err)
+		if gjson.GetBytes(event, "type").String() == "response.done" {
+			break
+		}
+	}
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	usage := db.UsageLog.Query().OnlyX(ctx)
+	require.EqualValues(t, 18, usage.TotalTokens)
+	require.Nil(t, usage.TotalCost)
+	require.Empty(t, usage.CostItems)
+	require.Empty(t, usage.CostPriceReferenceID)
 }
 
 func TestRealtimeHTTPTranslationHonorsModelPermissions(t *testing.T) {

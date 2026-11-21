@@ -242,6 +242,9 @@ func (p *PriceTier) Equals(other *PriceTier) bool {
 
 type PriceItemCode string
 
+// PriceItemCodeRealtimeTranslationAudioSamples is the rate code for Realtime Translation audio, priced per minute.
+const PriceItemCodeRealtimeTranslationAudioSamples PriceItemCode = "realtime_translation_audio_samples"
+
 const (
 	// PriceItemCodeUsage is the price item code for the token usage.
 	PriceItemCodeUsage PriceItemCode = "prompt_tokens"
@@ -260,11 +263,10 @@ const (
 	// The realtime codes bill a session by input/output modality.
 	// They are independent of prompt_tokens/completion_tokens: a realtime price
 	// uses only these codes, and the legacy codes keep their historical meaning.
-	PriceItemCodeRealtimeTranslationAudioSamples PriceItemCode = "realtime_translation_audio_samples"
-	PriceItemCodeRealtimeInputText               PriceItemCode = "realtime_input_text_tokens"
-	PriceItemCodeRealtimeInputAudio              PriceItemCode = "realtime_input_audio_tokens"
-	PriceItemCodeRealtimeOutputText              PriceItemCode = "realtime_output_text_tokens"
-	PriceItemCodeRealtimeOutputAudio             PriceItemCode = "realtime_output_audio_tokens"
+	PriceItemCodeRealtimeInputText   PriceItemCode = "realtime_input_text_tokens"
+	PriceItemCodeRealtimeInputAudio  PriceItemCode = "realtime_input_audio_tokens"
+	PriceItemCodeRealtimeOutputText  PriceItemCode = "realtime_output_text_tokens"
+	PriceItemCodeRealtimeOutputAudio PriceItemCode = "realtime_output_audio_tokens"
 )
 
 // RealtimePriceItemCodes returns the four realtime billing codes in audit order.

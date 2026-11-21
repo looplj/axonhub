@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
@@ -101,6 +102,19 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, broken.ID, target.Channel.ID, "a channel with no price keeps its configured routing priority")
 	require.Nil(t, target.Price)
+
+	service.Requests = newTestRequestServiceForChannels(db, system)
+	audit, err := service.Requests.CreateRealtimeRequest(ctx, target.ClientModel, target.Channel.ID, "unpriced-openai-session", objects.JSONRawMessage("{}"))
+	require.NoError(t, err)
+	usageLog, err := service.Usage.CreateRealtimeUsage(ctx, biz.CreateUsageLogParams{
+		RequestID: audit.ID, ProjectID: project.ID, ChannelID: target.Channel.ID, ActualModelID: target.Model,
+		Usage: &llm.Usage{PromptTokens: 11, CompletionTokens: 7, TotalTokens: 18}, Source: usagelog.SourceAPI,
+		Format: string(llm.APIFormatOpenAIRealtime), APIKeyID: lo.ToPtr(key.ID),
+	}, target.Price)
+	require.NoError(t, err)
+	require.EqualValues(t, 18, usageLog.TotalTokens)
+	require.Nil(t, usageLog.TotalCost)
+	require.Empty(t, usageLog.CostItems)
 }
 
 func TestRealtimeReservedRequestDoesNotCancelItsOwnQuotaSlot(t *testing.T) {
@@ -120,4 +134,45 @@ func TestRealtimeReservedRequestDoesNotCancelItsOwnQuotaSlot(t *testing.T) {
 	db.UsageLog.Create().SetRequestID(record.ID).SetProjectID(project.ID).SetAPIKeyID(key.ID).SetChannelID(1).SetModelID("voice").SetPromptTokens(1).SetCompletionTokens(1).SetTotalTokens(2).SetFormat("openai/realtime").SetSource("api").SaveX(ctx)
 	require.NoError(t, service.checkQuota(ctx, key, false))
 	require.ErrorIs(t, service.checkQuota(ctx, key), rt.ErrQuotaExceeded, "the next reservation after confirmed usage must be refused")
+}
+
+func TestUnpricedQwenRealtimeChannelCanPrepareAndRecordUsage(t *testing.T) {
+	ctx, db := setupTest(t)
+	project := db.Project.Create().SetName("unpriced-qwen-realtime").SaveX(ctx)
+	ctx = contexts.WithProjectID(ctx, project.ID)
+	model := "qwen3.8-omni-flash-realtime"
+	key := db.APIKey.Create().SetName("unpriced-qwen-realtime").SetKey("synthetic-unpriced-qwen").SetProjectID(project.ID).SetType("user").SetScopes([]string{"read_channels", "write_requests"}).SaveX(ctx)
+	ctx = contexts.WithAPIKey(ctx, key)
+	channelRow := db.Channel.Create().SetType(channel.TypeBailian).SetName("unpriced-qwen-realtime").SetBaseURL("https://dashscope.aliyuncs.com/compatible-mode/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream"}).SetSupportedModels([]string{model}).SetDefaultTestModel(model).SetStatus("enabled").SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "qwen/realtime-ws", BaseURL: "wss://ws.cn-beijing.maas.aliyuncs.com", Path: "/api-ws/v1/realtime"}}).SaveX(ctx)
+	channels := newTestChannelServiceForChannels(db)
+	built, err := channels.GetChannel(ctx, channelRow.ID)
+	require.NoError(t, err)
+	channels.SetEnabledChannelsForTest([]*biz.Channel{built})
+	system := newTestSystemService(db)
+	requests := newTestRequestServiceForChannels(db, system)
+	usage := biz.NewUsageLogService(db, system, channels)
+	alias := "qwen-unpriced-alias"
+	db.Model.Create().SetModelID(alias).SetName(alias).SetDeveloper("qwen").SetIcon("qwen").SetGroup("qwen").SetModelCard(&objects.ModelCard{}).SetType("chat").SetStatus("enabled").SetSettings(&objects.ModelSettings{Associations: []*objects.ModelAssociation{{Type: "channel_model", ChannelModel: &objects.ChannelModelAssociation{ChannelID: channelRow.ID, ModelID: model}}}}).SaveX(ctx)
+	service := &RealtimeService{
+		Channels: channels,
+		Selector: NewDefaultSelector(channels, newTestModelService(db), newTestSystemService(db)),
+		Usage:    usage, Requests: requests,
+	}
+
+	target, err := service.Prepare(ctx, alias, false)
+	require.NoError(t, err)
+	require.Equal(t, llm.APIFormatQwenRealtimeWebSocket, target.APIFormat)
+	require.Nil(t, target.Price)
+
+	audit, err := requests.CreateRealtimeRequest(ctx, model, channelRow.ID, "unpriced-qwen-session", objects.JSONRawMessage("{}"))
+	require.NoError(t, err)
+	row, err := usage.CreateRealtimeUsage(ctx, biz.CreateUsageLogParams{
+		RequestID: audit.ID, ProjectID: project.ID, ChannelID: channelRow.ID, ActualModelID: model,
+		Usage:  &llm.Usage{PromptTokens: 17, CompletionTokens: 5, TotalTokens: 22},
+		Source: usagelog.SourceAPI, Format: string(llm.APIFormatOpenAIRealtime), APIKeyID: &key.ID,
+	}, target.Price)
+	require.NoError(t, err)
+	require.EqualValues(t, 22, row.TotalTokens)
+	require.Nil(t, row.TotalCost)
+	require.Empty(t, row.CostItems)
 }
