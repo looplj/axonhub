@@ -410,6 +410,7 @@ func TestRejectedClientEventPreservesCorrelation(t *testing.T) {
 
 type gatedSessionWriteConn struct {
 	net.Conn
+
 	nextWrite atomic.Bool
 	entered   chan struct{}
 	release   <-chan struct{}

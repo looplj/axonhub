@@ -154,3 +154,25 @@ func TestSaveChannelEndpointsAcceptsLegacyStringVariable(t *testing.T) {
 	require.Equal(t, "ENDPOINT_REALTIME_NOT_ALLOWED", gjson.GetBytes(body, "errors.0.extensions.code").String())
 	require.Equal(t, "openai/chat_completions", db.Channel.Query().OnlyX(seed).Endpoints[0].APIFormat)
 }
+
+func TestUpdateXAISubscriptionRejectsRealtimeBeforeNormalizingEndpoints(t *testing.T) {
+	db, seed, execute := realtimeConfigGraphQLFixture(t)
+	input := map[string]any{"type": "xai_subscription", "name": "xai-legacy-client", "credentials": map[string]any{"apiKey": "synthetic"}, "supportedModels": []string{"grok"}, "defaultTestModel": "grok"}
+	status, body := execute(`mutation($i:CreateChannelInput!){createChannel(input:$i){id}}`, map[string]any{"i": input})
+	require.Equal(t, 200, status, string(body))
+	id := gjson.GetBytes(body, "data.createChannel.id").String()
+	require.NotEmpty(t, id, string(body))
+
+	for _, explicitType := range []bool{false, true} {
+		patch := map[string]any{"name": "must-not-save", "endpoints": []any{map[string]any{"apiFormat": "openai/realtime-ws"}}}
+		if explicitType {
+			patch["type"] = "xai_subscription"
+		}
+		status, body = execute(`mutation($id:ID!,$i:UpdateChannelInput!){updateChannel(id:$id,input:$i){id}}`, map[string]any{"id": id, "i": patch})
+		require.Equal(t, 422, status, "explicit type: %t; %s", explicitType, body)
+		require.Equal(t, "ENDPOINT_REALTIME_NOT_ALLOWED", gjson.GetBytes(body, "errors.0.extensions.code").String())
+		saved := db.Channel.Query().OnlyX(seed)
+		require.Equal(t, "xai-legacy-client", saved.Name)
+		require.Empty(t, saved.Endpoints)
+	}
+}

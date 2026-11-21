@@ -940,6 +940,12 @@ func normalizeAutoDisableRules(rules []objects.APIKeyAutoDisableRule, allowDelet
 // the update is then optimistic-locked against that version and fails with
 // ErrChannelUpdatedConcurrently when the channel was updated concurrently.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
+	// Reject Realtime before provider normalization can discard submitted endpoints.
+	if slices.ContainsFunc(input.Endpoints, func(endpoint objects.ChannelEndpoint) bool {
+		return objects.IsRealtimeAPIFormat(endpoint.APIFormat)
+	}) {
+		return nil, objects.RealtimeEndpointInputError()
+	}
 	// Explicitly validate append payloads as well: SetInput must never silently
 	// swallow a forbidden realtime protocol at an endpoint boundary.
 	if err := ValidateEndpoints(input.AppendEndpoints); err != nil {
