@@ -102,7 +102,7 @@ import { ChannelModelAliases } from './channel-model-preview';
 import { ProxyType } from './channels-proxy-dialog';
 import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ManualModelBadge } from './manual-model-badge';
-import { getRealtimeQuickModels, isRealtimeProtocol, isRealtimeQuickModel, realtimeForSelection, withoutRealtimeModelProtocols } from '../data/channel-realtime';
+import { getChannelBaseURLInputValue, getRealtimeHandshakeTimeoutInputValue, getRealtimeQuickModels, isRealtimeProtocol, isRealtimeQuickModel, realtimeForSelection, withoutRealtimeModelProtocols } from '../data/channel-realtime';
 
 interface Props {
   currentRow?: Channel;
@@ -772,7 +772,7 @@ export function ChannelsActionDialog({
     return OPENAI_CHAT_COMPLETIONS;
   });
   const [realtimeHost, setRealtimeHost] = useState(initialRow?.settings?.realtime?.baseURL ?? '');
-  const [realtimeTimeout, setRealtimeTimeout] = useState(String(initialRow?.settings?.realtime?.handshakeTimeoutMs ?? ''));
+  const [realtimeTimeout, setRealtimeTimeout] = useState(getRealtimeHandshakeTimeoutInputValue(initialRow?.settings?.realtime?.handshakeTimeoutMs));
   const [responsesTransport, setResponsesTransport] = useState<ResponsesTransport>(() => getResponsesTransportFromChannel(initialRow));
   const initialCodexResponses = useMemo(() => getCodexResponsesWebSocketState(initialRow), [initialRow]);
   const [codexResponsesWebSocket, setCodexResponsesWebSocket] = useState(initialCodexResponses.enabled);
@@ -809,7 +809,7 @@ export function ChannelsActionDialog({
     setSelectedApiFormat(apiFormat);
     setResponsesTransport(getResponsesTransportFromChannel(initialRow));
     setRealtimeHost(initialRow.settings?.realtime?.baseURL ?? '');
-    setRealtimeTimeout(String(initialRow.settings?.realtime?.handshakeTimeoutMs ?? ''));
+    setRealtimeTimeout(getRealtimeHandshakeTimeoutInputValue(initialRow.settings?.realtime?.handshakeTimeoutMs));
     setCodexResponsesWebSocket(getCodexResponsesWebSocketState(initialRow).enabled);
     setUseGeminiVertex(initialRow.type === 'gemini_vertex');
     setUseAnthropicAws(initialRow.type === 'anthropic_aws');
@@ -1198,7 +1198,7 @@ export function ChannelsActionDialog({
       if (isEdit && alwaysOAuthProviderKeys.includes(provider)) return;
       setSelectedProvider(provider);
       setRealtimeHost('');
-      setRealtimeTimeout('');
+      setRealtimeTimeout(getRealtimeHandshakeTimeoutInputValue(undefined));
       setAuthMode(isEdit && ['codex', 'claudecode'].includes(provider) ? 'third-party' : 'official');
 
       if (provider !== 'gemini') {
@@ -1649,7 +1649,7 @@ export function ChannelsActionDialog({
       const matchingRealtime = (realtimeChannelType === 'openai' && currentRealtime?.protocol === 'openai/realtime-ws') || (realtimeChannelType === 'bailian' && currentRealtime?.protocol === 'qwen/realtime-ws') ? currentRealtime : undefined;
       let realtime: ChannelSettings['realtime'];
       try {
-        realtime = realtimeForSelection(selectedApiFormat, matchingRealtime, realtimeHost, realtimeTimeout) ?? null;
+        realtime = realtimeForSelection(selectedApiFormat, matchingRealtime, getChannelBaseURLInputValue(selectedApiFormat, values.baseURL, realtimeHost), realtimeTimeout) ?? null;
       } catch (error) {
         toast.error(t(error instanceof Error ? error.message : 'channels.realtime.invalidHost'));
         return;
@@ -2300,7 +2300,7 @@ export function ChannelsActionDialog({
     setProxyUsername(initialRow?.settings?.proxy?.username || '');
     setProxyPassword(initialRow?.settings?.proxy?.password || '');
     setRealtimeHost(initialRow?.settings?.realtime?.baseURL ?? '');
-    setRealtimeTimeout(String(initialRow?.settings?.realtime?.handshakeTimeoutMs ?? ''));
+    setRealtimeTimeout(getRealtimeHandshakeTimeoutInputValue(initialRow?.settings?.realtime?.handshakeTimeoutMs));
     setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
     setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
     setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
@@ -2533,24 +2533,6 @@ export function ChannelsActionDialog({
                               )}
                           </div>
                         </FormItem>
-                      )}
-
-                      {isRealtimeProtocol(selectedApiFormat) && (
-                        <div className='space-y-3 rounded-md border p-3' data-testid='channel-realtime-config'>
-                          <p className='text-muted-foreground text-sm'>{t('channels.realtime.channelOnly')}</p>
-                          <label className='block space-y-1 text-sm'>
-                            <span>{t('channels.realtime.host')}</span>
-                            <Input value={realtimeHost || (selectedApiFormat === 'openai/realtime-ws' ? 'wss://api.openai.com' : '')} onChange={(event) => setRealtimeHost(event.target.value)} readOnly={selectedApiFormat === 'openai/realtime-ws'} placeholder='wss://llm-workspace.cn-beijing.maas.aliyuncs.com' data-testid='channel-realtime-host' />
-                          </label>
-                          <label className='block space-y-1 text-sm'>
-                            <span>{t('channels.endpoints.path')}</span>
-                            <Input value={selectedApiFormat === 'openai/realtime-ws' ? '/v1/realtime' : '/api-ws/v1/realtime'} readOnly />
-                          </label>
-                          <label className='block space-y-1 text-sm'>
-                            <span>{t('channels.endpoints.realtime.handshakeTimeout')}</span>
-                            <Input type='number' min={1000} max={60000} value={realtimeTimeout} onChange={(event) => setRealtimeTimeout(event.target.value)} placeholder={t('channels.endpoints.realtime.handshakeTimeoutHint')} />
-                          </label>
-                        </div>
                       )}
 
                       {selectedProvider === 'claudecode' && (
@@ -2883,7 +2865,7 @@ export function ChannelsActionDialog({
                           return (
                             <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
                               <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                                {t('channels.dialogs.fields.baseURL.label')}
+                                {isRealtimeProtocol(selectedApiFormat) ? t('channels.realtime.host') : t('channels.dialogs.fields.baseURL.label')}
                               </FormLabel>
                               <div className='space-y-1 md:col-span-6'>
                                 {selectedProvider === 'antigravity' ? (
@@ -2896,17 +2878,24 @@ export function ChannelsActionDialog({
                                   />
                                 ) : (
                                   <Input
-                                    placeholder={baseURLPlaceholder}
+                                    {...field}
+                                    value={isRealtimeProtocol(selectedApiFormat)
+                                      ? getChannelBaseURLInputValue(selectedApiFormat, field.value, realtimeHost)
+                                      : field.value ?? ''}
+                                    onChange={isRealtimeProtocol(selectedApiFormat) ? (event) => setRealtimeHost(event.target.value) : field.onChange}
+                                    placeholder={isRealtimeProtocol(selectedApiFormat)
+                                      ? selectedApiFormat === 'qwen/realtime-ws' ? t('channels.realtime.qwenHostPlaceholder') : ''
+                                      : baseURLPlaceholder}
+                                    readOnly={selectedApiFormat === 'openai/realtime-ws'}
                                     autoComplete='new-password'
                                     data-form-type='other'
-                                    aria-invalid={!!fieldState.error}
+                                    aria-invalid={!isRealtimeProtocol(selectedApiFormat) && !!fieldState.error}
                                     data-testid='channel-base-url-input'
                                     disabled={
                                       (isCodexType && authMode !== 'third-party') ||
                                       (isClaudeCodeType && authMode === 'official') ||
                                       isXAISubscriptionType
                                     }
-                                    {...field}
                                   />
                                 )}
                                 <FormMessage />
@@ -2915,6 +2904,24 @@ export function ChannelsActionDialog({
                           );
                         }}
                       />
+
+                      {isRealtimeProtocol(selectedApiFormat) && (
+                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8' data-testid='channel-realtime-timeout'>
+                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                            {t('channels.endpoints.realtime.handshakeTimeout')}
+                          </FormLabel>
+                          <div className='space-y-1 md:col-span-6'>
+                            <Input
+                              type='number'
+                              min={1000}
+                              max={60000}
+                              value={realtimeTimeout}
+                              onChange={(event) => setRealtimeTimeout(event.target.value)}
+                              placeholder={t('channels.endpoints.realtime.handshakeTimeoutHint')}
+                            />
+                          </div>
+                        </FormItem>
+                      )}
 
                       {isGeminiVertex && (
                         <FormField
