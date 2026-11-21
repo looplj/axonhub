@@ -34,7 +34,7 @@ const pricingModes = ['flat_fee', 'usage_per_unit', 'usage_tiered', 'usage_volum
 const promptWriteCacheVariantCodes = ['five_min', 'one_hour'] as const;
 
 // Original USD-to-CNY fallback for prices from the model library.
-const DEFAULT_EXCHANGE_RATE = 7.14;
+const FALLBACK_EXCHANGE_RATE = 7.14;
 const EXCHANGE_RATE_STORAGE_KEY = 'channels-model-price-default-exchange-rate';
 
 function isValidDefaultExchangeRate(rate: unknown): rate is number {
@@ -44,9 +44,9 @@ function isValidDefaultExchangeRate(rate: unknown): rate is number {
 function readDefaultExchangeRate(): number {
   try {
     const stored: unknown = JSON.parse(localStorage.getItem(EXCHANGE_RATE_STORAGE_KEY) ?? 'null');
-    return isValidDefaultExchangeRate(stored) ? stored : DEFAULT_EXCHANGE_RATE;
+    return isValidDefaultExchangeRate(stored) ? stored : FALLBACK_EXCHANGE_RATE;
   } catch {
-    return DEFAULT_EXCHANGE_RATE;
+    return FALLBACK_EXCHANGE_RATE;
   }
 }
 
@@ -752,7 +752,7 @@ export function ChannelsModelPriceDialog() {
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [selectedModelId, setSelectedModelId] = useState<string>('');
   const [multiplier, setMultiplier] = useState<number>(1);
-  const [exchangeRate, setExchangeRate] = useState<number>(DEFAULT_EXCHANGE_RATE);
+  const [exchangeRate, setExchangeRate] = useState<number>(FALLBACK_EXCHANGE_RATE);
 
   useEffect(() => {
     if (!isOpen || !providersData) return;

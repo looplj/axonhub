@@ -981,18 +981,18 @@ test.describe('Admin Channels Management', () => {
 
   test.describe('Model price exchange rate', () => {
     const modelId = 'pw-exchange-rate-model'
-    let channelIds: string[]
+    const createdChannelIds: string[] = []
 
     test.beforeEach(async ({ page }) => {
-      channelIds = []
       for (const testId of ['onboarding-skip-tour', 'auto-disable-onboarding-skip-tour']) {
         const skipTour = page.getByTestId(testId)
         await page.addLocatorHandler(skipTour, () => skipTour.click())
       }
     })
     test.afterEach(async ({ page }) => {
-      if (channelIds.length) {
-        await adminGraphQL(page, 'mutation ($ids: [ID!]!) { bulkArchiveChannels(ids: $ids) }', { ids: channelIds })
+      const ids = createdChannelIds.splice(0)
+      if (ids.length) {
+        await adminGraphQL(page, 'mutation ($ids: [ID!]!) { bulkArchiveChannels(ids: $ids) }', { ids })
       }
     })
 
@@ -1005,17 +1005,22 @@ test.describe('Admin Channels Management', () => {
         supportedModels: [modelId],
         defaultTestModel: modelId,
       })
-      channelIds.push(channel.id)
+      createdChannelIds.push(channel.id)
       return channel.name
+    }
+
+    async function openModelPriceDialog(page: Page, row: Locator) {
+      await openRowAction(page, row, /模型价格|Model Price/i)
+      const dialog = page.getByTestId('channel-price-dialog')
+      await expect(dialog).toBeVisible()
+      return dialog
     }
 
     test('shares the explicit default across channels and uses a temporary rate for filling', async ({ page }) => {
       const channelA = await createPriceChannel(page)
       const channelB = await createPriceChannel(page)
-      const dialog = page.getByTestId('channel-price-dialog')
+      const dialog = await openModelPriceDialog(page, await showChannel(page, channelA))
       const rate = dialog.getByTestId('price-exchange-rate')
-      const priceAction = /模型价格|Model Price/i
-      await openRowAction(page, await showChannel(page, channelA), priceAction)
       await expect(rate).toHaveValue('7.14')
       await rate.fill('7.2')
       await dialog.getByTestId('price-set-default-exchange-rate').click()
@@ -1030,30 +1035,30 @@ test.describe('Admin Channels Management', () => {
       await page.route('**/admin/graphql', async route => {
         if (!isGraphQLOperation(route.request(), 'ProvidersCatalog')) return route.fallback()
         await catalog
-        const providers = { openai: { name: 'Test catalog', models: [{ id: modelId, cost: { input: 2 } }] } }
+        const providers = { openai: { name: 'Test catalog', models: [{ id: modelId, cost: { input: 2, output: 3 } }] } }
         await route.fulfill({ json: { data: { providersCatalog: { data: { providers }, source: 'test', filtered: false } } } })
       })
 
       const rowB = await showChannel(page, channelB)
-      await openRowAction(page, rowB, priceAction)
+      await openModelPriceDialog(page, rowB)
       await expect(rate).toHaveValue('7.2')
       await rate.fill('7.0')
       releaseCatalog()
       await expect(dialog.getByTestId('price-provider').getByRole('combobox')).toHaveValue('Test catalog')
       await expect(rate).toHaveJSProperty('valueAsNumber', 7)
       const fill = dialog.getByRole('button', { name: /Match & Fill|一键匹配并填充/i })
-      const price = dialog.getByTestId('price-list').locator('input[name="prices.0.price.items.0.pricing.usagePerUnit"]')
+      const promptPrice = dialog.getByTestId('price-per-unit-prompt_tokens')
       await fill.click()
-      await expect(price).toHaveValue('14.0000')
+      await expect(promptPrice).toHaveValue('14.0000')
       await dialog.getByRole('button', { name: /^(Save|保存)$/i }).click()
       await expect(dialog).toBeHidden()
-      await openRowAction(page, rowB, priceAction)
+      await openModelPriceDialog(page, rowB)
       await expect(rate).toHaveValue('7.2')
-      await expect(price).toHaveValue(/^14(?:\.0+)?$/)
+      await expect(promptPrice).toHaveValue(/^14(?:\.0+)?$/)
       await rate.fill('0')
       await expect(dialog.getByTestId('price-set-default-exchange-rate')).toBeDisabled()
       await fill.click()
-      await expect(price).toHaveValue('0.0000')
+      await expect(promptPrice).toHaveValue('0.0000')
     })
 
     test('falls back when the default is invalid or browser storage is unavailable', async ({ page }) => {
@@ -1062,11 +1067,10 @@ test.describe('Admin Channels Management', () => {
       const rate = dialog.getByTestId('price-exchange-rate')
       const saveDefault = dialog.getByTestId('price-set-default-exchange-rate')
       const key = 'channels-model-price-default-exchange-rate'
-      const priceAction = /模型价格|Model Price/i
 
       for (const stored of ['invalid', '0', '-1', '"7.2"', '1e999']) {
         await page.evaluate(([key, value]) => localStorage.setItem(key, value), [key, stored])
-        await openRowAction(page, row, priceAction)
+        await openModelPriceDialog(page, row)
         await expect(rate).toHaveValue('7.14')
         await page.keyboard.press('Escape')
         await expect(dialog).toBeHidden()
@@ -1080,7 +1084,7 @@ test.describe('Admin Channels Management', () => {
           setItem.call(this, name, value)
         }
       }, key)
-      await openRowAction(page, row, priceAction)
+      await openModelPriceDialog(page, row)
       await expect(rate).toHaveValue('7.2')
       await rate.fill('7.0')
       await saveDefault.click()
@@ -1089,7 +1093,7 @@ test.describe('Admin Channels Management', () => {
 
       await page.keyboard.press('Escape')
       await expect(dialog).toBeHidden()
-      await openRowAction(page, row, priceAction)
+      await openModelPriceDialog(page, row)
       await expect(rate).toHaveValue('7.2')
       await page.keyboard.press('Escape')
       await expect(dialog).toBeHidden()
@@ -1101,7 +1105,7 @@ test.describe('Admin Channels Management', () => {
           return getItem.call(this, name)
         }
       }, key)
-      await openRowAction(page, row, priceAction)
+      await openModelPriceDialog(page, row)
       await expect(rate).toHaveValue('7.14')
     })
   })
