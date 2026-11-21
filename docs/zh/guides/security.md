@@ -118,3 +118,9 @@ curl https://your-axonhub-instance/v1/chat/completions \
 | API Key IP 限制 | 每密钥 | 仅允许列表中的 IP | 限制单个 API 密钥 |
 
 请求按以下顺序评估：IP 访问控制 → IP 黑名单 → API 密钥认证 → API 密钥 IP 限制。
+
+## 模型 API 请求体上限
+
+设置 `AXONHUB_MAX_REQUEST_BODY_SIZE_MB=128` 可将模型 API 请求体上限调整为 128 MB（1 MB = 1024 × 1024 字节）。变量接受正整数，仅在启动时读取，修改后需重启实例。未配置、空值、格式错误、非正数或溢出值均回退到 **64 MB**。
+
+原有上限同时作用于原始请求体和解压后数据。错误处理保持不变，包括 Responses API 请求超限时原有的 HTTP 500。请求体缓存在内存中，请结合可用内存和并发量设置上限；代理和上游限制仍独立生效。
