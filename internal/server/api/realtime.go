@@ -241,7 +241,7 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 			if errors.Is(err, biz.ErrInvalidModel) {
 				status = http.StatusNotFound
 			}
-			message := "Realtime model unavailable, permission denied, quota exceeded, or required prices not configured"
+			message := "Realtime model unavailable, permission denied, quota exceeded, or invalid price configuration"
 			JSONError(c, status, errors.New(message))
 			return
 		}

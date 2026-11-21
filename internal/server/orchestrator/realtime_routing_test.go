@@ -99,7 +99,8 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	service.Selector = NewDefaultSelector(channels, newTestModelService(db), system)
 	target, err = service.Prepare(ctx, "voice", false)
 	require.NoError(t, err)
-	require.Equal(t, row.ID, target.Channel.ID, "an incomplete candidate must not hide the healthy one")
+	require.Equal(t, broken.ID, target.Channel.ID, "a channel with no price keeps its configured routing priority")
+	require.Nil(t, target.Price)
 }
 
 func TestRealtimeReservedRequestDoesNotCancelItsOwnQuotaSlot(t *testing.T) {

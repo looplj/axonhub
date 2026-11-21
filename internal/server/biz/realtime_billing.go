@@ -44,11 +44,14 @@ type RealtimePriceSnapshot struct {
 // channel/model pair. It reuses the enabled-channel price cache first and the
 // shared model library fallback second. A price missing any of the four codes,
 // a duplicate code, an invalid schedule, or a non-positive price is rejected.
+// No corresponding rates yields a nil snapshot and usage without a charge.
 func (s *UsageLogService) RealtimePrice(ctx context.Context, channelID int, model string) (*RealtimePriceSnapshot, error) {
-	return s.realtimePrice(ctx, channelID, model, objects.ValidateRealtimePrice)
+	return s.realtimePrice(ctx, channelID, model, objects.ValidateRealtimePrice, func(code objects.PriceItemCode) bool {
+		return objects.IsRealtimePriceItemCode(code) && code != objects.PriceItemCodeRealtimeTranslationAudioSamples
+	})
 }
 
-func (s *UsageLogService) realtimePrice(ctx context.Context, channelID int, model string, validate func(objects.ModelPrice) error) (*RealtimePriceSnapshot, error) {
+func (s *UsageLogService) realtimePrice(ctx context.Context, channelID int, model string, validate func(objects.ModelPrice) error, relevant func(objects.PriceItemCode) bool) (*RealtimePriceSnapshot, error) {
 	if strings.TrimSpace(model) == "" {
 		return nil, fmt.Errorf("realtime price requires a model")
 	}
@@ -79,8 +82,17 @@ func (s *UsageLogService) realtimePrice(ctx context.Context, channelID int, mode
 		}
 	}
 
+	hasRate := func(items []objects.ModelPriceItem) bool {
+		return slices.ContainsFunc(items, func(item objects.ModelPriceItem) bool { return relevant(item.ItemCode) })
+	}
 	if !found {
-		return nil, fmt.Errorf("no realtime price for channel %d model %q", channelID, model)
+		return nil, nil
+	}
+	hasScheduledRate := price.Schedule != nil && slices.ContainsFunc(price.Schedule.Overrides, func(override objects.PriceOverride) bool {
+		return hasRate(override.Items)
+	})
+	if !hasRate(price.Items) && !hasScheduledRate {
+		return nil, nil
 	}
 
 	if err := validate(price); err != nil {
@@ -119,14 +131,13 @@ func (s *UsageLogService) CreateRealtimeUsage(
 	if snapshot != nil && snapshot.Price.Schedule != nil {
 		return nil, fmt.Errorf("realtime price snapshot must contain resolved prices")
 	}
-	if snapshot == nil {
-		return nil, fmt.Errorf("realtime price snapshot is required")
-	}
-
 	if err := validateRealtimeUsage(params.Usage); err != nil {
 		return nil, err
 	}
 
+	if snapshot == nil {
+		return s.saveRealtimeUsage(ctx, params, nil, nil, decimal.Zero)
+	}
 	if err := objects.ValidateRealtimePrice(snapshot.Price); err != nil {
 		return nil, fmt.Errorf("invalid realtime price snapshot: %w", err)
 	}
@@ -151,9 +162,7 @@ func (s *UsageLogService) saveRealtimeUsage(ctx context.Context, params CreateUs
 		SetCompletionTokens(params.Usage.CompletionTokens).
 		SetTotalTokens(params.Usage.TotalTokens).
 		SetSource(params.Source).
-		SetFormat(params.Format).
-		SetCostItems(costItems).
-		SetTotalCost(total.InexactFloat64())
+		SetFormat(params.Format)
 
 	if params.APIKeyID != nil {
 		mut = mut.SetAPIKeyID(*params.APIKeyID)
@@ -178,8 +187,11 @@ func (s *UsageLogService) saveRealtimeUsage(ctx context.Context, params CreateUs
 			SetCompletionRejectedPredictionTokens(params.Usage.CompletionTokensDetails.RejectedPredictionTokens)
 	}
 
-	if snapshot.ReferenceID != "" {
-		mut = mut.SetCostPriceReferenceID(snapshot.ReferenceID)
+	if snapshot != nil {
+		mut.SetCostItems(costItems).SetTotalCost(total.InexactFloat64())
+		if snapshot.ReferenceID != "" {
+			mut.SetCostPriceReferenceID(snapshot.ReferenceID)
+		}
 	}
 
 	usageLog, err := mut.Save(ctx)
