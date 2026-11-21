@@ -242,6 +242,13 @@ type StoragePolicy struct {
 	StoreRequestBody  bool            `json:"store_request_body"`
 	StoreResponseBody bool            `json:"store_response_body"`
 	CleanupOptions    []CleanupOption `json:"cleanup_options"`
+
+	// StoreUpstreamMeta keeps the upstream stream frames that are not represented
+	// in the aggregated response body (provider, usage cost, native finish reason,
+	// non-standard events) under the reserved `_upstream_chunks` key.
+	// Frames that only carry incremental answer text are skipped. Only effective
+	// for streaming OpenAI chat-completions executions and when StoreChunks is off.
+	StoreUpstreamMeta bool `json:"store_upstream_meta"`
 }
 
 // CleanupOption represents cleanup configuration for a specific resource type.

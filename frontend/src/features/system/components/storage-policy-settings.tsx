@@ -143,6 +143,7 @@ export function StoragePolicySettings() {
     livePreview: storagePolicy?.livePreview ?? false,
     storeRequestBody: storagePolicy?.storeRequestBody ?? true,
     storeResponseBody: storagePolicy?.storeResponseBody ?? true,
+    storeUpstreamMeta: storagePolicy?.storeUpstreamMeta ?? false,
     cleanupOptions: ensureCleanupOptions(storagePolicy?.cleanupOptions ?? []),
   });
 
@@ -166,6 +167,7 @@ export function StoragePolicySettings() {
         livePreview: storagePolicy.livePreview,
         storeRequestBody: storagePolicy.storeRequestBody,
         storeResponseBody: storagePolicy.storeResponseBody,
+        storeUpstreamMeta: storagePolicy.storeUpstreamMeta,
         cleanupOptions: ensureCleanupOptions(storagePolicy.cleanupOptions),
       });
     }
@@ -327,6 +329,7 @@ export function StoragePolicySettings() {
         livePreview: storagePolicyState.livePreview,
         storeRequestBody: storagePolicyState.storeRequestBody,
         storeResponseBody: storagePolicyState.storeResponseBody,
+        storeUpstreamMeta: storagePolicyState.storeUpstreamMeta,
         cleanupOptions: storagePolicyState.cleanupOptions.map((option) => ({
           resourceType: option.resourceType,
           enabled: option.enabled,
@@ -353,6 +356,7 @@ export function StoragePolicySettings() {
       storagePolicy.livePreview !== storagePolicyState.livePreview ||
       storagePolicy.storeRequestBody !== storagePolicyState.storeRequestBody ||
       storagePolicy.storeResponseBody !== storagePolicyState.storeResponseBody ||
+      storagePolicy.storeUpstreamMeta !== storagePolicyState.storeUpstreamMeta ||
       JSON.stringify(ensureCleanupOptions(storagePolicy.cleanupOptions)) !==
         JSON.stringify(storagePolicyState.cleanupOptions));
 
@@ -546,6 +550,24 @@ export function StoragePolicySettings() {
                 })
               }
               disabled={isLoading}
+            />
+          </div>
+
+          <div className='flex items-center justify-between'>
+            <div className='space-y-0.5'>
+              <Label htmlFor='storage-policy-store-upstream-meta'>{t('system.storage.policy.storeUpstreamMeta.label')}</Label>
+              <div className='text-muted-foreground text-sm'>{t('system.storage.policy.storeUpstreamMeta.description')}</div>
+            </div>
+            <Switch
+              id='storage-policy-store-upstream-meta'
+              checked={storagePolicyState.storeUpstreamMeta}
+              onCheckedChange={(checked) =>
+                setStoragePolicyState({
+                  ...storagePolicyState,
+                  storeUpstreamMeta: checked,
+                })
+              }
+              disabled={isLoading || storagePolicyState.storeChunks}
             />
           </div>
 
