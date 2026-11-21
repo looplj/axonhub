@@ -59,7 +59,7 @@ func TestMessageFromLLMWithConfig_ReasoningFieldNone(t *testing.T) {
 	assert.Nil(t, msg.Reasoning, "Reasoning field should be nil when using ReasoningFieldNone")
 }
 
-func TestMessageFromLLMWithConfig_DefaultAll(t *testing.T) {
+func TestMessageFromLLMWithConfig_DefaultContent(t *testing.T) {
 	reasoningContentText := "reasoning_content value"
 	reasoningText := "reasoning value"
 	llmMsg := llm.Message{
@@ -71,10 +71,9 @@ func TestMessageFromLLMWithConfig_DefaultAll(t *testing.T) {
 	msg := MessageFromLLM(llmMsg)
 
 	assert.Equal(t, "assistant", msg.Role)
-	assert.NotNil(t, msg.ReasoningContent, "ReasoningContent should be preserved by default (ReasoningFieldAll)")
+	assert.NotNil(t, msg.ReasoningContent, "ReasoningContent should be preserved by default (ReasoningFieldContent)")
 	assert.Equal(t, reasoningContentText, *msg.ReasoningContent)
-	assert.NotNil(t, msg.Reasoning, "Reasoning should be preserved by default (ReasoningFieldAll)")
-	assert.Equal(t, reasoningText, *msg.Reasoning)
+	assert.Nil(t, msg.Reasoning, "Reasoning alias should not be duplicated by default")
 }
 
 func TestMessageFromLLMWithConfig_ReasoningFieldAll_SyncFromReasoning(t *testing.T) {
@@ -157,6 +156,88 @@ func TestMessageFromLLMWithConfig_FallbackToReasoning(t *testing.T) {
 	assert.NotNil(t, msg.ReasoningContent)
 	assert.Equal(t, reasoningText, *msg.ReasoningContent, "Should fallback to Reasoning field when ReasoningContent is nil")
 	assert.Nil(t, msg.Reasoning, "Reasoning field should be nil when using ReasoningFieldContent")
+}
+
+func TestMessageFromLLM_DefaultContent_EmptyReasoningContentFallsBack(t *testing.T) {
+	reasoningText := "real reasoning"
+	llmMsg := llm.Message{
+		Role:             "assistant",
+		ReasoningContent: lo.ToPtr(""),
+		Reasoning:        &reasoningText,
+	}
+
+	msg := MessageFromLLM(llmMsg)
+
+	assert.Equal(t, "assistant", msg.Role)
+	require.NotNil(t, msg.ReasoningContent)
+	assert.Equal(t, reasoningText, *msg.ReasoningContent, "Empty ReasoningContent should fall back to non-empty Reasoning")
+	assert.Nil(t, msg.Reasoning, "Reasoning alias should not be emitted by default")
+
+	payload, err := json.Marshal(msg)
+	require.NoError(t, err)
+	assert.Contains(t, string(payload), `"reasoning_content":"real reasoning"`)
+	assert.NotContains(t, string(payload), `"reasoning":`, "Wire payload should not contain the reasoning alias")
+}
+
+func TestMessageFromLLMWithConfig_ReasoningFieldContent_EmptyReasoningContentFallsBack(t *testing.T) {
+	reasoningText := "real reasoning"
+	llmMsg := llm.Message{
+		Role:             "assistant",
+		ReasoningContent: lo.ToPtr(""),
+		Reasoning:        &reasoningText,
+	}
+
+	msg := MessageFromLLMWithConfig(llmMsg, ReasoningFieldContent)
+
+	assert.Equal(t, "assistant", msg.Role)
+	require.NotNil(t, msg.ReasoningContent)
+	assert.Equal(t, reasoningText, *msg.ReasoningContent, "Empty ReasoningContent should fall back to non-empty Reasoning")
+	assert.Nil(t, msg.Reasoning)
+}
+
+func TestMessageFromLLMWithConfig_ReasoningFieldContent_BothEmptyKeepsEmpty(t *testing.T) {
+	llmMsg := llm.Message{
+		Role:             "assistant",
+		ReasoningContent: lo.ToPtr(""),
+		Reasoning:        lo.ToPtr(""),
+	}
+
+	msg := MessageFromLLMWithConfig(llmMsg, ReasoningFieldContent)
+
+	require.NotNil(t, msg.ReasoningContent)
+	assert.Equal(t, "", *msg.ReasoningContent, "Empty ReasoningContent is kept when Reasoning is empty too")
+	assert.Nil(t, msg.Reasoning)
+}
+
+func TestMessageFromLLMWithConfig_ReasoningFieldReasoning_EmptyReasoningFallsBack(t *testing.T) {
+	reasoningContentText := "real reasoning content"
+	llmMsg := llm.Message{
+		Role:             "assistant",
+		ReasoningContent: &reasoningContentText,
+		Reasoning:        lo.ToPtr(""),
+	}
+
+	msg := MessageFromLLMWithConfig(llmMsg, ReasoningFieldReasoning)
+
+	assert.Equal(t, "assistant", msg.Role)
+	require.NotNil(t, msg.Reasoning)
+	assert.Equal(t, reasoningContentText, *msg.Reasoning, "Empty Reasoning should fall back to non-empty ReasoningContent")
+	assert.Nil(t, msg.ReasoningContent)
+}
+
+func TestMessageFromLLMWithConfig_ReasoningFieldReasoning_FallbackToReasoningContent(t *testing.T) {
+	reasoningContentText := "real reasoning content"
+	llmMsg := llm.Message{
+		Role:             "assistant",
+		ReasoningContent: &reasoningContentText,
+	}
+
+	msg := MessageFromLLMWithConfig(llmMsg, ReasoningFieldReasoning)
+
+	assert.Equal(t, "assistant", msg.Role)
+	require.NotNil(t, msg.Reasoning)
+	assert.Equal(t, reasoningContentText, *msg.Reasoning, "Should fall back to ReasoningContent when Reasoning is nil")
+	assert.Nil(t, msg.ReasoningContent)
 }
 
 func TestRequestFromLLMWithConfig_ReasoningFieldContent(t *testing.T) {
