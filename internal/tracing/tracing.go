@@ -49,6 +49,10 @@ type Config struct {
 	// OpenCodeTraceEnabled enables extracting trace IDs from OpenCode request headers.
 	// Default to true.
 	OpenCodeTraceEnabled bool `conf:"opencode_trace_enabled" yaml:"opencode_trace_enabled" json:"opencode_trace_enabled"`
+
+	// DSHTraceEnabled enables extracting trace IDs from DeepSeek Harness session headers.
+	// Default to true.
+	DSHTraceEnabled bool `conf:"dsh_trace_enabled" yaml:"dsh_trace_enabled" json:"dsh_trace_enabled"`
 }
 
 // GenerateTraceID generate trace id, format as at-{{uuid}}.
