@@ -16,7 +16,7 @@ AxonHub 通过 Jina AI 重排序 API 支持文档重排序，允许您根据与�
 - `POST /v1/rerank` - Jina 兼容重排序 API（便捷端点）
 - `POST /jina/v1/rerank` - Jina AI 特定重排序 API
 
-> **注意**：OpenAI 不提供原生重排序 API。两个端点都使用 Jina 的重排序格式。
+两个端点均接受 Jina 的文本请求。连接提供图文重排序的 vLLM 上游时，也接受下方的多模态请求。
 
 ## 请求格式
 
@@ -43,6 +43,29 @@ AxonHub 通过 Jina AI 重排序 API 支持文档重排序，允许您根据与�
 | `documents` | string[] | ✅ | 要重排序的文档列表。最少 1 个文档。 |
 | `top_n` | integer | ❌ | 返回最相关文档的数量。如果未指定，返回所有文档。 |
 | `return_documents` | boolean | ❌ | 是否在响应中返回原始文档。默认：false。 |
+
+### 图文重排序
+
+将模型关联到支持图文重排序的上游，在 OpenAI 类型渠道中添加 `jina/rerank` 端点。填写上游服务的根地址和路径 `/v1/rerank`，委托上游模型处理图像。客户端继续调用 AxonHub 的 `POST /v1/rerank`。
+
+```json
+{
+  "model": "qwen3-vl-reranker-8b",
+  "query": "红色正方形",
+  "documents": [
+    {
+      "content": [
+        {"type": "text", "text": "一个红色图形"},
+        {"type": "image_url", "image_url": {"url": "https://example.com/red-square.png"}}
+      ]
+    },
+    "蓝色圆形"
+  ],
+  "top_n": 2
+}
+```
+
+候选数组可以混用字符串和 `content` 对象。vLLM 也接受单个候选及 `content` 对象形式的查询。图片可使用上游可访问的 URL 或 `data:image/png;base64,...`。返回的 `results[].index` 对应原候选位置，从 0 开始。上游返回 `document.multi_modal` 时，AxonHub 会保留它。 [vLLM 多模态重排序示例](https://github.com/vllm-project/vllm/blob/main/examples/pooling/score/vision_rerank_api_online.py)
 
 ## 响应格式
 

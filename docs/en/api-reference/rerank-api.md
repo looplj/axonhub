@@ -16,7 +16,7 @@ AxonHub supports document reranking through Jina AI rerank API, allowing you to 
 - `POST /v1/rerank` - Jina-compatible rerank API (convenience endpoint)
 - `POST /jina/v1/rerank` - Jina AI-specific rerank API
 
-> **Note**: OpenAI does not provide a native rerank API. Both endpoints use Jina's rerank format.
+Both endpoints accept Jina text requests and the multimodal request format below when routed to a compatible vLLM upstream.
 
 ## Request Format
 
@@ -43,6 +43,29 @@ AxonHub supports document reranking through Jina AI rerank API, allowing you to 
 | `documents` | string[] | ✅ | List of documents to rerank. Minimum 1 document. |
 | `top_n` | integer | ❌ | Number of most relevant documents to return. If not specified, returns all documents. |
 | `return_documents` | boolean | ❌ | Whether to return the original documents in the response. Default: false. |
+
+### Multimodal reranking
+
+Associate the model with an upstream that supports multimodal reranking and add a `jina/rerank` endpoint to an OpenAI channel. Use the upstream service root as the Base URL and `/v1/rerank` as the endpoint path. Clients call `POST /v1/rerank` on AxonHub.
+
+```json
+{
+  "model": "qwen3-vl-reranker-8b",
+  "query": "A red square",
+  "documents": [
+    {
+      "content": [
+        {"type": "text", "text": "A red shape"},
+        {"type": "image_url", "image_url": {"url": "https://example.com/red-square.png"}}
+      ]
+    },
+    "A blue circle"
+  ],
+  "top_n": 2
+}
+```
+
+The candidate array can contain both strings and `content` objects. vLLM also accepts a single candidate and a query expressed as a `content` object. Images can use a URL reachable by the upstream or a `data:image/png;base64,...` URI. Each `results[].index` is the original zero-based candidate position. AxonHub retains `document.multi_modal` when returned by the upstream. [vLLM multimodal rerank example](https://github.com/vllm-project/vllm/blob/main/examples/pooling/score/vision_rerank_api_online.py)
 
 ## Response Format
 

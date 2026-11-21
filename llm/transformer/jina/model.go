@@ -11,6 +11,7 @@ type RerankRequest struct {
 }
 
 type RerankResponse struct {
+	ID      string         `json:"id,omitempty"`
 	Model   string         `json:"model"`
 	Object  string         `json:"object"`
 	Results []RerankResult `json:"results"`
@@ -21,13 +22,11 @@ type RerankResult struct {
 	Index          int     `json:"index"`
 	RelevanceScore float64 `json:"relevance_score"`
 
-	// Document is the original document text (optional, can be omitted to save bandwidth).
+	// Document is the original document, when returned by the upstream.
 	Document *RerankDocument `json:"document,omitempty"`
 }
 
-type RerankDocument struct {
-	Text string `json:"text"`
-}
+type RerankDocument = llm.RerankDocument
 
 type RerankUsage struct {
 	PromptTokens int      `json:"prompt_tokens"`
