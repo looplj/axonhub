@@ -643,11 +643,6 @@ func (c *RealtimeConversation) prepareServerEvent(kind string, data []byte) erro
 }
 
 func (c *RealtimeConversation) confirmAudioCommit() {
-	if len(c.pendingCommits) > 0 {
-		// A delayed manual acknowledgement does not clear post-commit bytes.
-		c.pendingCommits = slices.Delete(c.pendingCommits, 0, 1)
-		return
-	}
 	if c.pendingClearID != "" && c.clearingInput != nil {
 		index := slices.IndexFunc(c.committedInputs, func(input *realtimeResponse) bool {
 			return input.reservationOrder > c.clearingInput.reservationOrder
@@ -657,12 +652,19 @@ func (c *RealtimeConversation) confirmAudioCommit() {
 		}
 		c.committedInputs = slices.Insert(c.committedInputs, index, c.clearingInput)
 		c.clearingInput = nil
-	} else if c.pendingInput != nil {
+		return
+	}
+	if len(c.pendingCommits) > 0 {
+		// A delayed manual acknowledgement does not clear post-commit bytes.
+		c.pendingCommits = slices.Delete(c.pendingCommits, 0, 1)
+		return
+	}
+	if c.pendingInput != nil {
 		c.pendingInput.reservationOrder = c.nextReservationOrder()
 		c.committedInputs = append(c.committedInputs, c.pendingInput)
 		c.pendingInput = nil
+		c.audioBytes = 0
 	}
-	c.audioBytes = 0
 }
 
 func (c *RealtimeConversation) observeResponseOutput(kind string, data []byte) {

@@ -42,15 +42,17 @@ import (
 )
 
 type RealtimeHandlers struct {
-	service     *orchestrator.RealtimeService
-	cache       xcache.Config
-	mu          sync.Mutex
-	admission   *rt.Admission
-	redis       redis.UniversalClient
-	sessions    map[uint64]context.CancelFunc
-	nextSession uint64
-	drained     chan struct{}
-	stopping    bool
+	service      *orchestrator.RealtimeService
+	cache        xcache.Config
+	mu           sync.Mutex
+	admission    *rt.Admission
+	redis        redis.UniversalClient
+	redisInit    chan struct{}
+	redisInitErr error
+	sessions     map[uint64]context.CancelFunc
+	nextSession  uint64
+	drained      chan struct{}
+	stopping     bool
 }
 
 // ReconcileAudit is an owner-only acknowledgement, not a usage or balance edit.
@@ -89,6 +91,7 @@ func NewRealtimeHandlers(service *orchestrator.RealtimeService, cache xcache.Con
 		}
 		drained := h.drained
 		client := h.redis
+		redisInit := h.redisInit
 		h.mu.Unlock()
 		for _, cancel := range cancels {
 			cancel()
@@ -97,6 +100,13 @@ func NewRealtimeHandlers(service *orchestrator.RealtimeService, cache xcache.Con
 		case <-drained:
 		case <-ctx.Done():
 			return ctx.Err()
+		}
+		if redisInit != nil {
+			select {
+			case <-redisInit:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}
 		if client != nil {
 			return client.Close()
@@ -130,22 +140,70 @@ func RealtimeBoundary() gin.HandlerFunc {
 	}
 }
 
-func (h *RealtimeHandlers) limiter(config rt.Config) (*rt.Admission, error) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.admission != nil {
-		return h.admission, nil
-	}
-	redisCfg := h.cache.Redis
-	if redisCfg.URL != "" || redisCfg.Addr != "" || len(redisCfg.Addrs) > 0 {
-		client, err := xredis.NewClient(redisCfg)
+func (h *RealtimeHandlers) limiter(ctx context.Context, config rt.Config) (*rt.Admission, error) {
+	for {
+		h.mu.Lock()
+		if h.admission != nil {
+			admission := h.admission
+			h.mu.Unlock()
+			return admission, nil
+		}
+		if h.stopping {
+			h.mu.Unlock()
+			return nil, errors.New("Realtime admission is shutting down")
+		}
+		if initializing := h.redisInit; initializing != nil {
+			h.mu.Unlock()
+			select {
+			case <-initializing:
+				h.mu.Lock()
+				admission, initErr := h.admission, h.redisInitErr
+				h.mu.Unlock()
+				if admission != nil {
+					return admission, nil
+				}
+				if initErr != nil {
+					return nil, errors.New("Realtime shared admission is unavailable")
+				}
+				continue
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+		initializing := make(chan struct{})
+		h.redisInit = initializing
+		redisCfg := h.cache.Redis
+		h.mu.Unlock()
+
+		var client redis.UniversalClient
+		var err error
+		if redisCfg.URL != "" || redisCfg.Addr != "" || len(redisCfg.Addrs) > 0 {
+			initCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			client, err = xredis.NewClientContext(initCtx, redisCfg)
+			cancel()
+		}
+
+		h.mu.Lock()
+		if err == nil && !h.stopping {
+			h.redis = client
+			h.admission = rt.NewAdmission(client, config.Limits, config.MaxDuration+config.HandshakeTimeout+time.Minute+10*time.Second)
+			client = nil
+		} else if err == nil {
+			err = errors.New("Realtime admission is shutting down")
+		}
+		h.redisInitErr = err
+		h.redisInit = nil
+		close(initializing)
+		admission := h.admission
+		h.mu.Unlock()
+		if client != nil {
+			_ = client.Close()
+		}
 		if err != nil {
 			return nil, errors.New("Realtime shared admission is unavailable")
 		}
-		h.redis = client
+		return admission, nil
 	}
-	h.admission = rt.NewAdmission(h.redis, config.Limits, config.MaxDuration+config.HandshakeTimeout+time.Minute+10*time.Second)
-	return h.admission, nil
 }
 
 func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFunc {
@@ -177,7 +235,7 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 			JSONError(c, status, errors.New(message))
 			return
 		}
-		limiter, err := h.limiter(config)
+		limiter, err := h.limiter(ctx, config)
 		if err != nil {
 			JSONError(c, http.StatusServiceUnavailable, err)
 			return

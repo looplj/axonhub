@@ -15,12 +15,23 @@ import (
 )
 
 func NewClient(cfg Config) (redis.UniversalClient, error) {
+	return newClient(context.Background(), cfg, false)
+}
+
+// NewClientContext connects and verifies Redis using the caller's cancellation boundary.
+func NewClientContext(ctx context.Context, cfg Config) (redis.UniversalClient, error) {
+	return newClient(ctx, cfg, true)
+}
+
+func newClient(ctx context.Context, cfg Config, contextTimeoutEnabled bool) (redis.UniversalClient, error) {
 	opts, err := newUniversalOptions(cfg)
 	if err != nil {
 		return nil, err
 	}
+	opts.ContextTimeoutEnabled = contextTimeoutEnabled
 	client := redis.NewUniversalClient(opts)
-	if err := client.Ping(context.Background()).Err(); err != nil {
+	if err := client.Ping(ctx).Err(); err != nil {
+		_ = client.Close()
 		return nil, err
 	}
 
