@@ -379,3 +379,36 @@ func TestServerVadCommitKeepsPreClearTurnAheadOfPostClearCreate(t *testing.T) {
 	require.NoError(t, err)
 	require.Same(t, postClearCreate, c.responses["post-clear-manual"])
 }
+
+func TestServerVadCommitDoesNotConsumePostClearManualCommit(t *testing.T) {
+	beforeClear := &realtimeResponse{reservationOrder: 1}
+	postClear := &realtimeResponse{reservationOrder: 2}
+	c := &RealtimeConversation{
+		pendingClearID:  "clear-event",
+		clearingInput:   beforeClear,
+		committedInputs: []*realtimeResponse{postClear},
+		pendingCommits:  []realtimeAudioCommit{{eventID: "commit-post-clear", reserved: true}},
+		responses:       map[string]*realtimeResponse{},
+	}
+
+	c.confirmAudioCommit()
+	require.Len(t, c.pendingCommits, 1, "the automatic pre-clear commit must not consume the manual post-clear acknowledgement")
+	require.Equal(t, []*realtimeResponse{beforeClear, postClear}, c.committedInputs)
+	c.confirmAudioCommit()
+	require.Empty(t, c.pendingCommits, "the next acknowledgement belongs to the manual post-clear commit")
+}
+
+func TestDelayedPreClearCommitPreservesPostClearAudioByteCount(t *testing.T) {
+	beforeClear := &realtimeResponse{reservationOrder: 1}
+	afterClear := &realtimeResponse{reservationOrder: 2}
+	c := &RealtimeConversation{
+		pendingClearID: "clear-event",
+		clearingInput:  beforeClear,
+		pendingInput:   afterClear,
+		audioBytes:     12,
+	}
+
+	c.confirmAudioCommit()
+	require.Same(t, afterClear, c.pendingInput)
+	require.EqualValues(t, 12, c.audioBytes, "the pre-clear acknowledgement must not erase post-clear bytes")
+}

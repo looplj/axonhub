@@ -99,7 +99,25 @@ func publicDial(ctx context.Context, network, address string) (net.Conn, error) 
 	var dialer net.Dialer
 	dialer.Timeout = 10 * time.Second
 	dialer.KeepAlive = 30 * time.Second
-	return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].IP.String(), port))
+	return dialValidatedIPs(ctx, network, port, ips, dialer.DialContext)
+}
+
+func dialValidatedIPs(ctx context.Context, network, port string, ips []net.IPAddr, dial func(context.Context, string, string) (net.Conn, error)) (net.Conn, error) {
+	var lastErr error
+	for _, ip := range ips {
+		conn, err := dial(ctx, network, net.JoinHostPort(ip.IP.String(), port))
+		if err == nil {
+			return conn, nil
+		}
+		lastErr = err
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+	}
+	if lastErr == nil {
+		return nil, errors.New("realtime DNS lookup returned no addresses")
+	}
+	return nil, lastErr
 }
 
 // Dialer separates connection establishment from routing and session processing.

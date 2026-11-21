@@ -7,6 +7,8 @@ package api
 
 import (
 	"context"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,7 +21,9 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/pkg/xredis"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	rt "github.com/looplj/axonhub/internal/server/realtime"
 )
 
 func TestRealtimeReconcileBoundaryRejectsNonOwner(t *testing.T) {
@@ -83,4 +87,57 @@ func TestRealtimeShutdownDrainsBeforeServicesStop(t *testing.T) {
 	<-finished
 	_, err = h.trackSession(cancel)
 	require.Error(t, err)
+}
+
+func TestRealtimeRedisInitializationIsCancelableWithoutSessionLock(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer listener.Close()
+	accepted := make(chan struct{}, 1)
+	go func() {
+		for {
+			conn, acceptErr := listener.Accept()
+			if acceptErr != nil {
+				return
+			}
+			accepted <- struct{}{}
+			go func() { defer conn.Close(); _, _ = io.Copy(io.Discard, conn) }()
+		}
+	}()
+
+	h := &RealtimeHandlers{cache: xcache.Config{Redis: xredis.Config{Addr: listener.Addr().String()}}, sessions: map[uint64]context.CancelFunc{}, drained: make(chan struct{})}
+	close(h.drained)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	initialized := make(chan error, 1)
+	go func() {
+		_, initErr := h.limiter(ctx, rt.Config{})
+		initialized <- initErr
+	}()
+	select {
+	case <-accepted:
+	case <-time.After(time.Second):
+		t.Fatal("Redis initialization did not reach the stalled test server")
+	}
+
+	trackDone := make(chan error, 1)
+	go func() {
+		untrack, trackErr := h.trackSession(func() {})
+		if trackErr == nil {
+			untrack()
+		}
+		trackDone <- trackErr
+	}()
+	select {
+	case trackErr := <-trackDone:
+		require.NoError(t, trackErr, "session tracking must not wait for Redis network I/O")
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Redis initialization held the session-tracking lock")
+	}
+	select {
+	case initErr := <-initialized:
+		require.Error(t, initErr, "canceling the request must stop Redis initialization")
+	case <-time.After(time.Second):
+		t.Fatal("Redis initialization ignored request cancellation")
+	}
 }
