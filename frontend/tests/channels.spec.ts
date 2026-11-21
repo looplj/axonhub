@@ -1573,7 +1573,7 @@ for (const storage of ['legacy', 'structured'] as const) {
     await page.addLocatorHandler(skipTour, () => skipTour.click())
     await gotoAndEnsureAuth(page, '/channels')
     const name = `pw-claude-catalog-${uniqueSuffix()}`
-    const old = { access_token: 'fixture-old', refresh_token: 'fixture-refresh' }
+    const old = { access_token: 'fixture-old' }
     const saved = await seedChannel(page, {
       name,
       type: 'claudecode',

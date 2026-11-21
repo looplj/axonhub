@@ -168,3 +168,16 @@ test('Claude Code fetch uses the selected authentication mode on the official UR
   assert.ok(getThirdPartyCredentialError({ ...input, apiKeys: [], authMode: 'third-party' }));
   assert.deepEqual(getThirdPartySubmitCredentials({ apiKey: OAUTH_JSON, apiKeys: ['relay-key'] }, { ...input, authMode: 'third-party' }), { apiKeys: ['relay-key'] });
 });
+
+test('Claude Code create and edit schemas accept access-only OAuth and validate the selected third-party key', async () => {
+  const source = schemaSource.replace("from 'zod'", `from '${import.meta.resolve('zod')}'`)
+    .replace("import { pageInfoSchema } from '@/gql/pagination'", 'const pageInfoSchema = z.object({})');
+  const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 } });
+  const { createChannelInputSchema, updateChannelInputSchema } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
+  const input = { type: 'claudecode', name: 'Fixture', baseURL: 'https://api.anthropic.com/v1', supportedModels: ['fixture'], defaultTestModel: 'fixture' };
+  for (const schema of [createChannelInputSchema, updateChannelInputSchema]) {
+    assert.ok(schema.safeParse({ ...input, credentials: { apiKey: '{"access_token":"fixture"}' } }).success);
+    assert.ok(schema.safeParse({ ...input, credentials: { apiKey: '{invalid old credential', apiKeys: ['fixture-relay'] } }).success);
+    assert.equal(schema.safeParse({ ...input, credentials: { apiKey: '{}' } }).success, false);
+  }
+});
