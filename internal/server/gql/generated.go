@@ -395,6 +395,7 @@ type ComplexityRoot struct {
 		APIKey        func(childComplexity int) int
 		APIKeys       func(childComplexity int) int
 		GCP           func(childComplexity int) int
+		IsOAuth       func(childComplexity int) int
 		OAuth         func(childComplexity int) int
 		VertexAPIKeys func(childComplexity int) int
 	}
@@ -4029,6 +4030,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelCredentials.GCP(childComplexity), true
+	case "ChannelCredentials.isOAuth":
+		if e.complexity.ChannelCredentials.IsOAuth == nil {
+			break
+		}
+
+		return e.complexity.ChannelCredentials.IsOAuth(childComplexity), true
 	case "ChannelCredentials.oauth":
 		if e.complexity.ChannelCredentials.OAuth == nil {
 			break
@@ -23249,6 +23256,8 @@ func (ec *executionContext) fieldContext_Channel_credentials(_ context.Context, 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "isOAuth":
+				return ec.fieldContext_ChannelCredentials_isOAuth(ctx, field)
 			case "apiKey":
 				return ec.fieldContext_ChannelCredentials_apiKey(ctx, field)
 			case "apiKeys":
@@ -23446,6 +23455,35 @@ func (ec *executionContext) fieldContext_ChannelConnection_totalCount(_ context.
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelCredentials_isOAuth(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelCredentials_isOAuth,
+		func(ctx context.Context) (any, error) {
+			return obj.IsOAuth(), nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelCredentials_isOAuth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCredentials",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -80718,13 +80756,20 @@ func (ec *executionContext) unmarshalInputFetchModelsInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"channelType", "baseURL", "apiKey", "projectID", "region", "channelID"}
+	fieldsInOrder := [...]string{"proxy", "channelType", "baseURL", "apiKey", "projectID", "region", "channelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "proxy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("proxy"))
+			data, err := ec.unmarshalOProxyConfigInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋllmᚋhttpclientᚐProxyConfig(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Proxy = data
 		case "channelType":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelType"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -102212,6 +102257,11 @@ func (ec *executionContext) _ChannelCredentials(ctx context.Context, sel ast.Sel
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ChannelCredentials")
+		case "isOAuth":
+			out.Values[i] = ec._ChannelCredentials_isOAuth(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "apiKey":
 			out.Values[i] = ec._ChannelCredentials_apiKey(ctx, field, obj)
 		case "apiKeys":

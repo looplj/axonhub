@@ -13,7 +13,7 @@ import ts from 'typescript';
 const source = readFileSync(new URL('./channels-action-dialog.tsx', import.meta.url), 'utf8');
 
 const START_MARKER = 'const models = result.models.map((m) => m.id);';
-const END_MARKER = '}, [fetchModels, form, isEdit, currentRow, authMode]);';
+const END_MARKER = 'const handleSyncNow = useCallback';
 
 const start = source.indexOf(START_MARKER);
 const end = source.indexOf(END_MARKER);

@@ -394,6 +394,7 @@ type ChannelRateLimit {
 }
 
 type ChannelCredentials {
+  isOAuth: Boolean!
   apiKey: String
   apiKeys: [String!]
   vertexApiKeys: [VertexAPIKey!]
@@ -737,6 +738,7 @@ type APIKeyProfileQuotaUsage {
 }
 
 input FetchModelsInput {
+  proxy: ProxyConfigInput
   channelType: String!
   baseURL: String!
   apiKey: String

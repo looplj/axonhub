@@ -1200,6 +1200,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             }
           }
           credentials {
+            isOAuth
             apiKey
             apiKeys
             vertexApiKeys {
@@ -2426,16 +2427,20 @@ export function useSyncChannelModels() {
   const { handleError } = useErrorHandler();
 
   return useMutation({
-    mutationFn: async (input: { channelID: string; pattern?: string }) => {
+    mutationFn: async ({ channelID, pattern }: { channelID: string; channelType: string; pattern?: string }) => {
       try {
-        const data = await graphqlRequest<{ syncChannelModels: unknown }>(SYNC_CHANNEL_MODELS_MUTATION, input);
+        const data = await graphqlRequest<{ syncChannelModels: unknown }>(SYNC_CHANNEL_MODELS_MUTATION, { channelID, pattern });
         return syncChannelModelsPayloadSchema.parse(data.syncChannelModels);
       } catch (error) {
         handleError(error, { context: 'Sync Channel Models' });
         throw error;
       }
     },
-    onSuccess: ({ fallback, codexCatalogVersion, codexCatalogSkippedReason }) => {
+    onSuccess: ({ fallback, codexCatalogVersion, codexCatalogSkippedReason }, input) => {
+      if (fallback && input.channelType === 'claudecode') {
+        toast.info(t('channels.messages.claudeCatalogManualSync'));
+        return;
+      }
       if (codexCatalogSkippedReason) {
         toast.info(t(`channels.messages.codexCatalogSyncSkipped.${codexCatalogSkippedReason}`));
         return;
@@ -2464,6 +2469,7 @@ export function useFetchModels() {
     mutationFn: async (input: {
       channelType: string;
       baseURL: string;
+      proxy?: ProxyConfig;
       apiKey?: string;
       projectID?: string;
       region?: string;

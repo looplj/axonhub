@@ -11,6 +11,8 @@ import { gotoAndEnsureAuth } from './auth.utils'
 test('Claude Code catalog protects preset and manual models until explicit cleanup', async ({ page }) => {
   const credential = JSON.stringify({ access_token: 'fixture-account' })
   const fetchInputs: Array<{ apiKey?: string }> = []
+  const pendingPreset = Promise.withResolvers<void>()
+  const releasePreset = Promise.withResolvers<void>()
   await page.route('**/admin/claudecode/oauth/start', (route) =>
     route.fulfill({ json: { session_id: 'fixture', auth_url: 'https://example.invalid/authorize' } })
   )
@@ -21,11 +23,27 @@ test('Claude Code catalog protects preset and manual models until explicit clean
     const request = route.request().postDataJSON()
     if (request.operationName !== 'FetchModels') return route.continue()
     fetchInputs.push(request.variables.input)
-    if (!request.variables.input.apiKey) return route.continue()
-    await route.fulfill({ json: { data: { fetchModels: {
-      models: [{ id: 'fixture-new', pricing: null }], fallback: false, fallbackReason: null,
-      error: null, codexCatalogVersion: null, codexCatalogSkippedReason: null,
-    } } } })
+    if (!request.variables.input.apiKey) {
+      if (fetchInputs.length === 3) {
+        pendingPreset.resolve()
+        await releasePreset.promise
+      }
+      return route.continue()
+    }
+    await route.fulfill({
+      json: {
+        data: {
+          fetchModels: {
+            models: [{ id: 'fixture-new', pricing: null }],
+            fallback: false,
+            fallbackReason: null,
+            error: null,
+            codexCatalogVersion: null,
+            codexCatalogSkippedReason: null,
+          },
+        },
+      },
+    })
   })
 
   const skipTour = page.getByRole('button', { name: 'Skip Tour' })
@@ -47,21 +65,27 @@ test('Claude Code catalog protects preset and manual models until explicit clean
 
   // Add one preset, then check that fetching presets again cannot remove it.
   const preset = dialog.getByTestId('catalog-model-row').first()
-  const presetID = await preset.locator('span.truncate').first().innerText()
+  const presetID = await preset.getByTestId('catalog-model-id').innerText()
   await preset.getByRole('checkbox').click()
   await dialog.getByRole('button', { name: 'Add Selected (1)', exact: true }).click()
   await fetch.click()
   await expect(preset.getByRole('checkbox')).toBeDisabled()
   await expect(clean).toBeDisabled()
 
+  // A response started before authorization must not reopen the old account's list.
+  await fetch.click()
+  await pendingPreset.promise
   await dialog.getByRole('button', { name: 'Start OAuth' }).click()
   await dialog.getByPlaceholder('Paste the full callback URL here').fill('https://example.invalid/fixture')
   await dialog.getByRole('button', { name: 'Exchange & Fill API Key' }).click()
   await expect(source).toHaveCount(0)
-  expect(fetchInputs).toHaveLength(2)
+  expect(fetchInputs).toHaveLength(3)
+  releasePreset.resolve()
+  await expect(fetch).toBeEnabled()
+  await expect(source).toHaveCount(0)
   await fetch.click()
   await expect(source).toHaveText('Upstream models (1)')
-  expect(fetchInputs.map((input) => input.apiKey)).toEqual([undefined, undefined, credential])
+  expect(fetchInputs.map((input) => input.apiKey)).toEqual([undefined, undefined, undefined, credential])
   await expect(clean).toHaveText('Clean (1)')
   await expect(dialog.getByText(presetID, { exact: true }).first()).toBeVisible()
   await clean.click()

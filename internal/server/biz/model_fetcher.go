@@ -159,6 +159,7 @@ func NewModelFetcher(httpClient *httpclient.HttpClient, channelService *ChannelS
 
 // FetchModelsInput represents the input for fetching models.
 type FetchModelsInput struct {
+	Proxy       *objects.ProxyConfig
 	ChannelType string
 	BaseURL     string
 	//nolint:gosec // G117: Field name contains "APIKey" but this is input data, not a hardcoded secret
@@ -451,7 +452,7 @@ func (f *ModelFetcher) fetchModels(ctx context.Context, input FetchModelsInput, 
 		savedChannel = ch
 		if ch.Type == channel.TypeClaudecode && apiKey == "" &&
 			ch.Credentials.IsOAuth() && fetchModelsInputMatchesChannel(input, ch) {
-			return f.claudeCodeCatalog(ctx, input.BaseURL, "", ch, mode), nil
+			return f.claudeCodeCatalog(ctx, input, "", ch, mode), nil
 		}
 
 		if input.ChannelType != channel.TypeClaudecode.String() && ch.Type != channel.TypeClaudecode && ch.Credentials.IsOAuth() && (ch.Type != channel.TypeCodex ||
@@ -506,7 +507,7 @@ func (f *ModelFetcher) fetchModels(ctx context.Context, input FetchModelsInput, 
 			return claudeCodePreset(catalogNoCredentials), nil
 		}
 		if isClaudeCodeCatalogCredential(apiKey) {
-			return f.claudeCodeCatalog(ctx, input.BaseURL, apiKey, savedChannel, mode), nil
+			return f.claudeCodeCatalog(ctx, input, apiKey, savedChannel, mode), nil
 		}
 	}
 	thirdPartyCodexCatalog := channelType == channel.TypeCodex && codexChannel == nil && !isOAuthJSON(apiKey)

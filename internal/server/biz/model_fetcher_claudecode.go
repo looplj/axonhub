@@ -56,10 +56,10 @@ func isClaudeCodeCatalogCredential(raw string) bool {
 
 const claudeCodeAPI = "https://api.anthropic.com"
 
-func (f *ModelFetcher) claudeCodeCatalog(ctx context.Context, baseURL, raw string, saved *ent.Channel, mode modelFetchMode) *FetchModelsResult {
+func (f *ModelFetcher) claudeCodeCatalog(ctx context.Context, input FetchModelsInput, raw string, saved *ent.Channel, mode modelFetchMode) *FetchModelsResult {
 	// Only the interactive picker consumes this directory. Sync treats a
 	// fallback as non-authoritative and leaves existing channel models alone.
-	switch strings.TrimRight(baseURL, "/") {
+	switch strings.TrimRight(input.BaseURL, "/") {
 	case "", claudeCodeAPI, claudeCodeAPI + "/v1":
 	default:
 		return claudeCodePreset(catalogUnavailable)
@@ -70,7 +70,9 @@ func (f *ModelFetcher) claudeCodeCatalog(ctx context.Context, baseURL, raw strin
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	client := f.httpClient
-	if saved != nil && saved.Settings != nil && saved.Settings.Proxy != nil {
+	if input.Proxy != nil {
+		client = client.WithProxy(input.Proxy)
+	} else if saved != nil && saved.Settings != nil && saved.Settings.Proxy != nil {
 		client = client.WithProxy(saved.Settings.Proxy)
 	}
 	client = client.WithRejectRedirects()

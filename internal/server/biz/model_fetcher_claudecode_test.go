@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -164,6 +165,31 @@ func TestClaudeCodeCatalogChannelCredentials(t *testing.T) {
 	creds, err := db.Channel.GetX(ctx, ch.ID).Credentials.ResolveOAuthCredentials()
 	require.NoError(t, err)
 	require.Equal(t, "refreshed-b", creds.AccessToken)
+}
+
+func TestClaudeCodeCatalogDraftProxy(t *testing.T) {
+	targets := make(chan string, 1)
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		targets <- r.Method + " " + r.Host
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer proxy.Close()
+	client := httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		t.Fatal("draft catalog must use its configured proxy")
+		return nil, nil
+	})})
+	result, err := NewModelFetcher(client, nil).FetchModels(t.Context(), FetchModelsInput{
+		ChannelType: "claudecode", BaseURL: claudeCodeAPI, APIKey: lo.ToPtr("sk-ant-oat-test"),
+		Proxy: &httpclient.ProxyConfig{Type: httpclient.ProxyTypeURL, URL: proxy.URL},
+	})
+	require.NoError(t, err)
+	require.True(t, result.Fallback)
+	select {
+	case target := <-targets:
+		require.Equal(t, "CONNECT api.anthropic.com:443", target)
+	default:
+		t.Fatal("proxy did not receive the catalog request")
+	}
 }
 
 func TestClaudeCodeCatalogThirdParty(t *testing.T) {

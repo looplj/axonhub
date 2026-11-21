@@ -353,7 +353,7 @@ const FetchedModelItem = memo(
       <Tooltip>
         <TooltipTrigger asChild>
           <span className={`flex min-w-0 flex-1 flex-col ${disabled ? '' : 'cursor-pointer'}`} onClick={disabled ? undefined : onToggle}>
-            <span className='truncate'>{model}</span>
+            <span data-testid='catalog-model-id' className='truncate'>{model}</span>
             <span className='text-muted-foreground block truncate text-xs'>{pricingSummary ?? noPricingLabel}</span>
           </span>
         </TooltipTrigger>
@@ -435,8 +435,8 @@ function isClaudeCodeOAuthCredential(raw: string): boolean {
 }
 
 function isOfficialClaudeCodeChannel(channel: Pick<Channel, 'baseURL' | 'credentials'>): boolean {
-  const { apiKey, apiKeys, oauth } = channel.credentials ?? {};
-  if (oauth?.accessToken || (apiKey && isClaudeCodeOAuthCredential(apiKey))) return true;
+  const { apiKey, apiKeys, isOAuth } = channel.credentials ?? {};
+  if (isOAuth || isClaudeCodeOAuthCredential(apiKey || '') || apiKeys?.some(isClaudeCodeOAuthCredential)) return true;
   if (apiKey || apiKeys?.some((key) => key.trim())) return false;
   return channel.baseURL === getDefaultBaseURL('claudecode');
 }
@@ -492,15 +492,16 @@ function parseOauthToken(oauthApiKey: string): string {
   return oauthApiKey;
 }
 
-// A third-party Codex channel authenticates with a plain API key only. An OAuth
+// Third-party Codex and Claude Code channels use plain API keys. An OAuth
 // or auth.json row that is copied/edited into third-party mode still carries its
 // old JSON in `credentials.apiKey`; the backend replaces credentials wholesale,
 // so the inherited value must be dropped before submit or it silently revives.
-function getCodexThirdPartySubmitCredentials<T extends { apiKey?: string | null; apiKeys?: string[] | null }>(
+function getThirdPartySubmitCredentials<T extends { apiKey?: string | null; apiKeys?: string[] | null }>(
   credentials: T,
   channel: { type?: ChannelType | null; authMode: string }
 ): T {
-  if (channel.type !== 'codex' || channel.authMode !== 'third-party') return credentials;
+  if (channel.authMode !== 'third-party' || (channel.type !== 'codex' && channel.type !== 'claudecode')) return credentials;
+  if (channel.type === 'claudecode' && !credentials.apiKeys?.length && !isClaudeCodeOAuthCredential(credentials.apiKey || '')) return credentials;
 
   const { apiKey: _inheritedOAuthCredentials, ...thirdPartyCredentials } = credentials;
   return thirdPartyCredentials as T;
@@ -517,7 +518,9 @@ function getFetchModelsApiKey(input: {
   const oauthApiKey = input.oauthApiKey || '';
 
   if (input.type === 'claudecode') {
-    if (input.authMode === 'official') return isClaudeCodeOAuthCredential(oauthApiKey) ? oauthApiKey : '';
+    if (input.authMode === 'official') {
+      return isClaudeCodeOAuthCredential(oauthApiKey) ? oauthApiKey : (input.apiKeys || []).find((key) => key && isClaudeCodeOAuthCredential(key)) || '';
+    }
     // Older API-key channels stored a single plain key in apiKey.
     return plainApiKey || (isClaudeCodeOAuthCredential(oauthApiKey) ? '' : oauthApiKey);
   }
@@ -535,12 +538,21 @@ function getFetchModelsApiKey(input: {
 
 // Third-party Codex rejects an empty or OAuth-shaped credential so a save can
 // never persist a channel that still authenticates with the inherited JSON.
-function getCodexThirdPartyCredentialError(channel: {
+function getThirdPartyCredentialError(channel: {
   type?: string | null;
   authMode: string;
+  oauthApiKey?: string | null;
   apiKeys?: (string | null | undefined)[] | null;
 }): string | undefined {
-  if (channel.type !== 'codex' || channel.authMode !== 'third-party') return undefined;
+  if (channel.authMode !== 'third-party') return undefined;
+  if (channel.type === 'claudecode') {
+    const key = getFetchModelsApiKey(channel);
+    if (!key || channel.apiKeys?.some((key) => key && isClaudeCodeOAuthCredential(key))) {
+      return 'channels.dialogs.oauth.errors.thirdPartyPlainKeyRequired';
+    }
+    return undefined;
+  }
+  if (channel.type !== 'codex') return undefined;
 
   const apiKeys = (channel.apiKeys || []).map((key) => (key || '').trim()).filter((key) => key.length > 0);
   if (apiKeys.length === 0) {
@@ -843,6 +855,15 @@ export function ChannelsActionDialog({
     }
   }, [open, resetCodexOAuth, resetClaudecodeOAuth, resetAntigravityOAuth, resetXaiOAuth, initialCodexResponses.enabled]);
 
+  const resetFetchedCatalog = useCallback(() => {
+    setFetchedModels([]);
+    setFetchedModelPrices({});
+    setModelCatalog(undefined);
+    setUseFetchedModels(false);
+    setShowFetchedModelsPanel(false);
+    setSelectedFetchedModels([]);
+  }, []);
+
   useEffect(() => {
     if (!open) {
       setShowApiKey(false);
@@ -855,20 +876,16 @@ export function ChannelsActionDialog({
       setConfirmRemoveKey(null);
       setConfirmDisableKey(null);
       setPatternError(null);
-      setFetchedModels([]);
-      setModelCatalog(undefined);
-      setUseFetchedModels(false);
-      setShowFetchedModelsPanel(false);
+      resetFetchedCatalog();
       setShowSupportedModelsPanel(false);
       setSelectedDefaultModels([]);
       setFetchedModelsSearch('');
       setSupportedModelsSearch('');
-      setSelectedFetchedModels([]);
       setShowNotAddedModelsOnly(false);
       setApplyPatternFilter(false);
       setSupportedModelsExpanded(false);
     }
-  }, [open]);
+  }, [open, resetFetchedCatalog]);
 
   useEffect(() => {
     if (!open) return;
@@ -1063,6 +1080,12 @@ export function ChannelsActionDialog({
   });
   const { dirtyFields } = form.formState;
   const hasFormChanges = Object.keys(dirtyFields).length > 0;
+  const keepSavedClaudeOAuth =
+    isEdit &&
+    currentRow?.type === 'claudecode' &&
+    authMode === 'official' &&
+    isOfficialClaudeCodeChannel(currentRow) &&
+    !dirtyFields.credentials?.apiKey;
 
   // These controls live outside react-hook-form, but navigating away must still
   // warn before discarding their edits.
@@ -1203,17 +1226,11 @@ export function ChannelsActionDialog({
       })
     : undefined;
   useEffect(() => {
-    // Discard candidates when their channel or credential changes.
-    setFetchedModels([]);
-    setFetchedModelPrices({});
-    setModelCatalog(undefined);
-    setUseFetchedModels(false);
-    setShowFetchedModelsPanel(false);
-    setSelectedFetchedModels([]);
+    resetFetchedCatalog();
     return () => {
       catalogGeneration.current++;
     };
-  }, [activeChannelType, authMode, claudeCredential, watchedBaseURL, currentRow?.id, open]);
+  }, [activeChannelType, authMode, claudeCredential, watchedBaseURL, currentRow?.id, open, resetFetchedCatalog]);
   const codexResponsesWebSocketURL =
     isCodexType && codexResponsesWebSocket ? getCodexResponsesWebSocketURL(watchedBaseURL, initialRow?.endpoints) : undefined;
 
@@ -1686,15 +1703,16 @@ export function ChannelsActionDialog({
 
       // A third-party Codex channel authenticates with a plain API key: reject an
       // empty or inherited OAuth-shaped credential instead of saving it.
-      const codexThirdPartyCredentialError = getCodexThirdPartyCredentialError({
+      const thirdPartyCredentialError = getThirdPartyCredentialError({
         type: values.type || derivedChannelType,
         authMode,
+        oauthApiKey: values.credentials?.apiKey,
         apiKeys: values.credentials?.apiKeys,
       });
-      if (codexThirdPartyCredentialError) {
+      if (thirdPartyCredentialError) {
         form.setError('credentials.apiKeys', {
           type: 'manual',
-          message: t(codexThirdPartyCredentialError),
+          message: t(thirdPartyCredentialError),
         });
         return;
       }
@@ -1704,7 +1722,7 @@ export function ChannelsActionDialog({
         supportedModels,
         manualModels,
         credentials: credentials
-          ? getCodexThirdPartySubmitCredentials(credentials, {
+          ? getThirdPartySubmitCredentials(credentials, {
               type: valuesForSubmit.type,
               authMode,
             })
@@ -1813,7 +1831,8 @@ export function ChannelsActionDialog({
         const hasVertexApiKeys =
           values.credentials?.vertexApiKeys && values.credentials.vertexApiKeys.some((binding) => binding.apiKey.trim() !== '');
 
-        if (!hasApiKey && !hasApiKeys && !hasManagementApiKey && !hasGcpCredentials && !hasVertexApiKeys) {
+        // A catalog preview can refresh the saved credentials while the form is open.
+        if (keepSavedClaudeOAuth || (!hasApiKey && !hasApiKeys && !hasManagementApiKey && !hasGcpCredentials && !hasVertexApiKeys)) {
           delete updateInput.credentials;
         }
 
@@ -1990,19 +2009,16 @@ export function ChannelsActionDialog({
       }
 
       const claudeOAuth = channelType === 'claudecode' && authMode === 'official';
-      const sameSavedClaudeOAuth =
-        claudeOAuth &&
-        isEdit &&
-        currentRow?.type === channelType &&
-        getSavedAuthMode(currentRow) === 'official' &&
-        baseURL === currentRow.baseURL &&
-        (oauthApiKey || '') === (currentRow.credentials?.apiKey || '');
+      const sameSavedClaudeOAuth = claudeOAuth && keepSavedClaudeOAuth && baseURL === currentRow?.baseURL;
       // A blank draft in official mode must not borrow the stored third-party key.
       const includeChannelID = isEdit && (!claudeOAuth || sameSavedClaudeOAuth || !!firstApiKey);
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
         apiKey: sameSavedClaudeOAuth ? undefined : firstApiKey || undefined,
+        proxy: claudeOAuth
+          ? { type: proxyType, ...proxyConfig, disableConnectionReuse: currentRow?.settings?.proxy?.disableConnectionReuse ?? undefined }
+          : undefined,
         projectID: selectedVertexCredential?.projectID.trim() || undefined,
         region: selectedVertexCredential?.region.trim() || undefined,
         channelID: includeChannelID ? currentRow?.id : undefined,
@@ -2048,7 +2064,7 @@ export function ChannelsActionDialog({
     } catch (_error) {
       // Error is already handled by the mutation
     }
-  }, [fetchModels, form, isEdit, currentRow, authMode]);
+  }, [fetchModels, form, isEdit, currentRow, authMode, keepSavedClaudeOAuth, proxyConfig, proxyType]);
 
   const handleSyncNow = useCallback(async () => {
     if (!currentRow) return [];
@@ -2061,6 +2077,7 @@ export function ChannelsActionDialog({
     const formPattern = form.getValues('autoSyncModelPattern') || '';
     const result = await syncChannelModels.mutateAsync({
       channelID: channelId,
+      channelType: currentRow.type,
       pattern: formPattern.trim() ? formPattern : undefined,
     });
     if (result.fallback) return [];
@@ -2281,16 +2298,12 @@ export function ChannelsActionDialog({
     setSupportedModels(initialRow?.supportedModels || []);
     setManualModels(initialRow?.manualModels || []);
     setSelectedDefaultModels([]);
-    setFetchedModels([]);
-    setModelCatalog(undefined);
-    setUseFetchedModels(false);
+    resetFetchedCatalog();
     // Reset expandable panel states
-    setShowFetchedModelsPanel(false);
     setShowSupportedModelsPanel(false);
     setShowApiKeysPanel(false);
     setFetchedModelsSearch('');
     setSupportedModelsSearch('');
-    setSelectedFetchedModels([]);
     setShowNotAddedModelsOnly(false);
     setApplyPatternFilter(false);
     setSupportedModelsExpanded(false);

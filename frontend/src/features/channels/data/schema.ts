@@ -422,6 +422,7 @@ export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>;
 
 // Channel Credentials
 export const channelCredentialsSchema = z.object({
+  isOAuth: z.boolean().optional(),
   apiKey: z.string().optional().nullable(),
   apiKeys: z.array(z.string()).optional().nullable(),
   // Read-side shape only: persisted credentials are echoed for the form and may
