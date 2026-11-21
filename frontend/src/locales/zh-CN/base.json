@@ -103,6 +103,7 @@
   "price.itemCodes.realtime_input_image_tokens": "实时输入图像词元",
   "price.itemCodes.realtime_cached_input_text_tokens": "实时缓存输入文本词元",
   "price.itemCodes.realtime_cached_input_audio_tokens": "实时缓存输入音频词元",
+  "price.itemCodes.realtime_translation_audio_samples": "实时翻译输入音频采样数（按分钟计价）",
   "price.itemCodes.realtime_cached_input_image_tokens": "实时缓存输入图像词元",
   "price.mode": "计费模式",
   "price.mode_flat_fee": "固定费用",

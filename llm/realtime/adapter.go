@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/looplj/axonhub/llm"
@@ -38,6 +39,7 @@ func decode(data []byte) (Event, error) {
 	}
 	return Event{Type: kind, ID: id, Fields: fields}, nil
 }
+
 func object(v any) (map[string]any, error) {
 	m, ok := v.(map[string]any)
 	if !ok {
@@ -45,6 +47,7 @@ func object(v any) (map[string]any, error) {
 	}
 	return m, nil
 }
+
 func only(m map[string]any, names ...string) error {
 	allowed := map[string]bool{}
 	for _, n := range names {
@@ -82,6 +85,7 @@ func NewAdapter(model string, native bool) (*Adapter, error) {
 	}
 	return a, nil
 }
+
 func (a *Adapter) Client(data []byte) (result []byte, clientErr error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -179,6 +183,7 @@ func (a *Adapter) Client(data []byte) (result []byte, clientErr error) {
 	}
 	return wire, err
 }
+
 func validateItem(item map[string]any, ga bool) error {
 	if err := only(item, "id", "type", "role", "content", "call_id", "output"); err != nil {
 		return err
@@ -223,6 +228,7 @@ func validateItem(item map[string]any, ga bool) error {
 	}
 	return nil
 }
+
 func (a *Adapter) gaSession(s map[string]any) error {
 	if err := only(s, "type", "instructions", "output_modalities", "audio", "tools"); err != nil {
 		return err
@@ -301,7 +307,7 @@ func (a *Adapter) gaSession(s map[string]any) error {
 				delete(config, "voice")
 			}
 			if turn, exists := config["turn_detection"]; exists {
-				if err := validateTurn(turn); err != nil {
+				if err := validateTurn(turn, a.cap.VADTypes); err != nil {
 					return err
 				}
 				s["turn_detection"] = turn
@@ -339,7 +345,8 @@ func (a *Adapter) gaSession(s map[string]any) error {
 	}
 	return nil
 }
-func validateTurn(value any) error {
+
+func validateTurn(value any, allowedTypes []string) error {
 	if value == nil {
 		return nil
 	}
@@ -350,8 +357,8 @@ func validateTurn(value any) error {
 	if err := only(turn, "type", "threshold", "prefix_padding_ms", "silence_duration_ms", "create_response", "interrupt_response"); err != nil {
 		return err
 	}
-	if turn["type"] != "server_vad" {
-		return errors.New("only server_vad or manual mode is supported")
+	if !slices.Contains(allowedTypes, fmt.Sprint(turn["type"])) {
+		return errors.New("unsupported VAD type for this Realtime model")
 	}
 	for _, name := range []string{"create_response", "interrupt_response"} {
 		if v, ok := turn[name]; ok {
@@ -362,20 +369,21 @@ func validateTurn(value any) error {
 	}
 	if v, exists := turn["threshold"]; exists {
 		n, ok := v.(float64)
-		if !ok || n < 0 || n > 1 {
+		if !ok || n < -1 || n > 1 {
 			return errors.New("invalid VAD threshold")
 		}
 	}
-	for _, name := range []string{"prefix_padding_ms", "silence_duration_ms"} {
+	for name, bounds := range map[string][2]int{"prefix_padding_ms": {0, 5000}, "silence_duration_ms": {200, 6000}} {
 		if v, exists := turn[name]; exists {
 			n, ok := number(v)
-			if !ok || n < 0 || n > 5000 {
+			if !ok || n < bounds[0] || n > bounds[1] {
 				return errors.New("invalid VAD duration")
 			}
 		}
 	}
 	return nil
 }
+
 func convertTools(value any, ga bool) ([]any, error) {
 	tools, ok := value.([]any)
 	if !ok || len(tools) > 64 {
@@ -427,6 +435,7 @@ func convertTools(value any, ga bool) ([]any, error) {
 	}
 	return result, nil
 }
+
 func (a *Adapter) nativeSession(s map[string]any) error {
 	if err := only(s, "modalities", "instructions", "voice", "audio", "turn_detection", "input_audio_transcription", "tools", "enable_search", "input_audio_format", "output_audio_format"); err != nil {
 		return err
@@ -483,7 +492,7 @@ func (a *Adapter) nativeSession(s map[string]any) error {
 		}
 	}
 	if turn, exists := s["turn_detection"]; exists {
-		if err := validateTurn(turn); err != nil {
+		if err := validateTurn(turn, a.cap.VADTypes); err != nil {
 			return err
 		}
 	}
@@ -715,6 +724,7 @@ func (a *Adapter) verifyAudioAck(session map[string]any) error {
 	a.confirmedOutput = a.outputRate
 	return nil
 }
+
 func gaModalities(values []any) []string {
 	for _, v := range values {
 		if v == "audio" {
@@ -723,6 +733,7 @@ func gaModalities(values []any) []string {
 	}
 	return []string{"text"}
 }
+
 func gaSessionFromQwen(s map[string]any) map[string]any {
 	result := map[string]any{"type": "realtime", "audio": map[string]any{"input": map[string]any{"format": map[string]any{"type": "audio/pcm", "rate": 24000}, "turn_detection": s["turn_detection"], "transcription": s["input_audio_transcription"]}, "output": map[string]any{"format": map[string]any{"type": "audio/pcm", "rate": 24000}, "voice": s["voice"]}}}
 	for _, key := range []string{"id", "object", "model", "instructions"} {
@@ -746,6 +757,7 @@ func gaSessionFromQwen(s map[string]any) map[string]any {
 	}
 	return result
 }
+
 func convertContent(part map[string]any) {
 	switch part["type"] {
 	case "audio", "input_audio":
@@ -754,6 +766,7 @@ func convertContent(part map[string]any) {
 		part["type"] = "output_text"
 	}
 }
+
 func convertItem(item map[string]any) {
 	if content, ok := item["content"].([]any); ok {
 		for _, part := range content {
@@ -772,9 +785,11 @@ func convertItem(item map[string]any) {
 		}
 	}
 }
+
 func gaUsage(u *llm.Usage) map[string]any {
 	return map[string]any{"input_tokens": u.PromptTokens, "output_tokens": u.CompletionTokens, "total_tokens": u.TotalTokens, "input_token_details": map[string]any{"text_tokens": u.PromptTokens - u.PromptTokensDetails.AudioTokens, "audio_tokens": u.PromptTokensDetails.AudioTokens, "cached_tokens": 0}, "output_token_details": map[string]any{"text_tokens": u.CompletionTokens - u.CompletionTokensDetails.AudioTokens, "audio_tokens": u.CompletionTokensDetails.AudioTokens}}
 }
+
 func ParseUsage(data []byte) (string, *llm.Usage, error) {
 	event, err := decode(data)
 	if err != nil {

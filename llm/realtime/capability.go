@@ -27,24 +27,28 @@ type capability struct {
 	FunctionCalling                     bool
 }
 
-var associateModels = map[string]struct{}{"qwen3.8-omni-flash-realtime": {}, "qwen3.5-omni-plus-realtime": {}, "qwen3.5-omni-flash-realtime": {}}
-var capabilityIndex = func() map[string]capability {
-	result := map[string]capability{}
-	for model := range associateModels {
-		result[model] = capability{inputAudioFormats: map[string]struct{}{"pcm": {}, "wav": {}}, inputSampleRates: map[int64]struct{}{8000: {}, 16000: {}, 24000: {}, 48000: {}}, outputSampleRates: map[int64]struct{}{8000: {}, 16000: {}, 24000: {}, 48000: {}}, nestedAudioSupport: true, FreeAudioTranscript: model != "qwen3.8-omni-flash-realtime", Voices: []string{"Tina", "Cherry", "Ethan", "Chelsie", "Serena"}, Regions: []string{"cn-beijing", "ap-southeast-1"}, VADTypes: []string{"server_vad"}, FunctionCalling: true}
-	}
-	fixed := result["qwen3.8-omni-flash-realtime"]
-	fixed.inputSampleRates = map[int64]struct{}{16000: {}}
-	fixed.outputSampleRates = map[int64]struct{}{24000: {}}
-	result["qwen3.8-omni-flash-realtime"] = fixed
-	return result
-}()
+var (
+	associateModels = map[string]struct{}{"qwen3.8-omni-flash-realtime": {}, "qwen3.5-omni-plus-realtime": {}, "qwen3.5-omni-flash-realtime": {}}
+	capabilityIndex = func() map[string]capability {
+		result := map[string]capability{}
+		for model := range associateModels {
+			result[model] = capability{inputAudioFormats: map[string]struct{}{"pcm": {}, "wav": {}}, inputSampleRates: map[int64]struct{}{8000: {}, 16000: {}, 24000: {}, 48000: {}}, outputSampleRates: map[int64]struct{}{8000: {}, 16000: {}, 24000: {}, 48000: {}}, nestedAudioSupport: true, FreeAudioTranscript: model != "qwen3.8-omni-flash-realtime", Voices: []string{"Tina", "Cherry", "Ethan", "Chelsie", "Serena"}, Regions: []string{"cn-beijing", "ap-southeast-1"}, VADTypes: []string{"server_vad", "semantic_vad"}, FunctionCalling: true}
+		}
+		fixed := result["qwen3.8-omni-flash-realtime"]
+		fixed.inputSampleRates = map[int64]struct{}{16000: {}}
+		fixed.outputSampleRates = map[int64]struct{}{24000: {}}
+		result["qwen3.8-omni-flash-realtime"] = fixed
+		return result
+	}()
+)
 
 func (c capability) supportsInputFormat(format string) bool {
 	_, ok := c.inputAudioFormats[format]
 	return ok
 }
+
 func (c capability) supportsInputRate(rate int64) bool { _, ok := c.inputSampleRates[rate]; return ok }
+
 func (c capability) supportsOutputRate(rate int64) bool {
 	_, ok := c.outputSampleRates[rate]
 	return ok
@@ -60,6 +64,7 @@ func modelNames() []string {
 	sort.Strings(result)
 	return result
 }
+
 func errUnsupportedModel(model string) error {
 	return fmt.Errorf("unsupported Qwen realtime model %q", model)
 }
@@ -72,10 +77,12 @@ type SafeSubset struct {
 func NewSafeSubset() SafeSubset {
 	return SafeSubset{InputFormat: "pcm", OutputFormat: "pcm", InputSampleRate: 24000, OutputSampleRate: 24000}
 }
+
 func ComposeCapability(model string) (capability, bool) {
 	c, ok := capabilityIndex[model]
 	return c, ok && c.supportsInputRate(24000) && c.supportsOutputRate(24000)
 }
+
 func (c capability) validVoice(voice string) bool {
 	return slices.Contains(c.Voices, voice) || (voice == "longanlingxin" && !c.FreeAudioTranscript)
 }

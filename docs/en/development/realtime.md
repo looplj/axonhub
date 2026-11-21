@@ -20,6 +20,8 @@ The environment's OpenAI credential belongs to a third-party relay and must not 
 
 Endpoint management does not offer Realtime protocols. Sending `openai/realtime-ws` or `qwen/realtime-ws` through `saveChannelEndpoints` or another endpoint-writing input is rejected with HTTP `422` and code `ENDPOINT_REALTIME_NOT_ALLOWED`; the server does not ignore or persist it. Set `settings.realtime.enabled` to `false`, or switch the main form to a non-Realtime protocol, to stop new Realtime sessions without deleting HTTP endpoints.
 
+Selecting Realtime makes the channel exclusive to realtime requests. Its HTTP base URL, custom endpoints, and model settings remain stored. Endpoint management indicates that the ordinary endpoints are inactive. Selecting an ordinary protocol restores its default and custom endpoints. Use separate channels when serving both ordinary and realtime traffic.
+
 Realtime channel configuration is available on the existing OpenAI and Bailian channel types. xAI Subscription channels use their provider-managed endpoint and reject custom Realtime endpoint input.
 
 The existing startup data-migration pipeline moves legacy Realtime entries from `endpoints` to `settings.realtime` before the channel cache loads. Each channel update moves the configuration and removes the legacy entries atomically, while preserving ordinary endpoints and unrelated settings. An existing channel-owned Realtime setting wins, including an explicit disabled setting. Re-running the migration makes no further channel writes. This changes the JSON configuration shape and adds no database table or column.
@@ -32,9 +34,13 @@ This follows the existing database auto-migration setting: if it is disabled, ru
 
 Connect to `GET /v1/realtime?model={gateway-model-or-alias}` using WebSocket Upgrade and `Authorization: Bearer {AxonHub API Key}`. The first release supports server clients only. Browser Origin headers, URL credentials and client-selected upstream hosts are rejected. Authentication never falls back to No-Auth.
 
-The optional `/v1/realtime/qwen?model={model}` entry uses Qwen event names and the same authentication, routing, quota, price and connection checks. It can only select Bailian channels with enabled Realtime configuration and still validates the implemented safe capability subset.
+The native `/qwen/v1/realtime?model={model}` entry uses Qwen event names and the same authentication, routing, quota, price and connection checks. It can only select Bailian channels with enabled Realtime configuration and still validates the implemented safe capability subset.
+
+For an OpenAI GA client that appends `/realtime`, use `https://gateway.example/v1`. The gateway selects the provider using the authorized model and configured channels and converts the supported Qwen events to GA. For a native Qwen client that appends `/realtime`, use `https://gateway.example/qwen/v1`. If the client appends `/v1/realtime`, use `https://gateway.example/qwen`. The client must preserve the base URL path prefix.
 
 For OpenAI, valid GA events, extension fields and event order are forwarded without unnecessary JSON rewriting or resampling. No `OpenAI-Beta: realtime=v1` header is sent. When `session.created` contains the complete effective GA audio configuration, its confirmed defaults can be used directly. Configuration changes require `session.update` and its `session.updated` acknowledgement before using the new parameters. Session model changes, credential overrides and caller-supplied safety identity are prohibited. The upstream Safety Identifier is a one-way digest derived from the authenticated Gateway key and user/project identity.
+
+Qwen Realtime models support `server_vad`. Qwen3.8 Omni Flash, Qwen3.5 Omni Plus and Qwen3.5 Omni Flash also support `semantic_vad`. Semantic VAD thresholds range from -1 to 1 and silence duration ranges from 200 to 6000 milliseconds. Other models accept only VAD types declared in their capability table.
 
 Qwen has its own adapter. GA text events use `response.output_text.delta/done`, audio uses `response.output_audio.delta/done`, and audio transcripts use `response.output_audio_transcript.delta/done`. Function call IDs, argument deltas, final arguments and results remain associated. Unsupported fields are rejected explicitly.
 
@@ -183,3 +189,9 @@ A channel retains one credential pool. Its HTTP configuration and channel-owned 
 ## Native fidelity and the safety boundary
 
 The OpenAI native adapter returns each valid JSON message byte for byte, including error messages. The gateway adds an event ID to a client session.update, response.create, input_audio_buffer.clear, or input_audio_buffer.commit when its ID is missing or empty, so upstream rejections can be matched to the client event. The gateway also redacts upstream error and status_details.error details. WebSocket transport preserves JSON message boundaries, not physical RFC6455 fragmentation or TCP packet boundaries.
+
+## OpenAI Realtime Translation
+
+Enable Realtime on an existing OpenAI channel, add the upstream model `gpt-realtime-translate`, and set a positive usage price per minute under **Realtime Translation input audio samples**. Connect with a gateway API key to `/v1/realtime/translations?model=gpt-realtime-translate`. Set `session.audio.output.language` using `session.update`, wait for `session.updated`, then stream 24 kHz mono PCM16 through `session.input_audio_buffer.append`. Send `session.close` and read the remaining translated audio and transcript until `session.closed`.
+
+The upstream session events provide no invoice usage. The gateway bills input PCM samples successfully written to the provider using the frozen per-minute rate, including audio sent before a disconnect. The audit identifies the measurement as `gateway_sent_pcm`, and the cost item quantity is the sent sample count. The standard conversation route `/v1/realtime` does not accept the translation model.

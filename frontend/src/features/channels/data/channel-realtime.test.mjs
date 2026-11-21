@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { realtimeForSelection, hasLegacyRealtimeEndpoints, withoutRealtimeModelProtocols } from './channel-realtime.ts';
+import { getRealtimeQuickModels, realtimeForSelection, hasLegacyRealtimeEndpoints, withoutRealtimeModelProtocols } from './channel-realtime.ts';
 import { getInitialApiFormatForChannel, getAvailableProtocolFormats } from './protocol-options.ts';
 
 test('channel Realtime configuration saves and echoes without an endpoint', () => {
@@ -39,4 +39,10 @@ test('channel change snapshot detects Realtime host and timeout edits', () => {
   assert.ok(snapshot, 'local settings snapshot should exist');
   assert.match(snapshot, /\brealtimeHost,/);
   assert.match(snapshot, /\brealtimeTimeout,/);
+});
+
+test('quick models follow the selected Realtime protocol', () => {
+  assert.deepEqual(getRealtimeQuickModels('openai/realtime-ws'), ['gpt-realtime-2.1', 'gpt-realtime-2.1-mini', 'gpt-realtime-translate']);
+  assert.deepEqual(getRealtimeQuickModels('qwen/realtime-ws'), ['qwen3.8-omni-flash-realtime', 'qwen3.5-omni-plus-realtime', 'qwen3.5-omni-flash-realtime']);
+  assert.equal(getRealtimeQuickModels('openai/chat_completions'), undefined);
 });

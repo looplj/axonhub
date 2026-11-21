@@ -86,10 +86,19 @@ type RealtimeTarget struct {
 	Price                   *biz.RealtimePriceSnapshot
 	APIKey                  *ent.APIKey
 	Native                  bool
+	Translation             bool
 }
 
 // Prepare deliberately completes authorization and model mapping before dialing or upgrading.
 func (s *RealtimeService) Prepare(ctx context.Context, model string, native bool) (*RealtimeTarget, error) {
+	return s.prepare(ctx, model, native, false)
+}
+
+func (s *RealtimeService) PrepareTranslation(ctx context.Context, model string) (*RealtimeTarget, error) {
+	return s.prepare(ctx, model, false, true)
+}
+
+func (s *RealtimeService) prepare(ctx context.Context, model string, native, translation bool) (*RealtimeTarget, error) {
 	key, ok := contexts.GetAPIKey(ctx)
 	if !ok || key == nil {
 		return nil, errors.New("realtime requires an authenticated API key")
@@ -149,6 +158,11 @@ func (s *RealtimeService) Prepare(ctx context.Context, model string, native bool
 			}
 			var endpointURL func(string, string, string) (string, error)
 			switch {
+			case translation:
+				if format != llm.APIFormatOpenAIRealtimeWebSocket.String() || ch.Type != channel.TypeOpenai || entry.ActualModel != openairt.TranslationModel {
+					continue
+				}
+				endpointURL = openairt.TranslationEndpointURL
 			case format == llm.APIFormatOpenAIRealtimeWebSocket.String() && ch.Type == channel.TypeOpenai:
 				if _, err := openairt.NewAdapter(entry.ActualModel); err != nil {
 					continue
@@ -171,12 +185,16 @@ func (s *RealtimeService) Prepare(ctx context.Context, model string, native bool
 					log.Warn(ctx, "realtime candidate configuration rejected", log.Int("channel_id", ch.ID))
 					continue
 				}
-				price, err := s.Usage.RealtimePrice(ctx, ch.ID, entry.ActualModel)
+				quotePrice := s.Usage.RealtimePrice
+				if translation {
+					quotePrice = s.Usage.RealtimeTranslationPrice
+				}
+				price, err := quotePrice(ctx, ch.ID, entry.ActualModel)
 				if err != nil {
 					log.Warn(ctx, "realtime candidate configuration rejected", log.Int("channel_id", ch.ID))
 					continue
 				}
-				if format == llm.APIFormatOpenAIRealtimeWebSocket.String() {
+				if !translation && format == llm.APIFormatOpenAIRealtimeWebSocket.String() {
 					if err := objects.ValidateOpenAIRealtimePrice(price.Price); err != nil {
 						log.Warn(ctx, "realtime candidate configuration rejected", log.Int("channel_id", ch.ID))
 						continue
@@ -187,7 +205,7 @@ func (s *RealtimeService) Prepare(ctx context.Context, model string, native bool
 				if ep.HandshakeTimeoutMs != nil {
 					timeout = time.Duration(*ep.HandshakeTimeoutMs) * time.Millisecond
 				}
-				return &RealtimeTarget{HandshakeTimeout: timeout, Channel: ch, Model: entry.ActualModel, ClientModel: model, URL: target, Price: price, APIKey: key, Native: native, APIFormat: llm.APIFormat(format), SafetyIdentifier: hex.EncodeToString(identifier[:])}, nil
+				return &RealtimeTarget{HandshakeTimeout: timeout, Channel: ch, Model: entry.ActualModel, ClientModel: model, URL: target, Price: price, APIKey: key, Native: native, Translation: translation, APIFormat: llm.APIFormat(format), SafetyIdentifier: hex.EncodeToString(identifier[:])}, nil
 			}
 		}
 	}
@@ -246,7 +264,9 @@ func (s *RealtimeService) Connect(ctx context.Context, target *RealtimeTarget, c
 func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Conn, target *RealtimeTarget, config rt.Config) (*RealtimeConversation, [][]byte, error) {
 	var adapter realtimeAdapter
 	var err error
-	if target.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket {
+	if target.Translation {
+		adapter = &openairt.Translation{}
+	} else if target.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket {
 		adapter, err = openairt.NewAdapter(target.Model)
 	} else {
 		adapter, err = protocol.NewAdapter(target.Model, target.Native)
@@ -271,6 +291,15 @@ func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Con
 	}
 	if err := state.ObserveServer("session.created"); err != nil {
 		return nil, nil, err
+	}
+	if target.Translation {
+		first, err := adapter.Server(created)
+		if err != nil {
+			return nil, nil, err
+		}
+		c.translation = &translationAccounting{}
+		_ = upstream.SetReadDeadline(time.Time{})
+		return c, [][]byte{first}, nil
 	}
 	if target.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket {
 		first, err := adapter.Server(created)
@@ -352,6 +381,7 @@ type realtimeAudioCommit struct {
 }
 
 type RealtimeConversation struct {
+	translation            *translationAccounting
 	pendingConfigurationID string
 	pendingClearID         string
 	preClearCreates        int
@@ -381,6 +411,14 @@ type RealtimeConversation struct {
 func (c *RealtimeConversation) Check(ctx context.Context) error {
 	if c.state.ConfigurationExpired(15 * time.Second) {
 		return errors.New("realtime configuration acknowledgement timed out")
+	}
+	if adapter, ok := c.adapter.(*openairt.Translation); ok {
+		c.mu.Lock()
+		expired := adapter.Expired()
+		c.mu.Unlock()
+		if expired {
+			return errors.New("translation configuration acknowledgement timed out")
+		}
 	}
 	currentChannel := c.service.Channels.GetEnabledChannel(c.target.Channel.ID)
 	if currentChannel == nil {
@@ -421,7 +459,11 @@ func (c *RealtimeConversation) Check(ctx context.Context) error {
 		c.lastCheckErr = err
 		return err
 	}
-	c.lastCheckErr = c.service.checkQuota(checkCtx, current, false)
+	if c.translation != nil {
+		c.lastCheckErr = c.checkTranslationQuota(checkCtx, current)
+	} else {
+		c.lastCheckErr = c.service.checkQuota(checkCtx, current, false)
+	}
 	return c.lastCheckErr
 }
 
@@ -450,6 +492,9 @@ func realtimeProfilesAllowChannel(key *ent.APIKey, ch *biz.Channel) bool {
 func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 	if err := c.Check(c.ctx); err != nil {
 		return nil, err
+	}
+	if c.translation != nil {
+		return c.translationClient(data)
 	}
 	kind := gjson.GetBytes(data, "type").String()
 	if kind != "session.update" && !c.state.Ready() {
@@ -588,6 +633,16 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	kind := gjson.GetBytes(data, "type").String()
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.translation != nil {
+		converted, err := c.adapter.Server(data)
+		if err != nil {
+			return nil, err
+		}
+		if kind == "session.closed" {
+			c.translation.closed = true
+		}
+		return applyRealtimeErrorPolicy(converted)
+	}
 	if err := c.prepareServerEvent(kind, data); err != nil {
 		if errors.Is(err, errDuplicateResponseDone) {
 			return nil, nil
@@ -954,6 +1009,10 @@ func (c *RealtimeConversation) Close() {
 	defer c.mu.Unlock()
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 10*time.Second)
 	defer cancel()
+	if c.translation != nil {
+		c.closeTranslation(ctx)
+		return
+	}
 	pending := append([]*realtimeResponse{}, c.pendingResponses...)
 	pending = append(pending, c.committedInputs...)
 	if c.clearingInput != nil {

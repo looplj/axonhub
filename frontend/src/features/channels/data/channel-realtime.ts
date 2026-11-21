@@ -6,6 +6,19 @@
 // 注意事项: Realtime 不写入 endpoints；HTTP Base URL 与供应商凭证保持独立。
 import type { ChannelEndpoint, ChannelRealtime, ModelProtocol } from './schema';
 
+const realtimeQuickModels: Readonly<Record<string, readonly string[]>> = {
+  'openai/realtime-ws': ['gpt-realtime-2.1', 'gpt-realtime-2.1-mini', 'gpt-realtime-translate'],
+  'qwen/realtime-ws': ['qwen3.8-omni-flash-realtime', 'qwen3.5-omni-plus-realtime', 'qwen3.5-omni-flash-realtime'],
+};
+
+export function getRealtimeQuickModels(format: string): readonly string[] | undefined {
+  return Object.hasOwn(realtimeQuickModels, format) ? realtimeQuickModels[format] : undefined;
+}
+
+export function isRealtimeQuickModel(model: string): boolean {
+  return Object.values(realtimeQuickModels).some((models) => models.includes(model));
+}
+
 export function isRealtimeProtocol(format: string): boolean {
   return format === 'openai/realtime-ws' || format === 'qwen/realtime-ws' || format === 'openai/realtime';
 }

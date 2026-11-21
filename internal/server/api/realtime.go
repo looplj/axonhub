@@ -207,6 +207,16 @@ func (h *RealtimeHandlers) limiter(ctx context.Context, config rt.Config) (*rt.A
 }
 
 func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFunc {
+	return h.handler(config, func(ctx context.Context, model string) (*orchestrator.RealtimeTarget, error) {
+		return h.service.Prepare(ctx, model, native)
+	})
+}
+
+func (h *RealtimeHandlers) TranslationHandler(config rt.Config) gin.HandlerFunc {
+	return h.handler(config, h.service.PrepareTranslation)
+}
+
+func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Context, string) (*orchestrator.RealtimeTarget, error)) gin.HandlerFunc {
 	config = config.Defaults()
 	return func(c *gin.Context) {
 		if !websocket.IsWebSocketUpgrade(c.Request) {
@@ -224,7 +234,7 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 		stop := context.AfterFunc(lifecycle.FromContext(ctx).Context(), cancel)
 		defer stop()
 		metrics.Metrics.RealtimeEvent(ctx, "connection_attempt")
-		target, err := h.service.Prepare(ctx, c.Query("model"), native)
+		target, err := prepare(ctx, c.Query("model"))
 		if err != nil {
 			metrics.Metrics.RealtimeEvent(ctx, "authorization_or_quota_rejected")
 			status := http.StatusForbidden
@@ -297,7 +307,12 @@ func (h *RealtimeHandlers) Handler(config rt.Config, native bool) gin.HandlerFun
 		metrics.Metrics.RealtimeActive(ctx, 1)
 		defer metrics.Metrics.RealtimeActive(context.WithoutCancel(ctx), -1)
 		started := time.Now()
-		err = rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: config.IdleTimeout, MaxDuration: config.MaxDuration}, rt.Hooks{BindContext: conversation.WithContext, Client: conversation.Client, Server: conversation.Server, ServerFollowup: conversation.ServerFollowup, Check: conversation.Check})
+		err = rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: config.IdleTimeout, MaxDuration: config.MaxDuration}, rt.Hooks{BindContext: conversation.WithContext, Client: conversation.Client, Server: conversation.Server, ServerFollowup: conversation.ServerFollowup, UpstreamWritten: conversation.UpstreamWritten, ServerDone: conversation.ServerDone, Check: conversation.Check})
+		// Translation bills at session end. Persist its usage before admitting the
+		// next session on this lease so it sees the previous session's cost.
+		if target.Translation {
+			conversation.Close()
+		}
 		release() // Run has closed both peers and joined every worker.
 		metrics.Metrics.RealtimeDuration(context.WithoutCancel(ctx), time.Since(started).Seconds())
 		if err != nil {

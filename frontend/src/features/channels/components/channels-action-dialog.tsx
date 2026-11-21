@@ -102,7 +102,7 @@ import { ChannelModelAliases } from './channel-model-preview';
 import { ProxyType } from './channels-proxy-dialog';
 import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ManualModelBadge } from './manual-model-badge';
-import { isRealtimeProtocol, realtimeForSelection, withoutRealtimeModelProtocols } from '../data/channel-realtime';
+import { getRealtimeQuickModels, isRealtimeProtocol, isRealtimeQuickModel, realtimeForSelection, withoutRealtimeModelProtocols } from '../data/channel-realtime';
 
 interface Props {
   currentRow?: Channel;
@@ -1480,6 +1480,19 @@ export function ChannelsActionDialog({
   const watchedDefaultTestModel = form.watch('defaultTestModel');
   useEffect(() => {
     if (supportedModels.length === 0) return;
+    const realtimeModels = getRealtimeQuickModels(selectedApiFormat);
+    const realtimeTestModel = realtimeModels && supportedModels.find((model) => realtimeModels.includes(model));
+    if (realtimeModels && realtimeTestModel && (!watchedDefaultTestModel || !realtimeModels.includes(watchedDefaultTestModel) || !supportedModels.includes(watchedDefaultTestModel))) {
+      form.setValue('defaultTestModel', realtimeTestModel);
+      return;
+    }
+    if (!realtimeModels && watchedDefaultTestModel && isRealtimeQuickModel(watchedDefaultTestModel)) {
+      const ordinaryTestModel = supportedModels.find((model) => !isRealtimeQuickModel(model));
+      if (ordinaryTestModel) {
+        form.setValue('defaultTestModel', ordinaryTestModel);
+        return;
+      }
+    }
     if (!isEdit && !isDuplicate) {
       if (!watchedDefaultTestModel || !supportedModels.includes(watchedDefaultTestModel)) {
         form.setValue('defaultTestModel', supportedModels[0]);
@@ -1489,7 +1502,7 @@ export function ChannelsActionDialog({
     if (watchedDefaultTestModel && !supportedModels.includes(watchedDefaultTestModel)) {
       form.setValue('defaultTestModel', supportedModels[0]);
     }
-  }, [supportedModels, watchedDefaultTestModel, isEdit, isDuplicate, form]);
+  }, [supportedModels, watchedDefaultTestModel, selectedApiFormat, isEdit, isDuplicate, form]);
 
   const renderOAuthSection = useCallback(
     (oauth: ReturnType<typeof useOAuthFlow>, description: string) => (
@@ -1939,7 +1952,7 @@ export function ChannelsActionDialog({
   };
 
   const addSelectedDefaultModels = () => {
-    const newModels = selectedDefaultModels.filter((model) => !supportedModels.includes(model));
+    const newModels = activeDefaultSelection.filter((model) => !supportedModels.includes(model));
     if (newModels.length > 0) {
       setSupportedModels((prev) => [...prev, ...newModels]);
       setSelectedDefaultModels([]);
@@ -2076,9 +2089,12 @@ export function ChannelsActionDialog({
   // Memoize quick models to avoid re-evaluating on every render
   const currentType = form.watch('type');
   const quickModels = useMemo(() => {
+    const realtimeModels = getRealtimeQuickModels(selectedApiFormat);
+    if (realtimeModels) return realtimeModels;
     if (useFetchedModels || !currentType) return [];
     return getDefaultModels(currentType);
-  }, [currentType, useFetchedModels]);
+  }, [currentType, selectedApiFormat, useFetchedModels]);
+  const activeDefaultSelection = selectedDefaultModels.filter((model) => quickModels.includes(model));
 
   // Filter suggestions only; the complete fetched list still drives sync and deprecation checks.
   const filteredFetchedModels = useMemo(() => {
@@ -3504,7 +3520,7 @@ export function ChannelsActionDialog({
                                   onClick={addSelectedDefaultModels}
                                   size='sm'
                                   variant='outline'
-                                  disabled={selectedDefaultModels.length === 0}
+                                  disabled={activeDefaultSelection.length === 0}
                                   data-testid='add-selected-models-button'
                                 >
                                   <Plus className='mr-1 h-4 w-4' />
@@ -3516,13 +3532,13 @@ export function ChannelsActionDialog({
                               {quickModels.map((model: string) => (
                                 <Badge
                                   key={model}
-                                  variant={selectedDefaultModels.includes(model) ? 'default' : 'secondary'}
+                                  variant={activeDefaultSelection.includes(model) ? 'default' : 'secondary'}
                                   className='cursor-pointer text-xs'
                                   onClick={() => toggleDefaultModel(model)}
                                   data-testid={`quick-model-${model}`}
                                 >
                                   {model}
-                                  {selectedDefaultModels.includes(model) && <span className='ml-1'>✓</span>}
+                                  {activeDefaultSelection.includes(model) && <span className='ml-1'>✓</span>}
                                 </Badge>
                               ))}
                             </div>

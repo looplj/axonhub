@@ -49,6 +49,11 @@ func ValidateChannelRealtime(kind channel.Type, cfg *objects.ChannelRealtimeConf
 	}
 }
 
+// RealtimeOnly uses the saved protocol selection, even if its config is invalid.
+func (ch *Channel) RealtimeOnly() bool {
+	return ch != nil && ch.Channel != nil && ch.Settings != nil && ch.Settings.Realtime != nil && ch.Settings.Realtime.Enabled
+}
+
 // RealtimeEndpoint derives transport metadata from the channel-owned setting.
 // It never consults Channel.Endpoints, including legacy data awaiting migration.
 func (ch *Channel) RealtimeEndpoint() *objects.ChannelEndpoint {

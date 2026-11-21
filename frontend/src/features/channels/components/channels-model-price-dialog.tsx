@@ -41,6 +41,7 @@ const priceItemCodes = [
   'realtime_input_image_tokens',
   'realtime_cached_input_text_tokens',
   'realtime_cached_input_audio_tokens',
+  'realtime_translation_audio_samples',
   'realtime_cached_input_image_tokens',
 ] as const;
 const pricingModes = ['flat_fee', 'usage_per_unit', 'usage_tiered', 'usage_volume'] as const;

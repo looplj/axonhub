@@ -3,10 +3,12 @@ package orchestrator
 import (
 	"context"
 
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 )
 
 // SelectAPIFormat selects the most appropriate APIFormat from a channel's resolved endpoints
@@ -82,7 +84,20 @@ func selectAPIFormat(
 		}
 	}
 
-	return endpoints[0].APIFormat
+	for _, ep := range endpoints {
+		if req.RequestType == llm.RequestTypeRealtime || !objects.IsRealtimeAPIFormat(ep.APIFormat) {
+			return ep.APIFormat
+		}
+	}
+	return ""
+}
+
+// A model scoped to the OpenAI translation protocol cannot serve an ordinary API.
+func allowsChannelModelForRequest(ch *biz.Channel, entry biz.ChannelModelEntry, requestType llm.RequestType) bool {
+	if requestType == llm.RequestTypeRealtime {
+		return true
+	}
+	return !ch.RealtimeOnly() && (entry.ActualModel != openairt.TranslationModel || ch.Channel == nil || ch.Type != channel.TypeOpenai)
 }
 
 func compatibleResponsesAPIFormat(format llm.APIFormat) string {
