@@ -145,7 +145,7 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 		entries := ch.GetModelEntries()
 
 		entry, ok := entries[req.Model]
-		if !ok {
+		if !ok || !allowsChannelModelForRequest(ch, entry, req.RequestType) {
 			continue
 		}
 
@@ -1151,6 +1151,10 @@ func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request)
 	}
 	if !ok {
 		return nil, fmt.Errorf("model %s not supported in channel %s", req.Model, channel.Name)
+	}
+
+	if !allowsChannelModelForRequest(channel, entry, req.RequestType) {
+		return nil, nil
 	}
 
 	endpoints, forced := applyForcedAPIFormatsForRequest(ctx, channel, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, channel.ResolveEndpoints())

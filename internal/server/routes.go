@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/gql/openapi"
 	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/plugin"
+	"github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/internal/server/static"
 )
 
@@ -29,6 +30,7 @@ type Handlers struct {
 	Graphql            *gql.GraphqlHandler
 	OpenAPIGraphql     *openapi.GraphqlHandler
 	OpenAI             *api.OpenAIHandlers
+	Realtime           *api.RealtimeHandlers
 	Doubao             *api.DoubaoHandlers
 	Anthropic          *api.AnthropicHandlers
 	Gemini             *api.GeminiHandlers
@@ -127,6 +129,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	adminGroup := server.Group(adminGroupPath, middleware.WithJWTAuth(services.AuthService), middleware.WithProjectID())
 	// 管理员路由 - 使用 JWT 认证
 	{
+		adminGroup.POST("/realtime/reconcile", middleware.WithTimeout(server.Config.RequestTimeout), handlers.Realtime.ReconcileAudit)
 		adminGroup.GET(
 			"/playground",
 			middleware.WithTimeout(server.Config.RequestTimeout),
@@ -243,6 +246,12 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 	responsesWebSocketGroup := server.Group("/", apiMiddlewares...)
 	responsesWebSocketGroup.GET("/v1/responses", handlers.OpenAI.CreateResponseWebSocket(server.Config.LLMStreamRequestTimeout))
 
+	// Realtime owns its lifetime and never inherits no-auth fallback, body capture or HTTP LLM timeouts.
+	realtimeGroup := server.Group("/", api.RealtimeBoundary(), middleware.WithIPBlocklist(services.SystemService),
+		middleware.WithStrictAPIKeyConfig(services.AuthService, &middleware.APIKeyConfig{Headers: []string{"Authorization"}, RequireBearer: true}),
+		middleware.WithSource(request.SourceAPI))
+	registerRealtimeRoutes(realtimeGroup, handlers.Realtime, server.Config.Realtime)
+
 	{
 		openaiGroup := apiGroup.Group("/v1")
 		openaiGroup.POST("/chat/completions", handlers.OpenAI.ChatCompletion)
@@ -335,6 +344,14 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 
 // registerPluginUIRoutes serves token-scoped plugin UI files without a user JWT.
 // A nil manager does not panic here; the handler answers 503.
+// registerRealtimeRoutes exposes a prefixed native path for SDKs that append
+// the standard Realtime suffix to a configurable Base URL.
+func registerRealtimeRoutes(group *gin.RouterGroup, handlers *api.RealtimeHandlers, config realtime.Config) {
+	group.GET("/v1/realtime", handlers.Handler(config, false))
+	group.GET("/v1/realtime/translations", handlers.TranslationHandler(config))
+	group.GET("/qwen/v1/realtime", handlers.Handler(config, true))
+}
+
 func registerPluginUIRoutes(group *gin.RouterGroup, manager *plugin.Manager, system *biz.SystemService) {
 	handler := func(c *gin.Context) {
 		request := plugin.PluginUIRequest{

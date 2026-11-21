@@ -710,11 +710,36 @@ func (svc *BackupService) restoreChannelModelPrices(
 
 func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, channels []*BackupChannel, opts RestoreOptions) error {
 	for _, chData := range channels {
+		if chData == nil {
+			continue
+		}
 		existing, err := db.Channel.Query().
 			Where(channel.Name(chData.Name)).
 			First(ctx)
 		if err != nil && !ent.IsNotFound(err) {
 			return err
+		}
+		if existing != nil && opts.ChannelConflictStrategy == ConflictStrategySkip {
+			log.Info(ctx, "skipping existing channel", log.String("channel", chData.Name))
+			continue
+		}
+		kind := chData.Type
+		if existing != nil {
+			kind = existing.Type // Overwrite preserves the existing channel's provider.
+		}
+		settings, endpoints, migrated, err := biz.ConvertLegacyChannelRealtime(kind, chData.Settings, chData.Endpoints)
+		if err != nil {
+			return fmt.Errorf("invalid restored legacy Realtime configuration: %w", err)
+		}
+		if settings != nil {
+			if err := biz.ValidateChannelRealtime(kind, settings.Realtime); err != nil {
+				return fmt.Errorf("invalid restored channel Realtime configuration: %w", err)
+			}
+		}
+		if migrated {
+			if err := biz.ValidateEndpoints(endpoints, chData.BaseURL); err != nil {
+				return fmt.Errorf("invalid restored channel endpoints: %w", err)
+			}
 		}
 
 		credentials := chData.Credentials
@@ -749,8 +774,12 @@ func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, c
 					SetManualModels(chData.ManualModels).
 					SetTags(chData.Tags).
 					SetDefaultTestModel(chData.DefaultTestModel).
-					SetSettings(chData.Settings).
+					SetSettings(settings).
 					SetOrderingWeight(chData.OrderingWeight)
+
+				if migrated {
+					update.SetEndpoints(endpoints)
+				}
 
 				if chData.Remark != nil {
 					update.SetRemark(*chData.Remark)
@@ -779,8 +808,12 @@ func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, c
 				SetManualModels(chData.ManualModels).
 				SetTags(chData.Tags).
 				SetDefaultTestModel(chData.DefaultTestModel).
-				SetSettings(chData.Settings).
+				SetSettings(settings).
 				SetOrderingWeight(chData.OrderingWeight)
+
+			if migrated {
+				create.SetEndpoints(endpoints)
+			}
 
 			if chData.Remark != nil {
 				create.SetRemark(*chData.Remark)

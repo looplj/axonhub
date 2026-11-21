@@ -38,6 +38,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/backup"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -135,6 +136,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	})
 	gqlSrv.Use(&loggingTracer{})
 	gqlSrv.AroundOperations(apiKeyReadOnly)
+	gqlSrv.AroundResponses(endpointProtocolErrorStatus)
 	gqlSrv.Use(entgql.Transactioner{
 		TxOpener: deps.Ent,
 		// TestChannel performs long-running parallel provider requests whose database
@@ -145,7 +147,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.SetErrorPresenter(presentGraphqlError)
 
 	return &GraphqlHandler{
-		Graphql:       gqlSrv,
+		Graphql:       withEndpointHTTPStatus(gqlSrv),
 		PluginGraphql: newPluginGraphqlHandler(schema, deps.Ent, deps.PluginManager),
 		PluginFetch:   newPluginFetchHandler(deps.PluginManager),
 		executable:    schema,
@@ -229,6 +231,9 @@ func presentGraphqlError(ctx context.Context, err error) *gqlerror.Error {
 			},
 		}
 	}
+	if endpointErr, ok := errors.AsType[*gqlerror.Error](err); ok && endpointErr.Extensions["code"] == objects.ErrCodeEndpointRealtimeNotAllowed {
+		return graphql.DefaultErrorPresenter(ctx, endpointErr)
+	}
 	return graphql.DefaultErrorPresenter(ctx, err)
 }
 
@@ -250,13 +255,14 @@ func newPluginGraphqlHandler(schema graphql.ExecutableSchema, client *ent.Client
 	srv.Use(extension.FixedComplexityLimit(pluginGraphqlComplexityLimit))
 	srv.Use(&loggingTracer{})
 	srv.AroundOperations(rejectPluginGraphqlOperation)
+	srv.AroundResponses(endpointProtocolErrorStatus)
 	srv.Use(entgql.Transactioner{
 		TxOpener:   client,
 		SkipTxFunc: skipGraphqlTransaction,
 	})
 	srv.SetErrorPresenter(presentGraphqlError)
 	return &pluginGraphqlHTTPHandler{
-		handler: srv,
+		handler: withEndpointHTTPStatus(srv),
 		manager: manager,
 	}
 }

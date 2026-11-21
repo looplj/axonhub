@@ -18,10 +18,11 @@ import (
 // Within a single channel, api_format must be unique after legacy normalization.
 // Responses uses distinct HTTP/WS formats; Transport remains a legacy read/input field.
 type ChannelEndpoint struct {
-	APIFormat string `json:"api_format"`
-	Path      string `json:"path,omitempty"`
-	BaseURL   string `json:"base_url,omitempty"`
-	Transport string `json:"transport,omitempty"`
+	APIFormat          string `json:"api_format"`
+	Path               string `json:"path,omitempty"`
+	BaseURL            string `json:"base_url,omitempty"`
+	Transport          string `json:"transport,omitempty"`
+	HandshakeTimeoutMs *int64 `json:"handshake_timeout_ms,omitempty"`
 }
 
 const (
@@ -159,6 +160,9 @@ func (m ModelProtocol) IsEnabled() bool {
 }
 
 type ChannelSettings struct {
+	// Realtime owns the provider's persistent realtime protocol independently
+	// from the generic, user-editable endpoint list.
+	Realtime *ChannelRealtimeConfig `json:"realtime,omitempty"`
 	// ExtraModelPrefix sets the channel accept the model with the extra prefix.
 	// e.g. a channel
 	// supported_modles is ["deepseek-chat", "deepseek-reasoner"]

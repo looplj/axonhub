@@ -6,6 +6,8 @@ package llm
 func CapableAPIFormats(requestType RequestType) map[string]struct{} {
 	//nolint:exhaustive // Unknown request types have no dedicated capability set.
 	switch requestType {
+	case RequestTypeRealtime:
+		return map[string]struct{}{APIFormatQwenRealtimeWebSocket.String(): {}, APIFormatOpenAIRealtimeWebSocket.String(): {}}
 	case RequestTypeChat:
 		return map[string]struct{}{
 			APIFormatOpenAIChatCompletion.String():    {},

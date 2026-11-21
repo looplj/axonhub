@@ -102,6 +102,7 @@ import { ChannelModelAliases } from './channel-model-preview';
 import { ProxyType } from './channels-proxy-dialog';
 import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ManualModelBadge } from './manual-model-badge';
+import { getChannelBaseURLInputValue, getModelFetchBaseURL, getRealtimeHandshakeTimeoutInputValue, getRealtimeQuickModels, isRealtimeProtocol, isRealtimeQuickModel, realtimeForSelection, withoutRealtimeModelProtocols } from '../data/channel-realtime';
 
 interface Props {
   currentRow?: Channel;
@@ -764,11 +765,14 @@ export function ChannelsActionDialog({
       return getInitialApiFormatForChannel(
         initialRow.type,
         CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS,
-        initialRow.settings?.modelProtocols
+        initialRow.settings?.modelProtocols,
+        initialRow.settings?.realtime
       );
     }
     return OPENAI_CHAT_COMPLETIONS;
   });
+  const [realtimeHost, setRealtimeHost] = useState(initialRow?.settings?.realtime?.baseURL ?? '');
+  const [realtimeTimeout, setRealtimeTimeout] = useState(getRealtimeHandshakeTimeoutInputValue(initialRow?.settings?.realtime?.handshakeTimeoutMs));
   const [responsesTransport, setResponsesTransport] = useState<ResponsesTransport>(() => getResponsesTransportFromChannel(initialRow));
   const initialCodexResponses = useMemo(() => getCodexResponsesWebSocketState(initialRow), [initialRow]);
   const [codexResponsesWebSocket, setCodexResponsesWebSocket] = useState(initialCodexResponses.enabled);
@@ -799,10 +803,13 @@ export function ChannelsActionDialog({
     const apiFormat = getInitialApiFormatForChannel(
       initialRow.type,
       CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS,
-      initialRow.settings?.modelProtocols
+      initialRow.settings?.modelProtocols,
+      initialRow.settings?.realtime
     );
     setSelectedApiFormat(apiFormat);
     setResponsesTransport(getResponsesTransportFromChannel(initialRow));
+    setRealtimeHost(initialRow.settings?.realtime?.baseURL ?? '');
+    setRealtimeTimeout(getRealtimeHandshakeTimeoutInputValue(initialRow.settings?.realtime?.handshakeTimeoutMs));
     setCodexResponsesWebSocket(getCodexResponsesWebSocketState(initialRow).enabled);
     setUseGeminiVertex(initialRow.type === 'gemini_vertex');
     setUseAnthropicAws(initialRow.type === 'anthropic_aws');
@@ -1074,6 +1081,8 @@ export function ChannelsActionDialog({
     xaiSSOToken,
     selectedProvider,
     selectedApiFormat,
+    realtimeHost,
+    realtimeTimeout,
     responsesTransport,
     codexResponsesWebSocket,
     useGeminiVertex,
@@ -1188,6 +1197,8 @@ export function ChannelsActionDialog({
       if (isOAuthChannel) return;
       if (isEdit && alwaysOAuthProviderKeys.includes(provider)) return;
       setSelectedProvider(provider);
+      setRealtimeHost('');
+      setRealtimeTimeout(getRealtimeHandshakeTimeoutInputValue(undefined));
       setAuthMode(isEdit && ['codex', 'claudecode'].includes(provider) ? 'third-party' : 'official');
 
       if (provider !== 'gemini') {
@@ -1469,6 +1480,19 @@ export function ChannelsActionDialog({
   const watchedDefaultTestModel = form.watch('defaultTestModel');
   useEffect(() => {
     if (supportedModels.length === 0) return;
+    const realtimeModels = getRealtimeQuickModels(selectedApiFormat);
+    const realtimeTestModel = realtimeModels && supportedModels.find((model) => realtimeModels.includes(model));
+    if (realtimeModels && realtimeTestModel && (!watchedDefaultTestModel || !realtimeModels.includes(watchedDefaultTestModel) || !supportedModels.includes(watchedDefaultTestModel))) {
+      form.setValue('defaultTestModel', realtimeTestModel);
+      return;
+    }
+    if (!realtimeModels && watchedDefaultTestModel && isRealtimeQuickModel(watchedDefaultTestModel)) {
+      const ordinaryTestModel = supportedModels.find((model) => !isRealtimeQuickModel(model));
+      if (ordinaryTestModel) {
+        form.setValue('defaultTestModel', ordinaryTestModel);
+        return;
+      }
+    }
     if (!isEdit && !isDuplicate) {
       if (!watchedDefaultTestModel || !supportedModels.includes(watchedDefaultTestModel)) {
         form.setValue('defaultTestModel', supportedModels[0]);
@@ -1478,7 +1502,7 @@ export function ChannelsActionDialog({
     if (watchedDefaultTestModel && !supportedModels.includes(watchedDefaultTestModel)) {
       form.setValue('defaultTestModel', supportedModels[0]);
     }
-  }, [supportedModels, watchedDefaultTestModel, isEdit, isDuplicate, form]);
+  }, [supportedModels, watchedDefaultTestModel, selectedApiFormat, isEdit, isDuplicate, form]);
 
   const renderOAuthSection = useCallback(
     (oauth: ReturnType<typeof useOAuthFlow>, description: string) => (
@@ -1620,6 +1644,17 @@ export function ChannelsActionDialog({
             }
           : null;
 
+      const currentRealtime = values.settings?.realtime;
+      const realtimeChannelType = values.type ?? derivedChannelType;
+      const matchingRealtime = (realtimeChannelType === 'openai' && currentRealtime?.protocol === 'openai/realtime-ws') || (realtimeChannelType === 'bailian' && currentRealtime?.protocol === 'qwen/realtime-ws') ? currentRealtime : undefined;
+      let realtime: ChannelSettings['realtime'];
+      try {
+        realtime = realtimeForSelection(selectedApiFormat, matchingRealtime, getChannelBaseURLInputValue(selectedApiFormat, values.baseURL, realtimeHost), realtimeTimeout) ?? null;
+      } catch (error) {
+        toast.error(t(error instanceof Error ? error.message : 'channels.realtime.invalidHost'));
+        return;
+      }
+
       const valuesForSubmit = isEdit
         ? values
         : {
@@ -1728,6 +1763,7 @@ export function ChannelsActionDialog({
           selectedApiFormat === 'zenmux/video' ||
           existingModelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video')) === true;
         const settingsPatch: Partial<ChannelSettings> = {
+          realtime,
           passThroughUserAgent,
           passThroughBody,
           retryableStatusCodes,
@@ -1748,6 +1784,7 @@ export function ChannelsActionDialog({
             : {}),
           ...(codexModelProtocols ? { modelProtocols: codexModelProtocols } : {}),
         };
+        if (currentRealtime && !matchingRealtime) settingsPatch.modelProtocols = withoutRealtimeModelProtocols(settingsPatch.modelProtocols ?? existingModelProtocols);
 
         const updateInput = {
           ...dataWithModels,
@@ -1799,6 +1836,7 @@ export function ChannelsActionDialog({
         };
 
         const nextSettings = mergeChannelSettingsForUpdate(settingsForSubmit, {
+          realtime,
           proxy: proxyConfig,
           passThroughUserAgent,
           passThroughBody,
@@ -1824,6 +1862,7 @@ export function ChannelsActionDialog({
           ...(dataWithModels as z.infer<typeof createChannelInputSchema>),
           settings: nextSettings,
         } as z.infer<typeof createChannelInputSchema>;
+        if (currentRealtime && !matchingRealtime && createInput.settings) createInput.settings.modelProtocols = withoutRealtimeModelProtocols(createInput.settings.modelProtocols);
 
         if (isDuplicate && duplicateFromRow) {
           await duplicateChannel.mutateAsync({
@@ -1913,7 +1952,7 @@ export function ChannelsActionDialog({
   };
 
   const addSelectedDefaultModels = () => {
-    const newModels = selectedDefaultModels.filter((model) => !supportedModels.includes(model));
+    const newModels = activeDefaultSelection.filter((model) => !supportedModels.includes(model));
     if (newModels.length > 0) {
       setSupportedModels((prev) => [...prev, ...newModels]);
       setSelectedDefaultModels([]);
@@ -1927,7 +1966,7 @@ export function ChannelsActionDialog({
 
   const handleFetchModels = useCallback(async () => {
     const channelType = form.getValues('type');
-    const baseURL = form.getValues('baseURL');
+    const baseURL = getModelFetchBaseURL(selectedApiFormat, form.getValues('baseURL'), realtimeHost);
     const apiKeys = form.getValues('credentials.apiKeys');
     const oauthApiKey = form.getValues('credentials.apiKey');
     const vertexApiKeys = channelType === 'gemini_vertex' ? form.getValues('credentials.vertexApiKeys') : undefined;
@@ -2000,7 +2039,7 @@ export function ChannelsActionDialog({
     } catch (_error) {
       // Error is already handled by the mutation
     }
-  }, [fetchModels, form, isEdit, currentRow, authMode]);
+  }, [fetchModels, form, isEdit, currentRow, authMode, selectedApiFormat, realtimeHost]);
 
   const handleSyncNow = useCallback(async () => {
     if (!currentRow) return [];
@@ -2025,7 +2064,7 @@ export function ChannelsActionDialog({
   }, [currentRow, form, patternError, syncChannelModels]);
 
   const canFetchModels = () => {
-    const baseURL = form.watch('baseURL');
+    const baseURL = getModelFetchBaseURL(selectedApiFormat, form.watch('baseURL'), realtimeHost);
     const apiKeys = form.watch('credentials.apiKeys');
     const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
     const vertexApiKeys = form.watch('credentials.vertexApiKeys');
@@ -2050,9 +2089,12 @@ export function ChannelsActionDialog({
   // Memoize quick models to avoid re-evaluating on every render
   const currentType = form.watch('type');
   const quickModels = useMemo(() => {
+    const realtimeModels = getRealtimeQuickModels(selectedApiFormat);
+    if (realtimeModels) return realtimeModels;
     if (useFetchedModels || !currentType) return [];
     return getDefaultModels(currentType);
-  }, [currentType, useFetchedModels]);
+  }, [currentType, selectedApiFormat, useFetchedModels]);
+  const activeDefaultSelection = selectedDefaultModels.filter((model) => quickModels.includes(model));
 
   // Filter suggestions only; the complete fetched list still drives sync and deprecation checks.
   const filteredFetchedModels = useMemo(() => {
@@ -2257,6 +2299,8 @@ export function ChannelsActionDialog({
     setProxyUrl(initialRow?.settings?.proxy?.url || '');
     setProxyUsername(initialRow?.settings?.proxy?.username || '');
     setProxyPassword(initialRow?.settings?.proxy?.password || '');
+    setRealtimeHost(initialRow?.settings?.realtime?.baseURL ?? '');
+    setRealtimeTimeout(getRealtimeHandshakeTimeoutInputValue(initialRow?.settings?.realtime?.handshakeTimeoutMs));
     setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
     setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
     setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
@@ -2276,7 +2320,8 @@ export function ChannelsActionDialog({
         getInitialApiFormatForChannel(
           initialRow.type,
           CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS,
-          initialRow.settings?.modelProtocols
+          initialRow.settings?.modelProtocols,
+          initialRow.settings?.realtime
         )
       );
       setResponsesTransport(getResponsesTransportFromChannel(initialRow));
@@ -2833,17 +2878,24 @@ export function ChannelsActionDialog({
                                   />
                                 ) : (
                                   <Input
-                                    placeholder={baseURLPlaceholder}
+                                    {...field}
+                                    value={isRealtimeProtocol(selectedApiFormat)
+                                      ? getChannelBaseURLInputValue(selectedApiFormat, field.value, realtimeHost)
+                                      : field.value ?? ''}
+                                    onChange={isRealtimeProtocol(selectedApiFormat) ? (event) => setRealtimeHost(event.target.value) : field.onChange}
+                                    placeholder={isRealtimeProtocol(selectedApiFormat)
+                                      ? selectedApiFormat === 'qwen/realtime-ws' ? t('channels.realtime.qwenHostPlaceholder') : ''
+                                      : baseURLPlaceholder}
+                                    readOnly={selectedApiFormat === 'openai/realtime-ws'}
                                     autoComplete='new-password'
                                     data-form-type='other'
-                                    aria-invalid={!!fieldState.error}
+                                    aria-invalid={!isRealtimeProtocol(selectedApiFormat) && !!fieldState.error}
                                     data-testid='channel-base-url-input'
                                     disabled={
                                       (isCodexType && authMode !== 'third-party') ||
                                       (isClaudeCodeType && authMode === 'official') ||
                                       isXAISubscriptionType
                                     }
-                                    {...field}
                                   />
                                 )}
                                 <FormMessage />
@@ -2852,6 +2904,37 @@ export function ChannelsActionDialog({
                           );
                         }}
                       />
+
+                      {isRealtimeProtocol(selectedApiFormat) && (
+                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8' data-testid='channel-realtime-timeout'>
+                          <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
+                            <FormLabel className='font-medium'>{t('channels.endpoints.realtime.handshakeTimeout')}</FormLabel>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type='button'
+                                  className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                  aria-label={t('channels.endpoints.realtime.handshakeTimeoutHint')}
+                                >
+                                  <Info className='h-3.5 w-3.5' />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className='max-w-sm'>
+                                <p>{t('channels.endpoints.realtime.handshakeTimeoutHint')}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <div className='space-y-1 md:col-span-6'>
+                            <Input
+                              type='number'
+                              min={1000}
+                              max={60000}
+                              value={realtimeTimeout}
+                              onChange={(event) => setRealtimeTimeout(event.target.value)}
+                            />
+                          </div>
+                        </FormItem>
+                      )}
 
                       {isGeminiVertex && (
                         <FormField
@@ -3457,7 +3540,7 @@ export function ChannelsActionDialog({
                                   onClick={addSelectedDefaultModels}
                                   size='sm'
                                   variant='outline'
-                                  disabled={selectedDefaultModels.length === 0}
+                                  disabled={activeDefaultSelection.length === 0}
                                   data-testid='add-selected-models-button'
                                 >
                                   <Plus className='mr-1 h-4 w-4' />
@@ -3469,13 +3552,13 @@ export function ChannelsActionDialog({
                               {quickModels.map((model: string) => (
                                 <Badge
                                   key={model}
-                                  variant={selectedDefaultModels.includes(model) ? 'default' : 'secondary'}
+                                  variant={activeDefaultSelection.includes(model) ? 'default' : 'secondary'}
                                   className='cursor-pointer text-xs'
                                   onClick={() => toggleDefaultModel(model)}
                                   data-testid={`quick-model-${model}`}
                                 >
                                   {model}
-                                  {selectedDefaultModels.includes(model) && <span className='ml-1'>✓</span>}
+                                  {activeDefaultSelection.includes(model) && <span className='ml-1'>✓</span>}
                                 </Badge>
                               ))}
                             </div>

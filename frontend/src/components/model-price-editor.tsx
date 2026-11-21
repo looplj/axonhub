@@ -9,7 +9,21 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 
-const priceItemCodes = ['prompt_tokens', 'completion_tokens', 'prompt_cached_tokens', 'prompt_write_cached_tokens'] as const;
+const priceItemCodes = [
+  'prompt_tokens',
+  'completion_tokens',
+  'prompt_cached_tokens',
+  'prompt_write_cached_tokens',
+  'realtime_input_text_tokens',
+  'realtime_input_audio_tokens',
+  'realtime_output_text_tokens',
+  'realtime_output_audio_tokens',
+  'realtime_input_image_tokens',
+  'realtime_cached_input_text_tokens',
+  'realtime_cached_input_audio_tokens',
+  'realtime_translation_audio_samples',
+  'realtime_cached_input_image_tokens',
+] as const;
 const promptWriteCacheVariantCodes = ['five_min', 'one_hour'] as const;
 // An empty mode marks cache-write items whose 5m/1h variants carry the rates (no aggregate).
 type PricingMode = '' | 'flat_fee' | 'usage_per_unit' | 'usage_tiered' | 'usage_volume';

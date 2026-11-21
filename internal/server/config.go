@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/internal/server/safeguards"
 	"github.com/looplj/axonhub/internal/tracing"
 )
@@ -104,6 +105,8 @@ type Config struct {
 	// LLMStreamIdleTimeout limits time without upstream stream data.
 	// Zero disables the stream idle deadline.
 	LLMStreamIdleTimeout time.Duration `conf:"llm_stream_idle_timeout" yaml:"llm_stream_idle_timeout" json:"llm_stream_idle_timeout"`
+
+	Realtime realtime.Config `conf:"realtime" yaml:"realtime" json:"realtime"`
 
 	Safeguards safeguards.Config `conf:"safeguards" yaml:"safeguards" json:"safeguards"`
 
