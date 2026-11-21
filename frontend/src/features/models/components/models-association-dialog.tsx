@@ -204,6 +204,9 @@ const DEFAULT_WHEN_CONDITION: FilterBuilderGroupListValue = {
   groups: [],
 };
 const MAX_WHEN_CONDITION_DEPTH = 1;
+// Deployments with many channels legitimately need more than a handful of
+// associations; the old cap of 10 made models with more rules uneditable.
+const MAX_ASSOCIATIONS = 99;
 const DEFAULT_WHEN_GROUP: FilterBuilderCondition = {
   type: 'group',
   logic: 'and',
@@ -396,7 +399,7 @@ const associationFormSchema = z.object({
         excludeChannelTags: z.array(z.string()).optional(),
       })
     )
-    .max(10, 'Cannot have more than 10 associations')
+    .max(MAX_ASSOCIATIONS, `Cannot have more than ${MAX_ASSOCIATIONS} associations`)
     .superRefine((associations, ctx) => {
       associations.forEach((assoc, index) => {
         if (assoc.inheritModel && assoc.type !== 'channel_model' && assoc.type !== 'channel_tags_model') {
@@ -946,7 +949,7 @@ export function ModelsAssociationDialog() {
   }, [setOpen, setCurrentDeveloper, form]);
 
   const handleAddAssociation = useCallback(() => {
-    if (fields.length >= 10) return;
+    if (fields.length >= MAX_ASSOCIATIONS) return;
 
     const currentAssociations = form.getValues('associations') || [];
 
@@ -1154,7 +1157,7 @@ export function ModelsAssociationDialog() {
 
             {/* Fixed Add Rule Section at Bottom */}
             <div className='bg-background shrink-0 border-t pt-4'>
-              <Button type='button' variant='outline' onClick={handleAddAssociation} disabled={fields.length >= 10} className='w-full'>
+              <Button type='button' variant='outline' onClick={handleAddAssociation} disabled={fields.length >= MAX_ASSOCIATIONS} className='w-full'>
                 <IconPlus className='mr-2 h-4 w-4' />
                 {t('models.dialogs.association.addRule')}
               </Button>
