@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { getRealtimeQuickModels, realtimeForSelection, hasLegacyRealtimeEndpoints, withoutRealtimeModelProtocols } from './channel-realtime.ts';
+import { getChannelBaseURLInputValue, getRealtimeHandshakeTimeoutInputValue, getRealtimeQuickModels, realtimeForSelection, hasLegacyRealtimeEndpoints, withoutRealtimeModelProtocols } from './channel-realtime.ts';
 import { getInitialApiFormatForChannel, getAvailableProtocolFormats } from './protocol-options.ts';
 
 test('channel Realtime configuration saves and echoes without an endpoint', () => {
@@ -45,4 +45,28 @@ test('quick models follow the selected Realtime protocol', () => {
   assert.deepEqual(getRealtimeQuickModels('openai/realtime-ws'), ['gpt-realtime-2.1', 'gpt-realtime-2.1-mini', 'gpt-realtime-translate']);
   assert.deepEqual(getRealtimeQuickModels('qwen/realtime-ws'), ['qwen3.8-omni-flash-realtime', 'qwen3.5-omni-plus-realtime', 'qwen3.5-omni-flash-realtime']);
   assert.equal(getRealtimeQuickModels('openai/chat_completions'), undefined);
+});
+
+test('Realtime reuses the Base URL field and keeps the saved HTTP value when toggled', () => {
+  const httpBaseURL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+  const qwenHost = 'wss://llm-ikngb8j2sjh4l2sw.cn-beijing.maas.aliyuncs.com';
+  assert.equal(getChannelBaseURLInputValue('openai/realtime-ws', httpBaseURL, qwenHost), 'wss://api.openai.com');
+  assert.equal(getChannelBaseURLInputValue('qwen/realtime-ws', httpBaseURL, qwenHost), qwenHost);
+  assert.equal(getChannelBaseURLInputValue('openai/chat_completions', httpBaseURL, qwenHost), httpBaseURL);
+});
+
+test('Realtime handshake timeout displays the server default unless the channel has an override', () => {
+  assert.equal(getRealtimeHandshakeTimeoutInputValue(undefined), '15000');
+  assert.equal(getRealtimeHandshakeTimeoutInputValue(null), '15000');
+  assert.equal(getRealtimeHandshakeTimeoutInputValue(30000), '30000');
+});
+
+
+test('Realtime Host reuses the channel Base URL control without a separate panel or path field', () => {
+  const actionDialog = readFileSync(new URL('../components/channels-action-dialog.tsx', import.meta.url), 'utf8');
+  assert.match(actionDialog, /name='baseURL'/);
+  assert.match(actionDialog, /getChannelBaseURLInputValue\(selectedApiFormat/);
+  assert.doesNotMatch(actionDialog, /data-testid='channel-realtime-config'/);
+  assert.doesNotMatch(actionDialog, /data-testid='channel-realtime-host'/);
+  assert.match(actionDialog, /data-testid='channel-realtime-timeout'/);
 });

@@ -19,6 +19,19 @@ export function isRealtimeQuickModel(model: string): boolean {
   return Object.values(realtimeQuickModels).some((models) => models.includes(model));
 }
 
+export const OPENAI_REALTIME_HOST = 'wss://api.openai.com';
+export const DEFAULT_REALTIME_HANDSHAKE_TIMEOUT_MS = 15000;
+
+export function getRealtimeHandshakeTimeoutInputValue(timeoutMs: number | null | undefined): string {
+  return String(timeoutMs ?? DEFAULT_REALTIME_HANDSHAKE_TIMEOUT_MS);
+}
+
+export function getChannelBaseURLInputValue(format: string, channelBaseURL: string | null | undefined, qwenRealtimeHost: string): string {
+  if (format === 'openai/realtime-ws') return OPENAI_REALTIME_HOST;
+  if (format === 'qwen/realtime-ws') return qwenRealtimeHost;
+  return channelBaseURL ?? '';
+}
+
 export function isRealtimeProtocol(format: string): boolean {
   return format === 'openai/realtime-ws' || format === 'qwen/realtime-ws' || format === 'openai/realtime';
 }
