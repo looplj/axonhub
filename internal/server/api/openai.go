@@ -63,6 +63,7 @@ type OpenAIHandlers struct {
 	ResponseCompletionHandlers *ChatCompletionHandlers
 	CompactHandlers            *ChatCompletionHandlers
 	EmbeddingHandlers          *ChatCompletionHandlers
+	CohereEmbeddingHandlers    *ChatCompletionHandlers
 	ModerationHandlers         *ChatCompletionHandlers
 	AlphaSearchHandlers        *ChatCompletionHandlers
 	DecisionsHandlers          *ChatCompletionHandlers
@@ -146,6 +147,23 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RequestService,
 				params.HttpClient,
 				responses.NewCompactInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+				orchestratorPlugins(params.PluginManager)),
+		},
+		CohereEmbeddingHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewCohereEmbeddingInboundTransformer(),
 				params.SystemService,
 				params.UsageLogService,
 				params.PromptService,
@@ -401,6 +419,10 @@ func (handlers *OpenAIHandlers) CompactResponse(c *gin.Context) {
 
 func (handlers *OpenAIHandlers) CreateEmbedding(c *gin.Context) {
 	handlers.EmbeddingHandlers.ChatCompletion(c)
+}
+
+func (handlers *OpenAIHandlers) CreateCohereEmbedding(c *gin.Context) {
+	handlers.CohereEmbeddingHandlers.ChatCompletion(c)
 }
 
 // CreateModeration handles POST /v1/moderations.

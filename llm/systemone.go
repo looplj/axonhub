@@ -12,6 +12,13 @@ type SystemOneRequest struct {
 
 	// Questions is the map of question identifiers to their schema definitions.
 	Questions map[string]SystemOneQuestion `json:"questions"`
+
+	AutoTrust *AutoTrustRequest `json:"autotrust,omitempty"`
+}
+
+// AutoTrustRequest 保留原生正文及扩展字段。
+type AutoTrustRequest struct {
+	Body json.RawMessage `json:"body"`
 }
 
 // SystemOneQuestion defines a single decision question schema.
@@ -30,6 +37,18 @@ type SystemOneQuestion struct {
 type SystemOneResponse struct {
 	// Answers maps question identifiers to their evaluated results.
 	Answers map[string]SystemOneAnswer `json:"answers"`
+
+	AutoTrust *AutoTrustResponse `json:"autotrust,omitempty"`
+}
+
+// AutoTrustResponse 保留原生结果及已校验的决策字段，不转换问题或概率语义。
+type AutoTrustResponse struct {
+	Body          json.RawMessage `json:"body"`
+	Kind          string          `json:"kind"`
+	Options       []string        `json:"options"`
+	Probabilities []float64       `json:"probabilities"`
+	ChoiceIndex   *int            `json:"choice_index"`
+	Choice        string          `json:"choice"`
 }
 
 // SystemOneAnswer holds the evaluated answer for a specific question.

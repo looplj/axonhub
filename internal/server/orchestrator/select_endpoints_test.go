@@ -39,6 +39,77 @@ func TestSelectAPIFormat(t *testing.T) {
 	require.Equal(t, llm.APIFormatGeminiContents.String(), SelectAPIFormat(geminiEndpoints, &llm.Request{RequestType: llm.RequestTypeImage}))
 }
 
+func TestSelectAPIFormat_NativeProtocols(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name        string
+		requestType llm.RequestType
+		inbound     llm.APIFormat
+		formats     []llm.APIFormat
+		want        string
+	}{
+		{"Cohere exact", llm.RequestTypeEmbedding, llm.APIFormatCohereEmbed, []llm.APIFormat{llm.APIFormatOpenAIEmbedding, llm.APIFormatCohereEmbed}, llm.APIFormatCohereEmbed.String()},
+		{"Cohere has no conversion", llm.RequestTypeEmbedding, llm.APIFormatCohereEmbed, []llm.APIFormat{llm.APIFormatOpenAIEmbedding}, ""},
+		{"AutoTrust exact", llm.RequestTypeSystemOne, llm.APIFormatAutoTrustDecide, []llm.APIFormat{llm.APIFormatTypeSafeSystemOne, llm.APIFormatAutoTrustDecide}, llm.APIFormatAutoTrustDecide.String()},
+		{"AutoTrust cannot use Jev", llm.RequestTypeSystemOne, llm.APIFormatAutoTrustDecide, []llm.APIFormat{llm.APIFormatTypeSafeSystemOne}, ""},
+		{"Jev cannot use AutoTrust", llm.RequestTypeSystemOne, llm.APIFormatTypeSafeSystemOne, []llm.APIFormat{llm.APIFormatAutoTrustDecide}, ""},
+		{"OpenAI embedding cannot use Cohere", llm.RequestTypeEmbedding, llm.APIFormatOpenAIEmbedding, []llm.APIFormat{llm.APIFormatCohereEmbed}, ""},
+		{"old embedding conversion remains", llm.RequestTypeEmbedding, llm.APIFormatOpenAIEmbedding, []llm.APIFormat{llm.APIFormatCohereEmbed, llm.APIFormatGeminiEmbedding}, llm.APIFormatGeminiEmbedding.String()},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var endpoints []objects.ChannelEndpoint
+			for _, format := range tc.formats {
+				endpoints = append(endpoints, objects.ChannelEndpoint{APIFormat: format.String()})
+			}
+			req := &llm.Request{RequestType: tc.requestType, APIFormat: tc.inbound}
+			require.Equal(t, tc.want, SelectAPIFormat(endpoints, req))
+			require.Equal(t, tc.want, selectForcedAPIFormat(endpoints, req))
+		})
+	}
+}
+
+func TestPopulateAPIFormat_NativeProtocolRetries(t *testing.T) {
+	t.Parallel()
+	for _, format := range []llm.APIFormat{llm.APIFormatCohereEmbed, llm.APIFormatAutoTrustDecide} {
+		t.Run(format.String(), func(t *testing.T) {
+			requestType := llm.RequestTypeEmbedding
+			if format == llm.APIFormatAutoTrustDecide {
+				requestType = llm.RequestTypeSystemOne
+			}
+			ch := &biz.Channel{Channel: &ent.Channel{
+				Type:      channel.TypeOpenai,
+				Endpoints: []objects.ChannelEndpoint{{APIFormat: format.String()}},
+				Settings: &objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
+					{Model: "wrong", APIFormats: []string{llm.APIFormatOpenAIChatCompletion.String()}},
+					{Model: "right", APIFormats: []string{format.String()}},
+				}},
+			}}
+			req := &llm.Request{Model: "alias", RequestType: requestType, APIFormat: format}
+			candidates := populateAPIFormat(t.Context(), []*ChannelModelsCandidate{{Channel: ch, Models: []biz.ChannelModelEntry{
+				{RequestModel: "wrong", ActualModel: "wrong"}, {RequestModel: "right", ActualModel: "right"},
+			}}}, req)
+			require.Len(t, candidates, 1)
+			require.Equal(t, []biz.ChannelModelEntry{{RequestModel: "right", ActualModel: "right"}}, candidates[0].Models)
+			require.Equal(t, []string{format.String()}, candidates[0].modelAPIFormats)
+			ch.Endpoints = nil
+			require.Empty(t, populateAPIFormat(t.Context(), candidates, req))
+		})
+	}
+}
+
+func TestPopulateAPIFormat_PreservesPrimaryOutboundWithoutEndpoints(t *testing.T) {
+	t.Parallel()
+	ch := &biz.Channel{Channel: &ent.Channel{Type: channel.TypeOpencodeGoAnthropic}}
+	require.Empty(t, ch.ResolveEndpoints())
+	models := []biz.ChannelModelEntry{{RequestModel: "claude", ActualModel: "claude"}}
+	candidates := populateAPIFormat(t.Context(), []*ChannelModelsCandidate{{Channel: ch, Models: models}}, &llm.Request{
+		Model: "claude", RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatAnthropicMessage,
+	})
+	require.Len(t, candidates, 1)
+	require.Equal(t, models, candidates[0].Models)
+	require.Empty(t, candidates[0].APIFormat)
+}
+
 func TestSelectAPIFormat_PrefersMatchingFormat(t *testing.T) {
 	endpoints := []objects.ChannelEndpoint{
 		{APIFormat: "openai/responses"},

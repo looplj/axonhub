@@ -14,11 +14,55 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/opencode"
 	"github.com/looplj/axonhub/llm/transformer/shared"
+	"github.com/looplj/axonhub/llm/transformer/typesafe"
 )
+
+func TestBuildChannelWithOutbounds_NativeProtocols(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:native_endpoint_routing?mode=memory&_fk=0")
+	t.Cleanup(func() { client.Close() })
+	svc := NewChannelServiceForTest(client)
+	for _, tc := range []struct {
+		name    string
+		format  llm.APIFormat
+		path    string
+		inbound transformer.Inbound
+		body    string
+	}{
+		{"Cohere", llm.APIFormatCohereEmbed, "/cohere/v2/embed", openai.NewCohereEmbeddingInboundTransformer(), `{"model":"alias","input_type":"image","images":["data:image/png;base64,aGVsbG8="]}`},
+		{"AutoTrust", llm.APIFormatAutoTrustDecide, "/v1/decide", typesafe.NewAutoTrustInboundTransformer(), `{"model":"alias","kind":"noul","question":"yes?"}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ch, err := svc.buildChannelWithOutbounds(&ent.Channel{
+				ID: 1, Name: tc.name, Type: channel.TypeOpenai, BaseURL: "https://upstream.example.com",
+				Credentials: objects.ChannelCredentials{APIKey: "unit-test-key"},
+				Endpoints:   []objects.ChannelEndpoint{{APIFormat: tc.format.String(), BaseURL: "https://native.example.com/", Path: tc.path}},
+			})
+			require.NoError(t, err)
+			outbound := ch.Outbounds[tc.format.String()]
+			require.NotNil(t, outbound)
+			req, err := tc.inbound.TransformRequest(t.Context(), &httpclient.Request{Body: []byte(tc.body)})
+			require.NoError(t, err)
+			req.Model = "actual-model"
+			raw, err := outbound.TransformRequest(t.Context(), req)
+			require.NoError(t, err)
+			require.Equal(t, "https://native.example.com"+tc.path, raw.URL)
+			require.Equal(t, tc.format.String(), raw.APIFormat)
+			var body map[string]any
+			require.NoError(t, json.Unmarshal(raw.Body, &body))
+			if tc.format == llm.APIFormatCohereEmbed {
+				require.Equal(t, "actual-model", body["model"])
+			} else {
+				require.NotContains(t, body, "model")
+			}
+		})
+	}
+}
 
 // TestBuildChannelWithOutbounds_FamilyRoutingOnCustomChatEndpoints asserts that
 // custom chat endpoints are served by the channel family's own transformer

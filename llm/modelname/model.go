@@ -93,7 +93,7 @@ func reportedModel(body []byte, format llm.APIFormat, eventType string, stream b
 			return jsonModel(body, "data.model")
 		}
 		return jsonModel(body, "model")
-	case llm.APIFormatOpenAIDecisions:
+	case llm.APIFormatOpenAIDecisions, llm.APIFormatCohereEmbed, llm.APIFormatAutoTrustDecide:
 		if !stream {
 			return jsonModel(body, "model")
 		}

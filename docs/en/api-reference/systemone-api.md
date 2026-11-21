@@ -16,6 +16,7 @@ System One is rooted in cognitive psychology's "System 1" thinking (fast, intuit
 
 - `POST /v1/systemone` - Native System One API (Primary Entrypoint)
 - `POST /typesafe/v1/systemone` - TypeSafe provider namespace alias
+- `POST /v1/decide` - Native AutoTrust decisions; see the AutoTrust section for configuration and request format
 
 ## Authentication
 
@@ -319,7 +320,44 @@ Client requests can use abstracted aliases via model mapping:
 
 ---
 
-## Known Limitations
+## Native AutoTrust Decide API
+
+AutoTrust uses `POST /v1/decide` and the native `kind/state/question/options` protocol. Add an `autotrust/decide` custom endpoint to an OpenAI channel, using the real inference service root (for example `http://inference-host:8000`, without `/v1`) and path `/v1/decide`. Add the model manually and pin it to `autotrust/decide` in Model Protocols. Use the real upstream API key when authentication is enabled. A self-hosted vLLM service with authentication disabled that accepts any Bearer value can use the client placeholder `EMPTY`. AxonHub still sends `Authorization: Bearer EMPTY`; clients calling the gateway still need an AxonHub API key.
+
+Native AutoTrust requests have no model field. Each upstream deployment uses the model loaded at startup. Select the AxonHub model alias through `X-AxonHub-Model`:
+
+```bash
+curl -X POST "http://localhost:8090/v1/decide" \
+  -H "Authorization: Bearer your-axonhub-api-key" \
+  -H "Content-Type: application/json" \
+  -H "X-AxonHub-Model: autotrust-vision" \
+  -d '{
+    "kind": "choice",
+    "state": "Customer: my card was charged twice.",
+    "question": "Which team should handle this?",
+    "options": ["billing", "shipping", "technical support"]
+  }'
+```
+
+Alternatively, add the gateway extension `"model":"autotrust-vision"` to the body. When both header and body provide a model, they must match. Missing or conflicting selectors are rejected. The gateway performs model access, mapping, candidate, and quota checks, then removes the body `model` and `X-AxonHub-Model` before sending the request. Alias mapping cannot switch the weights loaded by a fixed deployment; configure each model against its actual deployment.
+
+| Field | Description |
+| --- | --- |
+| `kind` | `choice`, `noul`, or `score` |
+| `question` | A string question |
+| `state` | Optional; when provided, a string, object, or array |
+| `options` | Required for `choice`: an ordered array of at least two strings, enforced by the gateway; additional limits depend on the deployment |
+| Extensions | Fields such as `strategy`, `thinking`, `threshold`, `chat_template_kwargs`, `reasoning_effort`, `think_budget`, `return_reasoning`, and `debug` are preserved |
+
+For vision models, state may contain images, for example `"state":["Classify this product:",{"image":"data:image/png;base64,<BASE64_ENCODED_IMAGE_DATA>"}]`. Replace the placeholder with real image data. Vision and remote URL support depend on the deployment. The gateway preserves option order, probabilities, score scales, and reasoning fields.
+
+Responses retain `kind/effective_kind/options/probabilities/choice_index/choice/protocol/adaptation/thinking` and upstream extension fields. `choice_index:0` and zero probabilities are valid. `usage.prompt_tokens/completion_tokens/total_tokens` feed existing usage accounting; `num_model_requests` and `elapsed_seconds` are preserved, without counting internal inference passes as additional gateway requests.
+
+Error responses follow the system's upstream error policy: passthrough mode preserves the upstream HTTP status and error body; hidden and custom modes use the configured message.
+
+This JSON endpoint rejects `stream:true`. AutoTrust requests select only `autotrust/decide` upstreams, with no conversion to TypeSafe System One or OpenAI `/v1/decisions`. Channel tests use a non-streaming native decision request. Copied requests retain the gateway model header or body extension.
+
+## TypeSafe Known Limitations
 
 1. **No Streaming Support**: System One is a deterministic single-step evaluation. Requests with `stream: true` are rejected with HTTP 400.
 2. **No Chat Generation Parameters**: Do not pass `messages`, `temperature`, `top_p`, `max_tokens`, or `tools`.

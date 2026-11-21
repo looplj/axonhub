@@ -149,9 +149,9 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 			continue
 		}
 
-		endpoints, forced := applyForcedAPIFormatsForRequest(ctx, ch, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, ch.ResolveEndpoints())
+		endpoints, forced := applyForcedAPIFormatsForRequest(ctx, ch, []biz.ChannelModelEntry{entry}, req.Model, req, ch.ResolveEndpoints())
 		apiFormat := selectEndpointAPIFormat(endpoints, req, forced)
-		if requiresExplicitEndpoint(req.RequestType) && apiFormat == "" {
+		if apiFormat == "" && (requiresExplicitEndpoint(req) || len(endpoints) > 0) {
 			continue
 		}
 
@@ -1153,9 +1153,9 @@ func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request)
 		return nil, fmt.Errorf("model %s not supported in channel %s", req.Model, channel.Name)
 	}
 
-	endpoints, forced := applyForcedAPIFormatsForRequest(ctx, channel, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, channel.ResolveEndpoints())
+	endpoints, forced := applyForcedAPIFormatsForRequest(ctx, channel, []biz.ChannelModelEntry{entry}, req.Model, req, channel.ResolveEndpoints())
 	apiFormat := selectEndpointAPIFormat(endpoints, req, forced)
-	if requiresExplicitEndpoint(req.RequestType) && apiFormat == "" {
+	if apiFormat == "" && (requiresExplicitEndpoint(req) || len(endpoints) > 0) {
 		return []*ChannelModelsCandidate{}, nil
 	}
 

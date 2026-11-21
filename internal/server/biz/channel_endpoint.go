@@ -19,6 +19,8 @@ var SupportedAPIFormats = map[string]struct{}{
 	llm.APIFormatOpenAIResponseWebSocket.String(): {},
 	llm.APIFormatOpenAIResponseCompact.String():   {},
 	llm.APIFormatOpenAIEmbedding.String():         {},
+	llm.APIFormatCohereEmbed.String():             {},
+	llm.APIFormatAutoTrustDecide.String():         {},
 	llm.APIFormatOpenAIImageGeneration.String():   {},
 	llm.APIFormatOpenAIImageEdit.String():         {},
 	llm.APIFormatOpenAIImageVariation.String():    {},
@@ -368,6 +370,9 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 	}
 
 	for _, endpoint := range endpoints {
+		if (endpoint.APIFormat == llm.APIFormatCohereEmbed.String() || endpoint.APIFormat == llm.APIFormatAutoTrustDecide.String()) && channelType != channel.TypeOpenai {
+			return fmt.Errorf("api_format %q requires an OpenAI channel with a custom endpoint", endpoint.APIFormat)
+		}
 		if endpoint.APIFormat == llm.APIFormatTypeSafeSystemOne.String() && !supportsSystemOneEndpoint(channelType) {
 			return fmt.Errorf("api_format %q is only supported by TypeSafe and channel types with built-in OpenAI endpoints, except Codex and GitHub Copilot", endpoint.APIFormat)
 		}

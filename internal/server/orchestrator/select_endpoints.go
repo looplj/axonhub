@@ -50,7 +50,7 @@ func selectAPIFormat(
 	}
 
 	preferredFormat := string(req.APIFormat)
-	allowed := llm.CapableAPIFormats(req.RequestType)
+	allowed := compatibleRequestAPIFormats(req)
 
 	if allowed != nil {
 		if preferredFormat != "" {
@@ -77,12 +77,29 @@ func selectAPIFormat(
 			}
 		}
 
-		if requiresExplicitEndpoint(req.RequestType) {
+		if requiresExplicitEndpoint(req) {
 			return ""
 		}
 	}
 
-	return endpoints[0].APIFormat
+	for _, endpoint := range endpoints {
+		if endpoint.APIFormat != llm.APIFormatCohereEmbed.String() && endpoint.APIFormat != llm.APIFormatAutoTrustDecide.String() {
+			return endpoint.APIFormat
+		}
+	}
+	return ""
+}
+
+// 原生负载只允许发送给同协议端点，能力列表仍用于模型展示。
+func compatibleRequestAPIFormats(req *llm.Request) map[string]struct{} {
+	switch req.APIFormat {
+	case llm.APIFormatCohereEmbed, llm.APIFormatAutoTrustDecide:
+		return map[string]struct{}{req.APIFormat.String(): {}}
+	}
+	allowed := llm.CapableAPIFormats(req.RequestType)
+	delete(allowed, llm.APIFormatCohereEmbed.String())
+	delete(allowed, llm.APIFormatAutoTrustDecide.String())
+	return allowed
 }
 
 func compatibleResponsesAPIFormat(format llm.APIFormat) string {
@@ -96,10 +113,11 @@ func compatibleResponsesAPIFormat(format llm.APIFormat) string {
 	}
 }
 
-func requiresExplicitEndpoint(requestType llm.RequestType) bool {
-	return requestType == llm.RequestTypeAlphaSearch ||
-		requestType == llm.RequestTypeDecisions ||
-		requestType == llm.RequestTypeSystemOne
+func requiresExplicitEndpoint(req *llm.Request) bool {
+	return req.APIFormat == llm.APIFormatCohereEmbed ||
+		req.RequestType == llm.RequestTypeAlphaSearch ||
+		req.RequestType == llm.RequestTypeDecisions ||
+		req.RequestType == llm.RequestTypeSystemOne
 }
 
 // FilterEndpointsByAPIFormats restricts endpoints to the given api formats. The
@@ -210,12 +228,12 @@ func applyForcedAPIFormatsForRequest(
 	ch *biz.Channel,
 	entries []biz.ChannelModelEntry,
 	requestModel string,
-	requestType llm.RequestType,
+	req *llm.Request,
 	endpoints []objects.ChannelEndpoint,
 ) ([]objects.ChannelEndpoint, bool) {
 	forced := forcedAPIFormatsForCandidate(ch, entries, requestModel)
 	filtered, forcedActive := applyForcedAPIFormats(ctx, ch, entries, requestModel, endpoints)
-	if len(forced) > 0 && len(filtered) == len(endpoints) && requiresExplicitEndpoint(requestType) && len(FilterEndpointsByAPIFormats(endpoints, forced)) == 0 {
+	if len(forced) > 0 && len(filtered) == len(endpoints) && requiresExplicitEndpoint(req) && len(FilterEndpointsByAPIFormats(endpoints, forced)) == 0 {
 		return nil, true
 	}
 
