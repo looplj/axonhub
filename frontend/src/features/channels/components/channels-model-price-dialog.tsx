@@ -1258,7 +1258,7 @@ export function ChannelsModelPriceDialog() {
                       />
                       <Button
                         type='button'
-                        variant='ghost'
+                        variant='outline'
                         size='sm'
                         data-testid='price-set-default-exchange-rate'
                         disabled={!isValidDefaultExchangeRate(exchangeRate)}
