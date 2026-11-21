@@ -333,16 +333,17 @@ func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Con
 }
 
 type realtimeResponse struct {
-	createEventID   string
-	request         *ent.Request
-	done            bool
-	auditFinalized  bool
-	auditStatus     request.Status
-	auditSummary    map[string]any
-	started         time.Time
-	firstOutput     *int64
-	hadFunctionCall bool
-	observedUsage   *llm.Usage
+	createEventID    string
+	reservationOrder int
+	request          *ent.Request
+	done             bool
+	auditFinalized   bool
+	auditStatus      request.Status
+	auditSummary     map[string]any
+	started          time.Time
+	firstOutput      *int64
+	hadFunctionCall  bool
+	observedUsage    *llm.Usage
 }
 type realtimeAudioCommit struct {
 	eventID  string
@@ -353,6 +354,7 @@ type RealtimeConversation struct {
 	pendingConfigurationID string
 	pendingClearID         string
 	preClearCreates        int
+	reservationOrder       int
 	clearingInput          *realtimeResponse
 	auditsCreated          int
 	pendingInput           *realtimeResponse
@@ -495,6 +497,7 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 	case "input_audio_buffer.commit":
 		c.pendingCommits = append(c.pendingCommits, realtimeAudioCommit{eventID: eventID, reserved: c.pendingInput != nil})
 		if c.pendingInput != nil {
+			c.pendingInput.reservationOrder = c.nextReservationOrder()
 			c.committedInputs = append(c.committedInputs, c.pendingInput)
 			c.pendingInput = nil
 		}
@@ -503,6 +506,9 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 		c.pendingClearID = eventID
 		c.preClearCreates = len(c.pendingResponses)
 		c.clearingInput = c.pendingInput
+		if c.clearingInput != nil {
+			c.clearingInput.reservationOrder = c.nextReservationOrder()
+		}
 		c.pendingInput = nil
 		c.audioBytes = 0
 	}
@@ -550,6 +556,7 @@ func (c *RealtimeConversation) reserveClientInput(kind, eventID string, key *ent
 		reservation := c.committedInputs[0]
 		c.committedInputs = slices.Delete(c.committedInputs, 0, 1)
 		reservation.createEventID = eventID
+		reservation.reservationOrder = c.nextReservationOrder()
 		c.pendingResponses = append(c.pendingResponses, reservation)
 		return nil
 	}
@@ -564,6 +571,7 @@ func (c *RealtimeConversation) reserveClientInput(kind, eventID string, key *ent
 	}
 	if kind == "response.create" {
 		reservation.createEventID = eventID
+		reservation.reservationOrder = c.nextReservationOrder()
 		c.pendingResponses = append(c.pendingResponses, reservation)
 	} else {
 		c.pendingInput = reservation
@@ -603,13 +611,18 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 			// A delayed manual acknowledgement does not clear post-commit bytes.
 			c.pendingCommits = slices.Delete(c.pendingCommits, 0, 1)
 		} else if c.pendingClearID != "" && c.clearingInput != nil {
-			c.committedInputs = append(c.committedInputs, c.clearingInput)
+			// This commit predates the clear and any commits queued after it.
+			index := slices.IndexFunc(c.committedInputs, func(input *realtimeResponse) bool {
+				return input.reservationOrder > c.clearingInput.reservationOrder
+			})
+			if index < 0 {
+				index = len(c.committedInputs)
+			}
+			c.committedInputs = slices.Insert(c.committedInputs, index, c.clearingInput)
 			c.clearingInput = nil
 		} else {
-			if c.pendingClearID != "" && c.clearingInput != nil {
-				c.committedInputs = append(c.committedInputs, c.clearingInput)
-				c.clearingInput = nil
-			} else if c.pendingInput != nil {
+			if c.pendingInput != nil {
+				c.pendingInput.reservationOrder = c.nextReservationOrder()
 				c.committedInputs = append(c.committedInputs, c.pendingInput)
 				c.pendingInput = nil
 			}
@@ -786,6 +799,12 @@ func (c *RealtimeConversation) rejectPendingEvent(eventID string) error {
 	return nil
 }
 
+// nextReservationOrder is called with c.mu held at the create, commit or clear boundary.
+func (c *RealtimeConversation) nextReservationOrder() int {
+	c.reservationOrder++
+	return c.reservationOrder
+}
+
 // admitResponse consumes an existing reservation or checks quota before an automatic turn.
 // The caller holds c.mu so each reservation is consumed exactly once.
 func (c *RealtimeConversation) admitResponse(id string) error {
@@ -796,18 +815,16 @@ func (c *RealtimeConversation) admitResponse(id string) error {
 		return errors.New("realtime response limit reached")
 	}
 	var r *realtimeResponse
-	if c.pendingClearID != "" && c.preClearCreates > 0 && len(c.pendingResponses) > 0 {
+	explicitReady := len(c.pendingResponses) > 0 && (c.pendingClearID == "" || c.preClearCreates > 0)
+	if explicitReady && (len(c.committedInputs) == 0 || c.pendingResponses[0].reservationOrder <= c.committedInputs[0].reservationOrder) {
 		if c.preClearCreates > 0 {
 			c.preClearCreates--
 		}
 		r = c.pendingResponses[0]
-		c.pendingResponses = c.pendingResponses[1:]
+		c.pendingResponses = slices.Delete(c.pendingResponses, 0, 1)
 	} else if len(c.committedInputs) > 0 {
 		r = c.committedInputs[0]
 		c.committedInputs = slices.Delete(c.committedInputs, 0, 1)
-	} else if len(c.pendingResponses) > 0 && c.pendingClearID == "" {
-		r = c.pendingResponses[0]
-		c.pendingResponses = c.pendingResponses[1:]
 	} else if c.clearingInput != nil {
 		r = c.clearingInput
 		c.clearingInput = nil
