@@ -349,3 +349,13 @@ func TestParseUniversalURL(t *testing.T) {
 		assert.True(t, opts.TLSConfig.InsecureSkipVerify)
 	})
 }
+
+func TestClientOptionsPreserveConfiguredContextTimeout(t *testing.T) {
+	configured, err := newClientOptions(Config{URL: "redis://127.0.0.1:6379?context_timeout_enabled=true"}, false)
+	assert.NoError(t, err)
+	assert.True(t, configured.ContextTimeoutEnabled, "NewClient must preserve the Redis URL setting")
+
+	forced, err := newClientOptions(Config{URL: "redis://127.0.0.1:6379?context_timeout_enabled=false"}, true)
+	assert.NoError(t, err)
+	assert.True(t, forced.ContextTimeoutEnabled, "NewClientContext must force caller context deadlines on")
+}

@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -94,15 +95,30 @@ func TestRealtimeRedisInitializationIsCancelableWithoutSessionLock(t *testing.T)
 	require.NoError(t, err)
 	defer listener.Close()
 	accepted := make(chan struct{}, 1)
-	go func() {
+	var serverWorkers sync.WaitGroup
+	serverWorkers.Add(1)
+	startRealtimeTestWorker(t, "Redis test listener", func() {
+		defer serverWorkers.Done()
 		for {
 			conn, acceptErr := listener.Accept()
 			if acceptErr != nil {
 				return
 			}
-			accepted <- struct{}{}
-			go func() { defer conn.Close(); _, _ = io.Copy(io.Discard, conn) }()
+			select {
+			case accepted <- struct{}{}:
+			default:
+			}
+			serverWorkers.Add(1)
+			startRealtimeTestWorker(t, "Redis test connection drainer", func() {
+				defer serverWorkers.Done()
+				defer conn.Close()
+				_, _ = io.Copy(io.Discard, conn)
+			})
 		}
+	})
+	defer func() {
+		_ = listener.Close()
+		serverWorkers.Wait()
 	}()
 
 	h := &RealtimeHandlers{cache: xcache.Config{Redis: xredis.Config{Addr: listener.Addr().String()}}, sessions: map[uint64]context.CancelFunc{}, drained: make(chan struct{})}
@@ -110,10 +126,10 @@ func TestRealtimeRedisInitializationIsCancelableWithoutSessionLock(t *testing.T)
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	initialized := make(chan error, 1)
-	go func() {
+	startRealtimeTestWorker(t, "Redis admission initializer", func() {
 		_, initErr := h.limiter(ctx, rt.Config{})
 		initialized <- initErr
-	}()
+	})
 	select {
 	case <-accepted:
 	case <-time.After(time.Second):
@@ -121,13 +137,13 @@ func TestRealtimeRedisInitializationIsCancelableWithoutSessionLock(t *testing.T)
 	}
 
 	trackDone := make(chan error, 1)
-	go func() {
+	startRealtimeTestWorker(t, "Realtime session tracker", func() {
 		untrack, trackErr := h.trackSession(func() {})
 		if trackErr == nil {
 			untrack()
 		}
 		trackDone <- trackErr
-	}()
+	})
 	select {
 	case trackErr := <-trackDone:
 		require.NoError(t, trackErr, "session tracking must not wait for Redis network I/O")
@@ -140,4 +156,16 @@ func TestRealtimeRedisInitializationIsCancelableWithoutSessionLock(t *testing.T)
 	case <-time.After(time.Second):
 		t.Fatal("Redis initialization ignored request cancellation")
 	}
+}
+
+func startRealtimeTestWorker(t *testing.T, name string, worker func()) {
+	t.Helper()
+	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				t.Errorf("%s panicked: %v", name, recovered)
+			}
+		}()
+		worker()
+	}()
 }

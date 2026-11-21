@@ -387,7 +387,7 @@ func TestServerVadCommitDoesNotConsumePostClearManualCommit(t *testing.T) {
 		pendingClearID:  "clear-event",
 		clearingInput:   beforeClear,
 		committedInputs: []*realtimeResponse{postClear},
-		pendingCommits:  []realtimeAudioCommit{{eventID: "commit-post-clear", reserved: true}},
+		pendingCommits:  []realtimeAudioCommit{{eventID: "commit-post-clear", reserved: true, reservationOrder: 2}},
 		responses:       map[string]*realtimeResponse{},
 	}
 
@@ -396,6 +396,25 @@ func TestServerVadCommitDoesNotConsumePostClearManualCommit(t *testing.T) {
 	require.Equal(t, []*realtimeResponse{beforeClear, postClear}, c.committedInputs)
 	c.confirmAudioCommit()
 	require.Empty(t, c.pendingCommits, "the next acknowledgement belongs to the manual post-clear commit")
+}
+
+func TestManualCommitBeforeClearAcknowledgesBeforeClearedInput(t *testing.T) {
+	committedAudio := &realtimeResponse{reservationOrder: 1}
+	clearedAudio := &realtimeResponse{reservationOrder: 2}
+	c := &RealtimeConversation{
+		pendingClearID:  "clear-after-commit",
+		clearingInput:   clearedAudio,
+		committedInputs: []*realtimeResponse{committedAudio},
+		pendingCommits: []realtimeAudioCommit{{
+			eventID: "commit-before-clear", reserved: true, reservationOrder: 1,
+		}},
+		responses: map[string]*realtimeResponse{},
+	}
+
+	c.confirmAudioCommit()
+	require.Empty(t, c.pendingCommits, "the first server acknowledgement belongs to the manual commit sent before clear")
+	require.Same(t, clearedAudio, c.clearingInput, "clear acknowledgement must still be able to cancel the cleared audio")
+	require.Equal(t, []*realtimeResponse{committedAudio}, c.committedInputs)
 }
 
 func TestDelayedPreClearCommitPreservesPostClearAudioByteCount(t *testing.T) {
