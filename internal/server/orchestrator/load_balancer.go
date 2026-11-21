@@ -183,6 +183,20 @@ func (lb *LoadBalancer) SortWithoutTracking(ctx context.Context, candidates []*C
 	return lb.sort(ctx, candidates, model, stream, topK, false)
 }
 
+// SortTopKWithoutTracking sorts candidates and keeps at most topK of them,
+// instead of deriving topK from the retry policy. Callers use it when they need
+// more candidates than the retry budget, for example to keep spare candidates
+// for local (preflight) rejections that do not consume retries.
+func (lb *LoadBalancer) SortTopKWithoutTracking(
+	ctx context.Context,
+	candidates []*ChannelModelsCandidate,
+	model string,
+	stream bool,
+	topK int,
+) []*ChannelModelsCandidate {
+	return lb.sortWithLimit(ctx, candidates, model, stream, false, topK)
+}
+
 // TrackSelection records a selected channel.
 func (lb *LoadBalancer) TrackSelection(candidate *ChannelModelsCandidate) {
 	if candidate != nil && candidate.Channel != nil && lb.selectionTracker != nil {
@@ -190,6 +204,9 @@ func (lb *LoadBalancer) TrackSelection(candidate *ChannelModelsCandidate) {
 	}
 }
 
+// sort orders candidates, recording a channel selection when trackSelection is set.
+// The caller owns topK: it is a retry-policy decision, not a load-balancer one,
+// so callers that need spare candidates can ask for more than the retry budget.
 func (lb *LoadBalancer) sort(
 	ctx context.Context,
 	candidates []*ChannelModelsCandidate,
@@ -202,13 +219,29 @@ func (lb *LoadBalancer) sort(
 		return candidates
 	}
 
+	return lb.sortWithLimit(ctx, candidates, model, stream, trackSelection, topK)
+}
+
+// sortWithLimit sorts candidates, keeping at most topK of them.
+func (lb *LoadBalancer) sortWithLimit(
+	ctx context.Context,
+	candidates []*ChannelModelsCandidate,
+	model string,
+	stream bool,
+	trackSelection bool,
+	topK int,
+) []*ChannelModelsCandidate {
+	if len(candidates) <= 1 {
+		return candidates
+	}
+
+	if topK <= 0 || topK > len(candidates) {
+		topK = len(candidates)
+	}
+
 	// Add model information to context for circuit-breaker strategy
 	ctx = contextWithRequestedModel(ctx, model)
 	ctx = contextWithRequestStream(ctx, stream)
-
-	if topK <= 0 || topK >= len(candidates) {
-		topK = len(candidates)
-	}
 
 	// Use debug path if debug mode is enabled
 	debugEnabled := IsDebugEnabled(ctx)

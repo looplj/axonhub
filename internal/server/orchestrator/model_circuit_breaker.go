@@ -188,20 +188,58 @@ func (s *probeReleasingStream) Current() *llm.Response {
 		return nil
 	}
 
-	if s.modelCircuitBreaker == nil {
-		return event
-	}
-
-	if !s.recorded {
-		if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
-			if s.channelID != 0 && s.modelID != "" {
-				s.modelCircuitBreaker.RecordSuccess(s.ctx, s.channelID, s.modelID)
-			}
-			s.recorded = true
-		}
+	// Close the circuit as soon as the response proves it worked. Do not wait for
+	// the stream to end: the pipeline may still reject the attempt afterwards.
+	if !s.recorded && responseProvesCompletion(event) {
+		s.recordSuccess()
 	}
 
 	return event
+}
+
+// responseProvesCompletion reports whether an event proves the response actually
+// finished: a protocol terminal marker or reported token usage.
+//
+// Merely ending without an error is not proof. An empty or metadata-only stream
+// ends cleanly too, and the pipeline turns that into llm.ErrStreamIncomplete;
+// recording success there would keep clearing the failure counter instead of
+// letting the circuit open or the probe back off.
+func responseProvesCompletion(event *llm.Response) bool {
+	if event == nil {
+		return false
+	}
+
+	if event == llm.DoneResponse || event.Object == "[DONE]" {
+		return true
+	}
+
+	for _, choice := range event.Choices {
+		if choice.FinishReason != nil {
+			return true
+		}
+	}
+
+	if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
+		return true
+	}
+
+	return false
+}
+
+// recordSuccess marks the model healthy once per stream. It is a no-op when the
+// stream is not tracked, already recorded, or has no channel/model to attribute
+// the success to.
+func (s *probeReleasingStream) recordSuccess() {
+	if s.recorded || s.modelCircuitBreaker == nil {
+		return
+	}
+
+	if s.channelID == 0 || s.modelID == "" {
+		return
+	}
+
+	s.modelCircuitBreaker.RecordSuccess(s.ctx, s.channelID, s.modelID)
+	s.recorded = true
 }
 
 func (s *probeReleasingStream) Err() error {
