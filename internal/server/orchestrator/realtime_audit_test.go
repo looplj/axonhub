@@ -81,6 +81,29 @@ func TestRealtimeAuditRetryDoesNotRepeatUsage(t *testing.T) {
 		adapter, _ := openairt.NewAdapter("gpt-realtime-2.1-mini")
 		return &RealtimeConversation{service: service, ctx: ctx, target: c.target, state: state, adapter: adapter, responses: map[string]*realtimeResponse{}, lastCheck: time.Now()}
 	}
+	automatic := newConversation()
+	_, err = automatic.Client([]byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`))
+	require.NoError(t, err)
+	firstAudio := automatic.pendingInput
+	require.NotNil(t, firstAudio)
+	_, err = automatic.Server([]byte(`{"type":"input_audio_buffer.committed"}`))
+	require.NoError(t, err)
+	require.Nil(t, automatic.pendingInput)
+	require.Equal(t, []*realtimeResponse{firstAudio}, automatic.committedInputs)
+	_, err = automatic.Client([]byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`))
+	require.NoError(t, err)
+	secondAudio := automatic.pendingInput
+	require.NotNil(t, secondAudio)
+	require.NotSame(t, firstAudio, secondAudio)
+	_, err = automatic.Server([]byte(`{"type":"response.created","response":{"id":"automatic-audio"}}`))
+	require.NoError(t, err)
+	require.Same(t, firstAudio, automatic.responses["automatic-audio"])
+	_, err = automatic.Server([]byte(`{"type":"response.done","response":{"id":"automatic-audio","status":"completed","usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2,"input_token_details":{"text_tokens":1,"audio_tokens":0},"output_token_details":{"text_tokens":1,"audio_tokens":0}}}}`))
+	require.NoError(t, err)
+	automatic.Close()
+	require.Equal(t, request.StatusCompleted, db.Request.GetX(ctx, firstAudio.request.ID).Status)
+	require.Equal(t, request.StatusFailed, db.Request.GetX(ctx, secondAudio.request.ID).Status)
+
 	cleared := newConversation()
 	_, err = cleared.Client([]byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`))
 	require.NoError(t, err)
@@ -130,7 +153,7 @@ func TestRealtimeAuditRetryDoesNotRepeatUsage(t *testing.T) {
 	require.Len(t, interrupted.pendingResponses, 1)
 	interrupted.Close()
 	require.NoError(t, usage.EnsureRealtimeUsageReconciled(ctx, key.ID), "an interrupted response must not permanently lock the key")
-	require.Equal(t, 2, db.UsageLog.Query().CountX(ctx), "pending requests must never become fabricated zero-cost usage")
+	require.Equal(t, 3, db.UsageLog.Query().CountX(ctx), "pending requests must never become fabricated zero-cost usage")
 }
 
 func TestAutomaticRealtimeTurnChecksRequestQuota(t *testing.T) {

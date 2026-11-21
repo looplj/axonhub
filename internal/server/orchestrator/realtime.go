@@ -603,6 +603,10 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 			// A delayed manual acknowledgement does not clear post-commit bytes.
 			c.pendingCommits = slices.Delete(c.pendingCommits, 0, 1)
 		} else {
+			if c.pendingInput != nil {
+				c.committedInputs = append(c.committedInputs, c.pendingInput)
+				c.pendingInput = nil
+			}
 			c.audioBytes = 0
 		}
 	}
