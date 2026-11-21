@@ -170,3 +170,19 @@ func TestQwenFailedResponseRedaction(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, normal, wire)
 }
+
+func TestQwenTranscriptionFailureRedactsProviderDetails(t *testing.T) {
+	for _, native := range []bool{true, false} {
+		adapter, err := NewAdapter("qwen3.8-omni-flash-realtime", native)
+		require.NoError(t, err)
+		raw := []byte(`{"type":"conversation.item.input_audio_transcription.failed","event_id":"event-1","item_id":"item-1","error":{"event_id":"client-event","message":"private provider detail","param":"secret"}}`)
+		redacted, err := adapter.Server(raw)
+		require.NoError(t, err)
+		require.Contains(t, string(redacted), "event-1")
+		require.Contains(t, string(redacted), "item-1")
+		require.Contains(t, string(redacted), "client-event")
+		require.Contains(t, string(redacted), "upstream_error")
+		require.NotContains(t, string(redacted), "private")
+		require.NotContains(t, string(redacted), "secret")
+	}
+}

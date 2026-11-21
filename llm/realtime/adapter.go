@@ -559,21 +559,21 @@ func (a *Adapter) Server(data []byte) ([]byte, error) {
 	}
 	e := event.Fields
 	if event.Type == "error" {
-		safe := map[string]any{"type": "invalid_request_error", "code": "upstream_error", "message": "The Qwen Realtime service rejected an event."}
-		if upstream, ok := e["error"].(map[string]any); ok {
-			if id, ok := upstream["event_id"].(string); ok && id != "" {
-				safe["event_id"] = id
-				if id == a.pendingUpdateID {
-					a.inputRate = a.confirmedInput
-					a.outputRate = a.confirmedOutput
-					a.pendingUpdateID = ""
-				}
-			}
+		if id := qwenErrorEventID(e["error"]); id == a.pendingUpdateID && id != "" {
+			a.inputRate = a.confirmedInput
+			a.outputRate = a.confirmedOutput
+			a.pendingUpdateID = ""
 		}
-		e["error"] = safe
+		redactQwenError(e, "invalid_request_error", "The Qwen Realtime service rejected an event.")
 		return json.Marshal(e)
 	}
+	if event.Type == "conversation.item.input_audio_transcription.failed" {
+		redactQwenError(e, "server_error", "The Qwen Realtime transcription failed.")
+	}
 	if a.native {
+		if event.Type == "conversation.item.input_audio_transcription.failed" {
+			return json.Marshal(e)
+		}
 		if event.Type == "session.updated" {
 			s, err := object(e["session"])
 			if err != nil {
@@ -651,6 +651,20 @@ func (a *Adapter) Server(data []byte) ([]byte, error) {
 		}
 	}
 	return json.Marshal(e)
+}
+
+func qwenErrorEventID(value any) string {
+	upstream, _ := value.(map[string]any)
+	id, _ := upstream["event_id"].(string)
+	return id
+}
+
+func redactQwenError(event map[string]any, kind, message string) {
+	safe := map[string]any{"type": kind, "code": "upstream_error", "message": message}
+	if id := qwenErrorEventID(event["error"]); id != "" {
+		safe["event_id"] = id
+	}
+	event["error"] = safe
 }
 
 // redactQwenResponseError reports whether the response needs to be serialized again.
