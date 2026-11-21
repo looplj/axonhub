@@ -1,4 +1,4 @@
-// 职责: 覆盖 Realtime 价格快照、精确四类 token 账单与渠道失效后的记账。
+// 职责: 覆盖 Realtime 价格快照、分项 token 账单与渠道失效后的记账。
 // 关联文件:
 //
 //	internal/server/biz/realtime_billing.go
@@ -184,19 +184,51 @@ func TestUsageLogService_RealtimePrice(t *testing.T) {
 	}
 }
 
-func TestUsageLogService_RealtimePrice_RejectsInvalidPrice(t *testing.T) {
+func TestUsageLogService_RealtimePrice_AcceptsInputAudioOnlyPrice(t *testing.T) {
 	partial := objects.ModelPrice{Items: []objects.ModelPriceItem{
 		{
-			ItemCode: objects.PriceItemCodeRealtimeInputText,
-			Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: mustDecimalPtr("1")},
+			ItemCode: objects.PriceItemCodeRealtimeInputAudio,
+			Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: mustDecimalPtr("2")},
 		},
 	}}
 
 	f := newRealtimeBillingFixture(t, partial)
 
-	_, err := f.svc.RealtimePrice(f.ctx, f.channelID, f.model)
+	snapshot, err := f.svc.RealtimePrice(f.ctx, f.channelID, f.model)
+	require.NoError(t, err)
+	require.NotNil(t, snapshot)
+	require.Len(t, snapshot.Price.Items, 1)
+
+	created, err := f.svc.CreateRealtimeUsage(f.ctx, f.createParams(realtimeUsageFixture()), snapshot)
+	require.NoError(t, err)
+	require.EqualValues(t, 1500, created.TotalTokens)
+	require.Len(t, created.CostItems, 1, "unpriced modalities are omitted from the bill")
+	require.Equal(t, objects.PriceItemCodeRealtimeInputAudio, created.CostItems[0].ItemCode)
+	require.Equal(t, int64(300), created.CostItems[0].Quantity)
+	require.InDelta(t, 0.0006, *created.TotalCost, 1e-12)
+}
+
+func TestUsageLogService_CreateRealtimeUsage_OpenAIKeepsImageCacheRatesComplete(t *testing.T) {
+	f := newRealtimeBillingFixture(t, objects.ModelPrice{})
+	price := objects.ModelPrice{Items: []objects.ModelPriceItem{
+		{ItemCode: objects.PriceItemCodeRealtimeInputAudio, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: mustDecimalPtr("2")}},
+		{ItemCode: objects.PriceItemCodeRealtimeInputImage, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: mustDecimalPtr("3")}},
+		{ItemCode: objects.PriceItemCodeRealtimeCachedInputText, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: mustDecimalPtr("0.1")}},
+		{ItemCode: objects.PriceItemCodeRealtimeCachedInputAudio, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: mustDecimalPtr("0.2")}},
+		{ItemCode: objects.PriceItemCodeRealtimeCachedInputImage, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: mustDecimalPtr("0.3")}},
+	}}
+	snapshot := &RealtimePriceSnapshot{Price: price, RequireOpenAIImageCacheRates: true}
+
+	created, err := f.svc.CreateRealtimeUsage(f.ctx, f.createParams(realtimeUsageFixture()), snapshot)
+	require.NoError(t, err)
+	require.NotNil(t, created.TotalCost)
+	require.Contains(t, lo.Map(created.CostItems, func(item objects.CostItem, _ int) objects.PriceItemCode { return item.ItemCode }), objects.PriceItemCodeRealtimeInputAudio)
+	require.NotContains(t, lo.Map(created.CostItems, func(item objects.CostItem, _ int) objects.PriceItemCode { return item.ItemCode }), objects.PriceItemCodeRealtimeOutputText)
+
+	deleteImageCacheRate := &RealtimePriceSnapshot{Price: objects.ModelPrice{Items: price.Items[:len(price.Items)-1]}, RequireOpenAIImageCacheRates: true}
+	_, err = f.svc.CreateRealtimeUsage(f.ctx, f.createParams(realtimeUsageFixture()), deleteImageCacheRate)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "missing realtime item code")
+	require.Contains(t, err.Error(), "realtime_cached_input_image_tokens")
 }
 
 func TestUsageLogService_RealtimePrice_IgnoresLegacyLibraryPrices(t *testing.T) {
@@ -392,7 +424,7 @@ func TestUsageLogService_CreateRealtimeUsage_RejectsInvalidUsage(t *testing.T) {
 		require.Empty(t, row.CostPriceReferenceID)
 	})
 
-	t.Run("incomplete snapshot", func(t *testing.T) {
+	t.Run("partial snapshot bills only configured modalities", func(t *testing.T) {
 		partial := &RealtimePriceSnapshot{
 			Price: objects.ModelPrice{Items: []objects.ModelPriceItem{
 				{
@@ -403,9 +435,12 @@ func TestUsageLogService_CreateRealtimeUsage_RejectsInvalidUsage(t *testing.T) {
 			ReferenceID: "partial",
 		}
 
-		_, err := f.svc.CreateRealtimeUsage(f.ctx, f.createParams(realtimeUsageFixture()), partial)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "missing realtime item code")
+		created, err := f.svc.CreateRealtimeUsage(f.ctx, f.createParams(realtimeUsageFixture()), partial)
+		require.NoError(t, err)
+		require.Len(t, created.CostItems, 1)
+		require.Equal(t, objects.PriceItemCodeRealtimeInputText, created.CostItems[0].ItemCode)
+		require.Equal(t, int64(700), created.CostItems[0].Quantity)
+		require.InDelta(t, 0.0007, *created.TotalCost, 1e-12)
 	})
 }
 

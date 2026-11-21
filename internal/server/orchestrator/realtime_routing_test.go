@@ -33,7 +33,13 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	actual := "gpt-realtime-2.1-mini"
 	row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("route-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream"}).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIChatCompletion.String(), Path: "/custom/chat"}}).SetSupportedModels([]string{actual, openairt.TranslationModel}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime", HandshakeTimeoutMs: lo.ToPtr(int64(30000))}, ModelProtocols: []objects.ModelProtocol{{Model: actual, APIFormats: []string{"openai/chat_completions"}, Enabled: lo.ToPtr(true)}}}).SaveX(ctx)
 	price := objects.ModelPrice{}
-	for _, code := range objects.AllRealtimePriceItemCodes() {
+	for _, code := range []objects.PriceItemCode{
+		objects.PriceItemCodeRealtimeInputAudio,
+		objects.PriceItemCodeRealtimeInputImage,
+		objects.PriceItemCodeRealtimeCachedInputText,
+		objects.PriceItemCodeRealtimeCachedInputAudio,
+		objects.PriceItemCodeRealtimeCachedInputImage,
+	} {
 		rate := decimal.NewFromInt(1)
 		price.Items = append(price.Items, objects.ModelPriceItem{ItemCode: code, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: &rate}})
 	}
@@ -59,6 +65,9 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	require.Equal(t, actual, target.Model)
 	require.Equal(t, "voice", target.ClientModel)
 	require.Equal(t, llm.APIFormatOpenAIRealtimeWebSocket, target.APIFormat)
+	require.NotNil(t, target.Price)
+	require.True(t, target.Price.RequireOpenAIImageCacheRates)
+	require.Len(t, target.Price.Price.Items, 5, "OpenAI image/cache rates stay complete while voice rates may be partial")
 	require.Equal(t, "wss://api.openai.com/v1/realtime?model="+actual, target.URL)
 	require.NotContains(t, target.SafetyIdentifier, key.Key)
 	require.Len(t, target.SafetyIdentifier, 64)

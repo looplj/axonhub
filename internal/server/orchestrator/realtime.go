@@ -199,6 +199,7 @@ func (s *RealtimeService) prepare(ctx context.Context, model string, native, tra
 						log.Warn(ctx, "realtime candidate configuration rejected", log.Int("channel_id", ch.ID))
 						continue
 					}
+					price.RequireOpenAIImageCacheRates = true
 				}
 				identifier := sha256.Sum256([]byte("axonhub-realtime-v1:" + key.Key + ":" + strconv.Itoa(key.UserID) + ":" + strconv.Itoa(key.ProjectID)))
 				timeout := time.Duration(0)

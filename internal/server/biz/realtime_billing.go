@@ -1,4 +1,4 @@
-// 职责: 冻结实时会话的四种 token 价格快照，并在渠道失效后仍按快照精确记账。
+// 职责: 冻结实时会话已配置的模态费率，并在渠道失效后仍按快照精确记账。
 // 关联文件:
 //
 //	internal/objects/price.go
@@ -10,7 +10,7 @@
 //
 //	快照深拷贝，渠道价格重载或会话中渠道被禁用都不得改变已开始的会话账单。
 //	CreateRealtimeUsage 不得重查价格：渠道禁用后重查会丢失计量。
-//	四个实时价格码与历史 prompt_tokens/completion_tokens 语义独立，互不参与计算。
+//	Realtime 模态价格码与历史 prompt_tokens/completion_tokens 语义独立，互不参与计算。
 //	审计用 cost_items 保存 decimal 小计，total_cost float 仅用于历史兼容。
 
 package biz
@@ -38,13 +38,16 @@ type RealtimePriceSnapshot struct {
 	Price       objects.ModelPrice
 	ReferenceID string
 	QuotedAt    time.Time
+	// RequireOpenAIImageCacheRates preserves OpenAI's complete image/cache
+	// validation after the channel price cache is reloaded or disabled.
+	RequireOpenAIImageCacheRates bool
 }
 
-// RealtimePrice resolves and freezes the four-code realtime price for a
+// RealtimePrice resolves and freezes configured modality rates for a
 // channel/model pair. It reuses the enabled-channel price cache first and the
-// shared model library fallback second. A price missing any of the four codes,
-// a duplicate code, an invalid schedule, or a non-positive price is rejected.
-// No corresponding rates yields a nil snapshot and usage without a charge.
+// shared model library fallback second. Missing rates are left unpriced;
+// duplicates, invalid schedules and non-positive configured rates are rejected.
+// No effective Realtime rates yields a nil snapshot and usage without a charge.
 func (s *UsageLogService) RealtimePrice(ctx context.Context, channelID int, model string) (*RealtimePriceSnapshot, error) {
 	return s.realtimePrice(ctx, channelID, model, objects.ValidateRealtimePrice, func(code objects.PriceItemCode) bool {
 		return objects.IsRealtimePriceItemCode(code) && code != objects.PriceItemCodeRealtimeTranslationAudioSamples
@@ -107,6 +110,9 @@ func (s *UsageLogService) realtimePrice(ctx context.Context, channelID int, mode
 		}
 		frozen.Schedule = nil
 	}
+	if !hasRate(frozen.Items) {
+		return nil, nil
+	}
 	return &RealtimePriceSnapshot{
 		Price:       frozen,
 		ReferenceID: referenceID,
@@ -117,8 +123,9 @@ func (s *UsageLogService) realtimePrice(ctx context.Context, channelID int, mode
 // CreateRealtimeUsage persists confirmed realtime usage with the frozen
 // snapshot. It never re-resolves the price, because a realtime channel can be
 // disabled while its session is still running and re-resolution would lose the
-// metering. The four realtime cost items keep exact decimal subtotals; the
-// legacy total_cost float is set from the same exact decimal sum.
+// metering. Configured modality CostItems keep exact decimal subtotals; missing
+// rates do not produce charges. The legacy total_cost float is set from the
+// same exact decimal sum.
 func (s *UsageLogService) CreateRealtimeUsage(
 	ctx context.Context,
 	params CreateUsageLogParams,
@@ -138,7 +145,11 @@ func (s *UsageLogService) CreateRealtimeUsage(
 	if snapshot == nil {
 		return s.saveRealtimeUsage(ctx, params, nil, nil, decimal.Zero)
 	}
-	if err := objects.ValidateRealtimePrice(snapshot.Price); err != nil {
+	validatePrice := objects.ValidateRealtimePrice
+	if snapshot.RequireOpenAIImageCacheRates {
+		validatePrice = objects.ValidateOpenAIRealtimePrice
+	}
+	if err := validatePrice(snapshot.Price); err != nil {
 		return nil, fmt.Errorf("invalid realtime price snapshot: %w", err)
 	}
 
@@ -261,9 +272,9 @@ func validateRealtimeUsage(usage *llm.Usage) error {
 	return nil
 }
 
-// computeRealtimeCostItems bills only the four realtime codes, in audit order,
-// and sums their exact decimal subtotals. Legacy codes never contribute, so a
-// price carrying both sets cannot double-count the same tokens.
+// computeRealtimeCostItems bills only configured Realtime codes, in audit
+// order, and sums their exact decimal subtotals. Legacy codes never contribute,
+// so a price carrying both sets cannot double-count the same tokens.
 func computeRealtimeCostItems(usage *llm.Usage, price objects.ModelPrice) ([]objects.CostItem, decimal.Decimal, error) {
 	computed, _ := ComputeRealtimeUsageCost(usage, price, time.Now())
 
@@ -287,22 +298,6 @@ func computeRealtimeCostItems(usage *llm.Usage, price objects.ModelPrice) ([]obj
 	for _, code := range objects.AllRealtimePriceItemCodes() {
 		item, ok := byCode[code]
 		if !ok {
-			required := false
-			if d := usage.Realtime; d != nil {
-				switch code {
-				case objects.PriceItemCodeRealtimeInputImage:
-					required = d.InputImageTokens > d.CachedInputImageTokens
-				case objects.PriceItemCodeRealtimeCachedInputText:
-					required = d.CachedInputTextTokens > 0
-				case objects.PriceItemCodeRealtimeCachedInputAudio:
-					required = d.CachedInputAudioTokens > 0
-				case objects.PriceItemCodeRealtimeCachedInputImage:
-					required = d.CachedInputImageTokens > 0
-				}
-			}
-			if required {
-				return nil, decimal.Zero, fmt.Errorf("realtime usage requires missing price item %q", code)
-			}
 			continue
 		}
 

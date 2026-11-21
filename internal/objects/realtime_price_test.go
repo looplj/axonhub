@@ -1,4 +1,4 @@
-// 职责: 覆盖 Realtime 四个价格码及价格完整性校验。
+// 职责: 验证 Realtime 已配置价格码的有效性以及部分模态费率支持。
 // 关联文件:
 //
 //	internal/objects/price.go
@@ -15,7 +15,7 @@ import (
 func realtimePriceItems(rates map[PriceItemCode]string) []ModelPriceItem {
 	items := make([]ModelPriceItem, 0, len(rates))
 
-	for _, code := range RealtimePriceItemCodes() {
+	for _, code := range AllRealtimePriceItemCodes() {
 		rate, ok := rates[code]
 		if !ok {
 			continue
@@ -73,13 +73,11 @@ func TestValidateRealtimePrice(t *testing.T) {
 		require.NoError(t, ValidateRealtimePrice(ModelPrice{Items: items}))
 	})
 
-	t.Run("rejects a missing realtime item", func(t *testing.T) {
-		rates := validRealtimeRates()
-		delete(rates, PriceItemCodeRealtimeOutputAudio)
-
-		err := ValidateRealtimePrice(ModelPrice{Items: realtimePriceItems(rates)})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "realtime_output_audio_tokens")
+	t.Run("accepts a partial realtime rate table", func(t *testing.T) {
+		price := ModelPrice{Items: realtimePriceItems(map[PriceItemCode]string{
+			PriceItemCodeRealtimeInputAudio: "2.20",
+		})}
+		require.NoError(t, ValidateRealtimePrice(price))
 	})
 
 	t.Run("rejects duplicate realtime item", func(t *testing.T) {
@@ -140,26 +138,70 @@ func TestValidateRealtimePrice(t *testing.T) {
 		require.Contains(t, err.Error(), "invalid timezone")
 	})
 
-	t.Run("rejects a schedule override missing a realtime item", func(t *testing.T) {
-		rates := validRealtimeRates()
-		delete(rates, PriceItemCodeRealtimeInputText)
-
+	t.Run("accepts partial rates in a schedule override", func(t *testing.T) {
 		price := ModelPrice{
-			Items: realtimePriceItems(validRealtimeRates()),
+			Items: realtimePriceItems(map[PriceItemCode]string{PriceItemCodeRealtimeInputText: "1.10"}),
 			Schedule: &PriceSchedule{
 				Timezone: "UTC",
 				Overrides: []PriceOverride{{
 					Name:     "partial",
 					Priority: 1,
 					When:     OverrideWhen{DailyTime: &DailyTimeRange{Start: "00:00", End: "23:59"}},
-					Items:    realtimePriceItems(rates),
+					Items:    realtimePriceItems(map[PriceItemCode]string{PriceItemCodeRealtimeOutputText: "3.30"}),
 				}},
 			},
 		}
 
-		err := ValidateRealtimePrice(price)
+		require.NoError(t, ValidateRealtimePrice(price))
+	})
+
+	t.Run("accepts partial voice rates with complete OpenAI image and cache rates", func(t *testing.T) {
+		price := ModelPrice{Items: append(realtimePriceItems(map[PriceItemCode]string{
+			PriceItemCodeRealtimeInputAudio: "2.20",
+		}), realtimePriceItems(map[PriceItemCode]string{
+			PriceItemCodeRealtimeInputImage:       "4.50",
+			PriceItemCodeRealtimeCachedInputText:  "0.10",
+			PriceItemCodeRealtimeCachedInputAudio: "0.20",
+			PriceItemCodeRealtimeCachedInputImage: "0.30",
+		})...)}
+		require.NoError(t, ValidateOpenAIRealtimePrice(price))
+	})
+
+	t.Run("requires complete OpenAI image and cache rates", func(t *testing.T) {
+		price := ModelPrice{Items: append(realtimePriceItems(map[PriceItemCode]string{
+			PriceItemCodeRealtimeInputAudio: "2.20",
+		}), realtimePriceItems(map[PriceItemCode]string{
+			PriceItemCodeRealtimeInputImage:       "4.50",
+			PriceItemCodeRealtimeCachedInputText:  "0.10",
+			PriceItemCodeRealtimeCachedInputAudio: "0.20",
+		})...)}
+		err := ValidateOpenAIRealtimePrice(price)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "realtime_input_text_tokens")
+		require.Contains(t, err.Error(), "realtime_cached_input_image_tokens")
+	})
+
+	t.Run("requires complete OpenAI image and cache rates in schedule overrides", func(t *testing.T) {
+		baseRates := map[PriceItemCode]string{
+			PriceItemCodeRealtimeInputImage:       "4.50",
+			PriceItemCodeRealtimeCachedInputText:  "0.10",
+			PriceItemCodeRealtimeCachedInputAudio: "0.20",
+			PriceItemCodeRealtimeCachedInputImage: "0.30",
+		}
+		price := ModelPrice{
+			Items: realtimePriceItems(baseRates),
+			Schedule: &PriceSchedule{
+				Timezone: "UTC",
+				Overrides: []PriceOverride{{
+					Name:     "missing-cached-image",
+					Priority: 1,
+					When:     OverrideWhen{DailyTime: &DailyTimeRange{Start: "00:00", End: "23:59"}},
+					Items:    realtimePriceItems(map[PriceItemCode]string{PriceItemCodeRealtimeInputImage: "4.50"}),
+				}},
+			},
+		}
+		err := ValidateOpenAIRealtimePrice(price)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "realtime_cached_input_text_tokens")
 	})
 
 	t.Run("rejects a non-positive tier", func(t *testing.T) {

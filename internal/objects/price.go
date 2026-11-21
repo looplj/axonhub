@@ -292,9 +292,9 @@ func IsRealtimePriceItemCode(code PriceItemCode) bool {
 	}
 }
 
-// ValidateRealtimePrice rejects a price that cannot bill the four realtime codes
-// exactly once. The base items and every schedule override must each carry one
-// positive entry per code; duplicates and non-positive prices are rejected.
+// ValidateRealtimePrice checks configured Realtime price items. Each present
+// Realtime code must appear once and have positive pricing; absent codes remain
+// unpriced and are not charged.
 func ValidateRealtimePrice(price ModelPrice) error {
 	if err := price.Validate(); err != nil {
 		return fmt.Errorf("price: %w", err)
@@ -317,7 +317,7 @@ func ValidateRealtimePrice(price ModelPrice) error {
 }
 
 func validateRealtimePriceItems(label string, items []ModelPriceItem) error {
-	counts := make(map[PriceItemCode]int, len(RealtimePriceItemCodes()))
+	seen := make(map[PriceItemCode]struct{}, len(RealtimePriceItemCodes()))
 
 	for i := range items {
 		item := &items[i]
@@ -325,19 +325,13 @@ func validateRealtimePriceItems(label string, items []ModelPriceItem) error {
 			continue
 		}
 
-		counts[item.ItemCode]++
-		if counts[item.ItemCode] > 1 {
+		if _, exists := seen[item.ItemCode]; exists {
 			return fmt.Errorf("%s[%d]: duplicate realtime item code %q", label, i, item.ItemCode)
 		}
+		seen[item.ItemCode] = struct{}{}
 
 		if !hasPositivePricing(item.Pricing) {
 			return fmt.Errorf("%s[%d]: realtime item %q requires a positive price", label, i, item.ItemCode)
-		}
-	}
-
-	for _, code := range RealtimePriceItemCodes() {
-		if counts[code] == 0 {
-			return fmt.Errorf("%s: missing realtime item code %q", label, code)
 		}
 	}
 
