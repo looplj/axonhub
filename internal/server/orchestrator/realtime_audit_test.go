@@ -326,3 +326,39 @@ func TestRealtimeResponseReservationsKeepAudioClearOrder(t *testing.T) {
 	require.NoError(t, c.admitResponse("explicit-after"))
 	require.Same(t, after, c.responses["explicit-after"])
 }
+
+func TestServerVadCommitKeepsPreClearTurnAheadOfPostClearCreate(t *testing.T) {
+	ctx, db := setupTest(t)
+	project := db.Project.Create().SetName("vad-clear-order").SaveX(ctx)
+	ctx = contexts.WithProjectID(ctx, project.ID)
+	key := db.APIKey.Create().SetName("vad-clear-order").SetKey("vad-clear-order").SetProjectID(project.ID).SetType("user").SaveX(ctx)
+	ctx = contexts.WithAPIKey(ctx, key)
+	system := newTestSystemService(db)
+	requests := newTestRequestServiceForChannels(db, system)
+	requestRow, err := requests.CreateRealtimeRequest(ctx, "voice", 1, "vad-clear-order", objects.JSONRawMessage(`{}`))
+	require.NoError(t, err)
+	state := rt.NewState()
+	require.NoError(t, state.Connecting())
+	require.NoError(t, state.ObserveServer("session.created"))
+	require.NoError(t, state.ObserveServer("session.updated"))
+	adapter, err := openairt.NewAdapter("gpt-realtime-2.1-mini")
+	require.NoError(t, err)
+	beforeClear := &realtimeResponse{request: requestRow}
+	postClearCreate := &realtimeResponse{createEventID: "post-clear-create"}
+	c := &RealtimeConversation{
+		ctx: ctx, service: &RealtimeService{Requests: requests}, state: state, adapter: adapter, target: &RealtimeTarget{APIFormat: llm.APIFormatOpenAIRealtimeWebSocket},
+		pendingClearID: "clear-event", clearingInput: beforeClear,
+		pendingResponses: []*realtimeResponse{postClearCreate}, responses: map[string]*realtimeResponse{},
+	}
+
+	_, err = c.Server([]byte(`{"type":"input_audio_buffer.committed"}`))
+	require.NoError(t, err)
+	_, err = c.Server([]byte(`{"type":"input_audio_buffer.cleared"}`))
+	require.NoError(t, err)
+	_, err = c.Server([]byte(`{"type":"response.created","response":{"id":"pre-clear-vad"}}`))
+	require.NoError(t, err)
+	require.Same(t, beforeClear, c.responses["pre-clear-vad"])
+	_, err = c.Server([]byte(`{"type":"response.created","response":{"id":"post-clear-manual"}}`))
+	require.NoError(t, err)
+	require.Same(t, postClearCreate, c.responses["post-clear-manual"])
+}

@@ -602,8 +602,14 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 		if len(c.pendingCommits) > 0 {
 			// A delayed manual acknowledgement does not clear post-commit bytes.
 			c.pendingCommits = slices.Delete(c.pendingCommits, 0, 1)
+		} else if c.pendingClearID != "" && c.clearingInput != nil {
+			c.committedInputs = append(c.committedInputs, c.clearingInput)
+			c.clearingInput = nil
 		} else {
-			if c.pendingInput != nil {
+			if c.pendingClearID != "" && c.clearingInput != nil {
+				c.committedInputs = append(c.committedInputs, c.clearingInput)
+				c.clearingInput = nil
+			} else if c.pendingInput != nil {
 				c.committedInputs = append(c.committedInputs, c.pendingInput)
 				c.pendingInput = nil
 			}
@@ -790,7 +796,7 @@ func (c *RealtimeConversation) admitResponse(id string) error {
 		return errors.New("realtime response limit reached")
 	}
 	var r *realtimeResponse
-	if len(c.pendingResponses) > 0 && (c.pendingClearID == "" || c.preClearCreates > 0) {
+	if c.pendingClearID != "" && c.preClearCreates > 0 && len(c.pendingResponses) > 0 {
 		if c.preClearCreates > 0 {
 			c.preClearCreates--
 		}
@@ -799,6 +805,9 @@ func (c *RealtimeConversation) admitResponse(id string) error {
 	} else if len(c.committedInputs) > 0 {
 		r = c.committedInputs[0]
 		c.committedInputs = slices.Delete(c.committedInputs, 0, 1)
+	} else if len(c.pendingResponses) > 0 && c.pendingClearID == "" {
+		r = c.pendingResponses[0]
+		c.pendingResponses = c.pendingResponses[1:]
 	} else if c.clearingInput != nil {
 		r = c.clearingInput
 		c.clearingInput = nil
