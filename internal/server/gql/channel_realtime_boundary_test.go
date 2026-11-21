@@ -137,3 +137,20 @@ func TestChannelRealtimeConfigurationPersists(t *testing.T) {
 		})
 	}
 }
+
+func TestSaveChannelEndpointsAcceptsLegacyStringVariable(t *testing.T) {
+	db, seed, execute := realtimeConfigGraphQLFixture(t)
+	input := map[string]any{"type": "openai", "name": "legacy-client", "credentials": map[string]any{"apiKey": "synthetic"}, "supportedModels": []string{"voice"}, "defaultTestModel": "voice"}
+	status, body := execute(`mutation($i:CreateChannelInput!){createChannel(input:$i){id}}`, map[string]any{"i": input})
+	require.Equal(t, 200, status, string(body))
+	id := gjson.GetBytes(body, "data.createChannel.id").String()
+	require.NotEmpty(t, id, string(body))
+	query := `mutation($id:ID!,$format:String!){saveChannelEndpoints(input:{channelID:$id,endpoints:[{apiFormat:$format}]}){id}}`
+	status, body = execute(query, map[string]any{"id": id, "format": "openai/chat_completions"})
+	require.Equal(t, 200, status, string(body))
+	require.Equal(t, id, gjson.GetBytes(body, "data.saveChannelEndpoints.id").String(), string(body))
+	status, body = execute(query, map[string]any{"id": id, "format": "openai/realtime-ws"})
+	require.Equal(t, 422, status, string(body))
+	require.Equal(t, "ENDPOINT_REALTIME_NOT_ALLOWED", gjson.GetBytes(body, "errors.0.extensions.code").String())
+	require.Equal(t, "openai/chat_completions", db.Channel.Query().OnlyX(seed).Endpoints[0].APIFormat)
+}

@@ -139,6 +139,11 @@ func TestSessionInternalErrorCloseFrame(t *testing.T) {
 
 func socketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
 	t.Helper()
+	return socketPairWithDialer(t, websocket.DefaultDialer)
+}
+
+func socketPairWithDialer(t *testing.T, dialer *websocket.Dialer) (*websocket.Conn, *websocket.Conn) {
+	t.Helper()
 	accepted := make(chan *websocket.Conn, 1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, e := (&websocket.Upgrader{}).Upgrade(w, r, nil)
@@ -147,7 +152,7 @@ func socketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
 		}
 	}))
 	t.Cleanup(srv.Close)
-	client, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	client, _, err := dialer.Dial("ws"+strings.TrimPrefix(srv.URL, "http"), nil)
 	require.NoError(t, err)
 	server := <-accepted
 	t.Cleanup(func() { client.Close(); server.Close() })
@@ -401,4 +406,83 @@ func TestRejectedClientEventPreservesCorrelation(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("workers did not stop")
 	}
+}
+
+type gatedSessionWriteConn struct {
+	net.Conn
+	nextWrite atomic.Bool
+	entered   chan struct{}
+	release   <-chan struct{}
+	ctx       context.Context
+}
+
+func (c *gatedSessionWriteConn) Write(data []byte) (int, error) {
+	if c.nextWrite.Swap(false) {
+		close(c.entered)
+		select {
+		case <-c.release:
+		case <-c.ctx.Done():
+			return 0, c.ctx.Err()
+		}
+	}
+	return c.Conn.Write(data)
+}
+
+func TestSessionOrderlyUpstreamCloseDeliversQueuedTail(t *testing.T) {
+	release := make(chan struct{})
+	var gate *gatedSessionWriteConn
+	dialer := websocket.Dialer{NetDialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+		var dial net.Dialer
+		conn, err := dial.DialContext(ctx, network, address)
+		if err != nil {
+			return nil, err
+		}
+		gate = &gatedSessionWriteConn{Conn: conn, ctx: t.Context(), entered: make(chan struct{}), release: release}
+		return gate, nil
+	}}
+	downstream, client := socketPairWithDialer(t, &dialer)
+	gate.nextWrite.Store(true)
+	upstream, provider := socketPair(t)
+	done := make(chan error, 1)
+	go runSessionForTest(t, done, func() error {
+		return Run(t.Context(), downstream, upstream, Options{QueueSize: 4}, Hooks{})
+	})
+
+	frames := []string{`{"type":"response.output_audio.delta"}`, `{"type":"response.output_audio.done"}`, `{"type":"response.done"}`}
+	for _, frame := range frames {
+		require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(frame)))
+	}
+	require.NoError(t, provider.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second)))
+	require.NoError(t, provider.SetReadDeadline(time.Now().Add(time.Second)))
+	_, _, err := provider.ReadMessage()
+	require.True(t, websocket.IsCloseError(err, websocket.CloseNormalClosure), "%v", err)
+
+	select {
+	case <-gate.entered:
+	case <-time.After(time.Second):
+		t.Fatal("downstream writer did not start")
+	}
+	close(release)
+	require.NoError(t, client.SetReadDeadline(time.Now().Add(2*time.Second)))
+	for i, expected := range frames {
+		kind, data, readErr := client.ReadMessage()
+		require.NoError(t, readErr, "frame %d", i)
+		require.Equal(t, websocket.TextMessage, kind)
+		require.True(t, expected == string(data), "frame %d differed", i)
+	}
+	_, _, err = client.ReadMessage()
+	require.True(t, websocket.IsCloseError(err, websocket.CloseNormalClosure), "%v", err)
+	select {
+	case result := <-done:
+		require.False(t, IsAbnormal(result), "%v", result)
+	case <-time.After(time.Second):
+		t.Fatal("session did not close after draining")
+	}
+}
+
+func TestDrainUpstreamTailTimesOutWithoutWriter(t *testing.T) {
+	frames := make(chan []byte, 1)
+	written := make(chan struct{})
+	require.ErrorIs(t, drainUpstreamTail(t.Context(), frames, written, 20*time.Millisecond), ErrBackpressure)
+	require.Len(t, frames, 1, "the timeout must cover waiting for the writer after the marker is queued")
 }

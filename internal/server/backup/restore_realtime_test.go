@@ -17,14 +17,16 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 )
 
-func TestRestoreRejectsRealtimeEndpointsAndInvalidChannelRealtime(t *testing.T) {
+func TestRestoreMigratesLegacyRealtimeEndpointsAndRejectsInvalidSettings(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		endpoint  []objects.ChannelEndpoint
 		config    *objects.ChannelRealtimeConfig
 		wantError bool
+		migrated  bool
 	}{
-		{name: "legacy-realtime-endpoint", endpoint: []objects.ChannelEndpoint{{APIFormat: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}, wantError: true},
+		{name: "legacy-realtime-endpoint", endpoint: []objects.ChannelEndpoint{{APIFormat: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}, {APIFormat: "openai/chat_completions", Path: "/chat/completions"}}, migrated: true},
+		{name: "invalid-legacy-endpoint", endpoint: []objects.ChannelEndpoint{{APIFormat: "openai/realtime-ws", BaseURL: "wss://127.0.0.1", Path: "/v1/realtime"}}, wantError: true},
 		{name: "untrusted-host", config: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://127.0.0.1", Path: "/v1/realtime"}, wantError: true},
 		{name: "provider-mismatch", config: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "qwen/realtime-ws", BaseURL: "wss://workspace.cn-beijing.maas.aliyuncs.com", Path: "/api-ws/v1/realtime"}, wantError: true},
 		{name: "valid-channel-realtime", config: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}},
@@ -42,6 +44,16 @@ func TestRestoreRejectsRealtimeEndpointsAndInvalidChannelRealtime(t *testing.T) 
 			}
 			require.NoError(t, err)
 			saved := db.Channel.Query().OnlyX(ctx)
+			if tc.migrated {
+				require.True(t, saved.Settings.Realtime.Enabled)
+				require.Equal(t, tc.endpoint[0].APIFormat, saved.Settings.Realtime.Protocol)
+				require.Equal(t, tc.endpoint[1:], saved.Endpoints)
+				require.NoError(t, service.Restore(ctx, bytes.NewReader(data), RestoreOptions{IncludeChannels: true, ChannelConflictStrategy: ConflictStrategyOverwrite}))
+				again := db.Channel.GetX(ctx, saved.ID)
+				require.Equal(t, saved.Settings, again.Settings)
+				require.Equal(t, saved.Endpoints, again.Endpoints)
+				return
+			}
 			require.Equal(t, tc.config, saved.Settings.Realtime)
 			require.Empty(t, saved.Endpoints)
 		})
