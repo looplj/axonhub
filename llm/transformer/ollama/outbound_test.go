@@ -272,6 +272,34 @@ func TestTransformStreamAssignsDistinctToolCallIndexAcrossChunks(t *testing.T) {
 	require.NotEqual(t, calls[0].ID, calls[1].ID)
 }
 
+func TestTransformStreamFinishReasonOnlyOnDoneChunk(t *testing.T) {
+	ollamaTransformer, err := NewOutboundTransformerWithConfig(&Config{BaseURL: "http://localhost:11434"})
+	require.NoError(t, err)
+
+	transformer, ok := ollamaTransformer.(*OutboundTransformer)
+	require.True(t, ok)
+
+	chunks := []*httpclient.StreamEvent{
+		{Data: []byte(`{"model":"qwen3","message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"get_weather","arguments":{"location":"Paris"}}}]},"done":false}`)},
+		{Data: []byte(`{"model":"qwen3","message":{"role":"assistant","content":""},"done":true,"done_reason":"stop"}`)},
+	}
+
+	out, err := transformer.TransformStream(context.Background(), nil, streams.SliceStream(chunks))
+	require.NoError(t, err)
+
+	var finishes []*string
+
+	for out.Next() {
+		finishes = append(finishes, out.Current().Choices[0].FinishReason)
+	}
+
+	require.NoError(t, out.Err())
+	require.Len(t, finishes, 2)
+	require.Nil(t, finishes[0], "finish_reason must not be sent before the done chunk")
+	require.NotNil(t, finishes[1])
+	require.Equal(t, "tool_calls", *finishes[1])
+}
+
 func TestAggregateStreamChunksKeepsToolCallsFromAllChunks(t *testing.T) {
 	ollamaTransformer, err := NewOutboundTransformerWithConfig(&Config{BaseURL: "http://localhost:11434"})
 	require.NoError(t, err)
