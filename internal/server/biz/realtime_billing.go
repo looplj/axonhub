@@ -45,6 +45,10 @@ type RealtimePriceSnapshot struct {
 // shared model library fallback second. A price missing any of the four codes,
 // a duplicate code, an invalid schedule, or a non-positive price is rejected.
 func (s *UsageLogService) RealtimePrice(ctx context.Context, channelID int, model string) (*RealtimePriceSnapshot, error) {
+	return s.realtimePrice(ctx, channelID, model, objects.ValidateRealtimePrice)
+}
+
+func (s *UsageLogService) realtimePrice(ctx context.Context, channelID int, model string, validate func(objects.ModelPrice) error) (*RealtimePriceSnapshot, error) {
 	if strings.TrimSpace(model) == "" {
 		return nil, fmt.Errorf("realtime price requires a model")
 	}
@@ -79,7 +83,7 @@ func (s *UsageLogService) RealtimePrice(ctx context.Context, channelID int, mode
 		return nil, fmt.Errorf("no realtime price for channel %d model %q", channelID, model)
 	}
 
-	if err := objects.ValidateRealtimePrice(price); err != nil {
+	if err := validate(price); err != nil {
 		return nil, fmt.Errorf("invalid realtime price for channel %d model %q: %w", channelID, model, err)
 	}
 
@@ -132,6 +136,10 @@ func (s *UsageLogService) CreateRealtimeUsage(
 		return nil, err
 	}
 
+	return s.saveRealtimeUsage(ctx, params, snapshot, costItems, total)
+}
+
+func (s *UsageLogService) saveRealtimeUsage(ctx context.Context, params CreateUsageLogParams, snapshot *RealtimePriceSnapshot, costItems []objects.CostItem, total decimal.Decimal) (*ent.UsageLog, error) {
 	client := s.entFromContext(ctx)
 
 	mut := client.UsageLog.Create().

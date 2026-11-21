@@ -40,6 +40,7 @@ func TestGAQwenSessionAndEvents(t *testing.T) {
 		})
 	}
 }
+
 func TestQwenRejectsUnsupportedParameters(t *testing.T) {
 	a, _ := NewAdapter("qwen3.8-omni-flash-realtime", false)
 	for _, raw := range []string{`{"type":"session.update"}`, `{"type":"session.update","session":{"type":"realtime","model":"other"}}`, `{"type":"session.update","session":{"type":"realtime","unknown":true}}`, `{"type":"session.update","session":{"type":"realtime","output_modalities":["audio","text"]}}`, `{"type":"session.update","session":{"type":"realtime","audio":{"input":{"format":{"type":"audio/pcmu"}}}}}`, `{"type":"session.update","session":{"type":"realtime","tools":[{"type":"mcp"}]}}`, `{"type":"input_image_buffer.append","image":"AAA="}`, `{"type":"input_audio_buffer.append","audio":"!!"}`} {
@@ -47,6 +48,7 @@ func TestQwenRejectsUnsupportedParameters(t *testing.T) {
 		require.Error(t, err, raw)
 	}
 }
+
 func TestQwen24kPCMAndUsage(t *testing.T) {
 	a, _ := NewAdapter("qwen3.5-omni-flash-realtime", false)
 	encoded := base64.StdEncoding.EncodeToString(make([]byte, 480))
@@ -86,6 +88,7 @@ func TestQwenDeclaredServerEventSurface(t *testing.T) {
 	session := event["session"].(map[string]any)
 	require.Equal(t, "server_vad", session["turn_detection"].(map[string]any)["type"])
 }
+
 func TestQwenConversationContentUsesGATypes(t *testing.T) {
 	a, _ := NewAdapter("qwen3.8-omni-flash-realtime", false)
 	for _, tc := range []struct{ role, from, to string }{{"assistant", "input_audio", "output_audio"}, {"assistant", "text", "output_text"}, {"user", "audio", "input_audio"}} {
@@ -96,6 +99,30 @@ func TestQwenConversationContentUsesGATypes(t *testing.T) {
 		part := e["item"].(map[string]any)["content"].([]any)[0].(map[string]any)
 		require.Equal(t, tc.to, part["type"])
 	}
+}
+
+func TestQwenSemanticVADIsModelCapabilityBound(t *testing.T) {
+	models := []string{"qwen3.8-omni-flash-realtime", "qwen3.5-omni-plus-realtime", "qwen3.5-omni-flash-realtime"}
+	for _, model := range models {
+		for _, native := range []bool{false, true} {
+			t.Run(model+map[bool]string{false: "/ga", true: "/native"}[native], func(t *testing.T) {
+				adapter, err := NewAdapter(model, native)
+				require.NoError(t, err)
+				session := `{"turn_detection":{"type":"semantic_vad","threshold":-0.5,"silence_duration_ms":800}}`
+				if !native {
+					session = `{"type":"realtime","output_modalities":["text"],"audio":{"input":{"turn_detection":{"type":"semantic_vad","threshold":-0.5,"silence_duration_ms":800}}}}`
+				}
+				_, err = adapter.Client([]byte(`{"type":"session.update","session":` + session + `}`))
+				require.NoError(t, err)
+			})
+		}
+	}
+	adapter, err := NewAdapter("qwen3.8-omni-flash-realtime", false)
+	require.NoError(t, err)
+	_, err = adapter.Client([]byte(`{"type":"session.update","session":{"type":"realtime","output_modalities":["text"],"audio":{"input":{"turn_detection":{"type":"semantic_vad","threshold":1.1}}}}}`))
+	require.Error(t, err, "semantic VAD thresholds outside [-1, 1] must be rejected")
+	_, err = adapter.Client([]byte(`{"type":"session.update","session":{"type":"realtime","output_modalities":["text"],"audio":{"input":{"turn_detection":{"type":"server_vad","silence_duration_ms":100}}}}}`))
+	require.Error(t, err, "VAD silence durations outside [200, 6000] must be rejected")
 }
 
 func TestNativeQwenNegotiatesInputAndOutputRatesIndependently(t *testing.T) {

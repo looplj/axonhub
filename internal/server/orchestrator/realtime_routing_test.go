@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm"
+	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 )
 
 func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
@@ -29,7 +30,7 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	project := db.Project.Create().SetName("route-project").SaveX(ctx)
 	ctx = contexts.WithProjectID(ctx, project.ID)
 	actual := "gpt-realtime-2.1-mini"
-	row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("route-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream"}).SetSupportedModels([]string{actual}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime", HandshakeTimeoutMs: lo.ToPtr(int64(30000))}, ModelProtocols: []objects.ModelProtocol{{Model: actual, APIFormats: []string{"openai/chat_completions"}, Enabled: lo.ToPtr(true)}}}).SaveX(ctx)
+	row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("route-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream"}).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIChatCompletion.String(), Path: "/custom/chat"}}).SetSupportedModels([]string{actual, openairt.TranslationModel}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime", HandshakeTimeoutMs: lo.ToPtr(int64(30000))}, ModelProtocols: []objects.ModelProtocol{{Model: actual, APIFormats: []string{"openai/chat_completions"}, Enabled: lo.ToPtr(true)}}}).SaveX(ctx)
 	price := objects.ModelPrice{}
 	for _, code := range objects.AllRealtimePriceItemCodes() {
 		rate := decimal.NewFromInt(1)
@@ -62,8 +63,27 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	require.Len(t, target.SafetyIdentifier, 64)
 	chatCandidates, err := service.Selector.Select(ctx, &llm.Request{Model: actual, RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIChatCompletion})
 	require.NoError(t, err)
+	require.Empty(t, chatCandidates, "Realtime selection excludes the channel from ordinary routing")
+	require.Len(t, built.ResolveEndpoints(), 1)
+	require.Equal(t, llm.APIFormatOpenAIRealtimeWebSocket.String(), built.ResolveEndpoints()[0].APIFormat)
+	require.Equal(t, "/custom/chat", db.Channel.GetX(ctx, row.ID).Endpoints[0].Path)
+
+	built.Settings.Realtime.Enabled = false
+	chatCandidates, err = service.Selector.selectChannelCadidates(ctx, &llm.Request{Model: actual, RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIChatCompletion})
+	require.NoError(t, err)
 	require.Len(t, chatCandidates, 1)
-	require.Equal(t, llm.APIFormatOpenAIChatCompletion.String(), chatCandidates[0].APIFormat, "ordinary requests must continue to honor the model's fixed HTTP protocol")
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion.String(), chatCandidates[0].APIFormat)
+	require.Contains(t, built.ResolveEndpoints(), objects.ChannelEndpoint{APIFormat: llm.APIFormatOpenAIChatCompletion.String(), Path: "/custom/chat"})
+
+	built.Settings.Realtime.Enabled = true
+	_, err = service.PrepareTranslation(ctx, "voice")
+	require.ErrorIs(t, err, biz.ErrInvalidModel, "translation route excludes ordinary realtime models")
+	httpRequest := &llm.Request{Model: openairt.TranslationModel, RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIChatCompletion}
+	translationChat, err := service.Selector.selectChannelCadidates(ctx, httpRequest)
+	require.NoError(t, err)
+	require.Empty(t, translationChat, "ordinary HTTP cannot select the translation model even when the channel has built-in chat endpoints")
+	require.Empty(t, SelectAPIFormat([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIRealtimeWebSocket.String()}}, httpRequest))
+
 	_, err = service.Prepare(ctx, "voice", true)
 	require.Error(t, err, "native Qwen entry must not select official OpenAI")
 	key.Profiles.Profiles[0].ChannelIDs = []int{999}

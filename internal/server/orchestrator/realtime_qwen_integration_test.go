@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm"
+	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 )
 
 func TestRealtimeQwenConfigurationDuplexAndTools(t *testing.T) {
@@ -140,5 +141,39 @@ func TestRealtimeProbeAcknowledgesProviderItemLifecycle(t *testing.T) {
 			}
 			require.NoError(t, waitRealtimeItemAcknowledgement(conn, format))
 		})
+	}
+}
+
+func TestRealtimeTranslationProbeConfirmsUpdateAndClose(t *testing.T) {
+	upstream, provider := realtimeSocketPair(t)
+	require.NoError(t, provider.SetReadDeadline(time.Now().Add(time.Second)))
+	adapter := &openairt.Translation{}
+	_, err := adapter.Server([]byte(`{"type":"session.created","session":{"type":"translation","model":"gpt-realtime-translate"}}`))
+	require.NoError(t, err)
+
+	result := make(chan error, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("translation probe panic: %v", r)
+				result <- fmt.Errorf("translation probe panic")
+			}
+		}()
+		result <- probeTranslationSession(upstream, adapter)
+	}()
+	_, update, err := provider.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "session.update", gjson.GetBytes(update, "type").String())
+	require.Equal(t, "es", gjson.GetBytes(update, "session.audio.output.language").String())
+	require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.updated","session":{"type":"translation","model":"gpt-realtime-translate","audio":{"output":{"language":"es"}}}}`)))
+	_, closeEvent, err := provider.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "session.close", gjson.GetBytes(closeEvent, "type").String())
+	require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.closed"}`)))
+	select {
+	case err := <-result:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("translation probe did not finish")
 	}
 }

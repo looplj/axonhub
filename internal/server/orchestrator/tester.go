@@ -134,10 +134,16 @@ func buildChannelTestRequest(model string, useStream bool, systemPrompt string, 
 
 func channelTestAPIFormat(channel *biz.Channel, model string) llm.APIFormat {
 	if channel != nil {
+		if channel.RealtimeOnly() {
+			return llm.APIFormat(channel.Settings.Realtime.Protocol)
+		}
 		endpoints := channel.ResolveEndpoints()
 		entry, ok := channel.GetModelEntries()[model]
 		if !ok {
 			entry = channel.GetDirectModelEntries()[model]
+		}
+		if entry.ActualModel == openairt.TranslationModel && channel.RealtimeEndpoint() != nil && channel.RealtimeEndpoint().APIFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() {
+			return llm.APIFormatOpenAIRealtimeWebSocket
 		}
 		// A model pinned by modelProtocols to an endpoint is tested with it: a
 		// model that cannot serve chat (an embedding model on openai/embeddings, a

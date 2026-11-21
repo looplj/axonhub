@@ -11,6 +11,7 @@ package api
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -24,6 +25,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -37,6 +39,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm/httpclient"
+	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 )
 
 type reconnectDialer struct{ url string }
@@ -53,6 +56,11 @@ func newRealtimeReconnectFixture(t *testing.T, configureKey ...func(*ent.APIKeyC
 
 func newRealtimeReconnectFixtureWithDuration(t *testing.T, maxDuration time.Duration, configureKey ...func(*ent.APIKeyCreate)) (*ent.Client, func() (*websocket.Conn, *http.Response, error), *atomic.Int32, <-chan struct{}) {
 	t.Helper()
+	return newRealtimeHTTPFixture(t, maxDuration, false, configureKey...)
+}
+
+func newRealtimeHTTPFixture(t *testing.T, maxDuration time.Duration, translation bool, configureKey ...func(*ent.APIKeyCreate)) (*ent.Client, func() (*websocket.Conn, *http.Response, error), *atomic.Int32, <-chan struct{}) {
+	t.Helper()
 	db := enttest.NewEntClient(t, "sqlite3", "file:"+t.Name()+"?mode=memory&_fk=1")
 	t.Cleanup(func() { _ = db.Close() })
 	seed := authz.WithTestBypass(ent.NewContext(context.Background(), db))
@@ -62,12 +70,19 @@ func newRealtimeReconnectFixtureWithDuration(t *testing.T, maxDuration time.Dura
 		configure(createKey)
 	}
 	key := createKey.SaveX(seed)
-	const model = "gpt-realtime-2.1-mini"
+	model := "gpt-realtime-2.1-mini"
+	if translation {
+		model = openairt.TranslationModel
+	}
 	row := db.Channel.Create().SetName("reconnect").SetType(channel.TypeOpenai).SetStatus(channel.StatusEnabled).SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-provider"}).SetSupportedModels([]string{model}).SetDefaultTestModel(model).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime"}}).SaveX(seed)
 	price := objects.ModelPrice{}
 	for _, code := range objects.AllRealtimePriceItemCodes() {
 		rate := decimal.NewFromInt(1)
 		price.Items = append(price.Items, objects.ModelPriceItem{ItemCode: code, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: &rate}})
+	}
+	if translation {
+		rate := decimal.RequireFromString("0.034")
+		price.Items = []objects.ModelPriceItem{{ItemCode: objects.PriceItemCodeRealtimeTranslationAudioSamples, Pricing: objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: &rate}}}
 	}
 	db.ChannelModelPrice.Create().SetChannelID(row.ID).SetModelID(model).SetPrice(price).SetReferenceID("test").SaveX(seed)
 	cache := xcache.Config{Mode: xcache.ModeMemory}
@@ -98,6 +113,10 @@ func newRealtimeReconnectFixtureWithDuration(t *testing.T, maxDuration time.Dura
 		defer active.Add(-1)
 		for old := peak.Load(); n > old && !peak.CompareAndSwap(old, n); old = peak.Load() {
 		}
+		if translation {
+			serveTranslationFixture(c)
+			return
+		}
 		_ = c.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.created","session":{"id":"s","type":"realtime","audio":{"input":{"format":{"type":"audio/pcm","rate":24000}},"output":{"format":{"type":"audio/pcm","rate":24000}}}}}`))
 		for {
 			if _, _, err := c.ReadMessage(); err != nil {
@@ -115,7 +134,14 @@ func newRealtimeReconnectFixtureWithDuration(t *testing.T, maxDuration time.Dura
 	close(h.drained)
 	router := gin.New()
 	router.Use(middleware.WithEntClient(db))
-	router.GET("/v1/realtime", RealtimeBoundary(), middleware.WithIPBlocklist(system), middleware.WithStrictAPIKeyConfig(auth, &middleware.APIKeyConfig{Headers: []string{"Authorization"}, RequireBearer: true}), middleware.WithSource(request.SourceAPI), h.Handler(rt.Config{MaxDuration: maxDuration, Limits: rt.Limits{APIKey: 1, ConnectionsPerMinute: 100}}, false))
+	path := "/v1/realtime"
+	config := rt.Config{MaxDuration: maxDuration, Limits: rt.Limits{APIKey: 1, ConnectionsPerMinute: 100}}
+	handler := h.Handler(config, false)
+	if translation {
+		path += "/translations"
+		handler = h.TranslationHandler(config)
+	}
+	router.GET(path, RealtimeBoundary(), middleware.WithIPBlocklist(system), middleware.WithStrictAPIKeyConfig(auth, &middleware.APIKeyConfig{Headers: []string{"Authorization"}, RequireBearer: true}), middleware.WithSource(request.SourceAPI), handler)
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
 	t.Cleanup(func() {
@@ -128,7 +154,7 @@ func newRealtimeReconnectFixtureWithDuration(t *testing.T, maxDuration time.Dura
 			t.Error("realtime handlers did not drain")
 		}
 	})
-	url := "ws" + strings.TrimPrefix(server.URL, "http") + "/v1/realtime?model=" + model
+	url := "ws" + strings.TrimPrefix(server.URL, "http") + path + "?model=" + model
 	dial := func() (*websocket.Conn, *http.Response, error) {
 		return websocket.DefaultDialer.Dial(url, http.Header{"Authorization": []string{"Bearer " + key.Key}})
 	}
@@ -334,4 +360,114 @@ func TestRealtimeHTTPAuditInsertCancellationReleasesLease(t *testing.T) {
 	require.NoError(t, err, "the same API key must immediately regain its lease")
 	require.Equal(t, http.StatusSwitchingProtocols, response.StatusCode)
 	require.Equal(t, int32(1), peak.Load())
+}
+
+func serveTranslationFixture(conn *websocket.Conn) {
+	created := `{"type":"session.created","session":{"id":"s","type":"translation","model":"gpt-realtime-translate"}}`
+	if conn.WriteMessage(websocket.TextMessage, []byte(created)) != nil {
+		return
+	}
+	for {
+		_, event, err := conn.ReadMessage()
+		if err != nil {
+			return
+		}
+		var response string
+		switch gjson.GetBytes(event, "type").String() {
+		case "session.update":
+			response = `{"type":"session.updated","session":{"id":"s","type":"translation","model":"gpt-realtime-translate","audio":{"output":{"language":"es"}}}}`
+		case "session.input_audio_buffer.append":
+			response = `{"type":"session.output_audio.delta","delta":"AAA="}`
+		case "session.close":
+			if conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.output_transcript.delta","delta":"hola"}`)) != nil {
+				return
+			}
+			_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.closed"}`))
+			// Leave transport closure to the gateway after it drains session.closed.
+			_, _, _ = conn.ReadMessage()
+			return
+		default:
+			return
+		}
+		if conn.WriteMessage(websocket.TextMessage, []byte(response)) != nil {
+			return
+		}
+	}
+}
+
+func TestRealtimeHTTPTranslationLifecycleAndBilling(t *testing.T) {
+	t.Run("graceful", func(t *testing.T) { testRealtimeHTTPTranslationBilling(t, true) })
+	t.Run("disconnected", func(t *testing.T) { testRealtimeHTTPTranslationBilling(t, false) })
+}
+
+func testRealtimeHTTPTranslationBilling(t *testing.T, graceful bool) {
+	t.Helper()
+	db, dial, _, _ := newRealtimeHTTPFixture(t, 0, true)
+	conn, response, err := dial()
+	require.NoError(t, err)
+	defer conn.Close()
+	require.Equal(t, http.StatusSwitchingProtocols, response.StatusCode)
+	require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
+	expect := func(kind string) {
+		t.Helper()
+		_, data, err := conn.ReadMessage()
+		require.NoError(t, err)
+		require.Equal(t, kind, gjson.GetBytes(data, "type").String(), "%s", data)
+	}
+	send := func(data string) {
+		t.Helper()
+		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(data)))
+	}
+	expect("session.created")
+	send(`{"type":"response.create"}`)
+	expect("error")
+	send(`{"type":"session.update","session":{"audio":{"output":{"language":"es"}}}}`)
+	expect("session.updated")
+	audio := base64.StdEncoding.EncodeToString(make([]byte, 48000))
+	send(`{"type":"session.input_audio_buffer.append","audio":"` + audio + `"}`)
+	expect("session.output_audio.delta")
+	wantStatus := request.StatusFailed
+	if graceful {
+		send(`{"type":"session.close"}`)
+		expect("session.output_transcript.delta")
+		expect("session.closed")
+		_, _, err = conn.ReadMessage()
+		require.True(t, websocket.IsCloseError(err, websocket.CloseNormalClosure), "%v", err)
+		wantStatus = request.StatusCompleted
+	} else {
+		require.NoError(t, conn.Close())
+	}
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	require.Eventually(t, func() bool {
+		row, err := db.Request.Query().Only(ctx)
+		return err == nil && row.Status == wantStatus
+	}, 3*time.Second, 10*time.Millisecond)
+	usage := db.UsageLog.Query().OnlyX(ctx)
+	require.Equal(t, openairt.TranslationModel, usage.ModelID)
+	require.Zero(t, usage.TotalTokens)
+	require.Len(t, usage.CostItems, 1)
+	item := usage.CostItems[0]
+	require.Equal(t, objects.PriceItemCodeRealtimeTranslationAudioSamples, item.ItemCode)
+	require.EqualValues(t, 24000, item.Quantity)
+	require.Equal(t, "0.0005666666666667", item.Subtotal.String())
+	row := db.Request.Query().OnlyX(ctx)
+	require.Equal(t, "gateway_sent_pcm", gjson.GetBytes(row.ResponseBody, "metering_source").String())
+	require.NotContains(t, string(row.RequestBody), audio)
+}
+
+func TestRealtimeHTTPTranslationHonorsModelPermissions(t *testing.T) {
+	_, dial, peak, _ := newRealtimeHTTPFixture(t, 0, true, func(key *ent.APIKeyCreate) {
+		key.SetProfiles(&objects.APIKeyProfiles{
+			ActiveProfile: "voice-only",
+			Profiles:      []objects.APIKeyProfile{{Name: "voice-only", ModelIDs: []string{"gpt-realtime-2.1"}}},
+		})
+	})
+	conn, response, err := dial()
+	require.Error(t, err)
+	require.Nil(t, conn)
+	require.NotNil(t, response)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusNotFound, response.StatusCode)
+	require.Zero(t, peak.Load(), "model permissions must be checked before the provider handshake")
 }

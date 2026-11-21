@@ -708,6 +708,19 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     [newApiFormat, handleAddEndpoint]
   );
 
+  if (channel.settings?.realtime?.enabled) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('channels.endpoints.title')}</DialogTitle>
+            <DialogDescription>{t('channels.realtime.endpointsInactive')}</DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>

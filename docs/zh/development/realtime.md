@@ -21,6 +21,8 @@
 
 端点管理不提供 Realtime 协议。通过 `saveChannelEndpoints` 或其他端点写入输入传入 `openai/realtime-ws`、`qwen/realtime-ws`，服务端会返回 HTTP `422` 和错误码 `ENDPOINT_REALTIME_NOT_ALLOWED`，不会忽略或保存。将 `settings.realtime.enabled` 设为 `false`，或在渠道主表单切换到非 Realtime 协议，即可停止新实时会话，无需删除 HTTP 端点。
 
+渠道选择 Realtime 后只承接实时请求。原有 HTTP Base URL、自定义端点和模型配置继续保存在渠道中，端点管理在此模式下显示停用提示。切回普通协议后，默认端点和自定义端点恢复路由。此前混合使用的渠道如果两种流量都需要，请分别配置普通渠道和 Realtime 渠道。
+
 Realtime 渠道配置适用于现有 OpenAI 和百炼渠道类型。xAI Subscription 使用服务商管理的端点，不接受自定义 Realtime 端点。
 
 现有启动数据迁移流程会在渠道缓存加载之前，把历史 `endpoints` 中的 Realtime 配置搬到 `settings.realtime`。每个渠道的配置搬迁与旧条目清理原子完成，保留普通端点及其他设置。已有渠道级 Realtime 设置优先，包括显式禁用状态；重复执行不再写入渠道。该迁移只改变 JSON 配置结构，不新增数据库表或列。
@@ -33,9 +35,13 @@ Realtime 渠道配置适用于现有 OpenAI 和百炼渠道类型。xAI Subscrip
 
 统一入口为 `GET /v1/realtime?model={网关模型或别名}`，使用标准 WebSocket Upgrade 和 `Authorization: Bearer {AxonHub API Key}`。只支持服务端客户端；浏览器 Origin、URL 凭证及客户端指定的上游 Host 均被拒绝。入口使用严格鉴权，不回退到 No-Auth。
 
-原生 Qwen 调试入口为 `/v1/realtime/qwen?model={模型}`，同样经过权限、配额、价格与连接限制，仅能选择已启用 Realtime 配置的百炼渠道；它也只暴露已实现且通过校验的安全能力子集。
+原生 Qwen 入口为 `/qwen/v1/realtime?model={模型}`，同样经过权限、配额、价格与连接限制，仅能选择已启用 Realtime 配置的百炼渠道；它也只暴露已实现且通过校验的安全能力子集。
+
+使用 OpenAI GA 客户端时填写 `https://gateway.example/v1`，由客户端追加 `/realtime`。网关按授权后的模型和渠道配置选上游，对 Qwen 做已支持事件的 GA 转换。使用原生 Qwen 事件且客户端同样追加 `/realtime` 时，填写 `https://gateway.example/qwen/v1`。如果客户端固定追加 `/v1/realtime`，则填写 `https://gateway.example/qwen`。客户端必须保留 Base URL 的路径前缀。
 
 OpenAI 上游使用原生 GA 事件，保留合法未知扩展字段和事件顺序，不发送 `OpenAI-Beta: realtime=v1`，不经 Qwen 转换，不对音频重采样。OpenAI 在 `session.created` 提供完整有效音频配置时可直接使用已确认的默认值；修改参数时应发送 `session.update` 并等待 `session.updated`，再按新参数发送媒体。禁止在会话中修改模型、覆盖凭证或身份安全字段。Safety Identifier 由已鉴权的网关密钥及用户/项目生成不可逆摘要，不接受客户端覆盖。
+
+Qwen 实时模型支持 `server_vad`；Qwen3.8 Omni Flash、Qwen3.5 Omni Plus 和 Qwen3.5 Omni Flash 也支持 `semantic_vad`。语义 VAD 的阈值范围为 -1 到 1，静音时长为 200 到 6000 毫秒；其他模型使用其能力表声明的 VAD 类型。
 
 Qwen 上游使用独立适配器。GA 文本事件为 `response.output_text.delta/done`，GA 音频为 `response.output_audio.delta/done`，音频转录为 `response.output_audio_transcript.delta/done`。工具调用的 call_id、参数增量、最终参数和 function_call_output 必须保持关联。不能兼容的参数明确拒绝。
 
@@ -181,3 +187,9 @@ Qwen3.5 的一个响应若同时包含音频和 Function Calling 文本，而上
 ## 原生保真与安全边界
 
 OpenAI 原生 Adapter 对每个有效 JSON 消息返回相同字节，包括字段顺序与错误消息；客户端的 session.update、response.create、input_audio_buffer.clear 或 input_audio_buffer.commit 缺少事件 ID 或 ID 为空时，网关会补上 ID，以便把上游拒绝关联到该次客户端事件。网关也会对上游 error 及 status_details.error 脱敏。WebSocket 传输保留 JSON 消息边界，不承诺保留底层 RFC6455 分片方式或 TCP 包边界。
+
+## OpenAI 实时翻译
+
+在现有 OpenAI 渠道启用 Realtime，配置上游模型 `gpt-realtime-translate`，在模型价格中填写「实时翻译音频采样数（按分钟计价）」并选择按量计费。客户端使用网关 API Key 连接 `/v1/realtime/translations?model=gpt-realtime-translate`，用 `session.update` 设置 `session.audio.output.language`，等 `session.updated` 后通过 `session.input_audio_buffer.append` 流式发送 24 kHz 单声道 PCM16。结束时发送 `session.close`，读取剩余译文及音频直至收到 `session.closed`。
+
+上游未在会话事件提供账单用量。网关按成功写到上游的输入 PCM 样本数，以冻结的每分钟费率计算费用，即使连接中途中断也保留已发送部分。审计标记计量来源为 `gateway_sent_pcm`，费用明细的数量是样本数。标准对话入口 `/v1/realtime` 不接收该翻译模型。

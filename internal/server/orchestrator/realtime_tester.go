@@ -29,8 +29,6 @@ import (
 
 func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *biz.Channel, model string, proxy *httpclient.ProxyConfig) (*TestChannelResult, error) {
 	start := time.Now()
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
 	fail := func() (*TestChannelResult, error) {
 		return &TestChannelResult{Latency: time.Since(start).Seconds(), Success: false, Error: lo.ToPtr("Realtime handshake, configuration or conversation acknowledgement failed")}, nil
 	}
@@ -42,9 +40,13 @@ func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *b
 		if ep.APIFormat != string(channelTestAPIFormat(ch, model)) {
 			continue
 		}
+		translation := ep.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() && entry.ActualModel == openairt.TranslationModel
 		endpointURL := protocol.EndpointURL
 		if ep.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() {
 			endpointURL = openairt.EndpointURL
+		}
+		if translation {
+			endpointURL = openairt.TranslationEndpointURL
 		}
 		target, err := endpointURL(ep.BaseURL, ep.Path, entry.ActualModel)
 		if err != nil {
@@ -57,17 +59,29 @@ func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *b
 		if proxy == nil && ch.Settings != nil {
 			proxy = ch.Settings.Proxy
 		}
-		conn, err := rt.Dial(ctx, target, key, proxy, 15*time.Second)
+		config := rt.Config{}.Defaults()
+		if ep.HandshakeTimeoutMs != nil {
+			config.HandshakeTimeout = time.Duration(*ep.HandshakeTimeoutMs) * time.Millisecond
+		}
+		dialCtx, cancel := context.WithTimeout(ctx, config.HandshakeTimeout)
+		defer cancel()
+		conn, err := rt.Dial(dialCtx, target, key, proxy, config.HandshakeTimeout)
 		if err != nil {
 			return fail()
 		}
 		defer conn.Close()
 		service := &RealtimeService{Channels: p.channelService, Quota: nil, Usage: p.usageLogService, Requests: p.requestService}
-		conversation, _, err := service.configure(ctx, conn, &RealtimeTarget{Channel: ch, Model: entry.ActualModel, ClientModel: model, APIFormat: llm.APIFormat(ep.APIFormat)}, rt.Config{}.Defaults())
+		conversation, _, err := service.configure(dialCtx, conn, &RealtimeTarget{Channel: ch, Model: entry.ActualModel, ClientModel: model, APIFormat: llm.APIFormat(ep.APIFormat), Translation: translation}, config)
 		if err != nil {
 			return fail()
 		}
 		defer conversation.Close()
+		if translation {
+			if err := probeTranslationSession(conn, conversation.adapter); err != nil {
+				return fail()
+			}
+			return &TestChannelResult{Latency: time.Since(start).Seconds(), Success: true, Message: lo.ToPtr("Realtime Translation configuration and close acknowledged")}, nil
+		}
 		if ep.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() {
 			configEvent := []byte(`{"type":"session.update","session":{"type":"realtime","output_modalities":["text"],"audio":{"input":{"turn_detection":null}}}}`)
 			wire, err := conversation.adapter.Client(configEvent)
@@ -79,8 +93,8 @@ func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *b
 			if err := conn.WriteMessage(websocket.TextMessage, wire); err != nil {
 				return fail()
 			}
-			_, ack, err := conn.ReadMessage()
-			if err != nil || gjson.GetBytes(ack, "type").String() != "session.updated" {
+			kind, ack, err := conn.ReadMessage()
+			if err != nil || kind != websocket.TextMessage || gjson.GetBytes(ack, "type").String() != "session.updated" {
 				return fail()
 			}
 		}
@@ -120,4 +134,39 @@ func waitRealtimeItemAcknowledgement(conn *websocket.Conn, format llm.APIFormat)
 		}
 	}
 	return errors.New("upstream did not acknowledge realtime probe item")
+}
+
+func probeTranslationSession(conn *websocket.Conn, adapter realtimeAdapter) error {
+	deadline := time.Now().Add(5 * time.Second)
+	if err := conn.SetWriteDeadline(deadline); err != nil {
+		return err
+	}
+	if err := conn.SetReadDeadline(deadline); err != nil {
+		return err
+	}
+	update := []byte(`{"type":"session.update","session":{"audio":{"output":{"language":"es"}}}}`)
+	closeEvent := []byte(`{"type":"session.close"}`)
+	for _, step := range []struct {
+		wire []byte
+		want string
+	}{{update, "session.updated"}, {closeEvent, "session.closed"}} {
+		data, err := adapter.Client(step.wire)
+		if err != nil {
+			return err
+		}
+		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+			return err
+		}
+		kind, response, err := conn.ReadMessage()
+		if err != nil {
+			return err
+		}
+		if kind != websocket.TextMessage || gjson.GetBytes(response, "type").String() != step.want {
+			return errors.New("upstream did not acknowledge translation probe")
+		}
+		if _, err := adapter.Server(response); err != nil {
+			return err
+		}
+	}
+	return nil
 }

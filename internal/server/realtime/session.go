@@ -69,7 +69,9 @@ type Hooks struct {
 	Client      func([]byte) ([]byte, error)
 	Server      func([]byte) ([]byte, error)
 	// ServerFollowup optionally emits another message after a converted upstream event.
-	ServerFollowup func([]byte) ([]byte, error)
+	ServerFollowup  func([]byte) ([]byte, error)
+	UpstreamWritten func([]byte)
+	ServerDone      func([]byte) bool
 	// Check runs periodically, including while server VAD can generate autonomously.
 	Check func(context.Context) error
 }
@@ -230,6 +232,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 					}
 					return err
 				}
+				if !client && data != nil && hooks.ServerDone != nil && hooks.ServerDone(data) {
+					return &websocket.CloseError{Code: websocket.CloseNormalClosure}
+				}
 				if !client && data != nil && hooks.ServerFollowup != nil {
 					followup, err := hooks.ServerFollowup(data)
 					if err != nil {
@@ -264,6 +269,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 					}
 					if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
 						return err
+					}
+					if conn == upstream && hooks.UpstreamWritten != nil {
+						hooks.UpstreamWritten(data)
 					}
 				case <-ticker.C:
 					if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(o.WriteTimeout)); err != nil {

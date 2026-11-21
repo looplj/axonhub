@@ -260,10 +260,11 @@ const (
 	// The realtime codes bill a session by input/output modality.
 	// They are independent of prompt_tokens/completion_tokens: a realtime price
 	// uses only these codes, and the legacy codes keep their historical meaning.
-	PriceItemCodeRealtimeInputText   PriceItemCode = "realtime_input_text_tokens"
-	PriceItemCodeRealtimeInputAudio  PriceItemCode = "realtime_input_audio_tokens"
-	PriceItemCodeRealtimeOutputText  PriceItemCode = "realtime_output_text_tokens"
-	PriceItemCodeRealtimeOutputAudio PriceItemCode = "realtime_output_audio_tokens"
+	PriceItemCodeRealtimeTranslationAudioSamples PriceItemCode = "realtime_translation_audio_samples"
+	PriceItemCodeRealtimeInputText               PriceItemCode = "realtime_input_text_tokens"
+	PriceItemCodeRealtimeInputAudio              PriceItemCode = "realtime_input_audio_tokens"
+	PriceItemCodeRealtimeOutputText              PriceItemCode = "realtime_output_text_tokens"
+	PriceItemCodeRealtimeOutputAudio             PriceItemCode = "realtime_output_audio_tokens"
 )
 
 // RealtimePriceItemCodes returns the four realtime billing codes in audit order.
@@ -279,7 +280,7 @@ func RealtimePriceItemCodes() []PriceItemCode {
 // IsRealtimePriceItemCode reports whether code is one of the four realtime codes.
 func IsRealtimePriceItemCode(code PriceItemCode) bool {
 	switch code {
-	case PriceItemCodeRealtimeInputImage, PriceItemCodeRealtimeCachedInputText, PriceItemCodeRealtimeCachedInputAudio, PriceItemCodeRealtimeCachedInputImage, PriceItemCodeRealtimeInputText,
+	case PriceItemCodeRealtimeTranslationAudioSamples, PriceItemCodeRealtimeInputImage, PriceItemCodeRealtimeCachedInputText, PriceItemCodeRealtimeCachedInputAudio, PriceItemCodeRealtimeCachedInputImage, PriceItemCodeRealtimeInputText,
 		PriceItemCodeRealtimeInputAudio,
 		PriceItemCodeRealtimeOutputText,
 		PriceItemCodeRealtimeOutputAudio:

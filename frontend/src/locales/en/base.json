@@ -254,6 +254,7 @@
   "price.itemCodes.realtime_input_image_tokens": "Realtime Input Image Tokens",
   "price.itemCodes.realtime_cached_input_text_tokens": "Realtime Cached Input Text Tokens",
   "price.itemCodes.realtime_cached_input_audio_tokens": "Realtime Cached Input Audio Tokens",
+  "price.itemCodes.realtime_translation_audio_samples": "Realtime Translation input audio samples (rate per minute)",
   "price.itemCodes.realtime_cached_input_image_tokens": "Realtime Cached Input Image Tokens",
   "price.mode": "Mode",
   "price.mode_flat_fee": "Flat Fee",

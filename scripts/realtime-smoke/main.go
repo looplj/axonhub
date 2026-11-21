@@ -30,7 +30,7 @@ var (
 	model     = flag.String("model", "gpt-realtime-2.1-mini", "Explicitly configured Gateway model or alias")
 	endpoint  = flag.String("url", "ws://127.0.0.1:8090/v1/realtime", "Gateway WebSocket URL without query credentials")
 	audioFile = flag.String("audio-pcm", "", "Headerless, mono signed PCM16 LE at 24000 Hz; required for audio acceptance")
-	native    = flag.Bool("qwen-native", false, "Use the explicitly enabled /v1/realtime/qwen route")
+	native    = flag.Bool("qwen-native", false, "Use the explicitly enabled /qwen/v1/realtime route")
 )
 
 func main() {
@@ -62,7 +62,7 @@ func run() error {
 		return errors.New("invalid gateway URL")
 	}
 	if *native {
-		u.Path = "/v1/realtime/qwen"
+		u.Path = "/qwen/v1/realtime"
 	}
 	u.RawQuery = url.Values{"model": []string{*model}}.Encode()
 	conn, resp, err := (&websocket.Dialer{HandshakeTimeout: 15 * time.Second}).Dial(u.String(), http.Header{"Authorization": []string{"Bearer " + key}})
