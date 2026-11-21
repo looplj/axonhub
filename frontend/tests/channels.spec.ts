@@ -1566,3 +1566,51 @@ async function addCodexModel(page: Page, dialog: Locator) {
   await dialog.getByTestId('default-test-model-select').click()
   await page.getByRole('option', { name: CODEX_MODEL, exact: true }).click()
 }
+
+for (const storage of ['legacy', 'structured'] as const) {
+  test(`Claude Code catalog preserves refreshed ${storage} credentials on model-only save`, async ({ page }) => {
+    const skipTour = page.getByRole('button', { name: 'Skip Tour' })
+    await page.addLocatorHandler(skipTour, () => skipTour.click())
+    await gotoAndEnsureAuth(page, '/channels')
+    const name = `pw-claude-catalog-${uniqueSuffix()}`
+    const old = { access_token: 'fixture-old' }
+    const saved = await seedChannel(page, {
+      name,
+      type: 'claudecode',
+      baseURL: 'https://api.anthropic.com',
+      credentials: storage === 'legacy' ? { apiKey: JSON.stringify(old) } : { oauth: { accessToken: old.access_token } },
+      supportedModels: ['fixture-old-model'],
+      defaultTestModel: 'fixture-old-model',
+    })
+    const row = await showChannel(page, name)
+    const dialog = await openEditDialog(page, row)
+    await page.route('**/admin/graphql', async (route) => {
+      if (!isGraphQLOperation(route.request(), 'FetchModels')) return route.continue()
+      const { input } = route.request().postDataJSON().variables
+      expect(input.channelID).toBe(saved.id)
+      expect(input.apiKey).toBeUndefined()
+      await route.fulfill({ json: { data: { fetchModels: {
+        models: [{ id: 'fixture-new', pricing: null }],
+        fallback: false, error: null, fallbackReason: null, codexCatalogVersion: null, codexCatalogSkippedReason: null,
+      } } } })
+    })
+    await dialog.getByTestId('fetch-channel-models').click()
+    await expect(dialog.getByTestId('claude-catalog-source')).toHaveText('Upstream models (1)')
+
+    // Simulate token rotation while the edit form still displays the original credential.
+    const fresh = { accessToken: 'fixture-rotated' }
+    await adminGraphQL(page, 'mutation ($id: ID!, $input: UpdateChannelInput!) { updateChannel(id: $id, input: $input) { id } }',
+      { id: saved.id, input: { credentials: { oauth: fresh } } })
+    await dialog.getByTestId('catalog-model-row').getByRole('checkbox').click()
+    await dialog.getByRole('button', { name: 'Add Selected (1)', exact: true }).click()
+    await dialog.getByTestId('channel-submit-button').click()
+    await expect(dialog).toBeHidden()
+    const result = await adminGraphQL<{ node: { supportedModels: string[]; credentials: { oauth: { accessToken: string } } } }>(
+      page,
+      'query ($id: ID!) { node(id: $id) { ... on Channel { supportedModels credentials { oauth { accessToken } } } } }',
+      { id: saved.id }
+    )
+    expect(result.node.supportedModels).toEqual(['fixture-old-model', 'fixture-new'])
+    expect(result.node.credentials.oauth).toEqual(fresh)
+  })
+}
