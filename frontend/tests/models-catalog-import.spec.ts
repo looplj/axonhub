@@ -171,6 +171,7 @@ test('reference prices show the bound source and distinguish missing from unsele
   await expect(quote('input')).toContainText('$1');
   await expect(quote('output')).toContainText('$20');
   await expect(quote('cacheRead')).toContainText('—');
+  await expect(quote('cacheRead')).toContainText(/Source has no current base quote|来源暂无基础报价/);
   const inputAction = page.getByTestId('catalog-price-action-input');
   const fromB = inputAction.locator('optgroup[label="provider-b · mixed"] option').first();
   await expect(inputAction).toHaveValue('-1');
@@ -180,6 +181,10 @@ test('reference prices show the bound source and distinguish missing from unsele
   const outputAction = page.getByTestId('catalog-price-action-output');
   const outputTier = outputAction.locator('option').filter({ hasText: 'context 256000' });
   await outputAction.selectOption({ label: await outputTier.innerText() });
+  const cacheAction = page.getByTestId('catalog-price-action-cacheRead');
+  await expect(cacheAction).toHaveValue('-1');
+  const fixCurrent = cacheAction.getByRole('option', { name: /Fix the current price|固定当前价格/ });
+  await cacheAction.selectOption({ label: await fixCurrent.innerText() });
   await inputAction.selectOption('-1');
   await page.getByRole('checkbox', { name: 'mixed', exact: true }).check();
   await expect(page.getByTestId('catalog-import-apply')).toBeEnabled();
@@ -205,7 +210,10 @@ test('reference prices show the bound source and distinguish missing from unsele
   await developer.fill('custom');
   await page.getByTestId('catalog-import-apply').click();
   await expect.poll(() => applied).toEqual([expect.objectContaining({
-    modelID: 'mixed', developer: '', prices: [expect.objectContaining({ field: 'output', provider: 'provider-b', action: 'TIER', expected: 25 })],
+    modelID: 'mixed', developer: '', prices: [
+      expect.objectContaining({ field: 'output', provider: 'provider-b', action: 'TIER', expected: 25 }),
+      expect.objectContaining({ field: 'cacheRead', action: 'FIX' }),
+    ],
   }), expect.objectContaining({
     modelID: 'zero', provider: 'provider-a', sourceModelID: 'zero', identity: 'v1',
     type: 'embedding', name: 'Vector embedding', developer: 'custom', prices: [],

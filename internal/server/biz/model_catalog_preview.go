@@ -468,6 +468,21 @@ func (svc *ModelService) catalogPreviewFromSnapshot(ctx context.Context, scope C
 			}
 		}
 	}
+	// Keep missing followed offers reachable under their existing local model ID.
+	selectedProviders := lo.Intersect(scope.Providers, idx.providers)
+	if snapshot.Source == catalogSourceUpstream && len(selectedProviders) > 0 {
+		for _, m := range local {
+			if aliases[m.ModelID] != nil || m.Status == model.StatusArchived || m.ModelCard == nil {
+				continue
+			}
+			for _, binding := range m.ModelCard.CatalogPrices {
+				if binding.Follow && slices.Contains(selectedProviders, binding.Provider) && idx.offers[catalogOfferKey{binding.Provider, binding.ModelID}] == nil {
+					aliases[m.ModelID] = []string{m.ModelID}
+					break
+				}
+			}
+		}
+	}
 	for _, id := range sortedStringKeys(aliases) {
 		slices.Sort(aliases[id])
 		target := mergeTargets[id]

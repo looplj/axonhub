@@ -430,12 +430,56 @@ func TestCatalogFixCurrentAfterProviderRemovesModel(t *testing.T) {
 	require.Equal(t, []string{"applied"}, f.apply(t, scope, p, selection(t, p, "kimi-k3")))
 	p = f.preview(t, scope)
 	edit := selection(t, p, "kimi-k3")
-	edit.Prices = []CatalogImportPriceInput{{Field: "input", Action: CatalogPriceFix}}
 	f.body.Store(`{"providers":{"moonshot-ai":{"models":[]}}}`)
+	require.Equal(t, []string{"catalogChanged"}, f.apply(t, scope, p, edit))
+	edit.Prices = []CatalogImportPriceInput{{Field: "input", Action: CatalogPriceFix}}
 	require.Equal(t, []string{"applied"}, f.apply(t, scope, p, edit))
 	m := f.db.Model.Query().OnlyX(f.ctx)
 	require.False(t, m.ModelCard.CatalogPrices["input"].Follow)
 	require.Equal(t, 3.0, *m.ModelCard.ReferencePrice("input"))
+}
+
+func TestCatalogPreviewAfterProviderRemovesModel(t *testing.T) {
+	f := catalogFixture(t)
+	scope := CatalogImportScope{Providers: []string{"moonshot-ai"}}
+	p := f.preview(t, scope)
+	require.Equal(t, []string{"applied"}, f.apply(t, scope, p, selection(t, p, "kimi-k3")))
+	m := f.db.Model.Query().OnlyX(f.ctx)
+	m.ModelCard.CatalogAliases = []string{"kimi-k3", "other-alias"}
+	m.Update().SetModelID("local-kimi").SetModelCard(m.ModelCard).ExecX(f.ctx)
+
+	f.changeCatalog(`{"providers":{"moonshot-ai":{"models":[{"id":"other-alias"}]}}}`)
+	p = f.preview(t, scope)
+	require.Len(t, p.Rows, 1)
+	require.Equal(t, []string{"other-alias"}, memberIDs(selection(t, p, "local-kimi")))
+	f.changeCatalog(`{"providers":{"other":{"models":[]}}}`)
+	require.Empty(t, f.preview(t, scope).Rows)
+	f.changeCatalog(`{"providers":{"moonshot-ai":{"models":[]},"other":{"models":[]}}}`)
+	fallback, err := f.svc.catalogPreviewFromSnapshot(f.ctx, scope, CatalogSnapshot{Source: catalogSourceFallback, Data: []byte(f.body.Load().(string))})
+	require.NoError(t, err)
+	require.Empty(t, fallback.Rows)
+	require.Empty(t, f.preview(t, CatalogImportScope{Providers: []string{"other"}}).Rows)
+	require.Empty(t, f.preview(t, CatalogImportScope{Channels: true}).Rows)
+	m.Update().SetStatus(model.StatusArchived).ExecX(f.ctx)
+	require.Empty(t, f.preview(t, scope).Rows)
+	m.Update().SetStatus(model.StatusEnabled).ExecX(f.ctx)
+
+	for _, field := range []ReferencePriceField{"input", "output"} {
+		p = f.preview(t, scope)
+		require.Len(t, p.Rows, 1)
+		require.Empty(t, p.Rows[0].Offers)
+		require.False(t, p.Rows[0].Changed)
+		edit := selection(t, p, "local-kimi")
+		require.NotEmpty(t, edit.Version)
+		edit.Prices = []CatalogImportPriceInput{{Field: field, Action: CatalogPriceFix}}
+		require.Equal(t, []string{"applied"}, f.apply(t, scope, p, edit))
+		card := f.db.Model.Query().OnlyX(f.ctx).ModelCard
+		require.False(t, card.CatalogPrices["input"].Follow)
+		require.Equal(t, field == "input", card.CatalogPrices["output"].Follow)
+		require.Equal(t, 3.0, *card.ReferencePrice("input"))
+		require.Equal(t, 15.0, *card.ReferencePrice("output"))
+	}
+	require.Empty(t, f.preview(t, scope).Rows)
 }
 
 func TestCatalogDoesNotConvertAutomaticMergeToManualAtApply(t *testing.T) {
