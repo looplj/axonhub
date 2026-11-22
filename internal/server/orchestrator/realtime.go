@@ -268,7 +268,12 @@ func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Con
 	if target.Translation {
 		adapter = &openairt.Translation{}
 	} else if target.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket {
-		adapter, err = openairt.NewAdapter(target.Model)
+		var native *openairt.Adapter
+		native, err = openairt.NewAdapter(target.Model)
+		if err == nil {
+			native.ClientModel = target.ClientModel
+			adapter = native
+		}
 	} else {
 		adapter, err = protocol.NewAdapter(target.Model, target.Native)
 	}

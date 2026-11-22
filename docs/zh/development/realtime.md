@@ -176,7 +176,7 @@ Nginx 本地验证可执行 `go run ./scripts/realtime-proxy-check`（需要 Doc
 
 持续 VAD 输入结束时，应停止采集、发送 `input_audio_buffer.clear` 并等待 `input_audio_buffer.cleared`，再关闭连接。只有得到上游确认的未生成输入清空才会撤销其预约；仅断开 socket 不会抹去未知消费。
 
-OpenAI 的独立输入转录（`session.audio.input.transcription`）有单独计量和价格，当前明确拒绝开启，不能借 Realtime 主模型授权选择另一台付费转录模型。模型自身的音频理解及生成音频转录事件不受此限制。Qwen 声明支持的内置输入转录通过其独立适配器处理。
+OpenAI 的独立输入转录（`session.audio.input.transcription`）有单独计量和价格，当前未启用。网关转发会话更新前会移除 SDK 提供的转录设置。会话更新中的 `session.model` 必须与建连模型一致，网关接受后会移除该字段。模型自身的音频理解及生成音频转录事件不受此限制。Qwen 声明支持的内置输入转录通过其独立适配器处理。
 
 请求数在创建新审计预约时按既有已确认 UsageLog 的计数检查，运行中的 Token/费用配额单独核查，不因已预约的请求数达到上限而提前取消它自身。无法验证的 usage 明细仍按既有校验进入核对流程；仅缺少某个模态的价格不阻止会话，该模态不计入费用。全局费用仍属于实际用量核查，不提供供应商端硬金额预付锁。
 

@@ -6,7 +6,7 @@
 //
 // 注意事项:
 //
-//	不重写合法事件、未知扩展字段或音频；禁止会话更换模型及未经批准的远程 MCP。
+//	保留合法扩展字段与音频。转发会话更新前移除已核对的模型字段与未计量的转录设置。
 package realtime
 
 import (
@@ -30,7 +30,16 @@ var capabilities = map[string]Capability{
 	"gpt-realtime-2.1-mini": {Model: "gpt-realtime-2.1-mini", ImageInput: true, FunctionCalling: true, PCMRate: 24000},
 }
 
-type Adapter struct{ Capability Capability }
+var (
+	ErrModelSwitch         = errors.New("session.model must match the model selected at connection time")
+	ErrSessionType         = errors.New("session.type must be realtime")
+	ErrLegacySessionFields = errors.New("use session.output_modalities and nested session.audio input/output settings instead of flat session fields")
+)
+
+type Adapter struct {
+	Capability  Capability
+	ClientModel string
+}
 
 func NewAdapter(model string) (*Adapter, error) {
 	c, ok := capabilities[model]
@@ -90,28 +99,54 @@ func (a *Adapter) Client(data []byte) ([]byte, error) {
 		if kind == "session.update" {
 			var sessionType string
 			if body == nil || json.Unmarshal(body["type"], &sessionType) != nil || sessionType != "realtime" {
-				return nil, errors.New("session.type must be realtime")
+				return nil, ErrSessionType
 			}
 		}
-		for _, f := range []string{"model", "authorization", "api_key", "safety_identifier"} {
+		for _, f := range []string{"authorization", "api_key", "safety_identifier"} {
 			if _, exists := body[f]; exists {
 				return nil, errors.New("security control fields cannot be overridden")
 			}
 		}
-		// Independent input transcription has a separate usage stream and rate card.
-		// Do not enable that billable feature until its own metering is installed.
-		if field == "session" {
-			if raw, exists := body["input_audio_transcription"]; exists && string(raw) != "null" {
-				return nil, errors.New("independent transcription is not enabled")
+		changed := false
+		if raw, exists := body["model"]; exists {
+			selected := a.ClientModel
+			if selected == "" {
+				selected = a.Capability.Model
 			}
-			var audio struct {
-				Input struct {
-					Transcription json.RawMessage `json:"transcription"`
-				} `json:"input"`
+			var model string
+			if kind != "session.update" || json.Unmarshal(raw, &model) != nil || model != selected {
+				return nil, ErrModelSwitch
 			}
-			if raw, exists := body["audio"]; exists && json.Unmarshal(raw, &audio) == nil {
-				if len(audio.Input.Transcription) > 0 && string(audio.Input.Transcription) != "null" {
-					return nil, errors.New("independent input transcription is not enabled without separate usage accounting")
+			delete(body, "model")
+			changed = true
+		}
+		if kind == "session.update" {
+			for _, legacy := range []string{"modalities", "turn_detection", "input_audio_format", "output_audio_format"} {
+				if _, exists := body[legacy]; exists {
+					return nil, ErrLegacySessionFields
+				}
+			}
+			// Independent transcription is not metered. Remove SDK transcription
+			// settings before forwarding so they cannot activate an upstream charge.
+			if _, exists := body["input_audio_transcription"]; exists {
+				delete(body, "input_audio_transcription")
+				changed = true
+			}
+			var audio, input map[string]json.RawMessage
+			if json.Unmarshal(body["audio"], &audio) == nil && json.Unmarshal(audio["input"], &input) == nil {
+				if raw, exists := input["transcription"]; exists && string(raw) != "null" {
+					delete(input, "transcription")
+					if len(input) == 0 {
+						delete(audio, "input")
+					} else {
+						audio["input"], _ = json.Marshal(input)
+					}
+					if len(audio) == 0 {
+						delete(body, "audio")
+					} else {
+						body["audio"], _ = json.Marshal(audio)
+					}
+					changed = true
 				}
 			}
 		}
@@ -127,6 +162,10 @@ func (a *Adapter) Client(data []byte) ([]byte, error) {
 					return nil, errors.New("only function tools are enabled; remote or billable tools require an explicit gateway policy")
 				}
 			}
+		}
+		if changed {
+			event[field], _ = json.Marshal(body)
+			return json.Marshal(event)
 		}
 	}
 	if kind == "input_audio_buffer.append" {

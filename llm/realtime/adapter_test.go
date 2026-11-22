@@ -213,3 +213,39 @@ func TestQwenTranscriptionFailureRedactsProviderDetails(t *testing.T) {
 		require.NotContains(t, string(redacted), "secret")
 	}
 }
+
+func TestNativeNestedTurnDetection(t *testing.T) {
+	for _, tc := range []struct {
+		name, session string
+		wantErr       error
+	}{
+		{"nested", `{"audio":{"input":{"turn_detection":{"type":"semantic_vad","threshold":0.5}}}}`, nil},
+		{"manual", `{"audio":{"input":{"turn_detection":null}}}`, nil},
+		{"same", `{"turn_detection":null,"audio":{"input":{"turn_detection":null}}}`, nil},
+		{"conflict", `{"turn_detection":null,"audio":{"input":{"turn_detection":{"type":"semantic_vad"}}}}`, ErrConflictingTurnDetection},
+		{"invalid", `{"audio":{"input":{"turn_detection":{"type":"semantic_vad","threshold":2}}}}`, ErrInvalidNestedTurnDetection},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a, err := NewAdapter("qwen3.8-omni-flash-realtime", true)
+			require.NoError(t, err)
+			wire, err := a.Client([]byte(`{"type":"session.update","session":` + tc.session + `}`))
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.JSONEq(t, `{"type":"session.update","session":`+tc.session+`}`, string(wire))
+			// Qwen acknowledges the effective PCM formats alongside the update.
+			input := `"format":{"type":"pcm","sample_rate":16000}`
+			if tc.name == "nested" {
+				input += `,"turn_detection":{"type":"semantic_vad","threshold":0.5}`
+			} else {
+				input += `,"turn_detection":null`
+			}
+			ack := `{"type":"session.updated","session":{"audio":{"input":{` + input + `},"output":{"format":{"type":"pcm","sample_rate":24000}}}}}`
+			got, err := a.Server([]byte(ack))
+			require.NoError(t, err)
+			require.Equal(t, ack, string(got))
+		})
+	}
+}

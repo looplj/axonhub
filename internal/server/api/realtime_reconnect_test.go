@@ -129,6 +129,16 @@ func newRealtimeHTTPFixtureWithPrice(t *testing.T, maxDuration time.Duration, tr
 			if err != nil {
 				return
 			}
+			if !withPrice && gjson.GetBytes(data, "type").String() == "session.update" {
+				if gjson.GetBytes(data, "session.model").Exists() || gjson.GetBytes(data, "session.audio.input.transcription").Exists() {
+					t.Error("gateway forwarded SDK model or independent transcription settings")
+					return
+				}
+				ack := []byte(`{"type":"session.updated","session":` + gjson.GetBytes(data, "session").Raw + `}`)
+				if c.WriteMessage(websocket.TextMessage, ack) != nil {
+					return
+				}
+			}
 			if !withPrice && gjson.GetBytes(data, "type").String() == "response.create" {
 				created := []byte(`{"type":"response.created","response":{"id":"unpriced-response"}}`)
 				done := []byte(`{"type":"response.done","response":{"id":"unpriced-response","status":"completed","usage":{"input_tokens":11,"output_tokens":7,"total_tokens":18,"input_token_details":{"text_tokens":11,"audio_tokens":0},"output_token_details":{"text_tokens":7,"audio_tokens":0}}}}`)
@@ -487,6 +497,20 @@ func TestRealtimeHTTPUnpricedOpenAIRecordsUsageWithoutCost(t *testing.T) {
 	_, created, err := conn.ReadMessage()
 	require.NoError(t, err)
 	require.Equal(t, "session.created", gjson.GetBytes(created, "type").String())
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.update","event_id":"wrong-model","session":{"type":"realtime","model":"gpt-realtime-2.1"}}`)))
+	_, rejected, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "model_switch_not_allowed", gjson.GetBytes(rejected, "error.code").String())
+	require.Equal(t, "wrong-model", gjson.GetBytes(rejected, "error.event_id").String())
+
+	update := []byte(`{"type":"session.update","session":{"type":"realtime","model":"gpt-realtime-2.1-mini","audio":{"input":{"format":{"type":"audio/pcm","rate":24000},"transcription":{"model":"gpt-4o-mini-transcribe"},"turn_detection":null}}}}`)
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, update))
+	_, updated, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "session.updated", gjson.GetBytes(updated, "type").String())
+	require.EqualValues(t, 24000, gjson.GetBytes(updated, "session.audio.input.format.rate").Int())
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`)))
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"input_audio_buffer.commit"}`)))
 	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
 	for {
 		_, event, err := conn.ReadMessage()

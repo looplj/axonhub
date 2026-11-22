@@ -178,7 +178,7 @@ A directly authenticated instance owner can mark terminal, unpriced audit record
 
 Before closing a continuously streaming VAD client, stop capture, send `input_audio_buffer.clear`, and wait for `input_audio_buffer.cleared`. Only provider-confirmed clearing of unused input cancels that pending reservation; closing the socket does not erase unknown consumption.
 
-OpenAI independent input transcription (`session.audio.input.transcription`) has a separate usage stream and price card and is explicitly disabled until it is metered. Realtime model audio understanding and output-audio transcripts remain available. Qwen's declared built-in input transcription is handled by its separate adapter.
+OpenAI independent input transcription (`session.audio.input.transcription`) has a separate usage stream and price card and remains disabled. The gateway removes SDK-provided transcription settings before forwarding session updates. A matching `session.model` is accepted and removed before forwarding because the model was selected when the connection opened. Realtime model audio understanding and output-audio transcripts remain available. Qwen's declared built-in input transcription is handled by its separate adapter.
 
 Request-count quotas are checked against the existing confirmed UsageLog count when reserving a new audit record. Running token/cost checks exclude the already-reserved request count, so reaching that count does not cancel its own in-flight response. Usage details that fail validation still enter reconciliation; a missing price alone does not stop the session, and that modality is omitted from billed cost. Cost enforcement uses confirmed consumption rather than a provider-side hard prepaid spending lock.
 

@@ -26,6 +26,8 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/looplj/axonhub/internal/log"
+	qwenrt "github.com/looplj/axonhub/llm/realtime"
+	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 )
 
 var ErrQuotaExceeded = errors.New("realtime quota exceeded")
@@ -358,6 +360,17 @@ func clientError(data []byte, cause ...error) []byte {
 	if len(cause) > 0 && errors.Is(cause[0], ErrQuotaExceeded) {
 		code = "quota_exceeded"
 		message = "Realtime quota exceeded; stop sending input"
+	}
+	if len(cause) > 0 {
+		for _, safe := range []error{openairt.ErrModelSwitch, openairt.ErrSessionType, openairt.ErrLegacySessionFields, openairt.ErrTranslationSessionFields, qwenrt.ErrConflictingTurnDetection, qwenrt.ErrInvalidNestedTurnDetection} {
+			if errors.Is(cause[0], safe) {
+				message = safe.Error()
+				break
+			}
+		}
+		if errors.Is(cause[0], openairt.ErrModelSwitch) {
+			code = "model_switch_not_allowed"
+		}
 	}
 	result, _ := json.Marshal(map[string]any{"type": "error", "event_id": "event_" + uuid.NewString(), "error": map[string]any{"type": "invalid_request_error", "code": code, "event_id": original.ID, "message": message}})
 	return result

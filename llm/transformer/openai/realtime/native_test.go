@@ -58,11 +58,35 @@ func TestNativeEndpointAllowlist(t *testing.T) {
 	}
 }
 
-func TestNativeRejectsSeparatelyBilledTranscription(t *testing.T) {
+func TestNativeAgentsSessionUpdate(t *testing.T) {
 	a, err := NewAdapter("gpt-realtime-2.1-mini")
 	require.NoError(t, err)
-	_, err = a.Client([]byte(`{"type":"session.update","session":{"type":"realtime","audio":{"input":{"transcription":{"model":"gpt-4o-transcribe"}}}}}`))
-	require.Error(t, err)
+	a.ClientModel = "voice"
+	for _, tc := range []struct {
+		name, session, want string
+		wantErr             error
+	}{
+		{"SDK defaults", `{"type":"realtime","model":"voice","audio":{"input":{"transcription":{"model":"gpt-4o-mini-transcribe"},"turn_detection":{"type":"semantic_vad"}}},"extension":true}`, `{"type":"session.update","session":{"type":"realtime","audio":{"input":{"turn_detection":{"type":"semantic_vad"}}},"extension":true}}`, nil},
+		{"transcription only", `{"type":"realtime","audio":{"input":{"transcription":{"model":"gpt-4o-mini-transcribe"}}}}`, `{"type":"session.update","session":{"type":"realtime"}}`, nil},
+		{"model switch", `{"type":"realtime","model":"gpt-realtime-2.1"}`, "", ErrModelSwitch},
+		{"missing type", `{"model":"voice"}`, "", ErrSessionType},
+		{"legacy format", `{"type":"realtime","input_audio_format":"pcm16"}`, "", ErrLegacySessionFields},
+		{"legacy transcription", `{"type":"realtime","input_audio_transcription":{"model":"gpt-4o-transcribe"}}`, `{"type":"session.update","session":{"type":"realtime"}}`, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			wire, err := a.Client([]byte(`{"type":"session.update","session":` + tc.session + `}`))
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.JSONEq(t, tc.want, string(wire))
+		})
+	}
+	for _, field := range []string{"authorization", "api_key", "safety_identifier"} {
+		_, err := a.Client([]byte(`{"type":"session.update","session":{"type":"realtime","` + field + `":"synthetic"}}`))
+		require.Error(t, err)
+	}
 }
 
 func TestNativeAdapterDoesNotSilentlyRewriteErrorBytes(t *testing.T) {

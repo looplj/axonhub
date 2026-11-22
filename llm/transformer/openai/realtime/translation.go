@@ -44,6 +44,8 @@ func (t *Translation) Expired() bool {
 	return t.pendingID != "" && time.Since(t.pendingAt) > 15*time.Second
 }
 
+var ErrTranslationSessionFields = errors.New("translation session.update does not accept session.type or session.model")
+
 func (t *Translation) Client(data []byte) ([]byte, error) {
 	if !t.created || t.closing || t.closed {
 		return nil, errors.New("invalid event or translation session is closing")
@@ -62,7 +64,10 @@ func (t *Translation) Client(data []byte) ([]byte, error) {
 	switch gjson.GetBytes(data, "type").String() {
 	case "session.update":
 		session := gjson.GetBytes(data, "session")
-		if !session.IsObject() || session.Get("model").Exists() || session.Get("type").Exists() || t.pendingID != "" {
+		if session.Get("model").Exists() || session.Get("type").Exists() {
+			return nil, ErrTranslationSessionFields
+		}
+		if !session.IsObject() || t.pendingID != "" {
 			return nil, errors.New("invalid translation session update or update pending")
 		}
 		id := gjson.GetBytes(data, "event_id")

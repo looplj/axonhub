@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"sync"
 
@@ -436,6 +437,11 @@ func convertTools(value any, ga bool) ([]any, error) {
 	return result, nil
 }
 
+var (
+	ErrConflictingTurnDetection   = errors.New("session.audio.input.turn_detection conflicts with session.turn_detection")
+	ErrInvalidNestedTurnDetection = errors.New("session.audio.input.turn_detection is invalid for the selected Qwen model")
+)
+
 func (a *Adapter) nativeSession(s map[string]any) error {
 	if err := only(s, "modalities", "instructions", "voice", "audio", "turn_detection", "input_audio_transcription", "tools", "enable_search", "input_audio_format", "output_audio_format"); err != nil {
 		return err
@@ -518,7 +524,19 @@ func (a *Adapter) nativeSession(s map[string]any) error {
 			if err != nil {
 				return err
 			}
-			if err := only(config, "format", "voice"); err != nil {
+			allowed := []string{"format", "voice"}
+			if direction == "input" {
+				allowed = append(allowed, "turn_detection")
+				if turn, exists := config["turn_detection"]; exists {
+					if top, exists := s["turn_detection"]; exists && !reflect.DeepEqual(top, turn) {
+						return ErrConflictingTurnDetection
+					}
+					if err := validateTurn(turn, a.cap.VADTypes); err != nil {
+						return ErrInvalidNestedTurnDetection
+					}
+				}
+			}
+			if err := only(config, allowed...); err != nil {
 				return err
 			}
 			if format, exists := config["format"]; exists {
