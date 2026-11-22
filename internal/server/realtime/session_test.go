@@ -529,7 +529,11 @@ func TestSessionQueuesConfigurationUpdates(t *testing.T) {
 			go runSessionForTest(t, done, func() error {
 				return Run(ctx, downstream, upstream, Options{}, Hooks{
 					Client: func(data []byte) ([]byte, error) {
-						if gjson.GetBytes(data, "type").String() == "session.update" {
+						kind := gjson.GetBytes(data, "type").String()
+						if kind == "response.cancel" {
+							return data, nil
+						}
+						if kind == "session.update" {
 							return data, state.Update()
 						}
 						if !state.Ready() {
@@ -577,6 +581,14 @@ func TestSessionQueuesConfigurationUpdates(t *testing.T) {
 					require.Equal(t, kind, gjson.GetBytes(ack, "type").String())
 					require.Equal(t, id, gjson.GetBytes(ack, "event_id").String())
 				}
+			} else {
+				require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.cancel"}`)))
+				_, firstUpdate, err := provider.ReadMessage()
+				require.NoError(t, err)
+				require.Equal(t, "session.update", gjson.GetBytes(firstUpdate, "type").String())
+				_, cancel, err := provider.ReadMessage()
+				require.NoError(t, err)
+				require.Equal(t, "response.cancel", gjson.GetBytes(cancel, "type").String())
 			}
 			cancel()
 			select {
@@ -585,6 +597,41 @@ func TestSessionQueuesConfigurationUpdates(t *testing.T) {
 				t.Fatal("session workers did not exit")
 			}
 		})
+	}
+}
+
+func TestSessionRejectsDuplicateJSONKeysBeforeClientAdmission(t *testing.T) {
+	client, downstream := socketPair(t)
+	upstream, provider := socketPair(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	var admitted atomic.Int32
+	done := make(chan error, 1)
+	go runSessionForTest(t, done, func() error {
+		return Run(ctx, downstream, upstream, Options{}, Hooks{Client: func(data []byte) ([]byte, error) {
+			admitted.Add(1)
+			return data, nil
+		}})
+	})
+
+	require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"conversation.item.create","type":"input_audio_buffer.append","audio":"AAA="}`)))
+	_, rejected, err := client.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "unsupported_event", gjson.GetBytes(rejected, "error.code").String())
+	require.Zero(t, admitted.Load(), "ambiguous event envelopes must be rejected before routing and accounting")
+
+	valid := []byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`)
+	require.NoError(t, client.WriteMessage(websocket.TextMessage, valid))
+	_, forwarded, err := provider.ReadMessage()
+	require.NoError(t, err)
+	require.JSONEq(t, string(valid), string(forwarded))
+	require.EqualValues(t, 1, admitted.Load())
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("session did not stop after duplicate-envelope rejection")
 	}
 }
 

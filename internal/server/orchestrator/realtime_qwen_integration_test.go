@@ -177,3 +177,25 @@ func TestRealtimeTranslationProbeConfirmsUpdateAndClose(t *testing.T) {
 		t.Fatal("translation probe did not finish")
 	}
 }
+
+func TestRealtimeTranslationHandoffClearsSharedConfigurationTimeout(t *testing.T) {
+	upstream, provider := realtimeSocketPair(t)
+	require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.created","session":{"type":"translation","model":"gpt-realtime-translate"}}`)))
+	target := &RealtimeTarget{
+		Translation: true,
+		Model:       "gpt-realtime-translate",
+		ClientModel: "gpt-realtime-translate",
+	}
+	conversation, initial, err := (&RealtimeService{}).configure(context.Background(), upstream, target, rt.Config{HandshakeTimeout: time.Second}.Defaults())
+	require.NoError(t, err)
+	require.Len(t, initial, 1)
+	require.NotNil(t, conversation.translation)
+	require.False(t, conversation.state.ConfigurationExpired(-time.Second), "translation adapter owns the configuration acknowledgement timeout")
+
+	update := []byte(`{"type":"session.update","event_id":"language-update","session":{"audio":{"output":{"language":"en"}}}}`)
+	_, err = conversation.adapter.Client(update)
+	require.NoError(t, err)
+	_, err = conversation.Server([]byte(`{"type":"session.updated","session":{"type":"translation","model":"gpt-realtime-translate","audio":{"output":{"language":"en"}}}}`))
+	require.NoError(t, err)
+	require.False(t, conversation.state.ConfigurationExpired(-time.Second))
+}

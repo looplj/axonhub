@@ -321,6 +321,7 @@ func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Con
 			return nil, nil, err
 		}
 		c.translation = &translationAccounting{}
+		state.AwaitClientConfiguration()
 		_ = upstream.SetReadDeadline(time.Time{})
 		return c, [][]byte{first}, nil
 	}

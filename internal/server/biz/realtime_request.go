@@ -134,7 +134,7 @@ func (s *RequestService) UpdateRealtimeSessionMetadata(ctx context.Context, ids 
 	rows, err := authz.RunAsHost(ctx, client, "realtime-session-audit-metadata", func(hostCtx context.Context) ([]*ent.Request, error) {
 		return client.Request.Query().
 			Where(request.IDIn(ids...), request.FormatEQ(llm.APIFormatOpenAIRealtime.String()), request.RequestBodyChunkedEQ(false)).
-			Select(request.FieldID, request.FieldStatus, request.FieldRequestBody).All(hostCtx)
+			Select(request.FieldID, request.FieldStatus, request.FieldRequestBody, request.FieldMetricsLatencyMs).All(hostCtx)
 	})
 	if err != nil {
 		return err
@@ -160,7 +160,7 @@ func (s *RequestService) UpdateRealtimeSessionMetadata(ctx context.Context, ids 
 			Modify(func(builder *entsql.UpdateBuilder) {
 				builder.Set(request.FieldRequestBody, json.RawMessage(data))
 			})
-		if row.Status == request.StatusFailed {
+		if row.Status == request.StatusFailed && row.MetricsLatencyMs == nil {
 			update.SetMetricsLatencyMs(durationMs)
 		}
 		if err := s.saveRequestUpdate(ctx, row.ID, update); err != nil {

@@ -329,6 +329,26 @@ func TestRealtimeClosePreservesObservedUsageWithoutBodyStorage(t *testing.T) {
 	require.Zero(t, db.UsageLog.Query().CountX(ctx))
 }
 
+func TestRealtimeSessionMetadataKeepsPerTurnLatencyAndFillsMissingLatency(t *testing.T) {
+	ctx, db := setupTest(t)
+	project := db.Project.Create().SetName("session-metadata-latency").SaveX(ctx)
+	ctx = contexts.WithProjectID(ctx, project.ID)
+	key := db.APIKey.Create().SetName("session-metadata-latency").SetKey("synthetic-session-metadata").SetProjectID(project.ID).SetType("user").SaveX(ctx)
+	ctx = contexts.WithAPIKey(ctx, key)
+	requests := newTestRequestServiceForChannels(db, newTestSystemService(db))
+	turnRequest, err := requests.CreateRealtimeRequest(ctx, "voice", 1, "session", objects.JSONRawMessage(`{}`))
+	require.NoError(t, err)
+	turnLatency := int64(1250)
+	require.NoError(t, requests.UpdateRealtimeAudit(ctx, turnRequest, request.StatusFailed, "response-1", map[string]any{"error": "response failed"}, &biz.LatencyMetrics{LatencyMs: &turnLatency}, nil))
+	unfinishedRequest, err := requests.CreateRealtimeRequest(ctx, "voice", 1, "session", objects.JSONRawMessage(`{}`))
+	require.NoError(t, err)
+	require.NoError(t, requests.UpdateRealtimeAudit(ctx, unfinishedRequest, request.StatusFailed, "", map[string]any{"error": "session ended"}, nil, nil))
+
+	require.NoError(t, requests.UpdateRealtimeSessionMetadata(ctx, []int{turnRequest.ID, unfinishedRequest.ID}, map[string]any{"duration_ms": 600000}, 600000))
+	require.Equal(t, turnLatency, *db.Request.GetX(ctx, turnRequest.ID).MetricsLatencyMs, "session duration must not replace a confirmed turn latency")
+	require.EqualValues(t, 600000, *db.Request.GetX(ctx, unfinishedRequest.ID).MetricsLatencyMs, "session duration fills latency only when a turn measurement is absent")
+}
+
 func TestRealtimeResponseReservationsKeepAudioClearOrder(t *testing.T) {
 	before, clearing, after := &realtimeResponse{createEventID: "before"}, &realtimeResponse{}, &realtimeResponse{createEventID: "after"}
 	c := &RealtimeConversation{

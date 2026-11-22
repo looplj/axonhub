@@ -118,7 +118,7 @@ func (s *State) Close() {
 	s.phase = Closed
 }
 
-// AwaitClientConfiguration leaves the native session unconfigured until its client's first update.
+// AwaitClientConfiguration leaves adapter-configured sessions unconfigured until the client's first update.
 func (s *State) AwaitClientConfiguration() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

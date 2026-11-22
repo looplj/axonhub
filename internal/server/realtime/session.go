@@ -14,6 +14,7 @@
 package realtime
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -73,6 +74,67 @@ func (o Options) defaults() Options {
 		o.QueueSize = 8
 	}
 	return o
+}
+
+func rejectDuplicateJSONKeys(data []byte) error {
+	if !json.Valid(data) {
+		return ErrInvalidEvent
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := consumeJSONValue(decoder); err != nil {
+		return err
+	}
+	return nil
+}
+
+func consumeJSONValue(decoder *json.Decoder) error {
+	token, err := decoder.Token()
+	if err != nil {
+		return ErrInvalidEvent
+	}
+	delimiter, ok := token.(json.Delim)
+	if !ok {
+		return nil
+	}
+	switch delimiter {
+	case '{':
+		seen := make(map[string]struct{})
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			if err != nil {
+				return ErrInvalidEvent
+			}
+			key, ok := keyToken.(string)
+			if !ok {
+				return ErrInvalidEvent
+			}
+			if _, exists := seen[key]; exists {
+				return fmt.Errorf("%w: duplicate JSON field %q", ErrInvalidEvent, key)
+			}
+			seen[key] = struct{}{}
+			if err := consumeJSONValue(decoder); err != nil {
+				return err
+			}
+		}
+		end, err := decoder.Token()
+		if err != nil || end != json.Delim('}') {
+			return ErrInvalidEvent
+		}
+	case '[':
+		for decoder.More() {
+			if err := consumeJSONValue(decoder); err != nil {
+				return err
+			}
+		}
+		end, err := decoder.Token()
+		if err != nil || end != json.Delim(']') {
+			return ErrInvalidEvent
+		}
+	default:
+		return ErrInvalidEvent
+	}
+	return nil
 }
 
 type Hooks struct {
@@ -142,13 +204,17 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 	var updateMu sync.Mutex
 	var updates [][]byte
 	submitClient := func(data []byte) error {
+		if err := rejectDuplicateJSONKeys(data); err != nil {
+			return err
+		}
 		updateMu.Lock()
 		defer updateMu.Unlock()
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
 		isUpdate := gjson.GetBytes(data, "type").String() == "session.update"
-		if len(updates) == 0 {
+		isCancel := gjson.GetBytes(data, "type").String() == "response.cancel"
+		if len(updates) == 0 || isCancel {
 			wire, err := hooks.Client(data)
 			if !isUpdate || !errors.Is(err, ErrUpdatePending) {
 				if err != nil {
@@ -156,7 +222,8 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 				}
 				return toProvider.enqueue(ctx, wire)
 			}
-		} else if !isUpdate {
+		}
+		if len(updates) > 0 && !isUpdate {
 			return ErrUpdatePending
 		}
 		if len(updates) == maxQueuedUpdates {
