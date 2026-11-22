@@ -102,10 +102,29 @@ test('Realtime provider badges vary by protocol while preserving the endpoint pr
   assert.doesNotMatch(endpointCell, /REALTIME_PROTOCOL_CLASSES|apiFormat\.formats/);
 });
 
-test('Realtime handshake timeout displays the server default unless the channel has an override', () => {
-  assert.equal(getRealtimeHandshakeTimeoutInputValue(undefined), '15000');
-  assert.equal(getRealtimeHandshakeTimeoutInputValue(null), '15000');
+test('Realtime handshake timeout keeps inherited server defaults unset in the form', () => {
+  assert.equal(getRealtimeHandshakeTimeoutInputValue(undefined), '');
+  assert.equal(getRealtimeHandshakeTimeoutInputValue(null), '');
   assert.equal(getRealtimeHandshakeTimeoutInputValue(30000), '30000');
+
+  const inherited = realtimeForSelection(
+    'openai/realtime-ws',
+    { enabled: true, protocol: 'openai/realtime-ws', baseURL: 'wss://api.openai.com', path: '/v1/realtime' },
+    'wss://api.openai.com',
+    getRealtimeHandshakeTimeoutInputValue(undefined)
+  );
+  assert.equal('handshakeTimeoutMs' in inherited, false, 'unrelated edits must not persist an inherited default as an override');
+
+  const configured = realtimeForSelection(
+    'openai/realtime-ws',
+    null,
+    'wss://api.openai.com',
+    getRealtimeHandshakeTimeoutInputValue(30000)
+  );
+  assert.equal(configured.handshakeTimeoutMs, 30000, 'an explicit channel override must still be saved');
+
+  const actionDialog = readFileSync(new URL('../components/channels-action-dialog.tsx', import.meta.url), 'utf8');
+  assert.match(actionDialog, /placeholder=\{t\('channels\.endpoints\.realtime\.handshakeTimeoutPlaceholder'\)\}/);
 });
 
 

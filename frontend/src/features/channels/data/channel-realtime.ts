@@ -28,7 +28,7 @@ export const OPENAI_REALTIME_HOST = 'wss://api.openai.com';
 export const DEFAULT_REALTIME_HANDSHAKE_TIMEOUT_MS = 15000;
 
 export function getRealtimeHandshakeTimeoutInputValue(timeoutMs: number | null | undefined): string {
-  return String(timeoutMs ?? DEFAULT_REALTIME_HANDSHAKE_TIMEOUT_MS);
+  return timeoutMs == null ? '' : String(timeoutMs);
 }
 
 export function getChannelBaseURLInputValue(format: string, channelBaseURL: string | null | undefined, qwenRealtimeHost: string): string {

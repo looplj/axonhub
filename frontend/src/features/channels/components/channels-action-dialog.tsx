@@ -3799,6 +3799,7 @@ export function ChannelsActionDialog({
                               min={1000}
                               max={60000}
                               value={realtimeTimeout}
+                              placeholder={t('channels.endpoints.realtime.handshakeTimeoutPlaceholder')}
                               onChange={(event) => setRealtimeTimeout(event.target.value)}
                             />
                           </div>
