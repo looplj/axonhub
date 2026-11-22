@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"net"
 	"slices"
 	"strconv"
 	"strings"
@@ -257,12 +258,18 @@ func (s *RealtimeService) Connect(ctx context.Context, target *RealtimeTarget, c
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	transferred := false
+	defer func() {
+		if !transferred {
+			_ = upstream.Close()
+		}
+	}()
 	conversation, initial, err := s.configure(ctx, upstream, target, config)
 	if err != nil {
-		upstream.Close()
 		return nil, nil, nil, err
 	}
 	conversation.credential = key
+	transferred = true
 	return upstream, conversation, initial, nil
 }
 
@@ -297,6 +304,12 @@ func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Con
 	_ = upstream.SetReadDeadline(deadline)
 	kind, created, err := upstream.ReadMessage()
 	if err != nil || kind != websocket.TextMessage || gjson.GetBytes(created, "type").String() != "session.created" {
+		if ctx.Err() != nil {
+			return nil, nil, ctx.Err()
+		}
+		if timeout, ok := errors.AsType[net.Error](err); ok && timeout.Timeout() {
+			return nil, nil, context.DeadlineExceeded
+		}
 		return nil, nil, errors.New("upstream did not create a realtime session")
 	}
 	if err := state.ObserveServer("session.created"); err != nil {

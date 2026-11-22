@@ -7,22 +7,29 @@ package api
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xredis"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 )
@@ -41,6 +48,202 @@ func TestRealtimeReconcileBoundaryRejectsNonOwner(t *testing.T) {
 		router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/admin/realtime/reconcile", nil))
 		require.Equal(t, http.StatusForbidden, w.Code, "unprivileged requests must stop before accessing accounting")
 	}
+}
+
+func TestRealtimeAccountingAndDialRunInParallel(t *testing.T) {
+	var started sync.WaitGroup
+	started.Add(2)
+	delay := 350 * time.Millisecond
+	accounting := func(ctx context.Context) error {
+		started.Done()
+		started.Wait()
+		timer := time.NewTimer(delay)
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+			return nil
+		}
+	}
+	dial := func(ctx context.Context) (*websocket.Conn, *orchestrator.RealtimeConversation, [][]byte, error) {
+		started.Done()
+		started.Wait()
+		timer := time.NewTimer(delay)
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return nil, nil, nil, ctx.Err()
+		case <-timer.C:
+			return nil, nil, nil, nil
+		}
+	}
+
+	result, timing := runRealtimeSetup(context.Background(), time.Second, accounting, dial)
+	require.NoError(t, result.AccountingErr)
+	require.NoError(t, result.DialErr)
+	require.GreaterOrEqual(t, timing.AccountingMs, int64(delay.Milliseconds()-25))
+	require.GreaterOrEqual(t, timing.DialMs, int64(delay.Milliseconds()-25))
+	require.Less(t, timing.TotalMs, timing.AccountingMs+timing.DialMs-150)
+}
+
+func TestRealtimeAccountingFailureClosesSuccessfulDial(t *testing.T) {
+	upstream, provider := apiRealtimeSocketPair(t)
+	accountingErr := errors.New("synthetic accounting failure")
+	result, _ := runRealtimeSetup(context.Background(), time.Second,
+		func(context.Context) error { return accountingErr },
+		func(context.Context) (*websocket.Conn, *orchestrator.RealtimeConversation, [][]byte, error) {
+			time.Sleep(25 * time.Millisecond)
+			return upstream, nil, nil, nil
+		},
+	)
+	require.ErrorIs(t, result.AccountingErr, accountingErr)
+	require.NoError(t, result.DialErr)
+	require.Nil(t, result.Upstream, "an upstream connection cannot escape a failed accounting check")
+	require.NoError(t, provider.SetReadDeadline(time.Now().Add(time.Second)))
+	_, _, err := provider.ReadMessage()
+	require.Error(t, err, "successful dial must be closed when accounting fails")
+}
+
+func TestRealtimeSetupWorkerPanicsDoNotLeaveWaitersBlocked(t *testing.T) {
+	t.Run("accounting", func(t *testing.T) {
+		result, _ := runRealtimeSetup(context.Background(), time.Second,
+			func(context.Context) error { panic("synthetic accounting panic detail") },
+			func(context.Context) (*websocket.Conn, *orchestrator.RealtimeConversation, [][]byte, error) {
+				return nil, nil, nil, nil
+			},
+		)
+		require.ErrorContains(t, result.AccountingErr, "realtime accounting setup failed")
+	})
+	t.Run("dial", func(t *testing.T) {
+		result, _ := runRealtimeSetup(context.Background(), time.Second,
+			func(ctx context.Context) error {
+				<-ctx.Done()
+				return ctx.Err()
+			},
+			func(context.Context) (*websocket.Conn, *orchestrator.RealtimeConversation, [][]byte, error) {
+				panic("synthetic dial panic detail")
+			},
+		)
+		require.ErrorContains(t, result.AccountingErr, "context canceled")
+		require.ErrorContains(t, result.DialErr, "realtime upstream handshake failed")
+	})
+}
+
+func TestRealtimeDialFailureMarksAccountingCancellation(t *testing.T) {
+	dialErr := errors.New("synthetic upstream dial failure")
+	result, _ := runRealtimeSetup(context.Background(), time.Second,
+		func(ctx context.Context) error {
+			<-ctx.Done()
+			return ctx.Err()
+		},
+		func(context.Context) (*websocket.Conn, *orchestrator.RealtimeConversation, [][]byte, error) {
+			return nil, nil, nil, dialErr
+		},
+	)
+	require.ErrorIs(t, result.DialErr, dialErr)
+	require.ErrorIs(t, result.AccountingErr, context.Canceled)
+}
+
+func TestRealtimeDialFailureDoesNotMaskCompletedAccountingError(t *testing.T) {
+	accountingErr := errors.New("synthetic independent accounting failure")
+	accountingReturned := make(chan struct{})
+	result, _ := runRealtimeSetup(context.Background(), time.Second,
+		func(context.Context) error {
+			close(accountingReturned)
+			return accountingErr
+		},
+		func(context.Context) (*websocket.Conn, *orchestrator.RealtimeConversation, [][]byte, error) {
+			<-accountingReturned
+			return nil, nil, nil, errors.New("synthetic dial failure")
+		},
+	)
+	require.ErrorIs(t, result.AccountingErr, accountingErr)
+	require.ErrorContains(t, result.DialErr, "synthetic dial failure")
+}
+
+func apiRealtimeSocketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
+	t.Helper()
+	accepted := make(chan *websocket.Conn, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		if err == nil {
+			accepted <- conn
+		}
+	}))
+	t.Cleanup(server.Close)
+	client, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), nil)
+	require.NoError(t, err)
+	peer := <-accepted
+	t.Cleanup(func() { _ = client.Close(); _ = peer.Close() })
+	return client, peer
+}
+
+func TestRealtimeHandshakeErrorsDistinguishTimeoutAndRejection(t *testing.T) {
+	t.Run("timeout", func(t *testing.T) {
+		router := gin.New()
+		router.GET("/realtime", func(c *gin.Context) {
+			writeRealtimeHandshakeError(c, context.DeadlineExceeded)
+		})
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/realtime", nil))
+		status, code, message := response.Code, "upstream_handshake_timeout", "Realtime upstream handshake timeout"
+		require.Equal(t, http.StatusGatewayTimeout, status)
+		require.Contains(t, response.Body.String(), code)
+		require.Contains(t, response.Body.String(), "error_code")
+		require.Contains(t, response.Body.String(), message)
+		require.Contains(t, strings.ToLower(message), "timeout")
+	})
+	t.Run("upstream rejection", func(t *testing.T) {
+		router := gin.New()
+		router.GET("/realtime", func(c *gin.Context) {
+			writeRealtimeHandshakeError(c, &rt.HandshakeError{Status: http.StatusUnauthorized})
+		})
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/realtime", nil))
+		status, code, message := response.Code, "upstream_handshake_failed", "Realtime upstream handshake was rejected"
+		require.Equal(t, http.StatusBadGateway, status)
+		require.Contains(t, response.Body.String(), code)
+		require.Contains(t, response.Body.String(), message)
+		require.Contains(t, strings.ToLower(message), "rejected")
+	})
+}
+
+func TestRealtimeSetupTimingLogContainsStagesAndUsesSlowThreshold(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "realtime.log")
+	log.SetGlobalConfig(log.Config{
+		Level:    log.DebugLevel,
+		Output:   "file",
+		Encoding: "json",
+		File:     log.FileConfig{Path: path},
+	})
+	t.Cleanup(func() { log.SetGlobalConfig(log.Config{}) })
+
+	h := &RealtimeHandlers{}
+	target := &orchestrator.RealtimeTarget{
+		Channel: &biz.Channel{Channel: &ent.Channel{ID: 17}},
+		Model:   "qwen3.8-omni-flash-realtime",
+		Native:  true,
+	}
+	fast := realtimeSetupTimings{
+		Started: time.Now().Add(-100 * time.Millisecond), AdmissionMs: 10,
+		AccountingMs: 200, DialMs: 210, UpgradeMs: 2,
+	}
+	h.logSetupTimings(context.Background(), target, fast)
+	slow := fast
+	slow.Started = time.Now().Add(-1100 * time.Millisecond)
+	h.logSetupTimings(context.Background(), target, slow)
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	require.Len(t, lines, 2)
+	require.Contains(t, lines[0], `"level":"DEBUG"`)
+	require.Contains(t, lines[1], `"level":"INFO"`)
+	for _, field := range []string{"admission_ms", "accounting_ms", "dial_ms", "upgrade_ms", "total_ms", "channel_id", "upstream_model", "native_qwen"} {
+		require.Contains(t, string(data), field)
+	}
+	require.NotContains(t, string(data), "Authorization")
 }
 
 func TestRealtimeBoundaryRejectsCredentialsInQueryAndOrigin(t *testing.T) {

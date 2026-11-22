@@ -1,8 +1,8 @@
-// 职责: 校验 OpenAI 实时翻译的独立端点与会话事件。
+// 职责: 校验 OpenAI 实时翻译端点和事件，并剥离上游不支持的会话字段。
 // 关联文件:
 //   llm/transformer/openai/realtime/native.go
 //   internal/server/orchestrator/realtime_translation.go
-// 注意事项: 上游不报告账单用量，音频时长来自发出的 PCM 样本。
+// 注意事项: 上游不报告账单用量，音频时长来自发出的 PCM 样本。翻译会话拒绝 session.type/model，只剥离已知不支持字段并保留 audio.output.language。
 
 package realtime
 
@@ -10,7 +10,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -70,6 +72,22 @@ func (t *Translation) Client(data []byte) ([]byte, error) {
 		if !session.IsObject() || t.pendingID != "" {
 			return nil, errors.New("invalid translation session update or update pending")
 		}
+		var sessionFields map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(session.Raw), &sessionFields); err != nil || sessionFields == nil {
+			return nil, errors.New("invalid translation session update")
+		}
+		stripped := stripUnsupportedTranslationSessionFields(sessionFields)
+		if len(stripped) > 0 {
+			slog.Warn("unsupported Realtime Translation session fields stripped", slog.String("fields", strings.Join(stripped, ", ")))
+			event["session"], err = json.Marshal(sessionFields)
+			if err != nil {
+				return nil, err
+			}
+			data, err = json.Marshal(event)
+			if err != nil {
+				return nil, err
+			}
+		}
 		id := gjson.GetBytes(data, "event_id")
 		if id.Exists() && (id.Type != gjson.String || len(id.String()) > 256) {
 			return nil, errors.New("invalid translation event ID")
@@ -97,6 +115,38 @@ func (t *Translation) Client(data []byte) ([]byte, error) {
 		return nil, errors.New("unsupported translation client event")
 	}
 	return data, nil
+}
+
+func stripUnsupportedTranslationSessionFields(session map[string]json.RawMessage) []string {
+	stripped := make([]string, 0, 4)
+	for _, field := range []string{"output_modalities", "modalities", "instructions"} {
+		if _, exists := session[field]; exists {
+			delete(session, field)
+			stripped = append(stripped, field)
+		}
+	}
+
+	var audio map[string]json.RawMessage
+	if rawAudio, exists := session["audio"]; exists && json.Unmarshal(rawAudio, &audio) == nil && audio != nil {
+		var input map[string]json.RawMessage
+		if rawInput, exists := audio["input"]; exists && json.Unmarshal(rawInput, &input) == nil && input != nil {
+			if _, exists := input["format"]; exists {
+				delete(input, "format")
+				stripped = append(stripped, "audio.input.format")
+			}
+			if len(input) == 0 {
+				delete(audio, "input")
+			} else if encoded, err := json.Marshal(input); err == nil {
+				audio["input"] = encoded
+			}
+		}
+		if len(audio) == 0 {
+			delete(session, "audio")
+		} else if encoded, err := json.Marshal(audio); err == nil {
+			session["audio"] = encoded
+		}
+	}
+	return stripped
 }
 
 func (t *Translation) Server(data []byte) ([]byte, error) {

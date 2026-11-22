@@ -77,7 +77,7 @@ func Dial(ctx context.Context, target, key string, proxy *httpclient.ProxyConfig
 		if response != nil {
 			status = response.StatusCode
 		}
-		return nil, &HandshakeError{Status: status}
+		return nil, &HandshakeError{Status: status, Cause: err}
 	}
 	return conn, nil
 }
@@ -130,8 +130,11 @@ func (SecureDialer) Connect(ctx context.Context, target, key string, proxy *http
 	return Dial(ctx, target, key, proxy, timeout, safety...)
 }
 
-// HandshakeError retains only the HTTP status, never provider headers/body or URLs.
-type HandshakeError struct{ Status int }
+// HandshakeError retains the HTTP status and a safe cause, never provider headers/body or URLs.
+type HandshakeError struct {
+	Status int
+	Cause  error
+}
 
 func (e *HandshakeError) Error() string {
 	if e.Status == 0 {
@@ -139,3 +142,5 @@ func (e *HandshakeError) Error() string {
 	}
 	return fmt.Sprintf("realtime upstream WebSocket handshake failed (HTTP %d)", e.Status)
 }
+
+func (e *HandshakeError) Unwrap() error { return e.Cause }

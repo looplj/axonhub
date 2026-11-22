@@ -87,6 +87,19 @@ func TestRealtimeCheckRevalidatesCurrentChannelTags(t *testing.T) {
 	require.ErrorContains(t, c.Check(requestCtx), "realtime channel permission revoked")
 }
 
+func TestRealtimeConfigurePreservesSessionCreatedTimeout(t *testing.T) {
+	upstream, _ := realtimeSocketPair(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	target := &RealtimeTarget{
+		APIFormat:   llm.APIFormatOpenAIRealtimeWebSocket,
+		Model:       "gpt-realtime-2.1",
+		ClientModel: "gpt-realtime-2.1",
+	}
+	_, _, err := (&RealtimeService{}).configure(ctx, upstream, target, rt.Config{HandshakeTimeout: time.Second}.Defaults())
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
 func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 	for _, model := range []string{"gpt-realtime-2.1", "gpt-realtime-2.1-mini"} {
 		t.Run(model, func(t *testing.T) {

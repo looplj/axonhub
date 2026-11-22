@@ -19,6 +19,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -29,6 +30,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
@@ -54,6 +56,179 @@ type RealtimeHandlers struct {
 	nextSession  uint64
 	drained      chan struct{}
 	stopping     bool
+}
+
+type realtimeSetupTimings struct {
+	Started      time.Time
+	AdmissionMs  int64
+	AccountingMs int64
+	DialMs       int64
+	UpgradeMs    int64
+	TotalMs      int64
+}
+
+type realtimeSetupOutcome struct {
+	Upstream      *websocket.Conn
+	Conversation  *orchestrator.RealtimeConversation
+	Initial       [][]byte
+	AccountingErr error
+	DialErr       error
+}
+
+type realtimeSetupPart struct {
+	upstream     *websocket.Conn
+	conversation *orchestrator.RealtimeConversation
+	initial      [][]byte
+	err          error
+	elapsedMs    int64
+}
+
+func logRealtimeSetupWorkerPanic(ctx context.Context, worker string, recovered any) {
+	defer func() { _ = recover() }()
+	log.Error(ctx, "realtime setup worker panicked", log.String("worker", worker), log.String("panic_type", fmt.Sprintf("%T", recovered)))
+}
+
+func cleanupRealtimeSetupResult(part realtimeSetupPart) {
+	if part.conversation != nil {
+		func() {
+			defer func() { _ = recover() }()
+			part.conversation.Close()
+		}()
+	}
+	if part.upstream != nil {
+		func() {
+			defer func() { _ = recover() }()
+			_ = part.upstream.Close()
+		}()
+	}
+}
+
+func runRealtimeSetup(
+	ctx context.Context,
+	handshakeTimeout time.Duration,
+	accounting func(context.Context) error,
+	dial func(context.Context) (*websocket.Conn, *orchestrator.RealtimeConversation, [][]byte, error),
+) (realtimeSetupOutcome, realtimeSetupTimings) {
+	started := time.Now()
+	accountingCtx, cancelAccounting := context.WithTimeout(ctx, 5*time.Second)
+	dialCtx, cancelDial := context.WithTimeout(ctx, handshakeTimeout)
+	defer cancelAccounting()
+	defer cancelDial()
+
+	accountingResults := make(chan realtimeSetupPart, 1)
+	accountingReturned := make(chan struct{})
+	dialResults := make(chan realtimeSetupPart, 1)
+	go func() {
+		partStarted := time.Now()
+		part := realtimeSetupPart{}
+		defer func() {
+			recovered := recover()
+			close(accountingReturned)
+			if recovered != nil {
+				logRealtimeSetupWorkerPanic(ctx, "accounting", recovered)
+				part.err = errors.New("realtime accounting setup failed")
+			}
+			part.elapsedMs = time.Since(partStarted).Milliseconds()
+			accountingResults <- part
+		}()
+		part.err = accounting(accountingCtx)
+	}()
+	go func() {
+		partStarted := time.Now()
+		part := realtimeSetupPart{}
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				logRealtimeSetupWorkerPanic(ctx, "dial", recovered)
+				part.err = errors.New("realtime upstream handshake failed")
+				cleanupRealtimeSetupResult(part)
+			}
+			part.elapsedMs = time.Since(partStarted).Milliseconds()
+			dialResults <- part
+		}()
+		part.upstream, part.conversation, part.initial, part.err = dial(dialCtx)
+	}()
+
+	var outcome realtimeSetupOutcome
+	timings := realtimeSetupTimings{Started: started}
+	accountingDone, dialDone := false, false
+	for !accountingDone || !dialDone {
+		select {
+		case part := <-accountingResults:
+			accountingDone = true
+			outcome.AccountingErr = part.err
+			timings.AccountingMs = part.elapsedMs
+			if part.err != nil && !dialDone {
+				cancelDial()
+			}
+		case part := <-dialResults:
+			dialDone = true
+			outcome.Upstream = part.upstream
+			outcome.Conversation = part.conversation
+			outcome.Initial = part.initial
+			outcome.DialErr = part.err
+			timings.DialMs = part.elapsedMs
+			if part.err != nil && !accountingDone {
+				select {
+				case <-accountingReturned:
+					// Preserve an accounting failure that completed before dial failed,
+					// even when its result has not yet been selected from the channel.
+				default:
+					cancelAccounting()
+				}
+			}
+		}
+	}
+	timings.TotalMs = time.Since(started).Milliseconds()
+
+	if outcome.AccountingErr != nil || outcome.DialErr != nil {
+		cleanupRealtimeSetupResult(realtimeSetupPart{conversation: outcome.Conversation, upstream: outcome.Upstream})
+		if outcome.Upstream != nil {
+			outcome.Upstream = nil
+		}
+		outcome.Conversation = nil
+		outcome.Initial = nil
+	}
+	return outcome, timings
+}
+
+func realtimeHandshakeError(err error) (int, string, string) {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return http.StatusGatewayTimeout, "upstream_handshake_timeout", "Realtime upstream handshake timeout"
+	}
+	if handshake, ok := errors.AsType[*rt.HandshakeError](err); ok && handshake.Status > 0 {
+		return http.StatusBadGateway, "upstream_handshake_failed", "Realtime upstream handshake was rejected"
+	}
+	return http.StatusBadGateway, "upstream_handshake_failed", "Realtime upstream handshake failed"
+}
+
+func writeRealtimeHandshakeError(c *gin.Context, err error) (int, string, string) {
+	status, code, message := realtimeHandshakeError(err)
+	c.JSON(status, gin.H{"error": gin.H{
+		"type": "upstream_error", "code": code, "error_code": code, "message": message,
+	}})
+	return status, code, message
+}
+
+func (h *RealtimeHandlers) logSetupTimings(ctx context.Context, target *orchestrator.RealtimeTarget, timings realtimeSetupTimings) {
+	if target == nil || target.Channel == nil {
+		return
+	}
+	timings.TotalMs = time.Since(timings.Started).Milliseconds()
+	fields := []zap.Field{
+		log.Int("channel_id", target.Channel.ID),
+		log.String("upstream_model", target.Model),
+		log.Bool("native_qwen", target.Native),
+		log.Int64("admission_ms", timings.AdmissionMs),
+		log.Int64("accounting_ms", timings.AccountingMs),
+		log.Int64("dial_ms", timings.DialMs),
+		log.Int64("upgrade_ms", timings.UpgradeMs),
+		log.Int64("total_ms", timings.TotalMs),
+	}
+	if timings.TotalMs >= 1000 {
+		log.Info(ctx, "realtime connection setup timings", fields...)
+		return
+	}
+	log.Debug(ctx, "realtime connection setup timings", fields...)
 }
 
 // ReconcileAudit is an owner-only acknowledgement, not a usage or balance edit.
@@ -246,23 +421,30 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 			JSONError(c, status, errors.New(message))
 			return
 		}
+		setupTimings := realtimeSetupTimings{Started: time.Now()}
+		attemptStarted := setupTimings.Started
+		admissionStarted := time.Now()
 		limiter, err := h.limiter(ctx, config)
 		if err != nil {
+			setupTimings.AdmissionMs = time.Since(admissionStarted).Milliseconds()
+			h.logSetupTimings(ctx, target, setupTimings)
 			JSONError(c, http.StatusServiceUnavailable, err)
 			return
 		}
 		project, _ := contexts.GetProjectID(ctx)
 		target.SessionID = "rt-session-" + uuid.NewString()
 		target.UserAgent = realtimeClientLabel(c.Request)
-		attemptStarted := time.Now()
 		release, err := limiter.AcquireForReconnect(ctx, target.APIKey.ID, project, target.Channel.ID, target.SessionID)
+		setupTimings.AdmissionMs = time.Since(admissionStarted).Milliseconds()
 		if err != nil {
 			metrics.Metrics.RealtimeEvent(ctx, "admission_rejected")
 			if !errors.Is(err, rt.ErrAdmission) {
+				h.logSetupTimings(ctx, target, setupTimings)
 				JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime admission unavailable"))
 				return
 			}
 			message := err.Error()
+			h.logSetupTimings(ctx, target, setupTimings)
 			h.recordConnectionFailure(ctx, target, "admission_denied", message, attemptStarted)
 			log.Info(ctx, "realtime admission rejected", log.String("error_code", "admission_denied"), log.Int("channel_id", target.Channel.ID))
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": gin.H{
@@ -271,33 +453,52 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 			return
 		}
 		defer release()
-		accountingCtx, accountingCancel := context.WithTimeout(ctx, 5*time.Second)
-		err = h.service.Usage.EnsureRealtimeUsageReconciled(accountingCtx, target.APIKey.ID)
-		accountingCancel()
-		if err != nil {
-			JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime accounting storage is unavailable"))
-			return
-		}
 		connectionConfig := config
 		if target.HandshakeTimeout > 0 {
 			connectionConfig.HandshakeTimeout = target.HandshakeTimeout
 		}
-		dialCtx, dialCancel := context.WithTimeout(ctx, connectionConfig.HandshakeTimeout)
-		upstream, conversation, initial, err := h.service.Connect(dialCtx, target, connectionConfig)
-		dialCancel()
-		if err != nil {
-			metrics.Metrics.RealtimeEvent(ctx, "upstream_handshake_failed")
-			status := 0
-			if handshake, ok := errors.AsType[*rt.HandshakeError](err); ok {
-				status = handshake.Status
-			}
+		setup, setupDurations := runRealtimeSetup(ctx, connectionConfig.HandshakeTimeout,
+			func(accountingCtx context.Context) error {
+				return h.service.Usage.EnsureRealtimeUsageReconciled(accountingCtx, target.APIKey.ID)
+			},
+			func(dialCtx context.Context) (*websocket.Conn, *orchestrator.RealtimeConversation, [][]byte, error) {
+				return h.service.Connect(dialCtx, target, connectionConfig)
+			},
+		)
+		setupTimings.AccountingMs = setupDurations.AccountingMs
+		setupTimings.DialMs = setupDurations.DialMs
+		if setup.AccountingErr != nil && !errors.Is(setup.AccountingErr, context.Canceled) {
+			h.logSetupTimings(ctx, target, setupTimings)
 			release()
-			message := "Realtime upstream handshake or configuration failed"
-			h.recordConnectionFailure(ctx, target, "upstream_handshake_failed", message, attemptStarted)
-			log.Warn(ctx, "realtime upstream establishment failed", log.String("error_code", "upstream_handshake_failed"), log.Int("channel_id", target.Channel.ID), log.Int("upstream_status", status))
-			JSONError(c, http.StatusBadGateway, errors.New(message))
+			JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime accounting storage is unavailable"))
 			return
 		}
+		if setup.DialErr != nil {
+			_, errorCode, message := realtimeHandshakeError(setup.DialErr)
+			h.logSetupTimings(ctx, target, setupTimings)
+			metrics.Metrics.RealtimeEvent(ctx, "upstream_handshake_failed")
+			if errorCode == "upstream_handshake_timeout" {
+				metrics.Metrics.RealtimeEvent(ctx, errorCode)
+			}
+			upstreamStatus := 0
+			if handshake, ok := errors.AsType[*rt.HandshakeError](setup.DialErr); ok {
+				upstreamStatus = handshake.Status
+			}
+			release()
+			h.recordConnectionFailure(ctx, target, errorCode, message, attemptStarted)
+			log.Warn(ctx, "realtime upstream establishment failed",
+				log.String("error_code", errorCode), log.Int("channel_id", target.Channel.ID),
+				log.Int("upstream_status", upstreamStatus), log.Int64("elapsed_ms", setupTimings.DialMs))
+			writeRealtimeHandshakeError(c, setup.DialErr)
+			return
+		}
+		if setup.AccountingErr != nil {
+			h.logSetupTimings(ctx, target, setupTimings)
+			release()
+			JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime accounting storage is unavailable"))
+			return
+		}
+		upstream, conversation, initial := setup.Upstream, setup.Conversation, setup.Initial
 		defer conversation.PersistSessionMetadata()
 		defer conversation.Close()
 		// Connection admission ends after both sockets/workers stop, before audit
@@ -306,8 +507,11 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 		controller := http.NewResponseController(c.Writer)
 		_ = controller.SetReadDeadline(time.Time{})
 		_ = controller.SetWriteDeadline(time.Time{})
+		upgradeStarted := time.Now()
 		downstream, err := (&websocket.Upgrader{ReadBufferSize: 4096, WriteBufferSize: 4096, HandshakeTimeout: config.HandshakeTimeout}).Upgrade(c.Writer, c.Request, nil)
+		setupTimings.UpgradeMs = time.Since(upgradeStarted).Milliseconds()
 		if err != nil {
+			h.logSetupTimings(ctx, target, setupTimings)
 			return
 		}
 		defer downstream.Close()
@@ -315,10 +519,12 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 		for _, event := range initial {
 			if event != nil {
 				if err := downstream.WriteMessage(websocket.TextMessage, event); err != nil {
+					h.logSetupTimings(ctx, target, setupTimings)
 					return
 				}
 			}
 		}
+		h.logSetupTimings(ctx, target, setupTimings)
 		metrics.Metrics.RealtimeEvent(ctx, "connection_established")
 		metrics.Metrics.RealtimeActive(ctx, 1)
 		defer metrics.Metrics.RealtimeActive(context.WithoutCancel(ctx), -1)

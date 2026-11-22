@@ -35,3 +35,9 @@ func TestDialValidatedIPsTriesRemainingAddresses(t *testing.T) {
 	require.Same(t, left, conn)
 	require.Equal(t, []string{"8.8.8.8:443", "1.1.1.1:443"}, attempted)
 }
+
+func TestHandshakeErrorRetainsDeadlineCauseWithoutExposingIt(t *testing.T) {
+	err := &HandshakeError{Status: 0, Cause: context.DeadlineExceeded}
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.NotContains(t, err.Error(), "context deadline exceeded")
+}

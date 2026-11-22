@@ -43,9 +43,15 @@ import (
 	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 )
 
-type reconnectDialer struct{ url string }
+type reconnectDialer struct {
+	url string
+	err error
+}
 
 func (d reconnectDialer) Connect(ctx context.Context, _ string, _ string, _ *httpclient.ProxyConfig, _ time.Duration, _ ...string) (*websocket.Conn, error) {
+	if d.err != nil {
+		return nil, d.err
+	}
 	c, _, err := websocket.DefaultDialer.DialContext(ctx, d.url, nil)
 	return c, err
 }
@@ -65,10 +71,10 @@ func newRealtimeHTTPFixture(t *testing.T, maxDuration time.Duration, translation
 }
 
 func newRealtimeHTTPFixtureWithPrice(t *testing.T, maxDuration time.Duration, translation, withPrice bool, configureKey ...func(*ent.APIKeyCreate)) (*ent.Client, func() (*websocket.Conn, *http.Response, error), *atomic.Int32, <-chan struct{}) {
-	return newRealtimeHTTPFixtureOptions(t, maxDuration, translation, withPrice, false, configureKey...)
+	return newRealtimeHTTPFixtureOptions(t, maxDuration, translation, withPrice, false, nil, configureKey...)
 }
 
-func newRealtimeHTTPFixtureOptions(t *testing.T, maxDuration time.Duration, translation, withPrice, handshakeFailure bool, configureKey ...func(*ent.APIKeyCreate)) (*ent.Client, func() (*websocket.Conn, *http.Response, error), *atomic.Int32, <-chan struct{}) {
+func newRealtimeHTTPFixtureOptions(t *testing.T, maxDuration time.Duration, translation, withPrice, handshakeFailure bool, dialError error, configureKey ...func(*ent.APIKeyCreate)) (*ent.Client, func() (*websocket.Conn, *http.Response, error), *atomic.Int32, <-chan struct{}) {
 	t.Helper()
 	db := enttest.NewEntClient(t, "sqlite3", "file:"+t.Name()+"?mode=memory&_fk=1")
 	t.Cleanup(func() { _ = db.Close() })
@@ -162,7 +168,7 @@ func newRealtimeHTTPFixtureOptions(t *testing.T, maxDuration time.Duration, tran
 		}
 	}))
 	t.Cleanup(upstream.Close)
-	service := &orchestrator.RealtimeService{Transport: reconnectDialer{"ws" + strings.TrimPrefix(upstream.URL, "http")}, Channels: channels, Selector: orchestrator.NewDefaultSelector(channels, models, system), Usage: usage, Requests: requests, Auth: auth, Quota: biz.NewQuotaService(db, system)}
+	service := &orchestrator.RealtimeService{Transport: reconnectDialer{url: "ws" + strings.TrimPrefix(upstream.URL, "http"), err: dialError}, Channels: channels, Selector: orchestrator.NewDefaultSelector(channels, models, system), Usage: usage, Requests: requests, Auth: auth, Quota: biz.NewQuotaService(db, system)}
 	h := &RealtimeHandlers{service: service, cache: cache, drained: make(chan struct{}), sessions: make(map[uint64]context.CancelFunc)}
 	close(h.drained)
 	router := gin.New()
@@ -555,7 +561,7 @@ func TestRealtimeHTTPDisconnectedInputStoresSessionAuditWithoutUsage(t *testing.
 }
 
 func TestRealtimeHTTPUpstreamHandshakeFailureIsAuditedWithoutHoldingLease(t *testing.T) {
-	db, dial, peak, _ := newRealtimeHTTPFixtureOptions(t, 0, false, true, true)
+	db, dial, peak, _ := newRealtimeHTTPFixtureOptions(t, 0, false, true, true, nil)
 	for range 2 {
 		conn, response, err := dial()
 		if conn != nil {
@@ -576,6 +582,33 @@ func TestRealtimeHTTPUpstreamHandshakeFailureIsAuditedWithoutHoldingLease(t *tes
 		require.NotNil(t, row.MetricsLatencyMs)
 	}
 	require.Zero(t, db.UsageLog.Query().CountX(seed), "handshake failures do not create billable usage")
+	require.Zero(t, peak.Load())
+}
+
+func TestRealtimeHTTPHandshakeTimeoutReturns504AndReleasesLease(t *testing.T) {
+	db, dial, peak, _ := newRealtimeHTTPFixtureOptions(t, 0, false, true, false,
+		&rt.HandshakeError{Cause: context.DeadlineExceeded})
+	for range 2 {
+		conn, response, err := dial()
+		if conn != nil {
+			_ = conn.Close()
+		}
+		require.Error(t, err)
+		require.NotNil(t, response)
+		require.Equal(t, http.StatusGatewayTimeout, response.StatusCode)
+		body, readErr := io.ReadAll(response.Body)
+		require.NoError(t, readErr)
+		require.NoError(t, response.Body.Close())
+		require.Equal(t, "upstream_handshake_timeout", gjson.GetBytes(body, "error.error_code").String())
+		require.Contains(t, gjson.GetBytes(body, "error.message").String(), "timeout")
+	}
+	seed := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	rows := db.Request.Query().Where(request.StatusEQ(request.StatusFailed)).AllX(seed)
+	require.Len(t, rows, 2)
+	for _, row := range rows {
+		require.Equal(t, "upstream_handshake_timeout", gjson.GetBytes(row.ResponseBody, "error.error_code").String())
+	}
+	require.Zero(t, db.UsageLog.Query().CountX(seed))
 	require.Zero(t, peak.Load())
 }
 

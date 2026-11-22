@@ -34,6 +34,9 @@ func (s *UsageLogService) EnsureRealtimeUsageReconciled(ctx context.Context, key
 		return s.entFromContext(host).Request.Query().Where(request.APIKeyIDEQ(keyID), request.FormatEQ(llm.APIFormatOpenAIRealtime.String()), request.StatusEQ(request.StatusFailed), request.Not(request.HasUsageLogs())).Count(host)
 	})
 	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return err
+		}
 		return errors.New("Realtime accounting reconciliation check unavailable")
 	}
 	return nil
