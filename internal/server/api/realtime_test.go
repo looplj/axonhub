@@ -82,8 +82,8 @@ func TestRealtimeAccountingAndDialRunInParallel(t *testing.T) {
 	result, timing := runRealtimeSetup(context.Background(), time.Second, accounting, dial)
 	require.NoError(t, result.AccountingErr)
 	require.NoError(t, result.DialErr)
-	require.GreaterOrEqual(t, timing.AccountingMs, int64(delay.Milliseconds()-25))
-	require.GreaterOrEqual(t, timing.DialMs, int64(delay.Milliseconds()-25))
+	require.GreaterOrEqual(t, timing.AccountingMs, delay.Milliseconds()-25)
+	require.GreaterOrEqual(t, timing.DialMs, delay.Milliseconds()-25)
 	require.Less(t, timing.TotalMs, timing.AccountingMs+timing.DialMs-150)
 }
 
