@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@google/genai':
-        specifier: ^2.30.0
-        version: 2.32.0
+        specifier: ^3.6.1
+        version: 3.6.1
 
 packages:
 
-  '@google/genai@2.32.0':
-    resolution: {integrity: sha512-60c79uXpR0a47bmGqDxbXEBuQUalNmwo5mx5kqb91jIW4FoqpsLSt86DeVhRhtH5+s/16Wqxt3sXzFQn2U1OHQ==}
-    engines: {node: '>=20.0.0'}
+  '@google/genai@3.6.1':
+    resolution: {integrity: sha512-DQIkZkl+VoZc+RUSaJ41vRuywjQDpP0t/oUf5/ddQhNW6JsPjVULW2EgHmuJ1mrr6ACtrmUdPlqtNXF1yfKySg==}
+    engines: {node: '>=22.0.0'}
     peerDependencies:
       '@modelcontextprotocol/sdk': ^1.25.2
     peerDependenciesMeta:
@@ -316,7 +316,7 @@ packages:
 
 snapshots:
 
-  '@google/genai@2.32.0':
+  '@google/genai@3.6.1':
     dependencies:
       google-auth-library: 10.5.0
       p-retry: 4.6.2
