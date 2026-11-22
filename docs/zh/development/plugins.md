@@ -532,15 +532,15 @@ Owner 启用插件时，授予的是 `permissions` 的子集和 `network` 的子
 
 ## 发布
 
-索引地址是 [https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json](https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json)。AxonHub 每次按这个 URL 拉取，所以改索引不用发新版本。示例插件不在市场里。
+AxonHub 读取[社区插件索引](https://raw.githubusercontent.com/looplj/axonhub-plugins/main/registry.json)。索引可以独立于 AxonHub 版本更新。开发示例放在 AxonHub 仓库。
 
-把 zip 发布到你自己的 HTTPS 地址，例如 GitHub Release。sha256 是 zip 原始字节的 64 位小写十六进制：
+需要集中打包和发版时，向 [axonhub-plugins](https://github.com/looplj/axonhub-plugins) 的 `plugins/` 提交源码。如果插件在独立仓库维护，把 zip 发布到 HTTPS 地址，例如 GitHub Release。对 zip 原始字节计算 `sha256`，使用 64 位小写十六进制：
 
 ```bash
 shasum -a 256 temperature-cap-1.0.0.axplugin
 ```
 
-要让它出现在市场里，向本仓库提交 PR，在 `plugins` 数组里加上一条插件。`versions` 里每一项都要有 `version`、`url`、`sha256` 和 `axonhubVersion`：
+要收录独立维护的插件，向 [axonhub-plugins](https://github.com/looplj/axonhub-plugins) 提交 PR，在 `external-plugins.json` 的 `plugins` 数组里添加条目。`versions` 里每一项都要有 `version`、`url`、`sha256` 和 `axonhubVersion`：
 
 ```json
 {
@@ -558,7 +558,7 @@ shasum -a 256 temperature-cap-1.0.0.axplugin
 }
 ```
 
-Hub 会核对下载字节和 `sha256`。没有发布者签名。
+AxonHub 根据索引核对下载包的 SHA-256、插件 ID 和版本。Owner 在启用时授予权限和网络访问。
 
 ## 示例
 
