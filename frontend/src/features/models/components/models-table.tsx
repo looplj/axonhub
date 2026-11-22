@@ -27,7 +27,8 @@ import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { PermissionGuard } from '@/components/permission-guard';
 import { useModelSettings } from '@/features/system/data/system';
 import { useModels } from '../context/models-context';
-import { Model } from '../data/schema';
+import { referencePriceFields, type Model } from '../data/schema';
+import { useReferencePriceFormat } from './models-catalog-prices';
 
 const MotionTableRow = motion.create(TableRow);
 
@@ -67,6 +68,7 @@ export function ModelsTable({
 }: ModelsTableProps) {
   const { t } = useTranslation();
   const getDeveloperLabel = useDeveloperLabel();
+  const formatPrice = useReferencePriceFormat();
   const { setSelectedModels, setResetRowSelection, setOpen, setCurrentDeveloper } = useModels();
   const { data: modelSettings } = useModelSettings();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -460,26 +462,16 @@ export function ModelsTable({
                                       <div className='space-y-3'>
                                         <h4 className='text-sm font-semibold'>{t('models.modelCard.cost')} ($/M)</h4>
                                         <div className='space-y-2 text-sm'>
-                                          <div className='flex justify-between'>
-                                            <span className='text-muted-foreground'>{t('models.modelCard.input')}:</span>
-                                            <span className='font-mono text-xs'>{modelCard?.cost?.input ?? '-'}</span>
-                                          </div>
-                                          <div className='flex justify-between'>
-                                            <span className='text-muted-foreground'>{t('models.modelCard.output')}:</span>
-                                            <span className='font-mono text-xs'>{modelCard?.cost?.output ?? '-'}</span>
-                                          </div>
-                                          {modelCard?.cost?.cacheRead !== undefined && (
-                                            <div className='flex justify-between'>
-                                              <span className='text-muted-foreground'>{t('models.modelCard.cacheRead')}:</span>
-                                              <span className='font-mono text-xs'>{modelCard.cost.cacheRead}</span>
-                                            </div>
-                                          )}
-                                          {modelCard?.cost?.cacheWrite !== undefined && (
-                                            <div className='flex justify-between'>
-                                              <span className='text-muted-foreground'>{t('models.modelCard.cacheWrite')}:</span>
-                                              <span className='font-mono text-xs'>{modelCard.cost.cacheWrite}</span>
-                                            </div>
-                                          )}
+                                          {referencePriceFields.map((field) => {
+                                            const value = model.missingReferencePrices?.includes(field) ? undefined : modelCard?.cost?.[field];
+                                            if (value == null && (field === 'cacheRead' || field === 'cacheWrite')) return null;
+                                            return (
+                                              <div className='flex justify-between' key={field}>
+                                                <span className='text-muted-foreground'>{t('models.modelCard.' + field)}:</span>
+                                                <span className='font-mono text-xs'>{value == null ? '—' : formatPrice(value)}</span>
+                                              </div>
+                                            );
+                                          })}
                                         </div>
                                       </div>
                                     </div>

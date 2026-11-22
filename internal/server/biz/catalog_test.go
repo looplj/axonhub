@@ -2,7 +2,6 @@ package biz
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -22,7 +21,7 @@ import (
 func newCatalogTestService(t *testing.T) (context.Context, *SystemService, *CatalogService) {
 	t.Helper()
 
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	t.Cleanup(func() { _ = client.Close() })
 
 	ctx := authz.WithTestBypass(context.Background())
@@ -49,23 +48,19 @@ func useCatalogUpstream(t *testing.T, ctx context.Context, system *SystemService
 func TestCatalogService_FallsBackThenFetchesAfterInvalidate(t *testing.T) {
 	ctx, system, svc := newCatalogTestService(t)
 
+	var online atomic.Bool
+	useCatalogUpstream(t, ctx, system, svc, func(w http.ResponseWriter, _ *http.Request) {
+		if !online.Load() {
+			http.Error(w, "offline", http.StatusBadGateway)
+			return
+		}
+		_, _ = w.Write([]byte(`{"providers":{"openai":{"id":"openai","models":[{"id":"gpt-hot"}]}}}`))
+	})
 	payload, err := svc.Snapshot(ctx, true)
 	require.NoError(t, err)
 	require.Equal(t, catalogSourceFallback, payload.Source)
 	require.True(t, payload.Filtered)
-	require.Contains(t, string(payload.Data), `"providers"`)
-
-	upstream := catalogFile{Providers: map[string]catalogProvider{
-		"openai": {ID: "openai", Models: []map[string]any{{"id": "gpt-hot"}}},
-	}}
-	body, err := json.Marshal(upstream)
-	require.NoError(t, err)
-
-	useCatalogUpstream(t, ctx, system, svc, func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body)
-	})
-
+	online.Store(true)
 	held, err := svc.Snapshot(ctx, true)
 	require.NoError(t, err)
 	require.Equal(t, catalogSourceFallback, held.Source, "the held fallback is served until it is released")
@@ -215,4 +210,134 @@ func TestCatalogService_CancelledCallerDoesNotCauseFallback(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, catalogSourceUpstream, snapshot.Source)
 	require.Contains(t, string(snapshot.Data), "gpt-hot")
+}
+
+func TestCatalogImportCancellationLeavesSharedFetchRunning(t *testing.T) {
+	f := catalogFixture(t)
+	scope := CatalogImportScope{Providers: []string{"moonshot-ai"}}
+	release := make(chan struct{})
+	finish := sync.OnceFunc(func() { close(release) })
+	defer finish()
+	loading, cancel := context.WithCancel(f.ctx)
+	defer cancel()
+	var hits atomic.Int32
+	useCatalogUpstream(t, f.ctx, f.svc.systemService, f.svc.catalog, func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		cancel()
+		select {
+		case <-r.Context().Done():
+			t.Error("canceling the preview stopped the shared request")
+		case <-release:
+			_, _ = w.Write([]byte(testCatalog))
+		}
+	})
+
+	cancelled, stop := context.WithCancel(f.ctx)
+	stop()
+	_, err := f.svc.CatalogImportPreview(cancelled, scope)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Zero(t, hits.Load())
+
+	_, err = f.svc.CatalogImportPreview(loading, scope)
+	require.ErrorIs(t, err, context.Canceled)
+	finish()
+	require.Equal(t, catalogSourceUpstream, f.preview(t, scope).Source)
+	require.EqualValues(t, 1, hits.Load())
+}
+
+func TestCatalogService_MirrorChangeDiscardsInflightCacheFill(t *testing.T) {
+	ctx, system, svc := newCatalogTestService(t)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	started, release := make(chan struct{}), make(chan struct{})
+	useCatalogUpstream(t, ctx, system, svc, func(w http.ResponseWriter, _ *http.Request) {
+		close(started)
+		select {
+		case <-release:
+		case <-ctx.Done():
+			return
+		}
+		_, _ = w.Write([]byte(`{"providers":{"old":{}}}`))
+	})
+	// Use the already established transport for both servers.
+	mirror := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{"providers":{"new":{}}}`)) }))
+	t.Cleanup(mirror.Close)
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("catalog snapshot panicked: %v", r)
+			}
+		}()
+		if _, err := svc.Snapshot(ctx, false); err != nil {
+			t.Errorf("catalog snapshot: %v", err)
+		}
+	})
+	finish := sync.OnceFunc(func() { close(release); wg.Wait() })
+	defer finish()
+	select {
+	case <-started:
+	case <-ctx.Done():
+		t.Fatal("old mirror did not receive the request")
+	}
+	other := NewSystemService(SystemServiceParams{Ent: ent.FromContext(ctx), CacheConfig: xcache.Config{Mode: xcache.ModeMemory}})
+	require.NoError(t, other.SetCatalogSettings(ctx, CatalogSettings{UpstreamURL: mirror.URL}))
+	fresh, err := svc.Snapshot(ctx, false)
+	require.NoError(t, err)
+	require.Equal(t, mirror.URL, fresh.upstreamURL)
+	finish()
+	held, err := svc.Snapshot(ctx, false)
+	require.NoError(t, err)
+	require.Equal(t, mirror.URL, held.upstreamURL)
+	require.JSONEq(t, `{"providers":{"new":{}}}`, string(held.Data))
+}
+
+func (s *CatalogService) held(filtered bool) *catalogPayload {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.slot(filtered).payload
+}
+
+func TestCatalogImportRejectsMirrorSwitch(t *testing.T) {
+	for _, when := range []string{"before submit", "during download"} {
+		t.Run(when, func(t *testing.T) {
+			f := catalogFixture(t)
+			other := NewSystemService(SystemServiceParams{Ent: f.db, CacheConfig: xcache.Config{Mode: xcache.ModeMemory}})
+			mirror := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(testCatalog))
+			}))
+			t.Cleanup(mirror.Close)
+			var hits atomic.Int32
+			useCatalogUpstream(t, f.ctx, f.svc.systemService, f.svc.catalog, func(w http.ResponseWriter, _ *http.Request) {
+				if hits.Add(1) == 2 && when == "during download" {
+					ctx, cancel := context.WithTimeout(f.ctx, 3*time.Second)
+					defer cancel()
+					if err := other.SetCatalogSettings(ctx, CatalogSettings{UpstreamURL: mirror.URL}); err != nil {
+						t.Errorf("switch mirror: %v", err)
+					}
+				}
+				_, _ = w.Write([]byte(testCatalog))
+			})
+			scope := CatalogImportScope{Providers: []string{"moonshot-ai"}}
+			p := f.preview(t, scope)
+			if when == "before submit" {
+				require.NoError(t, other.SetCatalogSettings(f.ctx, CatalogSettings{UpstreamURL: mirror.URL}))
+			}
+			require.Equal(t, []string{"catalogChanged"}, f.apply(t, scope, p, selection(t, p, "kimi-k3")))
+			require.Zero(t, f.db.Model.Query().CountX(f.ctx))
+			require.Equal(t, mirror.URL, f.preview(t, scope).UpstreamURL)
+		})
+	}
+}
+
+func TestCatalogService_SettingsReadErrorSkipsDownload(t *testing.T) {
+	f := catalogFixture(t)
+	scope := CatalogImportScope{Channels: true}
+	f.preview(t, scope)
+	hits := f.requests.Load()
+	require.NoError(t, f.svc.systemService.setSystemValue(f.ctx, SystemKeyCatalogSettings, "{"))
+	_, err := f.svc.CatalogImportPreview(f.ctx, scope)
+	require.ErrorContains(t, err, "unmarshal catalog settings")
+	require.Equal(t, hits, f.requests.Load())
 }

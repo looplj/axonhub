@@ -589,12 +589,12 @@ type Capabilities struct {
 }
 
 type Pricing struct {
-	Input      float64 `json:"input"`
-	Output     float64 `json:"output"`
-	CacheRead  float64 `json:"cache_read"`
-	CacheWrite float64 `json:"cache_write"`
-	Unit       string  `json:"unit"`
-	Currency   string  `json:"currency"`
+	Input      *float64 `json:"input,omitempty"`
+	Output     *float64 `json:"output,omitempty"`
+	CacheRead  *float64 `json:"cache_read,omitempty"`
+	CacheWrite *float64 `json:"cache_write,omitempty"`
+	Unit       string   `json:"unit"`
+	Currency   string   `json:"currency"`
 }
 
 type OpenAIModel struct {
@@ -735,10 +735,10 @@ func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIM
 		}
 		if shouldInclude("pricing") {
 			pricing := Pricing{
-				Input:      m.ModelCard.Cost.Input,
-				Output:     m.ModelCard.Cost.Output,
-				CacheRead:  m.ModelCard.Cost.CacheRead,
-				CacheWrite: m.ModelCard.Cost.CacheWrite,
+				Input:      m.ModelCard.ReferencePrice("input"),
+				Output:     m.ModelCard.ReferencePrice("output"),
+				CacheRead:  m.ModelCard.ReferencePrice("cacheRead"),
+				CacheWrite: m.ModelCard.ReferencePrice("cacheWrite"),
 				Unit:       "per_1m_tokens",
 				Currency:   "USD",
 			}

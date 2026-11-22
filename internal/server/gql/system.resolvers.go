@@ -389,7 +389,7 @@ func (r *mutationResolver) UpdateCatalogSettings(ctx context.Context, input Upda
 	}
 
 	if r.catalogService != nil {
-		r.catalogService.Invalidate()
+		r.catalogService.InvalidateAfterCommit(ctx)
 	}
 
 	return true, nil

@@ -1,3 +1,4 @@
+import { ModelsCatalogImport } from './models-catalog-import';
 import { useModels } from '../context/models-context';
 import { ModelsActionDialog } from './models-action-dialog';
 import { ModelsArchiveDialog } from './models-archive-dialog';
@@ -16,6 +17,7 @@ export function ModelsDialogs() {
     <>
       {(open === 'create' || open === 'edit') && <ModelsActionDialog />}
       {open === 'batchCreate' && <ModelsBatchCreateDialog />}
+      {open === 'catalogImport' && <ModelsCatalogImport />}
       {open === 'delete' && <ModelsDeleteDialog />}
       {open === 'archive' && <ModelsArchiveDialog />}
       {(open === 'association' || open === 'developerAssociation') && <ModelsAssociationDialog />}
