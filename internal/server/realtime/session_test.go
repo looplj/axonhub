@@ -18,7 +18,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	qwenrt "github.com/looplj/axonhub/llm/realtime"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
 func TestSessionSlowConsumerReceivesBackpressureCloseAndFlushes(t *testing.T) {
@@ -486,4 +488,112 @@ func TestDrainUpstreamTailTimesOutWithoutWriter(t *testing.T) {
 	written := make(chan struct{})
 	require.ErrorIs(t, drainUpstreamTail(t.Context(), frames, written, 20*time.Millisecond), ErrBackpressure)
 	require.Len(t, frames, 1, "the timeout must cover waiting for the writer after the marker is queued")
+}
+
+func TestSessionQueuesConfigurationUpdates(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		count, accepted int
+		rejectFirst     bool
+		cancelPending   bool
+	}{
+		{name: "two", count: 2, accepted: 2},
+		{name: "three", count: 3, accepted: 3},
+		{name: "overflow", count: 6, accepted: 5},
+		{name: "provider rejects first", count: 3, accepted: 3, rejectFirst: true},
+		{name: "cancel while waiting", count: 3, cancelPending: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client, downstream := socketPair(t)
+			upstream, provider := socketPair(t)
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			state := NewState()
+			require.NoError(t, state.Connecting())
+			require.NoError(t, state.ObserveServer("session.created"))
+			state.ConfirmDefaultConfiguration()
+			done := make(chan error, 1)
+			go runSessionForTest(t, done, func() error {
+				return Run(ctx, downstream, upstream, Options{}, Hooks{
+					Client: func(data []byte) ([]byte, error) {
+						if gjson.GetBytes(data, "type").String() == "session.update" {
+							return data, state.Update()
+						}
+						if !state.Ready() {
+							return nil, ErrUpdatePending
+						}
+						return data, nil
+					},
+					Server: func(data []byte) ([]byte, error) {
+						kind := gjson.GetBytes(data, "type").String()
+						if kind == "error" {
+							state.ConfigurationRejected()
+						}
+						return data, state.ObserveServer(kind)
+					},
+				})
+			})
+			require.NoError(t, client.SetReadDeadline(time.Now().Add(5*time.Second)))
+			require.NoError(t, provider.SetReadDeadline(time.Now().Add(5*time.Second)))
+			for i := 1; i <= tc.count; i++ {
+				require.NoError(t, client.WriteMessage(websocket.TextMessage, fmt.Appendf(nil, `{"type":"session.update","event_id":"u%d"}`, i)))
+			}
+			require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","event_id":"blocked"}`)))
+			for i := tc.accepted; tc.accepted > 0 && i < tc.count; i++ {
+				_, rejected, err := client.ReadMessage()
+				require.NoError(t, err)
+				require.Equal(t, "session_update_queue_full", gjson.GetBytes(rejected, "error.code").String())
+			}
+			_, blocked, err := client.ReadMessage()
+			require.NoError(t, err)
+			require.Equal(t, "blocked", gjson.GetBytes(blocked, "error.event_id").String())
+			require.Equal(t, ErrUpdatePending.Error(), gjson.GetBytes(blocked, "error.message").String())
+			if !tc.cancelPending {
+				for i := 1; i <= tc.accepted; i++ {
+					_, data, err := provider.ReadMessage()
+					require.NoError(t, err)
+					id := fmt.Sprintf("u%d", i)
+					require.Equal(t, id, gjson.GetBytes(data, "event_id").String())
+					kind := "session.updated"
+					if tc.rejectFirst && i == 1 {
+						kind = "error"
+					}
+					require.NoError(t, provider.WriteMessage(websocket.TextMessage, fmt.Appendf(nil, `{"type":"%s","event_id":"%s"}`, kind, id)))
+					_, ack, err := client.ReadMessage()
+					require.NoError(t, err)
+					require.Equal(t, kind, gjson.GetBytes(ack, "type").String())
+					require.Equal(t, id, gjson.GetBytes(ack, "event_id").String())
+				}
+			}
+			cancel()
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+				t.Fatal("session workers did not exit")
+			}
+		})
+	}
+}
+
+func TestClientErrorExposesOnlySafeDetails(t *testing.T) {
+	adapter, err := qwenrt.NewAdapter("qwen3.8-omni-flash-realtime", true)
+	require.NoError(t, err)
+	frame := []byte(`{"type":"session.update","event_id":"update-1","session":{"audio":{"input":{"unknown_field":"private-value"}}}}`)
+	_, fieldErr := adapter.Client(frame)
+	require.ErrorIs(t, fieldErr, qwenrt.ErrUnsupportedField)
+	for _, tc := range []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"unsupported field", fmt.Errorf("private wrapper: %w", fieldErr), `unsupported realtime field "audio.input.unknown_field"`},
+		{"pending", ErrUpdatePending, ErrUpdatePending.Error()},
+		{"unknown", fmt.Errorf("private-value"), "Unsupported or invalid realtime event; see the gateway Realtime capability documentation."},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			wire := clientError(frame, tc.err)
+			require.Equal(t, tc.want, gjson.GetBytes(wire, "error.message").String())
+			require.Equal(t, "update-1", gjson.GetBytes(wire, "error.event_id").String())
+		})
+	}
 }

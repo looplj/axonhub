@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/log"
 	qwenrt "github.com/looplj/axonhub/llm/realtime"
@@ -40,6 +41,11 @@ var (
 )
 
 const MaxMessageBytes = 256 << 10
+
+// One configuration is in flight and at most four more are waiting.
+const maxQueuedUpdates = 4
+
+var errUpdateQueueFull = errors.New("session.update queue is full; wait for session.updated before retrying")
 
 type Options struct {
 	IdleTimeout, MaxDuration, WriteTimeout, PingInterval time.Duration
@@ -127,6 +133,57 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 	}
 	toClient := newSendQueue(o.QueueSize, o.WriteTimeout)
 	toProvider := newSendQueue(o.QueueSize, o.WriteTimeout)
+	// Serialize client admission and replay. The upstream reader replays after
+	// forwarding the acknowledgement or rejection, through the normal writer.
+	var updateMu sync.Mutex
+	var updates [][]byte
+	submitClient := func(data []byte) error {
+		updateMu.Lock()
+		defer updateMu.Unlock()
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		isUpdate := gjson.GetBytes(data, "type").String() == "session.update"
+		if len(updates) == 0 {
+			wire, err := hooks.Client(data)
+			if !isUpdate || !errors.Is(err, ErrUpdatePending) {
+				if err != nil {
+					return err
+				}
+				return toProvider.enqueue(ctx, wire)
+			}
+		} else if !isUpdate {
+			return ErrUpdatePending
+		}
+		if len(updates) == maxQueuedUpdates {
+			return errUpdateQueueFull
+		}
+		updates = append(updates, data)
+		return nil
+	}
+	replayUpdates := func() error {
+		updateMu.Lock()
+		defer updateMu.Unlock()
+		for len(updates) > 0 && ctx.Err() == nil {
+			original := updates[0]
+			wire, err := hooks.Client(original)
+			if errors.Is(err, ErrUpdatePending) {
+				break
+			}
+			updates[0] = nil
+			updates = updates[1:]
+			if err == nil {
+				return toProvider.enqueue(ctx, wire)
+			}
+			if errors.Is(err, ErrAccountingUnavailable) || errors.Is(err, ErrBackpressure) {
+				return err
+			}
+			if err := toClient.enqueue(ctx, clientError(original, err)); err != nil {
+				return err
+			}
+		}
+		return ctx.Err()
+	}
 	var last atomic.Int64
 	last.Store(time.Now().UnixNano())
 	errs := make(chan error, 4)
@@ -212,20 +269,21 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 					}
 					continue
 				}
+				if client && transform != nil {
+					if err := submitClient(data); err != nil && ctx.Err() == nil {
+						if errors.Is(err, ErrAccountingUnavailable) || errors.Is(err, ErrBackpressure) {
+							return err
+						}
+						if err := toClient.enqueue(ctx, clientError(data, err)); err != nil && ctx.Err() == nil {
+							return err
+						}
+					}
+					continue
+				}
 				if transform != nil {
-					original := data
 					data, err = transform(data)
 					if err != nil {
-						if client && ctx.Err() != nil {
-							continue
-						}
-						if !client || errors.Is(err, ErrAccountingUnavailable) || errors.Is(err, ErrBackpressure) {
-							return err
-						}
-						if err := toClient.enqueue(ctx, clientError(original, err)); err != nil {
-							return err
-						}
-						continue
+						return err
 					}
 				}
 				if err := q.enqueue(ctx, data); err != nil {
@@ -244,6 +302,14 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 					}
 					if err := q.enqueue(ctx, followup); err != nil {
 						return err
+					}
+				}
+				if !client && hooks.Client != nil && data != nil {
+					switch gjson.GetBytes(data, "type").String() {
+					case "session.updated", "error":
+						if err := replayUpdates(); err != nil {
+							return err
+						}
 					}
 				}
 			}
@@ -345,6 +411,7 @@ loop:
 	flushDownstreamClose(ctx, downstream, code, reason, closeACK, downstreamReaderDone)
 	downstream.Close()
 	wg.Wait()
+	clear(updates)
 	return result
 }
 
@@ -367,6 +434,17 @@ func clientError(data []byte, cause ...error) []byte {
 				message = safe.Error()
 				break
 			}
+		}
+		var field *qwenrt.UnsupportedFieldError
+		switch {
+		case errors.As(cause[0], &field):
+			message = field.Error()
+		case errors.Is(cause[0], qwenrt.ErrUnsupportedField):
+			message = qwenrt.ErrUnsupportedField.Error()
+		case errors.Is(cause[0], ErrUpdatePending):
+			message = ErrUpdatePending.Error()
+		case errors.Is(cause[0], errUpdateQueueFull):
+			code, message = "session_update_queue_full", errUpdateQueueFull.Error()
 		}
 		if errors.Is(cause[0], openairt.ErrModelSwitch) {
 			code = "model_switch_not_allowed"

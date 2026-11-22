@@ -49,14 +49,38 @@ func object(v any) (map[string]any, error) {
 	return m, nil
 }
 
+var ErrUnsupportedField = errors.New("unsupported realtime field")
+
+// UnsupportedFieldError carries only the rejected JSON key and its schema path.
+type UnsupportedFieldError struct{ cause error }
+
+func (e *UnsupportedFieldError) Error() string {
+	return e.cause.Error()
+}
+
+func (e *UnsupportedFieldError) Unwrap() error { return e.cause }
+
 func only(m map[string]any, names ...string) error {
+	return onlyAt("", m, names...)
+}
+
+func onlyAt(prefix string, m map[string]any, names ...string) error {
 	allowed := map[string]bool{}
 	for _, n := range names {
 		allowed[n] = true
 	}
 	for key := range m {
 		if !allowed[key] {
-			return fmt.Errorf("unsupported realtime field %q", key)
+			// Bound the name and avoid reflecting arbitrary free-form payloads.
+			if len(key) == 0 || len(key) > 64 {
+				return ErrUnsupportedField
+			}
+			for _, r := range key {
+				if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-' || r == '.') {
+					return ErrUnsupportedField
+				}
+			}
+			return &UnsupportedFieldError{cause: fmt.Errorf("%w %q", ErrUnsupportedField, prefix+key)}
 		}
 	}
 	return nil
@@ -271,11 +295,11 @@ func (a *Adapter) gaSession(s map[string]any) error {
 				return err
 			}
 			if direction == "input" {
-				if err := only(config, "format", "turn_detection", "transcription"); err != nil {
+				if err := onlyAt("audio.input.", config, "format", "turn_detection", "transcription"); err != nil {
 					return err
 				}
 			} else {
-				if err := only(config, "format", "voice"); err != nil {
+				if err := onlyAt("audio."+direction+".", config, "format", "voice"); err != nil {
 					return err
 				}
 			}
@@ -536,7 +560,7 @@ func (a *Adapter) nativeSession(s map[string]any) error {
 					}
 				}
 			}
-			if err := only(config, allowed...); err != nil {
+			if err := onlyAt("audio."+direction+".", config, allowed...); err != nil {
 				return err
 			}
 			if format, exists := config["format"]; exists {

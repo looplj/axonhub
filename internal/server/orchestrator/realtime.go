@@ -504,7 +504,7 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 	}
 	kind := gjson.GetBytes(data, "type").String()
 	if kind != "session.update" && !c.state.Ready() {
-		return nil, errors.New("session configuration pending")
+		return nil, rt.ErrUpdatePending
 	}
 	var eventID string
 	if kind == "session.update" || kind == "response.create" || kind == "input_audio_buffer.clear" || kind == "input_audio_buffer.commit" {

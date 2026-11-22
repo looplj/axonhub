@@ -26,6 +26,8 @@ const (
 	Closed     Phase = "CLOSED"
 )
 
+var ErrUpdatePending = errors.New("session configuration update is awaiting acknowledgement")
+
 type State struct {
 	mu           sync.Mutex
 	phase        Phase
@@ -58,8 +60,11 @@ func (s *State) Connecting() error {
 func (s *State) Update() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if (s.phase != Configured && s.phase != Active && (s.phase != Connecting || !s.seenCreated)) || s.pending {
+	if s.phase != Configured && s.phase != Active && (s.phase != Connecting || !s.seenCreated) || (s.phase == Active && s.pending) {
 		return errors.New("session cannot be updated before configuration acknowledgement or during generation")
+	}
+	if s.pending {
+		return ErrUpdatePending
 	}
 	s.pending = true
 	s.pendingSince = time.Now()
