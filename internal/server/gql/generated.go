@@ -638,11 +638,12 @@ type ComplexityRoot struct {
 	}
 
 	ChannelRealtimeConfig struct {
-		BaseURL            func(childComplexity int) int
-		Enabled            func(childComplexity int) int
-		HandshakeTimeoutMs func(childComplexity int) int
-		Path               func(childComplexity int) int
-		Protocol           func(childComplexity int) int
+		BaseURL               func(childComplexity int) int
+		ClientEventsPerSecond func(childComplexity int) int
+		Enabled               func(childComplexity int) int
+		HandshakeTimeoutMs    func(childComplexity int) int
+		Path                  func(childComplexity int) int
+		Protocol              func(childComplexity int) int
 	}
 
 	ChannelRegexAssociation struct {
@@ -5044,6 +5045,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelRealtimeConfig.BaseURL(childComplexity), true
+	case "ChannelRealtimeConfig.clientEventsPerSecond":
+		if e.complexity.ChannelRealtimeConfig.ClientEventsPerSecond == nil {
+			break
+		}
+
+		return e.complexity.ChannelRealtimeConfig.ClientEventsPerSecond(childComplexity), true
 	case "ChannelRealtimeConfig.enabled":
 		if e.complexity.ChannelRealtimeConfig.Enabled == nil {
 			break
@@ -29182,6 +29189,35 @@ func (ec *executionContext) fieldContext_ChannelRealtimeConfig_handshakeTimeoutM
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelRealtimeConfig_clientEventsPerSecond(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRealtimeConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelRealtimeConfig_clientEventsPerSecond,
+		func(ctx context.Context) (any, error) {
+			return obj.ClientEventsPerSecond, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelRealtimeConfig_clientEventsPerSecond(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelRealtimeConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelRegexAssociation_channelId(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRegexAssociation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -29506,6 +29542,8 @@ func (ec *executionContext) fieldContext_ChannelSettings_realtime(_ context.Cont
 				return ec.fieldContext_ChannelRealtimeConfig_path(ctx, field)
 			case "handshakeTimeoutMs":
 				return ec.fieldContext_ChannelRealtimeConfig_handshakeTimeoutMs(ctx, field)
+			case "clientEventsPerSecond":
+				return ec.fieldContext_ChannelRealtimeConfig_clientEventsPerSecond(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelRealtimeConfig", field.Name)
 		},
@@ -79941,7 +79979,7 @@ func (ec *executionContext) unmarshalInputChannelRealtimeConfigInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"enabled", "protocol", "baseURL", "path", "handshakeTimeoutMs"}
+	fieldsInOrder := [...]string{"enabled", "protocol", "baseURL", "path", "handshakeTimeoutMs", "clientEventsPerSecond"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -79983,6 +80021,13 @@ func (ec *executionContext) unmarshalInputChannelRealtimeConfigInput(ctx context
 				return it, err
 			}
 			it.HandshakeTimeoutMs = data
+		case "clientEventsPerSecond":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientEventsPerSecond"))
+			data, err := ec.unmarshalOInt2ᚖint64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientEventsPerSecond = data
 		}
 	}
 
@@ -107813,6 +107858,8 @@ func (ec *executionContext) _ChannelRealtimeConfig(ctx context.Context, sel ast.
 			}
 		case "handshakeTimeoutMs":
 			out.Values[i] = ec._ChannelRealtimeConfig_handshakeTimeoutMs(ctx, field, obj)
+		case "clientEventsPerSecond":
+			out.Values[i] = ec._ChannelRealtimeConfig_clientEventsPerSecond(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

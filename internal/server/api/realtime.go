@@ -529,7 +529,7 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 		metrics.Metrics.RealtimeActive(ctx, 1)
 		defer metrics.Metrics.RealtimeActive(context.WithoutCancel(ctx), -1)
 		started := time.Now()
-		err = rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: config.IdleTimeout, MaxDuration: config.MaxDuration}, rt.Hooks{BindContext: conversation.WithContext, Client: conversation.Client, Server: conversation.Server, ServerFollowup: conversation.ServerFollowup, UpstreamWritten: conversation.UpstreamWritten, ServerDone: conversation.ServerDone, Check: conversation.Check})
+		err = rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: config.IdleTimeout, MaxDuration: config.MaxDuration, ClientEventsPerSecond: target.ClientEventsPerSecond}, rt.Hooks{BindContext: conversation.WithContext, Client: conversation.Client, Server: conversation.Server, ServerFollowup: conversation.ServerFollowup, UpstreamWritten: conversation.UpstreamWritten, ServerDone: conversation.ServerDone, Check: conversation.Check})
 		conversation.RecordSessionEnd(err)
 		// Translation bills at session end. Persist its usage before admitting the
 		// next session on this lease so it sees the previous session's cost.

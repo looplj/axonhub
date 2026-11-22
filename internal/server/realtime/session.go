@@ -44,14 +44,16 @@ var ErrQuotaExceeded = errors.New("realtime quota exceeded")
 var ErrAccountingUnavailable = errors.New("realtime accounting unavailable")
 
 var (
-	ErrInvalidEvent = errors.New("unsupported or invalid realtime event")
-	ErrBackpressure = errors.New("realtime send queue exhausted")
-	ErrIdleTimeout  = errors.New("realtime session idle timeout")
+	ErrInvalidEvent      = errors.New("unsupported or invalid realtime event")
+	ErrBackpressure      = errors.New("realtime send queue exhausted")
+	ErrIdleTimeout       = errors.New("realtime session idle timeout")
+	ErrClientRateLimited = errors.New("realtime client event rate exceeded")
 )
 
 var base64CloseCause = regexp.MustCompile(`[A-Za-z0-9+/_-]{24,}={0,2}`)
 
 const MaxMessageBytes = 256 << 10
+const defaultClientEventsPerSecond = 1024
 
 // One configuration is in flight and at most four more are waiting.
 const maxQueuedUpdates = 4
@@ -61,6 +63,7 @@ var errUpdateQueueFull = errors.New("session.update queue is full; wait for sess
 type Options struct {
 	IdleTimeout, MaxDuration, WriteTimeout, PingInterval time.Duration
 	QueueSize                                            int
+	ClientEventsPerSecond                                int
 }
 
 func (o Options) defaults() Options {
@@ -78,6 +81,9 @@ func (o Options) defaults() Options {
 	}
 	if o.QueueSize <= 0 {
 		o.QueueSize = 8
+	}
+	if o.ClientEventsPerSecond <= 0 {
+		o.ClientEventsPerSecond = defaultClientEventsPerSecond
 	}
 	return o
 }
@@ -332,7 +338,11 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 					}
 					events++
 					bytes += len(data)
-					if events > 256 || bytes > 2<<20 {
+					if events > o.ClientEventsPerSecond {
+						log.Warn(ctx, "realtime client event rate exceeded", log.Int("events", events), log.Int("bytes", bytes), log.Int("limit", o.ClientEventsPerSecond))
+						return ErrClientRateLimited
+					}
+					if bytes > 2<<20 {
 						return errors.New("realtime client data rate exceeded")
 					}
 				}
@@ -620,6 +630,9 @@ func CloseStatus(err error) (int, string) {
 	if errors.Is(err, ErrBackpressure) {
 		return websocket.CloseTryAgainLater, "backpressure"
 	}
+	if errors.Is(err, ErrClientRateLimited) {
+		return websocket.ClosePolicyViolation, "client_rate_limited"
+	}
 	var side *SessionError
 	var closeErr *websocket.CloseError
 	var networkErr net.Error
@@ -647,7 +660,7 @@ func safeCloseCause(err error) string {
 	if closed, ok := errors.AsType[*websocket.CloseError](err); ok {
 		return fmt.Sprintf("websocket close code %d", closed.Code)
 	}
-	for _, safe := range []error{ErrInvalidEvent, ErrAccountingUnavailable, ErrQuotaExceeded, ErrBackpressure, io.EOF, context.DeadlineExceeded} {
+	for _, safe := range []error{ErrInvalidEvent, ErrAccountingUnavailable, ErrQuotaExceeded, ErrBackpressure, ErrClientRateLimited, io.EOF, context.DeadlineExceeded} {
 		if errors.Is(err, safe) {
 			return safe.Error()
 		}

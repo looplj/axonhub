@@ -114,6 +114,101 @@ func TestSessionNormalCloseFrame(t *testing.T) {
 	}
 }
 
+func TestClientEventRateLimitDefaultAllowsMoreThanLegacy256(t *testing.T) {
+	client, downstream := socketPair(t)
+	upstream, _ := socketPair(t)
+	done := make(chan error, 1)
+	go func() {
+		done <- Run(context.Background(), downstream, upstream, Options{}, Hooks{})
+	}()
+	for range 300 {
+		require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"ping"}`)))
+	}
+	select {
+	case err := <-done:
+		t.Fatalf("default rate limit closed the session before 300 events: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	require.NoError(t, client.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second)))
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("session did not stop after normal client close")
+	}
+}
+
+func TestClientEventRateLimitDefaultAllows400EventsPerSecondForTenSeconds(t *testing.T) {
+	client, downstream := socketPair(t)
+	upstream, _ := socketPair(t)
+	done := make(chan error, 1)
+	go func() {
+		done <- Run(context.Background(), downstream, upstream, Options{}, Hooks{})
+	}()
+	ticker := time.NewTicker(time.Second / 400)
+	defer ticker.Stop()
+	for range 4000 {
+		<-ticker.C
+		require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"ping"}`)))
+	}
+	select {
+	case err := <-done:
+		t.Fatalf("default rate limit closed the session during 400 events/second: %v", err)
+	default:
+	}
+	require.NoError(t, client.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second)))
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("session did not stop after normal client close")
+	}
+}
+
+func TestClientEventRateLimitDefaultClosesAfter1024Events(t *testing.T) {
+	client, downstream := socketPair(t)
+	upstream, _ := socketPair(t)
+	done := make(chan error, 1)
+	go func() {
+		done <- Run(context.Background(), downstream, upstream, Options{}, Hooks{})
+	}()
+	for range 1025 {
+		require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"ping"}`)))
+	}
+	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
+	_, _, err := client.ReadMessage()
+	var closed *websocket.CloseError
+	require.ErrorAs(t, err, &closed)
+	require.Equal(t, websocket.ClosePolicyViolation, closed.Code)
+	require.Equal(t, "client_rate_limited", closed.Text)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("default rate-limited session did not stop")
+	}
+}
+
+func TestClientEventRateLimitUsesOverrideAndSendsPolicyClose(t *testing.T) {
+	client, downstream := socketPair(t)
+	upstream, _ := socketPair(t)
+	done := make(chan error, 1)
+	go func() {
+		done <- Run(context.Background(), downstream, upstream, Options{ClientEventsPerSecond: 300}, Hooks{})
+	}()
+	for range 301 {
+		require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"ping"}`)))
+	}
+	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
+	_, _, err := client.ReadMessage()
+	var closed *websocket.CloseError
+	require.ErrorAs(t, err, &closed)
+	require.Equal(t, websocket.ClosePolicyViolation, closed.Code)
+	require.Equal(t, "client_rate_limited", closed.Text)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("rate-limited session did not stop")
+	}
+}
+
 func TestSessionInternalErrorCloseFrame(t *testing.T) {
 	client, downstream := socketPair(t)
 	upstream, provider := socketPair(t)

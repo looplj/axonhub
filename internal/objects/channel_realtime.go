@@ -16,11 +16,12 @@ import (
 )
 
 type ChannelRealtimeConfig struct {
-	Enabled            bool   `json:"enabled"`
-	Protocol           string `json:"protocol"`
-	BaseURL            string `json:"baseURL"`
-	Path               string `json:"path"`
-	HandshakeTimeoutMs *int64 `json:"handshakeTimeoutMs,omitempty"`
+	Enabled               bool   `json:"enabled"`
+	Protocol              string `json:"protocol"`
+	BaseURL               string `json:"baseURL"`
+	Path                  string `json:"path"`
+	HandshakeTimeoutMs    *int64 `json:"handshakeTimeoutMs,omitempty"`
+	ClientEventsPerSecond *int64 `json:"clientEventsPerSecond,omitempty"`
 }
 
 const ErrCodeEndpointRealtimeNotAllowed = "ENDPOINT_REALTIME_NOT_ALLOWED"

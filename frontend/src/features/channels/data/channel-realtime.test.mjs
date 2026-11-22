@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { getChannelBaseURLInputValue, getModelFetchBaseURL, getRealtimeDefaultEndpoint, getRealtimeHandshakeTimeoutInputValue, getRealtimeProviderBadgeClass, getRealtimeQuickModels, realtimeForSelection, hasLegacyRealtimeEndpoints, withoutRealtimeModelProtocols } from './channel-realtime.ts';
+import { getChannelBaseURLInputValue, getModelFetchBaseURL, getRealtimeDefaultEndpoint, getRealtimeHandshakeTimeoutInputValue, getRealtimeProviderBadgeClass, getRealtimeQuickModels, getRealtimeClientEventsPerSecondInputValue, realtimeForSelection, hasLegacyRealtimeEndpoints, withoutRealtimeModelProtocols } from './channel-realtime.ts';
 import { getInitialApiFormatForChannel, getAvailableProtocolFormats } from './protocol-options.ts';
 
 test('channel Realtime configuration saves and echoes without an endpoint', () => {
@@ -39,6 +39,7 @@ test('channel change snapshot detects Realtime host and timeout edits', () => {
   assert.ok(snapshot, 'local settings snapshot should exist');
   assert.match(snapshot, /\brealtimeHost,/);
   assert.match(snapshot, /\brealtimeTimeout,/);
+  assert.match(snapshot, /\brealtimeClientEventsPerSecond,/);
 });
 
 test('quick models follow the selected Realtime protocol', () => {
@@ -149,4 +150,19 @@ test('Realtime handshake timeout uses an info tooltip with localized default gui
   assert.match(timeoutRow, /md:justify-start/);
   assert.match(timeoutRow, /aria-label=\{t\('channels\.endpoints\.realtime\.handshakeTimeoutHint'\)\}/);
   assert.match(timeoutRow, /<p>\{t\('channels\.endpoints\.realtime\.handshakeTimeoutHint'\)\}<\/p>/);
+});
+
+test('Realtime client event limit saves explicit values and leaves inherited defaults null', () => {
+  assert.equal(getRealtimeClientEventsPerSecondInputValue(undefined), '');
+  assert.equal(getRealtimeClientEventsPerSecondInputValue(null), '');
+  assert.equal(getRealtimeClientEventsPerSecondInputValue(300), '300');
+  assert.equal(realtimeForSelection('openai/realtime-ws', null, 'wss://api.openai.com', '', '').clientEventsPerSecond, null);
+  assert.equal(realtimeForSelection('openai/realtime-ws', null, 'wss://api.openai.com', '', '300').clientEventsPerSecond, 300);
+  for (const rate of ['100', '255', '4097', '5000', '300.5', 'NaN']) {
+    assert.throws(() => realtimeForSelection('openai/realtime-ws', null, 'wss://api.openai.com', '', rate), /invalidClientEventsPerSecond/);
+  }
+
+  const actionDialog = readFileSync(new URL('../components/channels-action-dialog.tsx', import.meta.url), 'utf8');
+  assert.match(actionDialog, /data-testid='channel-realtime-client-events-per-second'/);
+  assert.match(actionDialog, /channels\.endpoints\.realtime\.clientEventsPerSecondHint/);
 });

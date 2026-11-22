@@ -381,7 +381,8 @@ export const channelRealtimeSchema = z.union([z.object({
   baseURL: z.string(),
   path: z.string(),
   handshakeTimeoutMs: z.number().int().min(1000).max(60000).optional().nullable(),
-}), z.object({ enabled: z.literal(false), protocol: z.literal(''), baseURL: z.literal(''), path: z.literal(''), handshakeTimeoutMs: z.null().optional() })]);
+  clientEventsPerSecond: z.number().int().min(256).max(4096).optional().nullable(),
+}), z.object({ enabled: z.literal(false), protocol: z.literal(''), baseURL: z.literal(''), path: z.literal(''), handshakeTimeoutMs: z.null().optional(), clientEventsPerSecond: z.number().int().min(256).max(4096).optional().nullable() })]);
 export type ChannelRealtime = z.infer<typeof channelRealtimeSchema>;
 
 export const channelSettingsSchema = z.object({

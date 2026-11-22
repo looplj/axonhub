@@ -31,7 +31,7 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	project := db.Project.Create().SetName("route-project").SaveX(ctx)
 	ctx = contexts.WithProjectID(ctx, project.ID)
 	actual := "gpt-realtime-2.1-mini"
-	row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("route-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream"}).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIChatCompletion.String(), Path: "/custom/chat"}}).SetSupportedModels([]string{actual, openairt.TranslationModel}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime", HandshakeTimeoutMs: lo.ToPtr(int64(30000))}, ModelProtocols: []objects.ModelProtocol{{Model: actual, APIFormats: []string{"openai/chat_completions"}, Enabled: lo.ToPtr(true)}}}).SaveX(ctx)
+	row := db.Channel.Create().SetType(channel.TypeOpenai).SetName("route-channel").SetBaseURL("https://api.openai.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-upstream"}).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIChatCompletion.String(), Path: "/custom/chat"}}).SetSupportedModels([]string{actual, openairt.TranslationModel}).SetDefaultTestModel(actual).SetStatus(channel.StatusEnabled).SetSettings(&objects.ChannelSettings{Realtime: &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://api.openai.com", Path: "/v1/realtime", HandshakeTimeoutMs: lo.ToPtr(int64(30000)), ClientEventsPerSecond: lo.ToPtr(int64(300))}, ModelProtocols: []objects.ModelProtocol{{Model: actual, APIFormats: []string{"openai/chat_completions"}, Enabled: lo.ToPtr(true)}}}).SaveX(ctx)
 	price := objects.ModelPrice{}
 	for _, code := range []objects.PriceItemCode{
 		objects.PriceItemCodeRealtimeInputAudio,
@@ -62,6 +62,7 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	target, err := service.Prepare(ctx, "voice", false)
 	require.NoError(t, err)
 	require.Equal(t, 30*time.Second, target.HandshakeTimeout)
+	require.Equal(t, 300, target.ClientEventsPerSecond)
 	require.Equal(t, actual, target.Model)
 	require.Equal(t, "voice", target.ClientModel)
 	require.Equal(t, llm.APIFormatOpenAIRealtimeWebSocket, target.APIFormat)

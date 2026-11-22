@@ -8,10 +8,12 @@
 package biz
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
@@ -46,5 +48,27 @@ func TestRealtimeEndpointHandshakeTimeoutBounds(t *testing.T) {
 		require.Error(t, ValidateEndpoints([]objects.ChannelEndpoint{ep}))
 		cfg.HandshakeTimeoutMs = lo.ToPtr(timeout)
 		require.Error(t, ValidateChannelRealtime(channel.TypeBailian, cfg))
+	}
+}
+
+func TestRealtimeClientEventsPerSecondBounds(t *testing.T) {
+	var cfg objects.ChannelRealtimeConfig
+	require.NoError(t, json.Unmarshal([]byte(`{"enabled":true,"protocol":"openai/realtime-ws","baseURL":"wss://api.openai.com","path":"/v1/realtime"}`), &cfg))
+	require.NoError(t, ValidateChannelRealtime(channel.TypeOpenai, &cfg), "an omitted override inherits the server default")
+
+	for _, limit := range []int64{256, 1024, 4096} {
+		payload, err := json.Marshal(map[string]any{"enabled": true, "protocol": "openai/realtime-ws", "baseURL": "wss://api.openai.com", "path": "/v1/realtime", "clientEventsPerSecond": limit})
+		require.NoError(t, err)
+		require.NoError(t, json.Unmarshal(payload, &cfg))
+		require.NoError(t, ValidateChannelRealtime(channel.TypeOpenai, &cfg))
+		encoded, err := json.Marshal(cfg)
+		require.NoError(t, err)
+		require.Equal(t, limit, gjson.GetBytes(encoded, "clientEventsPerSecond").Int(), "the configured event limit must survive channel settings persistence")
+	}
+	for _, limit := range []int64{100, 255, 4097, 5000} {
+		payload, err := json.Marshal(map[string]any{"enabled": true, "protocol": "openai/realtime-ws", "baseURL": "wss://api.openai.com", "path": "/v1/realtime", "clientEventsPerSecond": limit})
+		require.NoError(t, err)
+		require.NoError(t, json.Unmarshal(payload, &cfg))
+		require.ErrorContains(t, ValidateChannelRealtime(channel.TypeOpenai, &cfg), "256 and 4096")
 	}
 }

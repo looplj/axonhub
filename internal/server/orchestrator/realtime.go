@@ -84,6 +84,7 @@ type RealtimeTarget struct {
 	SessionID               string
 	UserAgent               string
 	HandshakeTimeout        time.Duration
+	ClientEventsPerSecond   int
 	APIFormat               llm.APIFormat
 	SafetyIdentifier        string
 	Channel                 *biz.Channel
@@ -211,7 +212,12 @@ func (s *RealtimeService) prepare(ctx context.Context, model string, native, tra
 				if ep.HandshakeTimeoutMs != nil {
 					timeout = time.Duration(*ep.HandshakeTimeoutMs) * time.Millisecond
 				}
-				return &RealtimeTarget{HandshakeTimeout: timeout, Channel: ch, Model: entry.ActualModel, ClientModel: model, URL: target, Price: price, APIKey: key, Native: native, Translation: translation, APIFormat: llm.APIFormat(format), SafetyIdentifier: hex.EncodeToString(identifier[:])}, nil
+				clientEventsPerSecond := 0
+				if ch.Settings != nil && ch.Settings.Realtime != nil && ch.Settings.Realtime.ClientEventsPerSecond != nil {
+					realtime := ch.Settings.Realtime
+					clientEventsPerSecond = int(*realtime.ClientEventsPerSecond)
+				}
+				return &RealtimeTarget{HandshakeTimeout: timeout, ClientEventsPerSecond: clientEventsPerSecond, Channel: ch, Model: entry.ActualModel, ClientModel: model, URL: target, Price: price, APIKey: key, Native: native, Translation: translation, APIFormat: llm.APIFormat(format), SafetyIdentifier: hex.EncodeToString(identifier[:])}, nil
 			}
 		}
 	}

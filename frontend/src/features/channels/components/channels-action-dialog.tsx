@@ -102,7 +102,7 @@ import { ChannelModelAliases } from './channel-model-preview';
 import { ProxyType } from './channels-proxy-dialog';
 import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ManualModelBadge } from './manual-model-badge';
-import { getChannelBaseURLInputValue, getModelFetchBaseURL, getRealtimeHandshakeTimeoutInputValue, getRealtimeQuickModels, isRealtimeProtocol, isRealtimeQuickModel, realtimeForSelection, withoutRealtimeModelProtocols } from '../data/channel-realtime';
+import { getChannelBaseURLInputValue, getModelFetchBaseURL, getRealtimeClientEventsPerSecondInputValue, getRealtimeHandshakeTimeoutInputValue, getRealtimeQuickModels, isRealtimeProtocol, isRealtimeQuickModel, realtimeForSelection, withoutRealtimeModelProtocols } from '../data/channel-realtime';
 
 interface Props {
   currentRow?: Channel;
@@ -773,6 +773,7 @@ export function ChannelsActionDialog({
   });
   const [realtimeHost, setRealtimeHost] = useState(initialRow?.settings?.realtime?.baseURL ?? '');
   const [realtimeTimeout, setRealtimeTimeout] = useState(getRealtimeHandshakeTimeoutInputValue(initialRow?.settings?.realtime?.handshakeTimeoutMs));
+  const [realtimeClientEventsPerSecond, setRealtimeClientEventsPerSecond] = useState(getRealtimeClientEventsPerSecondInputValue(initialRow?.settings?.realtime?.clientEventsPerSecond));
   const [responsesTransport, setResponsesTransport] = useState<ResponsesTransport>(() => getResponsesTransportFromChannel(initialRow));
   const initialCodexResponses = useMemo(() => getCodexResponsesWebSocketState(initialRow), [initialRow]);
   const [codexResponsesWebSocket, setCodexResponsesWebSocket] = useState(initialCodexResponses.enabled);
@@ -810,6 +811,7 @@ export function ChannelsActionDialog({
     setResponsesTransport(getResponsesTransportFromChannel(initialRow));
     setRealtimeHost(initialRow.settings?.realtime?.baseURL ?? '');
     setRealtimeTimeout(getRealtimeHandshakeTimeoutInputValue(initialRow.settings?.realtime?.handshakeTimeoutMs));
+    setRealtimeClientEventsPerSecond(getRealtimeClientEventsPerSecondInputValue(initialRow.settings?.realtime?.clientEventsPerSecond));
     setCodexResponsesWebSocket(getCodexResponsesWebSocketState(initialRow).enabled);
     setUseGeminiVertex(initialRow.type === 'gemini_vertex');
     setUseAnthropicAws(initialRow.type === 'anthropic_aws');
@@ -1083,6 +1085,7 @@ export function ChannelsActionDialog({
     selectedApiFormat,
     realtimeHost,
     realtimeTimeout,
+    realtimeClientEventsPerSecond,
     responsesTransport,
     codexResponsesWebSocket,
     useGeminiVertex,
@@ -1199,6 +1202,7 @@ export function ChannelsActionDialog({
       setSelectedProvider(provider);
       setRealtimeHost('');
       setRealtimeTimeout(getRealtimeHandshakeTimeoutInputValue(undefined));
+      setRealtimeClientEventsPerSecond(getRealtimeClientEventsPerSecondInputValue(undefined));
       setAuthMode(isEdit && ['codex', 'claudecode'].includes(provider) ? 'third-party' : 'official');
 
       if (provider !== 'gemini') {
@@ -1649,7 +1653,7 @@ export function ChannelsActionDialog({
       const matchingRealtime = (realtimeChannelType === 'openai' && currentRealtime?.protocol === 'openai/realtime-ws') || (realtimeChannelType === 'bailian' && currentRealtime?.protocol === 'qwen/realtime-ws') ? currentRealtime : undefined;
       let realtime: ChannelSettings['realtime'];
       try {
-        realtime = realtimeForSelection(selectedApiFormat, matchingRealtime, getChannelBaseURLInputValue(selectedApiFormat, values.baseURL, realtimeHost), realtimeTimeout) ?? null;
+        realtime = realtimeForSelection(selectedApiFormat, matchingRealtime, getChannelBaseURLInputValue(selectedApiFormat, values.baseURL, realtimeHost), realtimeTimeout, realtimeClientEventsPerSecond) ?? null;
       } catch (error) {
         toast.error(t(error instanceof Error ? error.message : 'channels.realtime.invalidHost'));
         return;
@@ -2301,6 +2305,7 @@ export function ChannelsActionDialog({
     setProxyPassword(initialRow?.settings?.proxy?.password || '');
     setRealtimeHost(initialRow?.settings?.realtime?.baseURL ?? '');
     setRealtimeTimeout(getRealtimeHandshakeTimeoutInputValue(initialRow?.settings?.realtime?.handshakeTimeoutMs));
+    setRealtimeClientEventsPerSecond(getRealtimeClientEventsPerSecondInputValue(initialRow?.settings?.realtime?.clientEventsPerSecond));
     setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
     setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
     setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
@@ -3801,6 +3806,39 @@ export function ChannelsActionDialog({
                               value={realtimeTimeout}
                               placeholder={t('channels.endpoints.realtime.handshakeTimeoutPlaceholder')}
                               onChange={(event) => setRealtimeTimeout(event.target.value)}
+                            />
+                          </div>
+                        </FormItem>
+                      )}
+
+                      {isRealtimeProtocol(selectedApiFormat) && (
+                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8' data-testid='channel-realtime-client-events-per-second'>
+                          <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
+                            <FormLabel className='font-medium'>{t('channels.endpoints.realtime.clientEventsPerSecond')}</FormLabel>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type='button'
+                                  className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                  aria-label={t('channels.endpoints.realtime.clientEventsPerSecondHint')}
+                                >
+                                  <Info className='h-3.5 w-3.5' />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className='max-w-sm'>
+                                <p>{t('channels.endpoints.realtime.clientEventsPerSecondHint')}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <div className='space-y-1 md:col-span-6'>
+                            <Input
+                              type='number'
+                              min={256}
+                              max={4096}
+                              step={1}
+                              value={realtimeClientEventsPerSecond}
+                              placeholder={t('channels.endpoints.realtime.clientEventsPerSecondPlaceholder')}
+                              onChange={(event) => setRealtimeClientEventsPerSecond(event.target.value)}
                             />
                           </div>
                         </FormItem>

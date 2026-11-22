@@ -101,27 +101,37 @@ func TestChannelRealtimeConfigurationPersists(t *testing.T) {
 			if kind == "bailian" {
 				protocol, base, path = "qwen/realtime-ws", "wss://llm-probe.cn-beijing.maas.aliyuncs.com", "/api-ws/v1/realtime"
 			}
-			config := map[string]any{"enabled": true, "protocol": protocol, "baseURL": base, "path": path, "handshakeTimeoutMs": 3456}
-			status, body := execute(`mutation($i:CreateChannelInput!){createChannel(input:$i){id settings{realtime{enabled protocol baseURL path handshakeTimeoutMs}} endpoints{apiFormat}}}`, map[string]any{"i": map[string]any{"type": kind, "name": "configured", "credentials": map[string]any{"apiKey": "synthetic"}, "supportedModels": []string{"voice"}, "defaultTestModel": "voice", "settings": map[string]any{"realtime": config}}})
+			config := map[string]any{"enabled": true, "protocol": protocol, "baseURL": base, "path": path, "handshakeTimeoutMs": 3456, "clientEventsPerSecond": 1024}
+			status, body := execute(`mutation($i:CreateChannelInput!){createChannel(input:$i){id settings{realtime{enabled protocol baseURL path handshakeTimeoutMs clientEventsPerSecond}} endpoints{apiFormat}}}`, map[string]any{"i": map[string]any{"type": kind, "name": "configured", "credentials": map[string]any{"apiKey": "synthetic"}, "supportedModels": []string{"voice"}, "defaultTestModel": "voice", "settings": map[string]any{"realtime": config}}})
 			require.Equal(t, 200, status, string(body))
 			require.False(t, gjson.GetBytes(body, "errors").Exists(), string(body))
 			id := gjson.GetBytes(body, "data.createChannel.id").String()
 			require.NotEmpty(t, id)
 			require.Equal(t, protocol, gjson.GetBytes(body, "data.createChannel.settings.realtime.protocol").String(), "create must persist the independent channel protocol before any update")
 			require.True(t, gjson.GetBytes(body, "data.createChannel.settings.realtime.enabled").Bool())
+			require.Equal(t, int64(1024), gjson.GetBytes(body, "data.createChannel.settings.realtime.clientEventsPerSecond").Int())
 			config["handshakeTimeoutMs"] = 4567
-			status, body = execute(`mutation($id:ID!,$i:UpdateChannelInput!){updateChannel(id:$id,input:$i){id settings{realtime{enabled protocol handshakeTimeoutMs}}}}`, map[string]any{"id": id, "i": map[string]any{"settings": map[string]any{"realtime": config}}})
+			config["clientEventsPerSecond"] = 300
+			status, body = execute(`mutation($id:ID!,$i:UpdateChannelInput!){updateChannel(id:$id,input:$i){id settings{realtime{enabled protocol handshakeTimeoutMs clientEventsPerSecond}}}}`, map[string]any{"id": id, "i": map[string]any{"settings": map[string]any{"realtime": config}}})
 			require.Equal(t, 200, status, string(body))
 			require.False(t, gjson.GetBytes(body, "errors").Exists(), string(body))
-			status, body = execute(`query($id:ID!){node(id:$id){... on Channel{settings{realtime{enabled protocol baseURL handshakeTimeoutMs}} endpoints{apiFormat}}}}`, map[string]any{"id": id})
+			status, body = execute(`query($id:ID!){node(id:$id){... on Channel{settings{realtime{enabled protocol baseURL handshakeTimeoutMs clientEventsPerSecond}} endpoints{apiFormat}}}}`, map[string]any{"id": id})
 			require.Equal(t, 200, status)
 			require.Equal(t, protocol, gjson.GetBytes(body, "data.node.settings.realtime.protocol").String())
 			require.Equal(t, int64(4567), gjson.GetBytes(body, "data.node.settings.realtime.handshakeTimeoutMs").Int())
+			require.Equal(t, int64(300), gjson.GetBytes(body, "data.node.settings.realtime.clientEventsPerSecond").Int())
 			stored := db.Channel.Query().OnlyX(seed)
 			require.Empty(t, stored.Endpoints)
 			raw, err := json.Marshal(stored.Settings)
 			require.NoError(t, err)
 			require.Equal(t, protocol, gjson.GetBytes(raw, "realtime.protocol").String())
+			for _, invalidRate := range []int{100, 5000} {
+				config["clientEventsPerSecond"] = invalidRate
+				status, body = execute(`mutation($id:ID!,$i:UpdateChannelInput!){updateChannel(id:$id,input:$i){id}}`, map[string]any{"id": id, "i": map[string]any{"settings": map[string]any{"realtime": config}}})
+				require.Equal(t, 200, status)
+				require.Contains(t, string(body), "Realtime client events per second must be between 256 and 4096")
+			}
+			config["clientEventsPerSecond"] = 300
 			// Existing model routing belongs to the channel and must survive
 			// ordinary HTTP endpoint edits after the realtime migration.
 			status, body = execute(`mutation($id:ID!,$i:UpdateChannelSettingsInput!){updateChannelSettings(id:$id,input:$i){id}}`, map[string]any{"id": id, "i": map[string]any{"modelProtocols": []any{map[string]any{"model": "voice", "apiFormats": []string{protocol}}}}})

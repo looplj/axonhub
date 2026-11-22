@@ -24,7 +24,7 @@ writeFileSync(outFile, ts.transpileModule(stubbed, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText);
 
-const { createChannelInputSchema, updateChannelInputSchema } = await import(pathToFileURL(outFile).href);
+const { createChannelInputSchema, updateChannelInputSchema, channelRealtimeSchema } = await import(pathToFileURL(outFile).href);
 test.after(() => rmSync(outFile, { force: true }));
 
 function vertexRow(overrides = {}) {
@@ -55,6 +55,16 @@ test('a Vertex channel rejects a row with a missing project ID', () => {
     paths.some((entry) => entry.startsWith('credentials.vertexApiKeys.0.projectID::')),
     `expected a projectID error at the row path, got ${JSON.stringify(paths)}`
   );
+});
+
+test('Realtime client event limit accepts only nullable integers from 256 to 4096', () => {
+  const base = { enabled: true, protocol: 'openai/realtime-ws', baseURL: 'wss://api.openai.com', path: '/v1/realtime' };
+  for (const clientEventsPerSecond of [null, 256, 1024, 4096]) {
+    assert.equal(channelRealtimeSchema.safeParse({ ...base, clientEventsPerSecond }).success, true);
+  }
+  for (const clientEventsPerSecond of [100, 255, 4097, 5000, 300.5]) {
+    assert.equal(channelRealtimeSchema.safeParse({ ...base, clientEventsPerSecond }).success, false);
+  }
 });
 
 test('a Vertex channel rejects a row with a missing API key', () => {

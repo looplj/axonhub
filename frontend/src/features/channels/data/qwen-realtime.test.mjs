@@ -123,6 +123,10 @@ test('localizes the realtime formats distinctly from Responses WebSocket', () =>
     assert.equal(qwenRealtime, 'Qwen (Realtime WebSocket)');
     assert.equal(channels['channels.endpoints.realtime.handshakeTimeout'], locale === 'zh-CN' ? '握手超时' : 'Handshake timeout');
     assert.match(channels['channels.endpoints.realtime.handshakeTimeoutHint'], locale === 'zh-CN' ? /毫秒/ : /ms/);
+    assert.equal(channels['channels.endpoints.realtime.clientEventsPerSecond'], locale === 'zh-CN' ? '客户端事件速率上限' : 'Client event rate limit');
+    assert.equal(channels['channels.endpoints.realtime.clientEventsPerSecondPlaceholder'], locale === 'zh-CN' ? '服务端默认值（1024 次/秒）' : 'Server default (1024 events/second)');
+    assert.match(channels['channels.endpoints.realtime.clientEventsPerSecondHint'], locale === 'zh-CN' ? /256–4096.*125.*375/ : /256 to 4096.*125.*375/);
+    assert.match(channels['channels.endpoints.realtime.invalidClientEventsPerSecond'], locale === 'zh-CN' ? /256–4096/ : /256 and 4096/);
 
     assert.ok(models['models.dialogs.association.conditions.formatOptions.openai/realtime'], `${locale} model format label missing`);
   }

@@ -27,11 +27,14 @@ func ValidateChannelRealtime(kind channel.Type, cfg *objects.ChannelRealtimeConf
 	if cfg == nil {
 		return nil
 	}
-	if !cfg.Enabled && cfg.Protocol == "" && cfg.BaseURL == "" && cfg.Path == "" && cfg.HandshakeTimeoutMs == nil {
+	if !cfg.Enabled && cfg.Protocol == "" && cfg.BaseURL == "" && cfg.Path == "" && cfg.HandshakeTimeoutMs == nil && cfg.ClientEventsPerSecond == nil {
 		return nil
 	}
 	if cfg.HandshakeTimeoutMs != nil && (*cfg.HandshakeTimeoutMs < 1000 || *cfg.HandshakeTimeoutMs > 60000) {
 		return errors.New("Realtime handshake timeout must be between 1000 and 60000 ms")
+	}
+	if cfg.ClientEventsPerSecond != nil && (*cfg.ClientEventsPerSecond < 256 || *cfg.ClientEventsPerSecond > 4096) {
+		return errors.New("Realtime client events per second must be between 256 and 4096")
 	}
 	switch cfg.Protocol {
 	case llm.APIFormatOpenAIRealtimeWebSocket.String():

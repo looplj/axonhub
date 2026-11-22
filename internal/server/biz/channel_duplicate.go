@@ -36,6 +36,10 @@ func (svc *ChannelService) DuplicateChannel(ctx context.Context, sourceID int, i
 				timeout := *realtime.HandshakeTimeoutMs
 				realtime.HandshakeTimeoutMs = &timeout
 			}
+			if realtime.ClientEventsPerSecond != nil {
+				rate := *realtime.ClientEventsPerSecond
+				realtime.ClientEventsPerSecond = &rate
+			}
 			input.Settings = &objects.ChannelSettings{Realtime: &realtime}
 		}
 		if isZenmuxChannelType(source.Type) && isZenmuxChannelType(input.Type) && input.Credentials.ManagementAPIKey == "" {

@@ -31,6 +31,10 @@ export function getRealtimeHandshakeTimeoutInputValue(timeoutMs: number | null |
   return timeoutMs == null ? '' : String(timeoutMs);
 }
 
+export function getRealtimeClientEventsPerSecondInputValue(limit: number | null | undefined): string {
+  return limit == null ? '' : String(limit);
+}
+
 export function getChannelBaseURLInputValue(format: string, channelBaseURL: string | null | undefined, qwenRealtimeHost: string): string {
   if (format === 'openai/realtime-ws') return OPENAI_REALTIME_HOST;
   if (format === 'qwen/realtime-ws') return qwenRealtimeHost;
@@ -66,7 +70,7 @@ export function withoutRealtimeModelProtocols(protocols: readonly ModelProtocol[
   return (protocols ?? []).map((protocol) => ({ ...protocol, apiFormats: protocol.apiFormats.filter((format) => !isRealtimeProtocol(format)) })).filter((protocol) => protocol.apiFormats.length > 0);
 }
 
-export function realtimeForSelection(format: string, current: ChannelRealtime | null | undefined, host: string, timeout: string): ChannelRealtime | undefined {
+export function realtimeForSelection(format: string, current: ChannelRealtime | null | undefined, host: string, timeout: string, clientEventsPerSecond?: string): ChannelRealtime | undefined {
   if (!isRealtimeProtocol(format)) return current ? { ...current, enabled: false } : undefined;
   if (format === 'openai/realtime') throw new Error('channels.realtime.invalidHost');
   let baseURL = (host.trim() || (format === 'openai/realtime-ws' ? 'wss://api.openai.com' : '')).replace(/\/$/, '');
@@ -79,5 +83,9 @@ export function realtimeForSelection(format: string, current: ChannelRealtime | 
   if (handshakeTimeoutMs !== undefined && (!Number.isInteger(handshakeTimeoutMs) || handshakeTimeoutMs < 1000 || handshakeTimeoutMs > 60000)) {
     throw new Error('channels.endpoints.realtime.invalidTimeout');
   }
-  return { enabled: true, protocol: openai ? 'openai/realtime-ws' : 'qwen/realtime-ws', baseURL, path: openai ? '/v1/realtime' : '/api-ws/v1/realtime', ...(handshakeTimeoutMs !== undefined ? { handshakeTimeoutMs } : {}) };
+  const eventLimit = clientEventsPerSecond == null || clientEventsPerSecond.trim() === '' ? null : Number(clientEventsPerSecond);
+  if (eventLimit !== null && (!Number.isInteger(eventLimit) || eventLimit < 256 || eventLimit > 4096)) {
+    throw new Error('channels.endpoints.realtime.invalidClientEventsPerSecond');
+  }
+  return { enabled: true, protocol: openai ? 'openai/realtime-ws' : 'qwen/realtime-ws', baseURL, path: openai ? '/v1/realtime' : '/api-ws/v1/realtime', ...(handshakeTimeoutMs !== undefined ? { handshakeTimeoutMs } : {}), ...(clientEventsPerSecond !== undefined ? { clientEventsPerSecond: eventLimit } : {}) };
 }
