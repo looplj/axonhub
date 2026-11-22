@@ -388,6 +388,8 @@
   "channels.dialogs.fields.apiFormat.formats.jina/rerank": "Jina (Rerank)",
   "channels.dialogs.fields.apiFormat.formats.jina/embeddings": "Jina (Embeddings)",
   "channels.dialogs.fields.apiFormat.formats.typesafe/systemone": "TypeSafe (System One)",
+  "channels.dialogs.fields.apiFormat.formats.cohere/embed": "Cohere (Embed v2)",
+  "channels.dialogs.fields.apiFormat.formats.autotrust/decide": "AutoTrust (Decide)",
   "channels.dialogs.fields.apiFormat.kimiCoding.label": "Kimi Coding (api.kimi.com)",
   "channels.dialogs.fields.apiFormat.formats.ollama/chat": "Ollama (Chat)",
   "channels.dialogs.fields.provider.label": "Provider",

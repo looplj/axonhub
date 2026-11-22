@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -26,7 +27,49 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	responsestransformer "github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/typesafe"
 )
+
+func TestAutoTrustOverridesAndPassThrough(t *testing.T) {
+	t.Parallel()
+	for _, enabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("pass through %t", enabled), func(t *testing.T) {
+			inbound := typesafe.NewAutoTrustInboundTransformer()
+			req, err := inbound.TransformRequest(t.Context(), &httpclient.Request{Body: []byte(`{"model":"alias","kind":"noul","question":"yes?"}`)})
+			require.NoError(t, err)
+			adapter, err := typesafe.NewAutoTrustOutboundTransformerWithConfig(&typesafe.Config{BaseURL: "https://example.com", APIKeyProvider: auth.NewStaticKeyProvider("unit-test-key")})
+			require.NoError(t, err)
+			raw, err := adapter.TransformRequest(t.Context(), req)
+			require.NoError(t, err)
+			ch := &biz.Channel{Channel: &ent.Channel{ID: 1, Settings: &objects.ChannelSettings{
+				PassThroughBody:    lo.ToPtr(enabled),
+				OverrideParameters: `{"model":"override","thinking":"off"}`,
+				OverrideHeaders:    []objects.HeaderEntry{{Key: typesafe.AutoTrustModelHeader, Value: "override"}},
+			}}}
+			persistent := &PersistentOutboundTransformer{wrapped: adapter, state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: ch}, LlmRequest: req, RawProviderRequest: raw,
+			}}
+			for _, middleware := range []pipeline.Middleware{
+				applyPassThroughRequestBody(persistent, nil), applyOverrideRequestBody(persistent), applyOverrideRequestHeaders(persistent), finalizeTransportRequest(persistent),
+			} {
+				raw, err = middleware.OnOutboundRawRequest(t.Context(), raw)
+				require.NoError(t, err)
+			}
+			require.False(t, gjson.GetBytes(raw.Body, "model").Exists())
+			require.Empty(t, raw.Headers.Get(typesafe.AutoTrustModelHeader))
+			require.Equal(t, "off", gjson.GetBytes(raw.Body, "thinking").String())
+			response := &httpclient.Response{StatusCode: http.StatusOK, Body: []byte(`{"kind":"noul","options":["yes","no"],"probabilities":[1,0],"choice_index":0,"choice":"yes"}`)}
+			unified, err := adapter.TransformResponse(t.Context(), response)
+			require.NoError(t, err)
+			validated, err := inbound.TransformResponse(t.Context(), unified)
+			require.NoError(t, err)
+			persistent.state.RawProviderResponse = response
+			result, err := applyPassThroughResponse(persistent).OnInboundRawResponse(t.Context(), validated)
+			require.NoError(t, err)
+			require.Same(t, validated, result)
+		})
+	}
+}
 
 func testHTTPStream(events []*httpclient.StreamEvent) streams.Stream[*httpclient.StreamEvent] {
 	return streams.SliceStream(events)

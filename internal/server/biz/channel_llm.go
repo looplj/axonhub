@@ -555,6 +555,22 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 				EndpointPath:   ep.Path,
 			})
 		})
+	case llm.APIFormatCohereEmbed.String():
+		return withAPIKey(func(provider auth.APIKeyProvider) (transformer.Outbound, error) {
+			return openai.NewCohereEmbeddingOutboundTransformerWithConfig(&openai.Config{
+				BaseURL:        baseURL,
+				APIKeyProvider: provider,
+				EndpointPath:   ep.Path,
+			})
+		})
+	case llm.APIFormatAutoTrustDecide.String():
+		return withAPIKey(func(provider auth.APIKeyProvider) (transformer.Outbound, error) {
+			return typesafe.NewAutoTrustOutboundTransformerWithConfig(&typesafe.Config{
+				BaseURL:        baseURL,
+				APIKeyProvider: provider,
+				EndpointPath:   ep.Path,
+			})
+		})
 	case llm.APIFormatOpenAIEmbedding.String(),
 		llm.APIFormatOpenAIModeration.String(),
 		llm.APIFormatOpenAIImageGeneration.String(),

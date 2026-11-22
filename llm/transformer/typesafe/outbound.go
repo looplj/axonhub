@@ -71,6 +71,9 @@ func (t *OutboundTransformer) TransformRequest(
 	if llmReq.SystemOne == nil {
 		return nil, fmt.Errorf("systemone request is nil")
 	}
+	if llmReq.SystemOne.AutoTrust != nil {
+		return nil, fmt.Errorf("autotrust requests require an autotrust endpoint")
+	}
 	if llmReq.Model == "" {
 		return nil, fmt.Errorf("model is required")
 	}

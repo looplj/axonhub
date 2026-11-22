@@ -158,6 +158,8 @@
     "models.dialogs.association.conditions.formatOptions.openai/moderations": "OpenAI (Moderations)",
     "models.dialogs.association.conditions.formatOptions.openai/alpha_search": "Codex (Alpha Search)",
     "models.dialogs.association.conditions.formatOptions.openai/decisions": "OpenAI (Decisions)",
+    "models.dialogs.association.conditions.formatOptions.cohere/embed": "Cohere (Embed v2)",
+    "models.dialogs.association.conditions.formatOptions.autotrust/decide": "AutoTrust (Decide)",
     "models.dialogs.association.conditions.formatOptions.openai/audio_speech": "OpenAI (Audio Speech)",
     "models.dialogs.association.conditions.formatOptions.openai/audio_transcriptions": "OpenAI (Audio Transcriptions)",
     "models.dialogs.association.conditions.formatOptions.openai/audio_translations": "OpenAI (Audio Translations)",

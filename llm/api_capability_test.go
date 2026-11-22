@@ -20,6 +20,7 @@ func TestCapableAPIFormats(t *testing.T) {
 
 	embedding := CapableAPIFormats(RequestTypeEmbedding)
 	require.Contains(t, embedding, APIFormatOpenAIEmbedding.String())
+	require.Contains(t, embedding, APIFormatCohereEmbed.String())
 	require.NotContains(t, embedding, APIFormatOpenAIChatCompletion.String())
 
 	alphaSearch := CapableAPIFormats(RequestTypeAlphaSearch)
@@ -29,6 +30,7 @@ func TestCapableAPIFormats(t *testing.T) {
 	systemOne := CapableAPIFormats(RequestTypeSystemOne)
 	require.NotNil(t, systemOne)
 	require.Contains(t, systemOne, APIFormatTypeSafeSystemOne.String())
+	require.Contains(t, systemOne, APIFormatAutoTrustDecide.String())
 	require.NotContains(t, systemOne, APIFormatOpenAIChatCompletion.String())
 
 	require.Nil(t, CapableAPIFormats(RequestType("unknown")))

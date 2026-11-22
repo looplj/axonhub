@@ -16,6 +16,7 @@ System One 源于认知心理学中的“系统一”（快速、直觉、确定
 
 - `POST /v1/systemone` - 原生 System One API（主入口）
 - `POST /typesafe/v1/systemone` - TypeSafe 服务商命名空间入口
+- `POST /v1/decide` - AutoTrust 原生决策协议，配置与请求格式见本文的 AutoTrust 部分
 
 ## 认证方式
 
@@ -319,7 +320,44 @@ Workers AI 以账号级 Base URL 提供决策模型，一个渠道同时覆盖�
 
 ---
 
-## 已知限制与注意事项
+## AutoTrust 原生 Decide API
+
+AutoTrust 的入口为 `POST /v1/decide`，使用 `kind/state/question/options` 原生协议。在 OpenAI 类型渠道中添加 `autotrust/decide` 自定义端点，Base URL 使用实际推理服务根地址（例如 `http://inference-host:8000`，不带 `/v1`），路径为 `/v1/decide`。在 Model Protocols 中为手工添加的模型固定 `autotrust/decide`。启用鉴权的服务填写真实上游 API Key；未启用鉴权且接受任意 Bearer 值的自托管 vLLM 服务可填写客户端占位值 `EMPTY`。AxonHub 仍发送 `Authorization: Bearer EMPTY`，客户端访问网关仍需使用 AxonHub API Key。
+
+上游 AutoTrust 请求没有模型字段，每个部署使用其启动时装载的模型。客户端通过 `X-AxonHub-Model` 指定 AxonHub 模型别名：
+
+```bash
+curl -X POST "http://localhost:8090/v1/decide" \
+  -H "Authorization: Bearer your-axonhub-api-key" \
+  -H "Content-Type: application/json" \
+  -H "X-AxonHub-Model: autotrust-vision" \
+  -d '{
+    "kind": "choice",
+    "state": "Customer: my card was charged twice.",
+    "question": "Which team should handle this?",
+    "options": ["billing", "shipping", "technical support"]
+  }'
+```
+
+也可以在正文中添加网关扩展字段 `"model":"autotrust-vision"`。请求头与正文同时提供时必须相同，两处都没有或互相冲突时会被拒绝。网关执行模型权限、映射、候选和配额检查，并在最终发送前去除正文 `model` 及 `X-AxonHub-Model`。别名映射不会让固定部署切换模型权重，请将模型名称与实际部署对应。
+
+| 字段 | 说明 |
+| --- | --- |
+| `kind` | `choice`、`noul` 或 `score` |
+| `question` | 字符串问题 |
+| `state` | 可缺省；提供时为字符串、对象或数组 |
+| `options` | `choice` 必填的有序候选字符串数组，网关要求至少两项；其他限制由部署决定 |
+| 扩展字段 | `strategy`、`thinking`、`threshold`、`chat_template_kwargs`、`reasoning_effort`、`think_budget`、`return_reasoning`、`debug` 等原样保留 |
+
+视觉模型的状态可使用图像列表，例如 `"state":["Classify this product:",{"image":"data:image/png;base64,<BASE64_ENCODED_IMAGE_DATA>"}]`。将占位符替换为真实图像；视觉支持及远程 URL 支持由实际部署决定。网关不会把选项排序，也不会改写上游的概率、评分尺度或推理字段。
+
+响应保留 `kind/effective_kind/options/probabilities/choice_index/choice/protocol/adaptation/thinking` 和上游扩展字段，`choice_index:0` 与零概率均为合法结果。`usage.prompt_tokens/completion_tokens/total_tokens` 映射到现有用量统计；`num_model_requests` 与 `elapsed_seconds` 保留，内部多次推理不会重复计算为多次网关请求。
+
+错误响应遵循系统的上游错误策略：原样模式保留上游 HTTP 状态及错误正文，隐藏和自定义模式使用配置文案。
+
+该端点只接受 JSON，拒绝 `stream:true`。AutoTrust 请求只选择 `autotrust/decide` 上游，不转换为 TypeSafe System One 或 OpenAI `/v1/decisions`。渠道测试使用非流式原生决策负载，复制请求时保留网关模型请求头或正文扩展字段。
+
+## TypeSafe 已知限制与注意事项
 
 1. **不支持流式传输（Streaming）**：System One 是单次确定的决策原语调用，非逐字生成的聊天模型，请求中包含 `stream: true` 会被拦截并返回 400 错误。
 2. **不支持 Chat 专属参数**：请勿传入 `temperature`、`top_p`、`max_tokens`、`tools` 或 `messages` 等生成式参数。

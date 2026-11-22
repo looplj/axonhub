@@ -200,6 +200,42 @@ test('keeps the openai/decisions association format listed for model association
   assert.match(dialog, /requestFormatConditionOptions[\s\S]*'openai\/decisions'/, 'association format options should include openai/decisions');
 });
 
+test('offers native embedding and decision endpoints only on OpenAI channels', () => {
+  const nativeFormats = ['cohere/embed', 'autotrust/decide'];
+  const formats = [...configurableFormats, ...nativeFormats];
+  assert.deepEqual(getConfigurableApiFormatsForChannelType('openai', formats).slice(-2), nativeFormats);
+  for (const channelType of ['openai_responses', 'anthropic', 'gemini', 'zenmux', 'typesafe', 'codex', 'xai', 'cloudflare']) {
+    const available = getConfigurableApiFormatsForChannelType(channelType, formats);
+    assert.ok(nativeFormats.every((format) => !available.includes(format)), channelType);
+  }
+  assert.deepEqual(getApiFormatsForProvider('openai', configs), ['openai/chat_completions', 'openai/responses']);
+});
+
+test('keeps configured native model protocols and exposes them for editing', () => {
+  const existing = [
+    { model: 'qwen-vision', apiFormats: ['cohere/embed'], enabled: true },
+    { model: 'decider', apiFormats: ['autotrust/decide'], enabled: true },
+  ];
+  assert.deepEqual(getModelProtocolsForApiFormat('openai/chat_completions', ['qwen-vision', 'decider'], existing), existing);
+  assert.deepEqual(getAvailableProtocolFormats([], existing.flatMap((entry) => entry.apiFormats.map((apiFormat) => ({ apiFormat })))), [
+    'cohere/embed', 'autotrust/decide',
+  ]);
+});
+
+test('recognizes and localizes native formats in endpoint and association configuration', () => {
+  const schema = read('features/channels/data/schema.ts');
+  const dialog = read('features/models/components/models-association-dialog.tsx');
+  for (const format of ['cohere/embed', 'autotrust/decide']) {
+    assert.ok(schema.slice(0, schema.indexOf('export type ApiFormat')).includes(`'${format}'`));
+    assert.ok(schema.slice(schema.indexOf('export const configurableChannelEndpointApiFormats')).includes(`'${format}'`));
+    assert.ok(dialog.slice(dialog.indexOf('const requestFormatConditionOptions'), dialog.indexOf('const contentFeatureConditionFields')).includes(`'${format}'`));
+    for (const locale of ['en', 'zh-CN']) {
+      assert.ok(parseLocale(locale, 'channels.json')[`channels.dialogs.fields.apiFormat.formats.${format}`]);
+      assert.ok(parseLocale(locale, 'models.json')[`models.dialogs.association.conditions.formatOptions.${format}`]);
+    }
+  }
+});
+
 const H = 'openai/responses';
 const W = 'openai/responses-ws';
 const CODEX_BASE = 'https://chatgpt.com/backend-api/codex#';

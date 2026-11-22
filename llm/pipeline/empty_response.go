@@ -86,6 +86,9 @@ func hasResponseContent(resp *llm.Response) bool {
 	if resp.Embedding != nil && len(resp.Embedding.Data) > 0 {
 		return true
 	}
+	if resp.Embedding != nil && resp.Embedding.Cohere != nil && resp.Embedding.Cohere.VectorCount > 0 {
+		return true
+	}
 
 	if resp.Rerank != nil && len(resp.Rerank.Results) > 0 {
 		return true
@@ -132,6 +135,9 @@ func hasResponseContent(resp *llm.Response) bool {
 	}
 
 	if resp.SystemOne != nil && len(resp.SystemOne.Answers) > 0 {
+		return true
+	}
+	if resp.SystemOne != nil && resp.SystemOne.AutoTrust != nil && len(resp.SystemOne.AutoTrust.Probabilities) > 0 {
 		return true
 	}
 

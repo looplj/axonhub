@@ -32,10 +32,28 @@ type TypeSafeHandlersParams struct {
 
 type TypeSafeHandlers struct {
 	SystemOneHandlers *ChatCompletionHandlers
+	AutoTrustHandlers *ChatCompletionHandlers
 }
 
 func NewTypeSafeHandlers(params TypeSafeHandlersParams) *TypeSafeHandlers {
 	return &TypeSafeHandlers{
+		AutoTrustHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				typesafe.NewAutoTrustInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+				orchestratorPlugins(params.PluginManager)),
+		},
 		SystemOneHandlers: &ChatCompletionHandlers{
 			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 				params.ChannelService,
@@ -59,4 +77,8 @@ func NewTypeSafeHandlers(params TypeSafeHandlersParams) *TypeSafeHandlers {
 // SystemOne handles native TypeSafe System One requests.
 func (h *TypeSafeHandlers) SystemOne(c *gin.Context) {
 	h.SystemOneHandlers.ChatCompletion(c)
+}
+
+func (h *TypeSafeHandlers) AutoTrust(c *gin.Context) {
+	h.AutoTrustHandlers.ChatCompletion(c)
 }

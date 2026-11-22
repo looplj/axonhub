@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -86,13 +87,13 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 			selectedModels := make([]biz.ChannelModelEntry, 0, len(c.Models))
 			selectedFormats := make([]string, 0, len(c.Models))
 			for _, entry := range c.Models {
-				endpoints, forced := applyForcedAPIFormatsForRequest(ctx, c.Channel, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, baseEndpoints)
+				endpoints, forced := applyForcedAPIFormatsForRequest(ctx, c.Channel, []biz.ChannelModelEntry{entry}, req.Model, req, baseEndpoints)
 				format := selectEndpointAPIFormat(endpoints, req, forced)
 				// Explicit protocols have no generic fallback. A model whose forced protocol
 				// list cannot serve the requested protocol must not remain as the first retry
 				// entry, otherwise an empty candidate format falls back to the channel's
 				// primary (usually chat) outbound.
-				if requiresExplicitEndpoint(req.RequestType) && format == "" {
+				if format == "" && (requiresExplicitEndpoint(req) || len(endpoints) > 0) {
 					continue
 				}
 
@@ -104,18 +105,16 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 				continue
 			}
 
-			if requiresExplicitEndpoint(req.RequestType) {
-				c.Models = selectedModels
-			}
+			c.Models = selectedModels
 			c.modelAPIFormats = selectedFormats
 			c.APIFormat = selectedFormats[0]
 		} else {
 			c.modelAPIFormats = nil
-			endpoints, forced := applyForcedAPIFormatsForRequest(ctx, c.Channel, c.Models, req.Model, req.RequestType, baseEndpoints)
+			endpoints, forced := applyForcedAPIFormatsForRequest(ctx, c.Channel, c.Models, req.Model, req, baseEndpoints)
 			c.APIFormat = selectEndpointAPIFormat(endpoints, req, forced)
 		}
 
-		if requiresExplicitEndpoint(req.RequestType) && c.APIFormat == "" {
+		if c.APIFormat == "" && (requiresExplicitEndpoint(req) || len(baseEndpoints) > 0) {
 			continue
 		}
 
@@ -196,6 +195,27 @@ func detectRequestContentFeatures(req *llm.Request) requestContentFeatures {
 	var features requestContentFeatures
 	if req == nil {
 		return features
+	}
+	if req.Embedding != nil && req.Embedding.Cohere != nil {
+		body := gjson.ParseBytes(req.Embedding.Cohere.Body)
+		features.hasImage = len(body.Get("images").Array()) > 0
+		for _, input := range body.Get("inputs").Array() {
+			for _, part := range input.Get("content").Array() {
+				if part.Get("type").String() == "image_url" {
+					features.hasImage = true
+				}
+			}
+		}
+	}
+	if req.SystemOne != nil && req.SystemOne.AutoTrust != nil {
+		state := gjson.GetBytes(req.SystemOne.AutoTrust.Body, "state")
+		if state.IsArray() {
+			for _, part := range state.Array() {
+				if part.IsObject() && (part.Get("image").Exists() || part.Get("type").String() == "image_url") {
+					features.hasImage = true
+				}
+			}
+		}
 	}
 
 	for _, message := range req.Messages {

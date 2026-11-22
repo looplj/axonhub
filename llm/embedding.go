@@ -99,6 +99,9 @@ func (e EmbeddingInput) GetType() string {
 // Based on OpenAI embedding request format for compatibility.
 // Note: Common fields like Model are in the parent Request struct, not here.
 type EmbeddingRequest struct {
+	// Cohere preserves native multimodal input without converting it to text input.
+	Cohere *CohereEmbeddingRequest `json:"cohere,omitempty"`
+
 	// Input is the text to embed. Can be string, []string, []int (tokens), or [][]int (multiple token arrays).
 	Input EmbeddingInput `json:"input"`
 
@@ -128,6 +131,8 @@ type EmbeddingRequest struct {
 // EmbeddingResponse represents the unified embedding response model.
 // Note: Common fields like Usage are in the parent Response struct, not here.
 type EmbeddingResponse struct {
+	Cohere *CohereEmbeddingResponse `json:"cohere,omitempty"`
+
 	// ID is the response identifier (some providers return this).
 	ID string `json:"id,omitempty"`
 
@@ -136,6 +141,18 @@ type EmbeddingResponse struct {
 
 	// Data contains the embedding results.
 	Data []EmbeddingData `json:"data"`
+}
+
+// CohereEmbeddingRequest holds the native body and validated routing features.
+type CohereEmbeddingRequest struct {
+	Body       json.RawMessage `json:"body,omitempty"`
+	InputCount int             `json:"input_count"`
+}
+
+// CohereEmbeddingResponse keeps vector encodings and provider extensions intact.
+type CohereEmbeddingResponse struct {
+	Body        json.RawMessage `json:"body,omitempty"`
+	VectorCount int             `json:"vector_count"`
 }
 
 // EmbeddingData represents a single embedding result.

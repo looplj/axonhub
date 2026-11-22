@@ -54,6 +54,7 @@ export function getApiFormatsForProvider(provider: string, configs: ProtocolConf
  * backend still accepts manual configuration for other channel types.
  * Codex Responses endpoints are managed by the WebSocket checkbox instead.
  * System One is offered on TypeSafe and channels with built-in OpenAI endpoints.
+ * Cohere Embed 与 AutoTrust Decide 仅作为 OpenAI 渠道的可选自定义端点。
  * Other custom endpoint formats remain available everywhere.
  */
 export function getConfigurableApiFormatsForChannelType(
@@ -76,6 +77,7 @@ export function getConfigurableApiFormatsForChannelType(
   const filtered = configurableFormats
     .filter((format) => supportsSystemOne || format !== 'typesafe/systemone')
     .filter((format) => channelType === 'openai' || format !== 'openai/decisions')
+    .filter((format) => channelType === 'openai' || !['cohere/embed', 'autotrust/decide'].includes(format))
     .filter((format) => channelType !== 'codex' || !isResponsesFamilyFormat(format));
   if (['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(channelType)) {
     return [...filtered];

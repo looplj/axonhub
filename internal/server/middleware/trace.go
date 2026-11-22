@@ -246,7 +246,7 @@ func tryExtractTraceIDFromCodexRequest(c *gin.Context) string {
 // trace: they are tool calls rather than conversation turns and have no
 // displayable content in the trace UI.
 func isNonMessageEndpoint(path string) bool {
-	if strings.HasSuffix(path, "/embeddings") {
+	if strings.HasSuffix(path, "/embeddings") || path == "/v2/embed" {
 		return true
 	}
 

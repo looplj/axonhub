@@ -274,7 +274,10 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 
 		// Native System One endpoint
 		openaiGroup.POST("/systemone", handlers.TypeSafe.SystemOne)
+		openaiGroup.POST("/decide", handlers.TypeSafe.AutoTrust)
 	}
+
+	apiGroup.POST("/v2/embed", handlers.OpenAI.CreateCohereEmbedding)
 
 	{
 		jinaGroup := apiGroup.Group("/jina/v1")

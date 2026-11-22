@@ -28,6 +28,7 @@ func CapableAPIFormats(requestType RequestType) map[string]struct{} {
 			APIFormatOpenAIEmbedding.String(): {},
 			APIFormatJinaEmbedding.String():   {},
 			APIFormatGeminiEmbedding.String(): {},
+			APIFormatCohereEmbed.String():     {},
 		}
 	case RequestTypeModeration:
 		return map[string]struct{}{
@@ -73,6 +74,7 @@ func CapableAPIFormats(requestType RequestType) map[string]struct{} {
 	case RequestTypeSystemOne:
 		return map[string]struct{}{
 			APIFormatTypeSafeSystemOne.String(): {},
+			APIFormatAutoTrustDecide.String():   {},
 		}
 	default:
 		return nil
