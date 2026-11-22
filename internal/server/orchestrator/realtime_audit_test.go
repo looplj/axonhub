@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
@@ -347,6 +348,46 @@ func TestRealtimeSessionMetadataKeepsPerTurnLatencyAndFillsMissingLatency(t *tes
 	require.NoError(t, requests.UpdateRealtimeSessionMetadata(ctx, []int{turnRequest.ID, unfinishedRequest.ID}, map[string]any{"duration_ms": 600000}, 600000))
 	require.Equal(t, turnLatency, *db.Request.GetX(ctx, turnRequest.ID).MetricsLatencyMs, "session duration must not replace a confirmed turn latency")
 	require.EqualValues(t, 600000, *db.Request.GetX(ctx, unfinishedRequest.ID).MetricsLatencyMs, "session duration fills latency only when a turn measurement is absent")
+}
+
+func TestRealtimeCloseMapsSessionTerminalStatus(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		closeCode  int
+		reason     string
+		wantStatus request.Status
+		wantCode   string
+	}{
+		{name: "normal client disconnect", closeCode: websocket.CloseNormalClosure, reason: "normal_closure", wantStatus: request.StatusCanceled, wantCode: "client_closed"},
+		{name: "upstream interruption", closeCode: websocket.CloseTryAgainLater, reason: "upstream_unavailable", wantStatus: request.StatusFailed, wantCode: "upstream_unavailable"},
+		{name: "backpressure", closeCode: websocket.CloseTryAgainLater, reason: "backpressure", wantStatus: request.StatusFailed, wantCode: "backpressure"},
+		{name: "internal error", closeCode: websocket.CloseInternalServerErr, reason: "internal_error", wantStatus: request.StatusFailed, wantCode: "internal_error"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			ctx, db := setupTest(t)
+			project := db.Project.Create().SetName("session-terminal-status").SaveX(ctx)
+			ctx = contexts.WithProjectID(ctx, project.ID)
+			key := db.APIKey.Create().SetName("session-terminal-status").SetKey("synthetic-session-terminal").SetProjectID(project.ID).SetType("user").SaveX(ctx)
+			ctx = contexts.WithAPIKey(ctx, key)
+			system := newTestSystemService(db)
+			requests := newTestRequestServiceForChannels(db, system)
+			req, err := requests.CreateRealtimeRequest(ctx, "voice", 1, "session", objects.JSONRawMessage(`{}`))
+			require.NoError(t, err)
+			conversation := &RealtimeConversation{
+				ctx: ctx, state: rt.NewState(), service: &RealtimeService{Requests: requests},
+				target:       &RealtimeTarget{Model: "voice"},
+				pendingInput: &realtimeResponse{request: req}, responses: map[string]*realtimeResponse{},
+				closeStats: &realtimeCloseStats{Code: testCase.closeCode, Reason: testCase.reason},
+			}
+			conversation.Close()
+
+			stored := db.Request.GetX(ctx, req.ID)
+			require.Equal(t, testCase.wantStatus, stored.Status)
+			require.Contains(t, string(stored.ResponseBody), `"usage_confirmed":false`)
+			require.Contains(t, string(stored.ResponseBody), `"error_code":"`+testCase.wantCode+`"`)
+			require.Zero(t, db.UsageLog.Query().CountX(ctx))
+		})
+	}
 }
 
 func TestRealtimeResponseReservationsKeepAudioClearOrder(t *testing.T) {

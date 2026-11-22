@@ -1142,7 +1142,8 @@ func (c *RealtimeConversation) Close() {
 		if ctx.Err() != nil {
 			break
 		}
-		if err := c.service.Requests.UpdateRealtimeAudit(ctx, r.request, request.StatusFailed, "", c.withPriceAudit(map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before input or generation accounting was confirmed", "error_code": c.closeAuditErrorCode(), "upstream_model": c.target.Model}), nil, nil); err != nil {
+		status := c.unfinishedAuditStatus()
+		if err := c.service.Requests.UpdateRealtimeAudit(ctx, r.request, status, "", c.withPriceAudit(map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before input or generation accounting was confirmed", "error_code": c.closeAuditErrorCode(), "upstream_model": c.target.Model}), nil, nil); err != nil {
 			log.Warn(context.WithoutCancel(c.ctx), "realtime pending audit finalization failed", log.Int("request_id", r.request.ID))
 		}
 	}
@@ -1161,8 +1162,8 @@ func (c *RealtimeConversation) Close() {
 			log.Warn(context.WithoutCancel(c.ctx), "realtime audit drain deadline exceeded")
 			break
 		}
-		status := request.StatusFailed
-		summary := c.withPriceAudit(map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before confirmed response usage", "error_code": c.closeAuditErrorCode(), "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat})
+		status := c.unfinishedAuditStatus()
+		summary := c.withPriceAudit(map[string]any{"response_id": id, "realtime": true, "usage_confirmed": false, "error": "session ended before confirmed response usage", "error_code": c.closeAuditErrorCode(), "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat})
 		if r.observedUsage != nil {
 			summary["observed_usage"] = r.observedUsage
 		}
@@ -1176,6 +1177,13 @@ func (c *RealtimeConversation) Close() {
 		}
 		r.auditFinalized = true
 	}
+}
+
+func (c *RealtimeConversation) unfinishedAuditStatus() request.Status {
+	if c.closeStats != nil && c.closeStats.Code == websocket.CloseNormalClosure && c.closeAuditErrorCode() == "client_closed" {
+		return request.StatusCanceled
+	}
+	return request.StatusFailed
 }
 
 func (c *RealtimeConversation) closeAuditErrorCode() string {
