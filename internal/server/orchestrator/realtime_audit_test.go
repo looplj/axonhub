@@ -24,6 +24,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm"
+	protocol "github.com/looplj/axonhub/llm/realtime"
 	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 )
 
@@ -430,4 +431,38 @@ func TestDelayedPreClearCommitPreservesPostClearAudioByteCount(t *testing.T) {
 	c.confirmAudioCommit()
 	require.Same(t, afterClear, c.pendingInput)
 	require.EqualValues(t, 12, c.audioBytes, "the pre-clear acknowledgement must not erase post-clear bytes")
+}
+
+func TestRealtimeCancelledResponseWithoutUsageEndsOnlyTheResponse(t *testing.T) {
+	ctx, db := setupTest(t)
+	project := db.Project.Create().SetName("cancel-without-usage").SaveX(ctx)
+	key := db.APIKey.Create().SetName("cancel-without-usage").SetKey("synthetic-cancel").SetProjectID(project.ID).SetType("user").SaveX(ctx)
+	ctx = contexts.WithAPIKey(contexts.WithProjectID(ctx, project.ID), key)
+	requests := newTestRequestServiceForChannels(db, newTestSystemService(db))
+	row, err := requests.CreateRealtimeRequest(ctx, "voice", 1, "cancel-session", objects.JSONRawMessage(`{}`))
+	require.NoError(t, err)
+	state := rt.NewState()
+	require.NoError(t, state.Connecting())
+	require.NoError(t, state.ObserveServer("session.created"))
+	require.NoError(t, state.ObserveServer("session.updated"))
+	require.NoError(t, state.ObserveServer("response.created"))
+	adapter, err := protocol.NewAdapter("qwen3.8-omni-flash-realtime", false)
+	require.NoError(t, err)
+	c := &RealtimeConversation{
+		ctx: ctx, service: &RealtimeService{Requests: requests}, state: state, adapter: adapter,
+		target:    &RealtimeTarget{Model: "qwen3.8-omni-flash-realtime", APIFormat: llm.APIFormatQwenRealtimeWebSocket},
+		responses: map[string]*realtimeResponse{"r1": {request: row, started: time.Now()}},
+	}
+	event := []byte(`{"type":"response.done","response":{"id":"r1","status":"cancelled"}}`)
+	forwarded, err := c.Server(event)
+	require.NoError(t, err)
+	require.JSONEq(t, string(event), string(forwarded))
+	require.True(t, state.Ready())
+	duplicate, err := c.Server(event)
+	require.NoError(t, err)
+	require.Nil(t, duplicate)
+	stored := db.Request.GetX(ctx, row.ID)
+	require.Equal(t, request.StatusCanceled, stored.Status)
+	require.Contains(t, string(stored.ResponseBody), `"usage_confirmed":false`)
+	require.Zero(t, db.UsageLog.Query().CountX(ctx))
 }

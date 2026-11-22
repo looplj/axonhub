@@ -362,8 +362,31 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
     );
   }
 
+  const realtimeSession = request.format === 'openai/realtime' ? request.requestBody?.realtime : undefined;
+
   return (
     <div className='space-y-8'>
+      {realtimeSession && typeof realtimeSession === 'object' && (
+        <Card className='border-0 shadow-sm'>
+          <CardHeader className='pb-2'>
+            <CardTitle className='text-base'>{t('requests.detail.realtimeSession')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {request.userAgent && (
+              <p className='text-muted-foreground mb-2 break-all text-xs'>
+                {t('requests.columns.userAgent')} <span className='font-mono'>{request.userAgent}</span>
+              </p>
+            )}
+            <JsonViewer
+              data={{ ...realtimeSession, error_code: request.responseBody?.error_code ?? undefined }}
+              rootName=''
+              defaultExpanded={true}
+              className='text-sm'
+            />
+          </CardContent>
+        </Card>
+      )}
+
       <Card className='border-0 shadow-sm'>
         <CardHeader className='pb-2'>
           <CardTitle className='flex items-center justify-between'>

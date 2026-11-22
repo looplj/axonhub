@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -30,6 +32,8 @@ import (
 	qwenrt "github.com/looplj/axonhub/llm/realtime"
 	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 )
+
+var ErrResponseCancelNotActive = errors.New("No active response to cancel")
 
 var ErrQuotaExceeded = errors.New("realtime quota exceeded")
 
@@ -352,7 +356,12 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 	readDownstream := read(downstream, toProvider, hooks.Client, true)
 	launch("downstream", func() error { defer close(downstreamReaderDone); return readDownstream() })
 	launch("upstream", read(upstream, toClient, hooks.Server, false))
-	launch("downstream", write(downstream, toClient.frames))
+	downstreamWriterDone := make(chan struct{})
+	writeDownstream := write(downstream, toClient.frames)
+	launch("downstream", func() error {
+		defer close(downstreamWriterDone)
+		return writeDownstream()
+	})
 	launch("upstream", write(upstream, toProvider.frames))
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
@@ -396,18 +405,39 @@ loop:
 			}
 		}
 	}
-	code := websocket.CloseInternalServerErr
-	reason := "internal_error"
-	if !IsAbnormal(result) {
-		code = websocket.CloseNormalClosure
-		reason = "normal_closure"
-	}
-	if errors.Is(result, ErrBackpressure) {
-		code = websocket.CloseTryAgainLater
-		reason = "backpressure"
-	}
+	code, reason := CloseStatus(result)
 	cancel()
 	upstream.Close() // Stop provider work while the downstream completes its close handshake.
+	if code == websocket.CloseInternalServerErr || reason == "upstream_unavailable" {
+		// Let the sole writer exit before sending the terminal error.
+		// Reserve the existing Close handshake for slow consumers.
+		timer := time.NewTimer(time.Second)
+		select {
+		case <-downstreamWriterDone:
+			message := "The gateway could not continue this Realtime session."
+			if reason == "upstream_unavailable" {
+				message = "The upstream Realtime connection ended unexpectedly. Retry the session."
+			}
+			frame, _ := json.Marshal(map[string]any{"type": "error", "error": map[string]string{
+				"type": "server_error", "code": reason, "message": message,
+			}})
+			if err := downstream.SetWriteDeadline(time.Now().Add(time.Second)); err == nil {
+				_ = downstream.WriteMessage(websocket.TextMessage, frame)
+			}
+		case <-timer.C:
+			log.Warn(ctx, "realtime terminal error frame timed out")
+		}
+		timer.Stop()
+	}
+	if IsAbnormal(result) {
+		cause := result
+		var side *SessionError
+		if errors.As(result, &side) {
+			cause = side.Cause
+		}
+		// Provider close text and arbitrary nested errors can contain wire data.
+		log.Warn(ctx, "realtime session terminated", log.String("reason", reason), log.String("cause", safeCloseCause(cause)))
+	}
 	flushDownstreamClose(ctx, downstream, code, reason, closeACK, downstreamReaderDone)
 	downstream.Close()
 	wg.Wait()
@@ -441,6 +471,8 @@ func clientError(data []byte, cause ...error) []byte {
 			message = field.Error()
 		case errors.Is(cause[0], qwenrt.ErrUnsupportedField):
 			message = qwenrt.ErrUnsupportedField.Error()
+		case errors.Is(cause[0], ErrResponseCancelNotActive):
+			code, message = "response_cancel_not_active", ErrResponseCancelNotActive.Error()
 		case errors.Is(cause[0], ErrUpdatePending):
 			message = ErrUpdatePending.Error()
 		case errors.Is(cause[0], errUpdateQueueFull):
@@ -501,4 +533,52 @@ func IsAbnormal(err error) bool {
 		return false
 	}
 	return true
+}
+
+// CloseStatus returns only gateway-generated reasons suitable for clients and audit.
+func CloseStatus(err error) (int, string) {
+	if !IsAbnormal(err) {
+		return websocket.CloseNormalClosure, "normal_closure"
+	}
+	if errors.Is(err, ErrBackpressure) {
+		return websocket.CloseTryAgainLater, "backpressure"
+	}
+	var side *SessionError
+	var closeErr *websocket.CloseError
+	var networkErr net.Error
+	if errors.As(err, &side) && side.Side == "downstream" &&
+		(errors.As(err, &closeErr) || errors.As(err, &networkErr) || errors.Is(err, io.EOF)) {
+		return websocket.CloseGoingAway, "client_closed"
+	}
+	if errors.As(err, &side) && side.Side == "upstream" {
+		if errors.As(err, &closeErr) {
+			switch closeErr.Code {
+			case websocket.CloseAbnormalClosure, websocket.CloseInternalServerErr, websocket.CloseServiceRestart, websocket.CloseTryAgainLater:
+				return websocket.CloseTryAgainLater, "upstream_unavailable"
+			}
+		} else if errors.As(err, &networkErr) || errors.Is(err, io.EOF) {
+			return websocket.CloseTryAgainLater, "upstream_unavailable"
+		}
+	}
+	return websocket.CloseInternalServerErr, "internal_error"
+}
+
+func safeCloseCause(err error) string {
+	var closed *websocket.CloseError
+	if errors.As(err, &closed) {
+		return fmt.Sprintf("websocket close code %d", closed.Code)
+	}
+	for _, safe := range []error{ErrInvalidEvent, ErrAccountingUnavailable, ErrQuotaExceeded, ErrBackpressure, io.EOF, context.DeadlineExceeded} {
+		if errors.Is(err, safe) {
+			return safe.Error()
+		}
+	}
+	switch err.Error() {
+	case "unexpected configuration acknowledgement", "duplicate upstream session",
+		"response before configuration or concurrent responses", "response.done without response.created",
+		"realtime response usage missing or invalid", "realtime usage persistence failed",
+		"realtime configuration acknowledgement timed out", "translation configuration acknowledgement timed out":
+		return err.Error()
+	}
+	return fmt.Sprintf("%T", err)
 }

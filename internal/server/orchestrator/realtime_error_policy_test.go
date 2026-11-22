@@ -31,3 +31,9 @@ func TestRealtimeErrorRedactionRetainsRejectedEventID(t *testing.T) {
 	require.NoError(t, err)
 	require.JSONEq(t, `{"type":"error","event_id":"server-event","error":{"event_id":"client-event","type":"invalid_request_error","code":"upstream_error","message":"The upstream Realtime service rejected an event."}}`, string(actual))
 }
+
+func TestRealtimeErrorPolicyForwardsSafeParameterDiagnostic(t *testing.T) {
+	actual, err := applyRealtimeErrorPolicy([]byte(`{"type":"error","request":"sensitive","error":{"code":"unknown_parameter","message":"Unknown parameter: 'session.audio.input.unknown_field'.","audio":"sensitive"}}`))
+	require.NoError(t, err)
+	require.JSONEq(t, `{"type":"error","error":{"type":"invalid_request_error","code":"unknown_parameter","message":"Unknown parameter: 'session.audio.input.unknown_field'."}}`, string(actual))
+}

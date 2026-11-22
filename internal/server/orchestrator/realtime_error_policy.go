@@ -10,7 +10,11 @@
 
 package orchestrator
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	protocol "github.com/looplj/axonhub/llm/realtime"
+)
 
 func applyRealtimeErrorPolicy(data []byte) ([]byte, error) {
 	var event map[string]json.RawMessage
@@ -22,14 +26,25 @@ func applyRealtimeErrorPolicy(data []byte) ([]byte, error) {
 	if kind == "error" {
 		var upstream struct {
 			EventID string `json:"event_id"`
+			Code    string `json:"code"`
+			Message string `json:"message"`
 		}
 		_ = json.Unmarshal(event["error"], &upstream)
 		safe := map[string]string{"type": "invalid_request_error", "code": "upstream_error", "message": "The upstream Realtime service rejected an event."}
-		if upstream.EventID != "" {
+		if protocol.SafeParameterDiagnostic(upstream.Code, upstream.Message) {
+			safe["code"] = upstream.Code
+			safe["message"] = upstream.Message
+		}
+		if upstream.EventID != "" && len(upstream.EventID) <= 256 {
 			safe["event_id"] = upstream.EventID
 		}
 		event["error"], _ = json.Marshal(safe)
-		return json.Marshal(event)
+		envelope := map[string]json.RawMessage{"type": event["type"], "error": event["error"]}
+		var eventID string
+		if json.Unmarshal(event["event_id"], &eventID) == nil && eventID != "" && len(eventID) <= 256 {
+			envelope["event_id"], _ = json.Marshal(eventID)
+		}
+		return json.Marshal(envelope)
 	}
 	if kind == "response.done" {
 		var response map[string]json.RawMessage

@@ -128,6 +128,17 @@ func (a *Admission) AcquireForReconnect(ctx context.Context, key, project, chann
 	}
 }
 
+func admissionLimitError(index int) error {
+	dimensions := [...]string{"global connections", "project connections", "API key connections", "channel connections", "API key connections per minute"}
+	if index < 0 || index >= len(dimensions) {
+		return ErrAdmission
+	}
+	if index < 4 {
+		return fmt.Errorf("%w (%s): %w", ErrAdmission, dimensions[index], errConcurrentAdmission)
+	}
+	return fmt.Errorf("%w: %s", ErrAdmission, dimensions[index])
+}
+
 func (a *Admission) Acquire(ctx context.Context, key, project, channel int, sessionID ...string) (func(), error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -149,10 +160,7 @@ func (a *Admission) Acquire(ctx context.Context, key, project, channel int, sess
 			return nil, fmt.Errorf("realtime shared admission unavailable: %w", err)
 		}
 		if result != 1 {
-			if result <= -1 && result >= -4 {
-				return nil, fmt.Errorf("%w: %w", ErrAdmission, errConcurrentAdmission)
-			}
-			return nil, ErrAdmission
+			return nil, admissionLimitError(-result - 1)
 		}
 	} else {
 		now := time.Now().UnixMilli()
@@ -171,10 +179,7 @@ func (a *Admission) Acquire(ctx context.Context, key, project, channel int, sess
 		for i, k := range keys {
 			if len(a.entries[k]) >= caps[i] {
 				a.mu.Unlock()
-				if i < 4 {
-					return nil, fmt.Errorf("%w: %w", ErrAdmission, errConcurrentAdmission)
-				}
-				return nil, ErrAdmission
+				return nil, admissionLimitError(i)
 			}
 		}
 		for i, k := range keys {

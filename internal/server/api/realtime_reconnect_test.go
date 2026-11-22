@@ -13,6 +13,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -180,7 +181,7 @@ func newRealtimeHTTPFixtureWithPrice(t *testing.T, maxDuration time.Duration, tr
 	})
 	url := "ws" + strings.TrimPrefix(server.URL, "http") + path + "?model=" + model
 	dial := func() (*websocket.Conn, *http.Response, error) {
-		return websocket.DefaultDialer.Dial(url, http.Header{"Authorization": []string{"Bearer " + key.Key}})
+		return websocket.DefaultDialer.Dial(url, http.Header{"Authorization": []string{"Bearer " + key.Key}, "X-Client-Name": []string{"test-client"}, "X-Client-Version": []string{"2.1"}})
 	}
 	return db, dial, &peak, observed
 }
@@ -309,6 +310,12 @@ func TestRealtimeHTTPLiveConcurrentSessionStillRejected(t *testing.T) {
 	require.Error(t, err)
 	require.NotNil(t, response)
 	require.Equal(t, http.StatusTooManyRequests, response.StatusCode)
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	require.NoError(t, err)
+	require.Equal(t, "rate_limit_exceeded", gjson.GetBytes(body, "error.type").String())
+	require.Equal(t, "rate_limit_exceeded", gjson.GetBytes(body, "error.code").String())
+	require.Contains(t, gjson.GetBytes(body, "error.message").String(), "API key connections")
 	require.Equal(t, int32(1), peak.Load(), "reconnect grace must not bypass concurrency")
 }
 
@@ -367,9 +374,14 @@ func TestRealtimeHTTPAuditInsertCancellationReleasesLease(t *testing.T) {
 		t.Fatal("audit INSERT did not reach the write boundary")
 	}
 
-	// Read the server close so the peer can complete its close handshake.
+	// The terminal diagnostic precedes the close handshake.
+	_, frame, err := first.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "internal_error", gjson.GetBytes(frame, "error.code").String())
 	_, _, err = first.ReadMessage()
-	require.Error(t, err)
+	var closed *websocket.CloseError
+	require.ErrorAs(t, err, &closed)
+	require.Equal(t, websocket.CloseInternalServerErr, closed.Code)
 	select {
 	case err = <-canceled:
 		require.ErrorIs(t, err, context.DeadlineExceeded)
@@ -487,6 +499,39 @@ func testRealtimeHTTPTranslationBilling(t *testing.T, graceful, withPrice bool) 
 	require.NotContains(t, string(row.RequestBody), audio)
 }
 
+func TestRealtimeHTTPDisconnectedInputStoresSessionAuditWithoutUsage(t *testing.T) {
+	db, dial, _, observed := newRealtimeReconnectFixture(t)
+	conn, _, err := dial()
+	require.NoError(t, err)
+	defer conn.Close()
+	require.NoError(t, conn.SetReadDeadline(time.Now().Add(3*time.Second)))
+	_, _, err = conn.ReadMessage()
+	require.NoError(t, err)
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`)))
+	select {
+	case <-observed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("provider did not receive input")
+	}
+	require.NoError(t, conn.Close())
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	var row *ent.Request
+	require.Eventually(t, func() bool {
+		var err error
+		row, err = db.Request.Query().Only(ctx)
+		return err == nil && gjson.GetBytes(row.RequestBody, "realtime.close_code").Exists()
+	}, 3*time.Second, 10*time.Millisecond)
+	require.Equal(t, request.StatusFailed, row.Status)
+	require.NotNil(t, row.MetricsLatencyMs)
+	require.Equal(t, "test-client 2.1", row.UserAgent)
+	require.Equal(t, "client_closed", gjson.GetBytes(row.ResponseBody, "error_code").String())
+	require.Equal(t, "openai/realtime-ws", gjson.GetBytes(row.RequestBody, "upstream_format").String())
+	require.EqualValues(t, 2, gjson.GetBytes(row.RequestBody, "realtime.audio_in_bytes").Int())
+	require.True(t, gjson.GetBytes(row.RequestBody, "realtime.interrupted").Bool())
+	require.Equal(t, 0, db.UsageLog.Query().CountX(ctx))
+}
+
 func TestRealtimeHTTPUnpricedOpenAIRecordsUsageWithoutCost(t *testing.T) {
 	db, dial, _, _ := newRealtimeHTTPFixtureWithPrice(t, 0, false, false)
 	conn, response, err := dial()
@@ -497,6 +542,11 @@ func TestRealtimeHTTPUnpricedOpenAIRecordsUsageWithoutCost(t *testing.T) {
 	_, created, err := conn.ReadMessage()
 	require.NoError(t, err)
 	require.Equal(t, "session.created", gjson.GetBytes(created, "type").String())
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.cancel","event_id":"empty-cancel"}`)))
+	_, canceled, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "response_cancel_not_active", gjson.GetBytes(canceled, "error.code").String())
+	require.Equal(t, "empty-cancel", gjson.GetBytes(canceled, "error.event_id").String())
 	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.update","event_id":"wrong-model","session":{"type":"realtime","model":"gpt-realtime-2.1"}}`)))
 	_, rejected, err := conn.ReadMessage()
 	require.NoError(t, err)

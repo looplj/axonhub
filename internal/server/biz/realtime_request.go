@@ -17,6 +17,9 @@ import (
 	"errors"
 	"net/http"
 
+	entsql "entgo.io/ent/dialect/sql"
+
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -24,7 +27,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
-func (s *RequestService) CreateRealtimeRequest(ctx context.Context, model string, channelID int, sessionID string, metadata objects.JSONRawMessage) (*ent.Request, error) {
+func (s *RequestService) CreateRealtimeRequest(ctx context.Context, model string, channelID int, sessionID string, metadata objects.JSONRawMessage, userAgent ...string) (*ent.Request, error) {
 	key, ok := contexts.GetAPIKey(ctx)
 	if !ok || key == nil {
 		return nil, errors.New("realtime audit requires an API key")
@@ -33,7 +36,11 @@ func (s *RequestService) CreateRealtimeRequest(ctx context.Context, model string
 	if !ok {
 		return nil, errors.New("realtime audit requires a project")
 	}
-	return s.entFromContext(ctx).Request.Create().SetProjectID(projectID).SetAPIKeyID(key.ID).SetModelID(model).SetChannelID(channelID).SetFormat(llm.APIFormatOpenAIRealtime.String()).SetStatus(request.StatusProcessing).SetSource(request.SourceAPI).SetStream(true).SetExternalID(sessionID).SetRequestBody(metadata).Save(ctx)
+	create := s.entFromContext(ctx).Request.Create().SetProjectID(projectID).SetAPIKeyID(key.ID).SetModelID(model).SetChannelID(channelID).SetFormat(llm.APIFormatOpenAIRealtime.String()).SetStatus(request.StatusProcessing).SetSource(request.SourceAPI).SetStream(true).SetExternalID(sessionID).SetRequestBody(metadata)
+	if len(userAgent) > 0 {
+		create.SetUserAgent(userAgent[0])
+	}
+	return create.Save(ctx)
 }
 
 // UpdateRealtimeAudit persists gateway-generated accounting metadata independently
@@ -59,5 +66,51 @@ func (s *RequestService) UpdateRealtimeAudit(ctx context.Context, req *ent.Reque
 		return err
 	}
 	s.recordChatRequestMetrics(ctx, req, status, latency)
+	return nil
+}
+
+// UpdateRealtimeSessionMetadata adds bounded session diagnostics after accounting.
+func (s *RequestService) UpdateRealtimeSessionMetadata(ctx context.Context, ids []int, metadata any, durationMs int64) error {
+	realtime, err := json.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	client := s.entFromContext(ctx)
+	rows, err := authz.RunAsHost(ctx, client, "realtime-session-audit-metadata", func(hostCtx context.Context) ([]*ent.Request, error) {
+		return client.Request.Query().
+			Where(request.IDIn(ids...), request.FormatEQ(llm.APIFormatOpenAIRealtime.String()), request.RequestBodyChunkedEQ(false)).
+			Select(request.FieldID, request.FieldStatus, request.FieldRequestBody).All(hostCtx)
+	})
+	if err != nil {
+		return err
+	}
+	for _, row := range rows {
+		body := make(map[string]json.RawMessage)
+		if len(row.RequestBody) != 0 {
+			if err := json.Unmarshal(row.RequestBody, &body); err != nil {
+				return err
+			}
+		}
+		if body == nil {
+			body = make(map[string]json.RawMessage)
+		}
+		body["realtime"] = realtime
+		data, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+		// Request bodies are immutable to ordinary updates. Realtime rows
+		// contain gateway metadata only and can be enriched after the session.
+		update := client.Request.Update().Where(request.FormatEQ(llm.APIFormatOpenAIRealtime.String()), request.RequestBodyChunkedEQ(false)).
+			Modify(func(builder *entsql.UpdateBuilder) {
+				builder.Set(request.FieldRequestBody, json.RawMessage(data))
+			})
+		if row.Status == request.StatusFailed {
+			update.SetMetricsLatencyMs(durationMs)
+		}
+		if err := s.saveRequestUpdate(ctx, row.ID, update); err != nil {
+			return err
+		}
+	}
 	return nil
 }

@@ -62,7 +62,13 @@ func (c *RealtimeConversation) translationClient(data []byte) ([]byte, error) {
 
 // UpstreamWritten is called after a successful WebSocket write.
 func (c *RealtimeConversation) UpstreamWritten(data []byte) {
-	if c.translation != nil && gjson.GetBytes(data, "type").String() == "session.input_audio_buffer.append" {
+	kind := gjson.GetBytes(data, "type").String()
+	if kind == "input_audio_buffer.append" || kind == "session.input_audio_buffer.append" {
+		if count := realtimePCMBytes(gjson.GetBytes(data, "audio").String()); count > 0 {
+			c.audioInBytes.Add(count)
+		}
+	}
+	if c.translation != nil && kind == "session.input_audio_buffer.append" {
 		if samples, err := openairt.TranslationAudioSamples(data); err == nil {
 			c.translation.sentSamples.Add(samples)
 		}
@@ -125,6 +131,9 @@ func (c *RealtimeConversation) closeTranslation(ctx context.Context) {
 				c.service.Channels.RecordRealtimeCredentialSuccess(c.target.Channel.ID, c.credential)
 			}
 		}
+	}
+	if status == request.StatusFailed {
+		summary["error_code"] = c.closeAuditErrorCode()
 	}
 	latency := time.Since(t.audit.started).Milliseconds()
 	if err := c.service.Requests.UpdateRealtimeAudit(ctx, t.audit.request, status, "", summary, &biz.LatencyMetrics{LatencyMs: &latency}, nil); err != nil {

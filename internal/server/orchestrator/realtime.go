@@ -16,12 +16,15 @@ package orchestrator
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -78,6 +81,7 @@ type realtimeAdapter interface {
 
 type RealtimeTarget struct {
 	SessionID               string
+	UserAgent               string
 	HandshakeTimeout        time.Duration
 	APIFormat               llm.APIFormat
 	SafetyIdentifier        string
@@ -408,6 +412,12 @@ type RealtimeConversation struct {
 	responses              map[string]*realtimeResponse
 	credential             string
 	audioBytes             int64
+	audioInBytes           atomic.Int64
+	audioOutBytes          int64
+	firstAudioLatency      *int64
+	turns                  int
+	auditIDs               []int
+	closeStats             *realtimeCloseStats
 	checkMu                sync.Mutex
 	lastCheck              time.Time
 	lastCheckErr           error
@@ -503,7 +513,24 @@ func (c *RealtimeConversation) Client(data []byte) ([]byte, error) {
 		return c.translationClient(data)
 	}
 	kind := gjson.GetBytes(data, "type").String()
-	if kind != "session.update" && !c.state.Ready() {
+	if kind == "response.cancel" {
+		c.mu.Lock()
+		active := false
+		id := gjson.GetBytes(data, "response_id").String()
+		for responseID, response := range c.responses {
+			if !response.done && (id == "" || id == responseID) {
+				active = true
+				break
+			}
+		}
+		// A create already sent upstream may start before the cancel reaches it.
+		active = active || id == "" && len(c.pendingResponses) > 0
+		c.mu.Unlock()
+		if !active {
+			return nil, rt.ErrResponseCancelNotActive
+		}
+	}
+	if kind != "session.update" && kind != "response.cancel" && !c.state.Ready() {
 		return nil, rt.ErrUpdatePending
 	}
 	var eventID string
@@ -644,6 +671,7 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		c.observeAudioOutput(kind, converted)
 		if kind == "session.closed" {
 			c.translation.closed = true
 		}
@@ -660,6 +688,7 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 		if err := c.admitResponse(id); err != nil {
 			return nil, err
 		}
+		c.turns++
 	}
 	c.observeResponseOutput(kind, data)
 	if kind == "response.done" {
@@ -671,6 +700,7 @@ func (c *RealtimeConversation) Server(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.observeAudioOutput(gjson.GetBytes(converted, "type").String(), converted)
 	if c.target.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket {
 		converted, err = applyRealtimeErrorPolicy(converted)
 		if err != nil {
@@ -740,6 +770,22 @@ func (c *RealtimeConversation) confirmAudioCommit() {
 	}
 }
 
+func realtimePCMBytes(audio string) int64 {
+	return int64(base64.StdEncoding.DecodedLen(len(audio)) - (len(audio) - len(strings.TrimRight(audio, "="))))
+}
+
+func (c *RealtimeConversation) observeAudioOutput(kind string, data []byte) {
+	switch kind {
+	case "response.audio.delta", "response.output_audio.delta", "session.output_audio.delta":
+		if count := realtimePCMBytes(gjson.GetBytes(data, "delta").String()); count > 0 {
+			c.audioOutBytes += count
+			if c.firstAudioLatency == nil {
+				c.firstAudioLatency = lo.ToPtr(time.Since(c.started).Milliseconds())
+			}
+		}
+	}
+}
+
 func (c *RealtimeConversation) observeResponseOutput(kind string, data []byte) {
 	if kind == "response.audio.delta" || kind == "response.text.delta" || kind == "response.output_audio.delta" || kind == "response.output_text.delta" {
 		responseID := gjson.GetBytes(data, "response_id").String()
@@ -780,6 +826,11 @@ func (c *RealtimeConversation) finishResponse(data []byte, id string) error {
 		return nil
 	}
 	if err != nil || usage == nil || responseID != id {
+		if realtimeResponseStatus(data) == request.StatusCanceled && gjson.GetBytes(data, "response.usage").Type == gjson.Null {
+			// A cancellation can be terminal without a provider usage statement.
+			// Keep it auditable, without inventing a charge or ending the session.
+			return c.finishCanceledResponseWithoutUsage(response, id)
+		}
 		return errors.New("realtime response usage missing or invalid")
 	}
 	response.observedUsage = usage
@@ -808,10 +859,31 @@ func (c *RealtimeConversation) finishResponse(data []byte, id string) error {
 		c.service.Channels.RecordRealtimeCredentialSuccess(c.target.Channel.ID, c.credential)
 	}
 	summary := c.withPriceAudit(map[string]any{"response_id": id, "usage": usage, "realtime": true, "usage_confirmed": true, "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat})
+	if status == request.StatusFailed {
+		summary["error_code"] = "upstream_rejected"
+		summary["error"] = "The upstream Realtime response failed."
+	}
 	response.auditStatus = status
 	response.auditSummary = summary
 	err = c.service.Requests.UpdateRealtimeAudit(billingCtx, response.request, status, id, summary, &biz.LatencyMetrics{LatencyMs: lo.ToPtr(time.Since(response.started).Milliseconds()), FirstTokenLatencyMs: response.firstOutput}, nil)
 	if err != nil {
+		return errors.New("realtime audit update failed")
+	}
+	response.auditFinalized = true
+	return nil
+}
+
+func (c *RealtimeConversation) finishCanceledResponseWithoutUsage(response *realtimeResponse, id string) error {
+	response.done = true
+	response.auditStatus = request.StatusCanceled
+	response.auditSummary = c.withPriceAudit(map[string]any{
+		"response_id": id, "realtime": true, "usage_confirmed": false,
+		"upstream_model": c.target.Model, "upstream_format": c.target.APIFormat,
+	})
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 5*time.Second)
+	defer cancel()
+	latency := &biz.LatencyMetrics{LatencyMs: lo.ToPtr(time.Since(response.started).Milliseconds()), FirstTokenLatencyMs: response.firstOutput}
+	if err := c.service.Requests.UpdateRealtimeAudit(ctx, response.request, response.auditStatus, id, response.auditSummary, latency, nil); err != nil {
 		return errors.New("realtime audit update failed")
 	}
 	response.auditFinalized = true
@@ -906,7 +978,7 @@ func (c *RealtimeConversation) rejectPendingEvent(eventID string) error {
 	pending := c.pendingResponses[index]
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 5*time.Second)
 	defer cancel()
-	summary := map[string]any{"realtime": true, "usage_confirmed": false, "response_create_rejected": true}
+	summary := map[string]any{"realtime": true, "usage_confirmed": false, "response_create_rejected": true, "error_code": "upstream_rejected"}
 	if err := c.service.Requests.UpdateRealtimeAudit(ctx, pending.request, request.StatusFailed, "", summary, nil, nil); err != nil {
 		return errors.New("realtime rejected-response audit failed")
 	}
@@ -989,12 +1061,13 @@ func (c *RealtimeConversation) createResponse(id string) (*realtimeResponse, err
 		return nil, errors.New("invalid upstream response id")
 	}
 	metadata, _ := json.Marshal(c.withPriceAudit(map[string]any{"model": c.target.ClientModel, "realtime": true, "native_qwen": c.target.Native, "channel_id": c.target.Channel.ID, "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat}))
-	req, err := c.service.Requests.CreateRealtimeRequest(c.ctx, c.target.ClientModel, c.target.Channel.ID, c.target.SessionID, metadata)
+	req, err := c.service.Requests.CreateRealtimeRequest(c.ctx, c.target.ClientModel, c.target.Channel.ID, c.target.SessionID, metadata, c.target.UserAgent)
 	if err != nil {
 		return nil, errors.New("realtime audit create failed")
 	}
 	req.ChannelID = c.target.Channel.ID
 	c.auditsCreated++
+	c.auditIDs = append(c.auditIDs, req.ID)
 	return &realtimeResponse{request: req, started: time.Now()}, nil
 }
 
@@ -1020,6 +1093,19 @@ func (c *RealtimeConversation) aliasModel(data []byte) []byte {
 	return result
 }
 
+type realtimeCloseStats struct {
+	DurationMs  int64
+	Code        int
+	Reason      string
+	Interrupted bool
+}
+
+// RecordSessionEnd is called after the socket workers have joined.
+func (c *RealtimeConversation) RecordSessionEnd(result error) {
+	code, reason := rt.CloseStatus(result)
+	c.closeStats = &realtimeCloseStats{time.Since(c.started).Milliseconds(), code, reason, rt.IsAbnormal(result)}
+}
+
 func (c *RealtimeConversation) Close() {
 	c.state.Close()
 	c.mu.Lock()
@@ -1042,7 +1128,7 @@ func (c *RealtimeConversation) Close() {
 		if ctx.Err() != nil {
 			break
 		}
-		if err := c.service.Requests.UpdateRealtimeAudit(ctx, r.request, request.StatusFailed, "", c.withPriceAudit(map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before input or generation accounting was confirmed", "upstream_model": c.target.Model}), nil, nil); err != nil {
+		if err := c.service.Requests.UpdateRealtimeAudit(ctx, r.request, request.StatusFailed, "", c.withPriceAudit(map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before input or generation accounting was confirmed", "error_code": c.closeAuditErrorCode(), "upstream_model": c.target.Model}), nil, nil); err != nil {
 			log.Warn(context.WithoutCancel(c.ctx), "realtime pending audit finalization failed", log.Int("request_id", r.request.ID))
 		}
 	}
@@ -1062,7 +1148,7 @@ func (c *RealtimeConversation) Close() {
 			break
 		}
 		status := request.StatusFailed
-		summary := c.withPriceAudit(map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before confirmed response usage", "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat})
+		summary := c.withPriceAudit(map[string]any{"realtime": true, "usage_confirmed": false, "error": "session ended before confirmed response usage", "error_code": c.closeAuditErrorCode(), "upstream_model": c.target.Model, "upstream_format": c.target.APIFormat})
 		if r.observedUsage != nil {
 			summary["observed_usage"] = r.observedUsage
 		}
@@ -1070,11 +1156,39 @@ func (c *RealtimeConversation) Close() {
 			status = r.auditStatus
 			summary = r.auditSummary
 		}
-		if err := c.service.Requests.UpdateRealtimeAudit(ctx, r.request, status, id, summary, &biz.LatencyMetrics{LatencyMs: lo.ToPtr(time.Since(r.started).Milliseconds())}, nil); err != nil {
+		if err := c.service.Requests.UpdateRealtimeAudit(ctx, r.request, status, id, summary, &biz.LatencyMetrics{LatencyMs: lo.ToPtr(time.Since(r.started).Milliseconds()), FirstTokenLatencyMs: r.firstOutput}, nil); err != nil {
 			log.Warn(context.WithoutCancel(c.ctx), "realtime audit finalization failed", log.Int("request_id", r.request.ID))
 			continue
 		}
 		r.auditFinalized = true
+	}
+}
+
+func (c *RealtimeConversation) closeAuditErrorCode() string {
+	if c.closeStats != nil {
+		switch c.closeStats.Reason {
+		case "internal_error", "upstream_unavailable", "backpressure":
+			return c.closeStats.Reason
+		}
+	}
+	return "client_closed"
+}
+
+// PersistSessionMetadata runs after the reservation has been released.
+func (c *RealtimeConversation) PersistSessionMetadata() {
+	stats := c.closeStats
+	if stats == nil || len(c.auditIDs) == 0 {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.ctx), 5*time.Second)
+	defer cancel()
+	metadata := map[string]any{
+		"interrupted": stats.Interrupted, "close_code": stats.Code, "close_reason": stats.Reason, "duration_ms": stats.DurationMs,
+		"turns": c.turns, "audio_in_bytes": c.audioInBytes.Load(), "audio_out_bytes": c.audioOutBytes,
+		"first_audio_latency_ms": c.firstAudioLatency,
+	}
+	if err := c.service.Requests.UpdateRealtimeSessionMetadata(ctx, c.auditIDs, metadata, stats.DurationMs); err != nil {
+		log.Warn(ctx, "realtime session metadata update failed")
 	}
 }
 

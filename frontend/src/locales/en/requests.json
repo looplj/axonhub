@@ -1,4 +1,5 @@
 {
+  "requests.detail.realtimeSession": "Realtime session",
   "requests.title": "Request Logs",
   "requests.description": "View and manage LLM call request logs",
   "requests.columns.modelId": "Model ID",

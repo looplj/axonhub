@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -252,10 +253,18 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 		}
 		project, _ := contexts.GetProjectID(ctx)
 		target.SessionID = "rt-session-" + uuid.NewString()
+		target.UserAgent = realtimeClientLabel(c.Request)
 		release, err := limiter.AcquireForReconnect(ctx, target.APIKey.ID, project, target.Channel.ID, target.SessionID)
 		if err != nil {
 			metrics.Metrics.RealtimeEvent(ctx, "admission_rejected")
-			JSONError(c, http.StatusTooManyRequests, errors.New("Realtime admission denied"))
+			if !errors.Is(err, rt.ErrAdmission) {
+				JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime admission unavailable"))
+				return
+			}
+			log.Info(ctx, "realtime admission rejected", log.String("error_code", "admission_denied"), log.Int("channel_id", target.Channel.ID))
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": gin.H{
+				"type": "rate_limit_exceeded", "code": "rate_limit_exceeded", "message": err.Error(),
+			}})
 			return
 		}
 		defer release()
@@ -279,10 +288,11 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 			if handshake, ok := errors.AsType[*rt.HandshakeError](err); ok {
 				status = handshake.Status
 			}
-			log.Warn(ctx, "realtime upstream establishment failed", log.Int("channel_id", target.Channel.ID), log.Int("upstream_status", status))
+			log.Warn(ctx, "realtime upstream establishment failed", log.String("error_code", "upstream_handshake_failed"), log.Int("channel_id", target.Channel.ID), log.Int("upstream_status", status))
 			JSONError(c, http.StatusBadGateway, errors.New("Realtime upstream handshake or configuration failed"))
 			return
 		}
+		defer conversation.PersistSessionMetadata()
 		defer conversation.Close()
 		// Connection admission ends after both sockets/workers stop, before audit
 		// finalization, which may wait on storage. Keep the outer release for dial failures.
@@ -308,6 +318,7 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 		defer metrics.Metrics.RealtimeActive(context.WithoutCancel(ctx), -1)
 		started := time.Now()
 		err = rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: config.IdleTimeout, MaxDuration: config.MaxDuration}, rt.Hooks{BindContext: conversation.WithContext, Client: conversation.Client, Server: conversation.Server, ServerFollowup: conversation.ServerFollowup, UpstreamWritten: conversation.UpstreamWritten, ServerDone: conversation.ServerDone, Check: conversation.Check})
+		conversation.RecordSessionEnd(err)
 		// Translation bills at session end. Persist its usage before admitting the
 		// next session on this lease so it sees the previous session's cost.
 		if target.Translation {
@@ -355,4 +366,17 @@ func (h *RealtimeHandlers) trackSession(cancel context.CancelFunc) (func(), erro
 			}
 		})
 	}, nil
+}
+
+func realtimeClientLabel(r *http.Request) string {
+	label := strings.TrimSpace(r.Header.Get("X-Client-Name") + " " + r.Header.Get("X-Client-Version"))
+	if label == "" {
+		label = r.UserAgent()
+	}
+	const maxRunes = 256
+	runes := []rune(label)
+	if len(runes) > maxRunes {
+		label = string(runes[:maxRunes])
+	}
+	return label
 }

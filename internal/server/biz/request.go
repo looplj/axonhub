@@ -1733,6 +1733,10 @@ func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request)
 		return nil, fmt.Errorf("request is nil")
 	}
 
+	// Realtime persists gateway audit metadata directly, including failed turns.
+	if req.Format == llm.APIFormatOpenAIRealtime.String() {
+		return sanitizeLoadedResponseBody(req.ResponseBody), nil
+	}
 	// Only load response body if request is completed
 	if req.Status != request.StatusCompleted {
 		return xjson.EmptyJSONRawMessage, nil

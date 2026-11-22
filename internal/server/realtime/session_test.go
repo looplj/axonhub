@@ -128,10 +128,14 @@ func TestSessionInternalErrorCloseFrame(t *testing.T) {
 	}()
 	require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"error"}`)))
 	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
-	_, _, err := client.ReadMessage()
+	_, frame, err := client.ReadMessage()
+	require.NoError(t, err)
+	require.Contains(t, string(frame), `"code":"internal_error"`)
+	_, _, err = client.ReadMessage()
 	var closed *websocket.CloseError
 	require.ErrorAs(t, err, &closed)
 	require.Equal(t, 1011, closed.Code)
+	require.Equal(t, "internal_error", closed.Text)
 	select {
 	case err := <-done:
 		require.ErrorIs(t, err, ErrAccountingUnavailable)
@@ -248,7 +252,15 @@ func TestSessionClosesPeerOnEitherDisconnect(t *testing.T) {
 				t.Fatal("disconnected peer leaked workers")
 			}
 			peer.SetReadDeadline(time.Now().Add(time.Second))
-			_, _, err := peer.ReadMessage()
+			_, frame, err := peer.ReadMessage()
+			if upstreamDisconnect {
+				require.NoError(t, err)
+				require.Contains(t, string(frame), `"code":"upstream_unavailable"`)
+				_, _, err = peer.ReadMessage()
+				var closed *websocket.CloseError
+				require.ErrorAs(t, err, &closed)
+				require.Equal(t, 1013, closed.Code)
+			}
 			require.Error(t, err)
 		})
 	}

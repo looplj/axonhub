@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"slices"
 	"sync"
 
@@ -616,7 +617,11 @@ func (a *Adapter) Server(data []byte) ([]byte, error) {
 			a.pendingUpdateID = ""
 		}
 		redactQwenError(e, "invalid_request_error", "The Qwen Realtime service rejected an event.")
-		return json.Marshal(e)
+		envelope := map[string]any{"type": "error", "error": e["error"]}
+		if id, ok := e["event_id"].(string); ok && id != "" && len(id) <= 256 {
+			envelope["event_id"] = id
+		}
+		return json.Marshal(envelope)
 	}
 	if event.Type == "conversation.item.input_audio_transcription.failed" {
 		redactQwenError(e, "server_error", "The Qwen Realtime transcription failed.")
@@ -683,7 +688,8 @@ func (a *Adapter) Server(data []byte) ([]byte, error) {
 				}
 			}
 		}
-		if event.Type == "response.done" {
+		status, _ := response["status"].(string)
+		if event.Type == "response.done" && (status != "cancelled" || response["usage"] != nil) {
 			if _, usage, err := ParseUsage(data); err == nil {
 				response["usage"] = gaUsage(usage)
 			} else {
@@ -710,9 +716,24 @@ func qwenErrorEventID(value any) string {
 	return id
 }
 
+// SafeParameterDiagnostic recognizes provider diagnostics that contain only a
+// parameter path. Arbitrary provider messages may echo input or credentials.
+func SafeParameterDiagnostic(code, message string) bool {
+	return (code == "unknown_parameter" || code == "invalid_value" || code == "invalid_parameter") &&
+		realtimeParameterDiagnostic.MatchString(message)
+}
+
+var realtimeParameterDiagnostic = regexp.MustCompile(`^Unknown parameter: '[a-zA-Z_][a-zA-Z0-9_]{0,63}(\.[a-zA-Z_][a-zA-Z0-9_]{0,63}){0,7}'\.?$`)
+
 func redactQwenError(event map[string]any, kind, message string) {
 	safe := map[string]any{"type": kind, "code": "upstream_error", "message": message}
-	if id := qwenErrorEventID(event["error"]); id != "" {
+	upstream, _ := event["error"].(map[string]any)
+	code, _ := upstream["code"].(string)
+	detail, _ := upstream["message"].(string)
+	if kind == "invalid_request_error" && SafeParameterDiagnostic(code, detail) {
+		safe["code"], safe["message"] = code, detail
+	}
+	if id := qwenErrorEventID(event["error"]); id != "" && len(id) <= 256 {
 		safe["event_id"] = id
 	}
 	event["error"] = safe

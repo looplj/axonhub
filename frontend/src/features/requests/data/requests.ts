@@ -147,6 +147,7 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           modelID
           stream
           clientIP
+          userAgent
           projectID
           dataStorageID
           contentSaved
