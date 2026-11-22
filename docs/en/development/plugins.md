@@ -532,15 +532,15 @@ The owner enables a plugin with a subset of `permissions` and a subset of `netwo
 
 ## Publishing
 
-The index URL is [https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json](https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json). AxonHub fetches that URL, so changing the index does not require an AxonHub release. The example plugins are not listed in the market.
+AxonHub reads the [community plugin index](https://raw.githubusercontent.com/looplj/axonhub-plugins/main/registry.json). The index updates independently of AxonHub releases. Development examples live in the AxonHub repository.
 
-Publish the zip on your own HTTPS URL, such as a GitHub Release. `sha256` is 64 lowercase hex characters of the raw zip bytes:
+To submit plugin source for centralized packaging and release, open a pull request under `plugins/` in [axonhub-plugins](https://github.com/looplj/axonhub-plugins). If you maintain your plugin in a separate repository, publish the zip at an HTTPS URL, such as a GitHub Release. Compute `sha256` as 64 lowercase hex characters of the raw zip bytes:
 
 ```bash
 shasum -a 256 temperature-cap-1.0.0.axplugin
 ```
 
-To list it, open a pull request that adds one plugin object to the `plugins` array. Each `versions` item needs `version`, `url`, `sha256`, and `axonhubVersion`:
+To list a plugin maintained separately, open a pull request in [axonhub-plugins](https://github.com/looplj/axonhub-plugins) that adds a plugin object to the `plugins` array in `external-plugins.json`. Each `versions` item needs `version`, `url`, `sha256`, and `axonhubVersion`:
 
 ```json
 {
@@ -558,7 +558,7 @@ To list it, open a pull request that adds one plugin object to the `plugins` arr
 }
 ```
 
-The hub checks the downloaded bytes against `sha256`. There is no publisher signature.
+AxonHub uses the index to verify the downloaded package's SHA-256, plugin ID and version. The owner grants permissions and network access when enabling a plugin.
 
 ## Examples
 

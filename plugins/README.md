@@ -4,7 +4,7 @@
 
 ## 目录
 
-- [`registry.json`](registry.json)：市场索引。AxonHub 从 `unstable` 分支的 raw URL 拉取。当前列出每日用量卡、Jev 请求审查、实时请求、重置监控和载荷存储切桶。
+- [axonhub-plugins](https://github.com/looplj/axonhub-plugins)：社区插件源码、发布流程和市场索引的维护入口。本目录的 [`registry.json`](registry.json) 是供仍读取旧地址的 AxonHub 版本使用的兼容快照。
 - [`../cmd/pack-plugin`](../cmd/pack-plugin)：独立 Go 模块的打包器。`go install github.com/looplj/axonhub/cmd/pack-plugin@unstable` 安装 `unstable` 分支上的当前提交。
 - [`examples/notes/`](examples/notes/README.md)：可安装的 Notes UI 插件示例。
 - [`examples/event-log/`](examples/event-log/README.md)：可安装的事件记录示例，用来确认事件已经送达。
