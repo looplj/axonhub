@@ -105,7 +105,6 @@ function PreviewRows({
       routes: chosen.flatMap((r) => r.routes),
       modelID: mergeTarget,
       name: mergeTarget,
-      developer: '',
       offers,
       preferred: null,
     };

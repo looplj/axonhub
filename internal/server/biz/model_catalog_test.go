@@ -87,7 +87,7 @@ func selection(t *testing.T, preview *CatalogImportPreview, id string) CatalogIm
 	t.Helper()
 	row, found := lo.Find(preview.Rows, func(row *CatalogImportRow) bool { return row.ModelID == id })
 	require.True(t, found, id)
-	sel := CatalogImportSelection{ModelID: id, Name: row.Name, Developer: row.Developer, Type: "chat", Version: row.Version, Members: row.Members}
+	sel := CatalogImportSelection{ModelID: id, Name: row.Name, Type: "chat", Version: row.Version, Members: row.Members}
 	for _, route := range row.Routes {
 		request := ""
 		if len(route.Requests) == 1 {
@@ -101,6 +101,9 @@ func selection(t *testing.T, preview *CatalogImportPreview, id string) CatalogIm
 		o = row.Offers[0]
 	}
 	if o != nil {
+		if row.Version == "" {
+			sel.Developer = o.Developer
+		}
 		sel.Identity = o.Identity
 		sel.Provider, sel.SourceModelID = o.Provider, o.ModelID
 		for _, rate := range o.Rates {
@@ -237,6 +240,7 @@ func TestCatalogImportProtectsLegacyPricesAndWriteOnlyEditor(t *testing.T) {
 	require.Equal(t, []string{"applied"}, f.apply(t, scope, preview, sel))
 	m = f.db.Model.GetX(f.ctx, m.ID)
 	require.Equal(t, "Existing", m.Name)
+	require.Equal(t, "custom", m.Developer)
 	require.Equal(t, model.StatusEnabled, m.Status)
 	require.Zero(t, m.ModelCard.Cost.Input)
 	require.Equal(t, 15.0, m.ModelCard.Cost.Output)

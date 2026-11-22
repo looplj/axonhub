@@ -300,7 +300,6 @@ input CatalogRouteChoice { channelID: Int!, actual: String!, request: String! }
 type CatalogImportRow {
   modelID: String!
   name: String!
-  developer: String!
   members: [CatalogImportMember!]!
   routes: [CatalogImportRoute!]!
   version: String!

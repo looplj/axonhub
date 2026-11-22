@@ -65,7 +65,7 @@ export function defaultSelection(row: ImportRow, offer = findOffer(row, row.pref
       : row.routes.map((route) => ({ channelID: route.channelID, actual: route.actual, request: defaultRequest(row.modelID, route) })),
     version: row.version,
     name: row.version ? row.name : offer?.name || row.modelID,
-    developer: row.version ? row.developer : offer?.developer || '',
+    developer: row.version ? '' : offer?.developer || '',
     provider: offer?.provider || '',
     sourceModelID: offer?.modelID || '',
     prices,

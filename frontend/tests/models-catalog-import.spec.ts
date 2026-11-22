@@ -45,7 +45,7 @@ test('a filtered batch keeps same-source quotes and resets when the catalog sour
         ],
       };
       return {
-        modelID, name: modelID, developer: provider, members: [{id:modelID,identity:'original'}], routes: [], version: modelID === 'outside' ? 'saved' : '',
+        modelID, name: modelID, members: [{id:modelID,identity:'original'}], routes: [], version: modelID === 'outside' ? 'saved' : '',
         mergeTarget: '', mergeTargetOccupied: false, changed: false, archived: false, offers: [offer], preferred: offer, prices: [],
       };
     });
@@ -121,12 +121,12 @@ test('reference prices show the bound source and distinguish missing from unsele
     rate('input', 9), { field: 'output', base: 20, tiers: [{ label: 'context 256000', value: 25 }] }, rate('cacheRead', 5),
   ] };
   const row = (id: string) => ({
-    ...details, modelID: id, members: [{ id, identity: '' }], routes: [], version: '',
+    name: details.name, modelID: id, members: [{ id, identity: '' }], routes: [], version: '',
     mergeTarget: '', mergeTargetOccupied: false, changed: false, archived: false,
   });
   const previews = [
     {
-      ...row('mixed'), developer: '', version: 'saved', changed: true, offers: [providerA, providerB], preferred: providerB,
+      ...row('mixed'), version: 'saved', changed: true, offers: [providerA, providerB], preferred: providerB,
       prices: [
         { field: 'input', value: 1, follow: true, provider: 'provider-a', modelID: 'mixed', canonical: 'dev/previous' },
         { field: 'output', value: 15, follow: true, provider: 'provider-b', modelID: 'mixed', canonical: 'dev/current' },
@@ -199,15 +199,16 @@ test('reference prices show the bound source and distinguish missing from unsele
   await expect(expand('zero')).toContainText(/No reference prices selected|未选用参考价/);
   await page.getByRole('checkbox', { name: 'zero', exact: true }).click();
   const developer = page.getByRole('dialog').getByRole('textbox', { name: /Developer|开发者/i });
+  await expect(developer).toHaveValue('dev');
   await developer.fill('');
   await expect(page.getByTestId('catalog-import-apply')).toBeDisabled();
-  await developer.fill('dev');
+  await developer.fill('custom');
   await page.getByTestId('catalog-import-apply').click();
   await expect.poll(() => applied).toEqual([expect.objectContaining({
-    modelID: 'mixed', prices: [expect.objectContaining({ field: 'output', provider: 'provider-b', action: 'TIER', expected: 25 })],
+    modelID: 'mixed', developer: '', prices: [expect.objectContaining({ field: 'output', provider: 'provider-b', action: 'TIER', expected: 25 })],
   }), expect.objectContaining({
     modelID: 'zero', provider: 'provider-a', sourceModelID: 'zero', identity: 'v1',
-    type: 'embedding', name: 'Vector embedding', prices: [],
+    type: 'embedding', name: 'Vector embedding', developer: 'custom', prices: [],
     routes: [{ channelID: 12, actual: 'zero', request: 'public-zero' }],
   })]);
 });
@@ -225,7 +226,7 @@ test('a lost apply response requires a refreshed preview before retrying', async
     if (operationName !== 'CatalogImportPreview') return route.fallback();
     if (!online) return route.fulfill({ json: { errors: [{ message: 'Preview temporarily unavailable' }] } });
     const offer = { provider: 'dev', modelID: 'item', name: 'Item', developer: 'dev', type: 'chat', canonical: '', identity: '', rates: [] };
-    const row = { ...offer, version: '', members: [{ id: 'item', identity: '' }], routes: [], offers: [offer], preferred: offer, prices: [] };
+    const row = { modelID: offer.modelID, name: offer.name, version: '', members: [{ id: 'item', identity: '' }], routes: [], offers: [offer], preferred: offer, prices: [] };
     const preview = { rows: submissions ? [] : [row], providers: ['dev'], source: 'upstream', upstreamURL: 'example', revision: 'mirror' };
     return route.fulfill({ json: { data: { catalogImportPreview: preview } } });
   });

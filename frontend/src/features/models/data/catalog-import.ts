@@ -41,7 +41,6 @@ export interface ImportRow {
   mergeTargetOccupied: boolean;
   modelID: string;
   name: string;
-  developer: string;
   members: { id: string; identity: string }[];
   routes: { channelID: number; channelName: string; actual: string; requests: string[] }[];
   version: string;
@@ -89,7 +88,7 @@ export interface Outcome {
 const offerFields = 'canonical provider modelID name developer identity type rates { field base tiers { label value } }';
 const previewQuery = `query CatalogImportPreview($scope: CatalogImportScope!) {
   catalogImportPreview(scope: $scope) {
-    source upstreamURL revision providers rows { modelID name developer members { id identity } routes { channelID channelName actual requests } version archived changed
+    source upstreamURL revision providers rows { modelID name members { id identity } routes { channelID channelName actual requests } version archived changed
       offers { ${offerFields} } preferred { provider modelID } mergeTarget mergeTargetOccupied prices { field value follow canonical provider modelID }
     }
   }

@@ -400,7 +400,6 @@ type ComplexityRoot struct {
 	CatalogImportRow struct {
 		Archived            func(childComplexity int) int
 		Changed             func(childComplexity int) int
-		Developer           func(childComplexity int) int
 		Members             func(childComplexity int) int
 		MergeTarget         func(childComplexity int) int
 		MergeTargetOccupied func(childComplexity int) int
@@ -4055,12 +4054,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CatalogImportRow.Changed(childComplexity), true
-	case "CatalogImportRow.developer":
-		if e.complexity.CatalogImportRow.Developer == nil {
-			break
-		}
-
-		return e.complexity.CatalogImportRow.Developer(childComplexity), true
 	case "CatalogImportRow.members":
 		if e.complexity.CatalogImportRow.Members == nil {
 			break
@@ -23258,8 +23251,6 @@ func (ec *executionContext) fieldContext_CatalogImportPreview_rows(_ context.Con
 				return ec.fieldContext_CatalogImportRow_modelID(ctx, field)
 			case "name":
 				return ec.fieldContext_CatalogImportRow_name(ctx, field)
-			case "developer":
-				return ec.fieldContext_CatalogImportRow_developer(ctx, field)
 			case "members":
 				return ec.fieldContext_CatalogImportRow_members(ctx, field)
 			case "routes":
@@ -23542,35 +23533,6 @@ func (ec *executionContext) _CatalogImportRow_name(ctx context.Context, field gr
 }
 
 func (ec *executionContext) fieldContext_CatalogImportRow_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "CatalogImportRow",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _CatalogImportRow_developer(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogImportRow) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_CatalogImportRow_developer,
-		func(ctx context.Context) (any, error) {
-			return obj.Developer, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_CatalogImportRow_developer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "CatalogImportRow",
 		Field:      field,
@@ -104265,11 +104227,6 @@ func (ec *executionContext) _CatalogImportRow(ctx context.Context, sel ast.Selec
 			}
 		case "name":
 			out.Values[i] = ec._CatalogImportRow_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "developer":
-			out.Values[i] = ec._CatalogImportRow_developer(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
