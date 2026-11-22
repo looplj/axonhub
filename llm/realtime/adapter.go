@@ -720,6 +720,13 @@ func (a *Adapter) verifyAudioAck(session map[string]any) error {
 	}
 	for _, direction := range []string{"input", "output"} {
 		config, err := object(audio[direction])
+		if a.native && !a.cap.FreeAudioTranscript && session[direction+"_audio_format"] == "pcm" {
+			_, directionPresent := audio[direction]
+			_, formatPresent := config["format"]
+			if !directionPresent || (err == nil && !formatPresent) {
+				continue
+			}
+		}
 		if err != nil {
 			return err
 		}

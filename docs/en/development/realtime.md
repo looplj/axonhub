@@ -36,7 +36,16 @@ Connect to `GET /v1/realtime?model={gateway-model-or-alias}` using WebSocket Upg
 
 The native `/qwen/v1/realtime?model={model}` entry uses Qwen event names and the same authentication, routing, quota, price and connection checks. It can only select Bailian channels with enabled Realtime configuration and still validates the implemented safe capability subset.
 
-For an OpenAI GA client that appends `/realtime`, use `https://gateway.example/v1`. The gateway selects the provider using the authorized model and configured channels and converts the supported Qwen events to GA. For a native Qwen client that appends `/realtime`, use `https://gateway.example/qwen/v1`. If the client appends `/v1/realtime`, use `https://gateway.example/qwen`. The client must preserve the base URL path prefix.
+Choose the entry by the event protocol the client speaks. Standard OpenAI Realtime GA clients use `/v1/realtime`; if the selected model routes to Qwen, the gateway converts the supported events to GA. Use `/qwen/v1/realtime` only when the client needs native Qwen event names. That entry routes only to enabled Bailian Realtime channels and does not perform GA event conversion.
+
+The SDK Base URLs below point to the public AxonHub address, not the upstream Realtime Host configured on a channel. Choose the Base URL that matches the path suffix appended by your SDK, and make sure it preserves the Base URL path prefix.
+
+| Client protocol | WebSocket entry | SDK Base URL example | Use when |
+| --- | --- | --- | --- |
+| OpenAI Realtime GA | `wss://gateway.example/v1/realtime?model={model}` | If the SDK appends `/realtime`, use `https://gateway.example/v1`; if it appends `/v1/realtime`, use `https://gateway.example` | The client speaks OpenAI GA events; routing can reach OpenAI or convert a Qwen model to GA events |
+| Native Qwen Realtime | `wss://gateway.example/qwen/v1/realtime?model={model}` | If the SDK appends `/realtime`, use `https://gateway.example/qwen/v1`; if it appends `/v1/realtime`, use `https://gateway.example/qwen` | The client speaks native Qwen events and should route only to a Bailian Qwen upstream |
+
+Both entries use the AxonHub API key in an `Authorization: Bearer ...` header. If the client cannot preserve a Base URL path prefix, use a client that accepts a complete WebSocket URL and connect directly to the entry above.
 
 For OpenAI, valid GA events, extension fields and event order are forwarded without unnecessary JSON rewriting or resampling. No `OpenAI-Beta: realtime=v1` header is sent. When `session.created` contains the complete effective GA audio configuration, its confirmed defaults can be used directly. Configuration changes require `session.update` and its `session.updated` acknowledgement before using the new parameters. Session model changes, credential overrides and caller-supplied safety identity are prohibited. The upstream Safety Identifier is a one-way digest derived from the authenticated Gateway key and user/project identity.
 

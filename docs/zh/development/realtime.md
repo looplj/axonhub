@@ -37,7 +37,16 @@ Realtime 渠道配置适用于现有 OpenAI 和百炼渠道类型。xAI Subscrip
 
 原生 Qwen 入口为 `/qwen/v1/realtime?model={模型}`，同样经过权限、配额、价格与连接限制，仅能选择已启用 Realtime 配置的百炼渠道；它也只暴露已实现且通过校验的安全能力子集。
 
-使用 OpenAI GA 客户端时填写 `https://gateway.example/v1`，由客户端追加 `/realtime`。网关按授权后的模型和渠道配置选上游，对 Qwen 做已支持事件的 GA 转换。使用原生 Qwen 事件且客户端同样追加 `/realtime` 时，填写 `https://gateway.example/qwen/v1`。如果客户端固定追加 `/v1/realtime`，则填写 `https://gateway.example/qwen`。客户端必须保留 Base URL 的路径前缀。
+选择入口时按客户端使用的事件协议决定：标准 OpenAI Realtime GA 客户端使用 `/v1/realtime`；如果选中的模型路由到 Qwen，网关会将已支持的事件转换为 GA。只有客户端需要发送/接收 Qwen 原生事件名时，才使用 `/qwen/v1/realtime`；该入口仅连接已启用 Realtime 的百炼渠道，不经过 GA 事件转换。
+
+下表中的 SDK Base URL 是 AxonHub 的公开地址，不是渠道配置中的上游 Realtime Host。按 SDK 自动追加的路径选择对应值，并确保 SDK 保留 Base URL 中的路径前缀。
+
+| 客户端协议 | WebSocket 入口 | SDK Base URL 示例 | 适用场景 |
+| --- | --- | --- | --- |
+| OpenAI Realtime GA | `wss://gateway.example/v1/realtime?model={模型}` | SDK 追加 `/realtime` 时使用 `https://gateway.example/v1`；SDK 追加 `/v1/realtime` 时使用 `https://gateway.example` | 使用标准 OpenAI GA 事件；可路由到 OpenAI 上游，也可将 Qwen 模型转换为 GA 事件 |
+| Qwen 原生 Realtime | `wss://gateway.example/qwen/v1/realtime?model={模型}` | SDK 追加 `/realtime` 时使用 `https://gateway.example/qwen/v1`；SDK 追加 `/v1/realtime` 时使用 `https://gateway.example/qwen` | 客户端使用 Qwen 原生事件名，只路由到百炼 Qwen 上游 |
+
+两个入口都使用 AxonHub API Key 的 `Authorization: Bearer ...` Header。若客户端不能保留 Base URL 的路径前缀，需改用支持自定义完整 WebSocket URL 的客户端，并直接连接上表中的 WebSocket 入口。
 
 OpenAI 上游使用原生 GA 事件，保留合法未知扩展字段和事件顺序，不发送 `OpenAI-Beta: realtime=v1`，不经 Qwen 转换，不对音频重采样。OpenAI 在 `session.created` 提供完整有效音频配置时可直接使用已确认的默认值；修改参数时应发送 `session.update` 并等待 `session.updated`，再按新参数发送媒体。禁止在会话中修改模型、覆盖凭证或身份安全字段。Safety Identifier 由已鉴权的网关密钥及用户/项目生成不可逆摘要，不接受客户端覆盖。
 

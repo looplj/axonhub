@@ -246,6 +246,14 @@ func TestNativeNestedTurnDetection(t *testing.T) {
 			got, err := a.Server([]byte(ack))
 			require.NoError(t, err)
 			require.Equal(t, ack, string(got))
+			mixed := `{"type":"session.updated","session":{"input_audio_format":"pcm","output_audio_format":"pcm","audio":{"input":{"turn_detection":null}}}}`
+			got, err = a.Server([]byte(mixed))
+			require.NoError(t, err)
+			require.Equal(t, mixed, string(got))
+
+			bad := `{"type":"session.updated","session":{"input_audio_format":"pcm","output_audio_format":"pcm","audio":{"input":{"format":{"type":"pcm","sample_rate":8000}}}}}`
+			_, err = a.Server([]byte(bad))
+			require.Error(t, err, "explicit nested PCM format must still be validated")
 		})
 	}
 }
