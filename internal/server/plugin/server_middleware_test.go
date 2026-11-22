@@ -160,6 +160,64 @@ export function after() { return { headers: { set: { "X-After": ["bad"] } } }; }
 	})
 }
 
+func TestServerMiddlewareCircuitIsolation(t *testing.T) {
+	t.Run("HTTP success does not clear LLM failures", func(t *testing.T) {
+		m := newTestManager(t, newPluginDB(t))
+		id := installServerMiddleware(t, m, "example.llm-failure", []string{"handler"}, true, `
+export function handler() { return { headers: { set: { "X-Healthy": ["yes"] } } }; }
+export function onRequest() { throw new Error("broken LLM hook"); }
+export function onAttempt() {}
+`)
+		for i := range circuitFailureLimit + 1 {
+			ctx := contexts.EnsureContainer(t.Context())
+			req, rejection := m.RunServerMiddleware(httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil).WithContext(ctx))
+			require.Nil(t, rejection)
+			require.Equal(t, "yes", req.Header.Get("X-Healthy"))
+
+			hooks := testRequestHooks(t, m, req.Context())
+			_, err := hooks.Request.OnInboundLlmRequest(req.Context(), &llm.Request{
+				Model: "model", RequestType: llm.RequestTypeChat,
+			})
+			hooks.Request.OnProcessEnd()
+			require.NoError(t, err)
+			if i+1 < circuitFailureLimit {
+				require.Equal(t, i+1, m.ConsecutiveFailures(id))
+			}
+		}
+		exec := m.execFor(id)
+		require.True(t, exec.circuit.rejectCall(m.nowCall()))
+		require.False(t, exec.serverCircuit("handler").rejectCall(m.nowCall()))
+	})
+	t.Run("failed HTTP handler pauses independently", func(t *testing.T) {
+		m := newTestManager(t, newPluginDB(t))
+		id := installServerMiddleware(t, m, "example.http-failure", []string{"broken", "healthy"}, true, `
+export function broken() { throw new Error("broken HTTP handler"); }
+export function healthy() { return { headers: { set: { "X-Healthy": ["yes"] } } }; }
+export function onRequest(_ctx, request) { return { ...request, user: "healthy" }; }
+export function onAttempt() {}
+`)
+		for range circuitFailureLimit + 1 {
+			ctx := contexts.EnsureContainer(t.Context())
+			req, rejection := m.RunServerMiddleware(httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil).WithContext(ctx))
+			require.Nil(t, rejection)
+			require.Equal(t, "yes", req.Header.Get("X-Healthy"))
+
+			hooks := testRequestHooks(t, m, req.Context())
+			result, err := hooks.Request.OnInboundLlmRequest(req.Context(), &llm.Request{
+				Model: "model", RequestType: llm.RequestTypeChat,
+			})
+			hooks.Request.OnProcessEnd()
+			require.NoError(t, err)
+			require.NotNil(t, result.User)
+			require.Equal(t, "healthy", *result.User)
+		}
+		exec := m.execFor(id)
+		require.True(t, exec.serverCircuit("broken").rejectCall(m.nowCall()))
+		require.False(t, exec.serverCircuit("healthy").rejectCall(m.nowCall()))
+		require.False(t, exec.circuit.rejectCall(m.nowCall()))
+	})
+}
+
 func TestServerMiddlewareRefresh(t *testing.T) {
 	db := newPluginDB(t)
 	m := newTestManager(t, db)

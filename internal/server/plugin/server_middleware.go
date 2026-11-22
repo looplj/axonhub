@@ -117,8 +117,6 @@ func (m *Manager) runServerMiddleware(req *http.Request, gen *Generation) (*http
 	}
 	defer gen.Release()
 
-	callCtx := budgetCtx
-
 	var args []byte
 	var metadata serverMiddlewareContext
 	for _, handler := range gen.serverMiddleware {
@@ -135,13 +133,15 @@ func (m *Manager) runServerMiddleware(req *http.Request, gen *Generation) (*http
 		var result serverMiddlewareResult
 		nextMetadata := metadata
 		headers := req.Header
-		_, err := m.Invoke(callCtx, InvokeRequest{
-			InstallationID: handler.plugin.ID,
-			Export:         handler.export,
-			Args:           args,
-			Config:         handler.plugin.Config,
-			Generation:     gen,
-			AllowReject:    true,
+		_, err := m.Invoke(budgetCtx, InvokeRequest{
+			InstallationID:     handler.plugin.ID,
+			Export:             handler.export,
+			Args:               args,
+			Config:             handler.plugin.Config,
+			Generation:         gen,
+			AllowReject:        true,
+			serverMiddleware:   true,
+			requestContextJSON: metadata.metadata.JSON,
 			ValidateReturn: func(raw json.RawMessage) error {
 				var err error
 				result, err = decodeServerMiddlewareResult(raw, headers)
@@ -171,12 +171,7 @@ func (m *Manager) runServerMiddleware(req *http.Request, gen *Generation) (*http
 		if result.Headers.apply(req) {
 			args = nil
 		}
-		if len(result.Context) != 0 {
-			metadata = nextMetadata
-			if len(metadata.metadata.JSON) != 0 {
-				callCtx = contexts.WithPluginRequestContext(budgetCtx, metadata.metadata)
-			}
-		}
+		metadata = nextMetadata
 	}
 	if len(metadata.metadata.JSON) != 0 {
 		req = req.WithContext(contexts.WithPluginRequestContext(ctx, metadata.metadata))

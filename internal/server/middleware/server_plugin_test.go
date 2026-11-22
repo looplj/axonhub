@@ -77,7 +77,7 @@ func TestServerMiddlewareDSHTrace(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+apiKey)
 		req.Header.Set("X-Deepseek-Harness-Session-Id", "  dsh-session  ")
-		req.Header.Set("AH-Trace-Id", explicit)
+		req.Header.Set("Ah-Trace-Id", explicit)
 		req.Header.Set(opencode.SessionHeader, openCode)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
