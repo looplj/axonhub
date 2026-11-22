@@ -37,19 +37,14 @@ function defaultRequest(modelID: string, route: ImportRow['routes'][number]) {
   return route.requests.length === 1 ? route.requests[0] : undefined;
 }
 
-export function defaultSelection(
-  row: ImportRow,
-  offer = findOffer(row, row.preferred) ?? null,
-  replaceSource = false
-): ImportSelection {
+export function defaultSelection(row: ImportRow, offer = findOffer(row, row.preferred) ?? null): ImportSelection {
   const prices: PriceSelection[] = [];
   for (const field of referencePriceFields) {
     const local = row.prices.find((p) => p.field === field);
     if (row.version && !local?.follow) continue;
-    const source = local && !replaceSource ? findOffer(row, local) : offer;
+    const source = local ? findOffer(row, local) : offer;
     const rate = source?.rates.find((r) => r.field === field);
-    if (!source || rate?.base == null || needsRebind(local, source)) continue;
-    if (local && local.value === rate.base && local.provider === source.provider && local.modelID === source.modelID) continue;
+    if (!source || rate?.base == null || needsRebind(local, source) || local?.value === rate.base) continue;
     prices.push({
       field,
       action: 'FOLLOW',
@@ -91,7 +86,7 @@ export function PriceEditor({
   const { t } = useTranslation();
   const formatPrice = useReferencePriceFormat();
   function selectOffer(next: Offer | null) {
-    const defaults = defaultSelection(row, next, true);
+    const defaults = defaultSelection(row, next);
     const previous = defaultSelection(row, offer ?? null);
     for (const field of ['name', 'developer', 'type'] as const) {
       if (draft[field] !== previous[field]) defaults[field] = draft[field];
@@ -165,21 +160,23 @@ export function PriceEditor({
             </label>
           );
         })}
-      <label className='flex flex-wrap items-center gap-2 text-sm'>
-        {t('models.import.priceSource')}
-        <select
-          className={selectStyle}
-          value={offer ? offerKey(offer) : ''}
-          onChange={(e) => selectOffer(row.offers.find((o) => offerKey(o) === e.target.value) ?? null)}
-        >
-          <option value=''>{t('models.import.pickSource')}</option>
-          {row.offers.map((o) => (
-            <option key={offerKey(o)} value={offerKey(o)}>
-              {o.provider} · {o.modelID}
-            </option>
-          ))}
-        </select>
-      </label>
+      {!row.version && (
+        <label className='flex flex-wrap items-center gap-2 text-sm'>
+          {t('models.import.priceSource')}
+          <select
+            className={selectStyle}
+            value={offer ? offerKey(offer) : ''}
+            onChange={(e) => selectOffer(row.offers.find((o) => offerKey(o) === e.target.value) ?? null)}
+          >
+            <option value=''>{t('models.import.pickSource')}</option>
+            {row.offers.map((o) => (
+              <option key={offerKey(o)} value={offerKey(o)}>
+                {o.provider} · {o.modelID}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {!row.version && draft.prices.length > 0 && (
         <Button type='button' size='sm' variant='outline' data-testid='catalog-details-only' onClick={() => onChange({ ...draft, prices: [] })}>
           {t('models.import.noSource')}

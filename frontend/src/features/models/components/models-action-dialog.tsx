@@ -50,7 +50,6 @@ export function ModelsActionDialog() {
   const [developerSearchValue, setDeveloperSearchValue] = useState<string>('');
   const [modelIdInput, setModelIdInput] = useState<string>('');
   const [modelIdSearchValue, setModelIdSearchValue] = useState<string>('');
-  const [_selectedModelCard, setSelectedModelCard] = useState<CreateModelInput['modelCard']>({});
 
   // 用于解决 Dialog 内 Popover 无法滚动的问题
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
@@ -156,7 +155,6 @@ export function ModelsActionDialog() {
       setSelectedProvider(currentRow.developer);
       setModelIdInput(currentRow.modelID);
       setModelIdSearchValue(currentRow.modelID);
-      setSelectedModelCard(currentRow.modelCard || {});
     } else if (!isEdit) {
       form.reset({
         developer: '',
@@ -173,7 +171,6 @@ export function ModelsActionDialog() {
       setDeveloperSearchValue('');
       setModelIdInput('');
       setModelIdSearchValue('');
-      setSelectedModelCard({});
     }
   }, [isEdit, currentRow, form, isOpen]);
 
@@ -197,7 +194,6 @@ export function ModelsActionDialog() {
         form.setValue('name', '');
         form.setValue('group', '');
         form.setValue('modelCard', {});
-        setSelectedModelCard({});
       }
     },
     [form, getDeveloperLabel, isEdit]
@@ -258,10 +254,6 @@ export function ModelsActionDialog() {
           lastUpdated: selectedModel.last_updated,
         };
         form.setValue('modelCard', modelCard);
-        setSelectedModelCard(modelCard);
-      } else {
-        const currentModelCard = form.getValues('modelCard');
-        setSelectedModelCard(currentModelCard || {});
       }
     },
     [selectedProviderModels, selectedProvider, form, isEdit]
@@ -302,7 +294,6 @@ export function ModelsActionDialog() {
     setDeveloperSearchValue('');
     setModelIdInput('');
     setModelIdSearchValue('');
-    setSelectedModelCard({});
   }, [form, setOpen]);
 
   return (
@@ -653,86 +644,29 @@ export function ModelsActionDialog() {
                     <FormLabel>{t('models.modelCard.cost')} ($/M tokens)</FormLabel>
                     <p className='text-xs text-muted-foreground'>{t('models.modelCard.costHint')}</p>
                     <div className='grid grid-cols-2 gap-2'>
-                      <FormField
-                        control={form.control}
-                        name='modelCard.cost.input'
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className='text-xs'>{t('models.modelCard.input')}</FormLabel>
-                            <FormControl>
-                              <Input
-                                type='number'
-                                step='any'
-                                {...field}
-                                value={field.value ?? ''}
-                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                placeholder='—'
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name='modelCard.cost.output'
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className='text-xs'>{t('models.modelCard.output')}</FormLabel>
-                            <FormControl>
-                              <Input
-                                type='number'
-                                step='any'
-                                {...field}
-                                value={field.value ?? ''}
-                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                placeholder='—'
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name='modelCard.cost.cacheRead'
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className='text-xs'>{t('models.modelCard.cacheRead')}</FormLabel>
-                            <FormControl>
-                              <Input
-                                type='number'
-                                step='any'
-                                {...field}
-                                value={field.value ?? ''}
-                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                placeholder='—'
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name='modelCard.cost.cacheWrite'
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className='text-xs'>{t('models.modelCard.cacheWrite')}</FormLabel>
-                            <FormControl>
-                              <Input
-                                type='number'
-                                step='any'
-                                {...field}
-                                value={field.value ?? ''}
-                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                placeholder='—'
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {referencePriceFields.map((priceField) => (
+                        <FormField
+                          key={priceField}
+                          control={form.control}
+                          name={`modelCard.cost.${priceField}`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className='text-xs'>{t(`models.modelCard.${priceField}`)}</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type='number'
+                                  step='any'
+                                  {...field}
+                                  value={field.value ?? ''}
+                                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                  placeholder='—'
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      ))}
                     </div>
                   </div>
 

@@ -16,8 +16,11 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('a filtered batch keeps the quotes originally reviewed across a background refresh', async ({ page }) => {
-  let revision = 'first';
+test('a filtered batch keeps same-source quotes and resets when the catalog source changes', async ({ page }) => {
+  let inputPrice = 1;
+  let upstreamURL = 'https://a.test/catalog';
+  let source = 'upstream';
+  let submittedRevision: string | undefined;
   const provider = 'model-test';
   let reads = 0;
   type Selection = { prices: { field: string; action: string; expected?: number; tier?: string }[] };
@@ -26,6 +29,7 @@ test('a filtered batch keeps the quotes originally reviewed across a background 
     const body = route.request().postDataJSON();
     if (body.operationName === 'ApplyCatalogImport') {
       applied = body.variables.selections;
+      submittedRevision = body.variables.revision;
       const outcomes = body.variables.selections.map(({ modelID }: { modelID: string }) => ({ modelID, status: 'catalogChanged' }));
       return route.fulfill({ json: { data: { applyCatalogImport: outcomes } } });
     }
@@ -36,16 +40,16 @@ test('a filtered batch keeps the quotes originally reviewed across a background 
       const offer = {
         provider, modelID, name: modelID, developer: provider, identity: 'original', type: 'chat',
         rates: [
-          { field: 'input', base: revision === 'first' ? 1 : 2, tiers: [] },
+          { field: 'input', base: inputPrice, tiers: [] },
           { field: 'cacheWrite', base: null, tiers: [{ label: 'context 256000', value: 2.5 }] },
         ],
       };
       return {
-        modelID, name: modelID, developer: provider, members: [{id:modelID,identity:'original'}], routes: [], version: '',
+        modelID, name: modelID, developer: provider, members: [{id:modelID,identity:'original'}], routes: [], version: modelID === 'outside' ? 'saved' : '',
         mergeTarget: '', mergeTargetOccupied: false, changed: false, archived: false, offers: [offer], preferred: offer, prices: [],
       };
     });
-    const preview = { providers: [provider], source: 'upstream', upstreamURL: 'https://example.test/catalog', revision: 'same-source', rows };
+    const preview = { providers: [provider], source, upstreamURL, revision: source + upstreamURL, rows };
     return route.fulfill({ json: { data: { catalogImportPreview: preview } } });
   });
   await gotoAndEnsureAuth(page, '/models');
@@ -70,32 +74,59 @@ test('a filtered batch keeps the quotes originally reviewed across a background 
   await cache.selectOption(tier!);
 
   await page.clock.install();
-  await page.clock.fastForward(61_000);
-  revision = 'second';
-  const previousReads = reads;
-  await page.evaluate(() => window.dispatchEvent(new Event('offline')));
-  await page.evaluate(() => window.dispatchEvent(new Event('online')));
-  await expect.poll(() => reads).toBeGreaterThan(previousReads);
+  async function refresh() {
+    const previousReads = reads;
+    await page.clock.fastForward(61_000);
+    await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect.poll(() => reads).toBeGreaterThan(previousReads);
+  }
+  inputPrice = 2;
+  await refresh();
   await dialog.getByTestId('catalog-import-apply').click();
   await expect.poll(() => applied.length).toBe(27);
   expect(applied.every((row) => row.prices.find(p => p.field === 'input')?.expected === 1)).toBe(true);
   expect(applied.flatMap((row) => row.prices).filter(price=>price.action === 'TIER')).toEqual([
     expect.objectContaining({ field: 'cacheWrite', tier: 'context 256000', expected: 2.5 }),
   ]);
+
+  const firstRow = dialog.getByRole('checkbox', { name: 'batch-0', exact: true });
+  for (const nextSource of ['upstream', 'fallback']) {
+    await firstRow.check();
+    await dialog.getByTestId('catalog-import-expand-batch-0').click();
+    await cache.selectOption(tier!);
+    upstreamURL = 'https://b.test/catalog';
+    source = nextSource;
+    await refresh();
+    await expect(firstRow).not.toBeChecked();
+    await expect(dialog.getByText(upstreamURL, { exact: false })).toBeVisible();
+    await expect(dialog.getByTestId('catalog-import-apply')).toBeDisabled();
+    await expect(cache).toHaveCount(0);
+  }
+  await expect(dialog.getByText(/Using the bundled snapshot|正在使用内置快照/)).toBeVisible();
+  await dialog.getByRole('textbox').fill('outside');
+  await expect(dialog.getByRole('checkbox', { name: 'outside' })).toBeDisabled();
+  await dialog.getByRole('textbox').fill('');
+  await firstRow.check();
+  await dialog.getByTestId('catalog-import-apply').click();
+  await expect.poll(() => submittedRevision).toBe(source + upstreamURL);
+  expect(applied[0].prices).toEqual([expect.objectContaining({ field: 'input', expected: 2 })]);
 });
 
 test('reference prices show the bound source and distinguish missing from unselected quotes', async ({ page }) => {
   const details = { name: 'Model', developer: 'dev', identity: 'v1', canonical: 'dev/current', type: 'chat' };
   const rate = (field: string, base: number | null) => ({ field, base, tiers: [] });
   const providerA = { ...details, provider: 'provider-a', modelID: 'mixed', rates: [rate('input', 1)] };
-  const providerB = { ...details, provider: 'provider-b', modelID: 'mixed', rates: [rate('input', 9), rate('output', 20), rate('cacheRead', 5)] };
+  const providerB = { ...details, provider: 'provider-b', modelID: 'mixed', rates: [
+    rate('input', 9), { field: 'output', base: 20, tiers: [{ label: 'context 256000', value: 25 }] }, rate('cacheRead', 5),
+  ] };
   const row = (id: string) => ({
     ...details, modelID: id, members: [{ id, identity: '' }], routes: [], version: '',
     mergeTarget: '', mergeTargetOccupied: false, changed: false, archived: false,
   });
   const previews = [
     {
-      ...row('mixed'), version: 'saved', changed: true, offers: [providerA, providerB], preferred: providerB,
+      ...row('mixed'), developer: '', version: 'saved', changed: true, offers: [providerA, providerB], preferred: providerB,
       prices: [
         { field: 'input', value: 1, follow: true, provider: 'provider-a', modelID: 'mixed', canonical: 'dev/previous' },
         { field: 'output', value: 15, follow: true, provider: 'provider-b', modelID: 'mixed', canonical: 'dev/current' },
@@ -121,7 +152,8 @@ test('reference prices show the bound source and distinguish missing from unsele
     const body = route.request().postDataJSON();
     if (body.operationName === 'ApplyCatalogImport') {
       applied = body.variables.selections;
-      return route.fulfill({ json: { data: { applyCatalogImport: [{ modelID: 'zero', status: 'applied' }] } } });
+      const outcomes = body.variables.selections.map(({ modelID }: { modelID: string }) => ({ modelID, status: 'applied' }));
+      return route.fulfill({ json: { data: { applyCatalogImport: outcomes } } });
     }
     if (body.operationName !== 'CatalogImportPreview') return route.fallback();
     const preview = { rows: previews, providers: [], source: 'upstream', upstreamURL: 'https://example.test', revision: 'same' };
@@ -131,6 +163,8 @@ test('reference prices show the bound source and distinguish missing from unsele
   await page.getByTestId('catalog-import-open').click();
   const expand = (id: string) => page.getByTestId('catalog-import-expand-' + id);
   await expand('mixed').click();
+  const source = page.getByRole('combobox', { name: /Price source|报价来源/ });
+  await expect(source).toHaveCount(0);
   const quote = (field: string) => page.getByTestId('catalog-price-row-' + field).getByRole('cell').nth(1);
   await expect(quote('input')).toContainText('dev/previous');
   await expect(quote('input')).toContainText('dev/current');
@@ -143,12 +177,17 @@ test('reference prices show the bound source and distinguish missing from unsele
   await expect(fromB).toContainText(/Confirm source|确认来源/);
   await inputAction.selectOption(await fromB.getAttribute('value') as string);
   await expect(quote('input')).toContainText('$9');
+  const outputAction = page.getByTestId('catalog-price-action-output');
+  const outputTier = outputAction.locator('option').filter({ hasText: 'context 256000' });
+  await outputAction.selectOption({ label: await outputTier.innerText() });
+  await inputAction.selectOption('-1');
+  await page.getByRole('checkbox', { name: 'mixed', exact: true }).check();
+  await expect(page.getByTestId('catalog-import-apply')).toBeEnabled();
   await expect(expand('no-rates')).toContainText(/No reference prices available|暂无参考价/);
   await expect(expand('tiers-only')).toContainText(/No reference prices selected|未选用参考价/);
   await expect(expand('zero')).toContainText('$0');
   await expand('zero').click();
   await expect(page.getByText(/Test channel.*zero.*public-zero|zero.*Test channel.*public-zero/)).toBeVisible();
-  const source = page.getByRole('combobox', { name: /Price source|报价来源/ });
   await source.selectOption('');
   await expect(expand('zero')).toContainText(/Choose a price source|请选择报价来源/);
   await expect(expand('zero')).not.toContainText(/No reference prices|暂无参考价|未选用参考价/);
@@ -159,8 +198,14 @@ test('reference prices show the bound source and distinguish missing from unsele
   await page.getByTestId('catalog-details-only').click();
   await expect(expand('zero')).toContainText(/No reference prices selected|未选用参考价/);
   await page.getByRole('checkbox', { name: 'zero', exact: true }).click();
+  const developer = page.getByRole('dialog').getByRole('textbox', { name: /Developer|开发者/i });
+  await developer.fill('');
+  await expect(page.getByTestId('catalog-import-apply')).toBeDisabled();
+  await developer.fill('dev');
   await page.getByTestId('catalog-import-apply').click();
   await expect.poll(() => applied).toEqual([expect.objectContaining({
+    modelID: 'mixed', prices: [expect.objectContaining({ field: 'output', provider: 'provider-b', action: 'TIER', expected: 25 })],
+  }), expect.objectContaining({
     modelID: 'zero', provider: 'provider-a', sourceModelID: 'zero', identity: 'v1',
     type: 'embedding', name: 'Vector embedding', prices: [],
     routes: [{ channelID: 12, actual: 'zero', request: 'public-zero' }],

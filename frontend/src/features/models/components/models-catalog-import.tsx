@@ -6,6 +6,7 @@
 //   frontend/src/locales/zh.json
 // 注意事项:
 //   只有主动选择阶梯才将其保存为固定单价，手工价格默认保留。
+//   同一目录来源刷新时保留已审阅的草稿，来源改变后重新勾选。
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -80,15 +81,14 @@ function PreviewRows({
   const choices = chosen.map(draftFor);
   const ready =
     choices.length > 0 &&
-    choices.every(
-      (r, i) =>
-        r.routes.every((route) => route.request !== undefined) &&
-        (r.version || r.type) &&
-        (r.version || r.provider || !requiresSource(chosen[i])) &&
-        r.name.trim() &&
-        r.developer.trim() &&
-        (!r.version || r.prices.length > 0)
-    );
+    choices.every((r, i) => {
+      if (r.version) return r.prices.length > 0;
+      return (
+        r.name.trim() && r.developer.trim() && r.type &&
+        (r.provider || !requiresSource(chosen[i])) &&
+        r.routes.every((route) => route.request !== undefined)
+      );
+    });
   const mergeTarget = chosen[0]?.mergeTarget;
   const canMerge =
     mergeTarget &&
@@ -190,13 +190,13 @@ function PreviewRows({
           let status = !row.version ? 'new' : row.changed ? 'changed' : 'existing';
           if (row.archived) status = 'archived';
           else if (!row.offers.length) status = 'unmatched';
-          else if (!offer && (row.version ? !row.preferred : requiresSource(row))) status = 'chooseSource';
+          else if (!row.version && !offer && requiresSource(row)) status = 'chooseSource';
           let priceSummary = draft.prices
             .map((a) => {
               const next = a.expected;
               const current = row.prices.find((r) => r.field === a.field)?.value;
               return a.action === 'FIX'
-                ? t('models.import.fixCurrent')
+                ? `${t('models.modelCard.' + a.field)} · ${t('models.import.fixCurrent')}`
                 : `${t('models.modelCard.' + a.field)} ${current == null ? '' : formatPrice(current) + ' → '}${next == null ? '—' : formatPrice(next)}`;
             })
             .join(' · ');
@@ -224,7 +224,7 @@ function PreviewRows({
                   <span className='text-muted-foreground block text-xs'>
                     {t('models.import.filter.' + status)}
                     {row.mergeTargetOccupied && ' · ' + t('models.import.targetOccupied', { id: row.mergeTarget })}
-                    {draft.provider ? ' · ' + draft.provider : ''}
+                    {!row.version && draft.provider && ' · ' + draft.provider}
                     {priceSummary && ' · ' + priceSummary}
                   </span>
                 </button>
@@ -378,7 +378,7 @@ export function ModelsCatalogImport() {
               {t('models.import.' + (data.source === 'fallback' ? 'fallback' : 'source'))} · {data.upstreamURL}
             </p>
             <PreviewRows
-              key={JSON.stringify(scope)}
+              key={JSON.stringify([scope, data.revision])}
               preview={data}
               applying={apply.isPending}
               onApply={(revision, selections) => apply.mutate({ scope, revision, selections })}
