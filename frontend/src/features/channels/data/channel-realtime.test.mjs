@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { getChannelBaseURLInputValue, getModelFetchBaseURL, getRealtimeHandshakeTimeoutInputValue, getRealtimeProviderBadgeClass, getRealtimeQuickModels, realtimeForSelection, hasLegacyRealtimeEndpoints, withoutRealtimeModelProtocols } from './channel-realtime.ts';
+import { getChannelBaseURLInputValue, getModelFetchBaseURL, getRealtimeDefaultEndpoint, getRealtimeHandshakeTimeoutInputValue, getRealtimeProviderBadgeClass, getRealtimeQuickModels, realtimeForSelection, hasLegacyRealtimeEndpoints, withoutRealtimeModelProtocols } from './channel-realtime.ts';
 import { getInitialApiFormatForChannel, getAvailableProtocolFormats } from './protocol-options.ts';
 
 test('channel Realtime configuration saves and echoes without an endpoint', () => {
@@ -53,6 +53,25 @@ test('Realtime reuses the Base URL field and keeps the saved HTTP value when tog
   assert.equal(getChannelBaseURLInputValue('openai/realtime-ws', httpBaseURL, qwenHost), 'wss://api.openai.com');
   assert.equal(getChannelBaseURLInputValue('qwen/realtime-ws', httpBaseURL, qwenHost), qwenHost);
   assert.equal(getChannelBaseURLInputValue('openai/chat_completions', httpBaseURL, qwenHost), httpBaseURL);
+});
+
+test('Realtime endpoint management projects only the selected protocol as its default endpoint', () => {
+  assert.deepEqual(
+    getRealtimeDefaultEndpoint({ enabled: true, protocol: 'openai/realtime-ws', baseURL: 'wss://api.openai.com', path: '/v1/realtime' }),
+    { apiFormat: 'openai/realtime-ws' }
+  );
+  assert.deepEqual(
+    getRealtimeDefaultEndpoint({ enabled: true, protocol: 'qwen/realtime-ws', baseURL: 'wss://llm-workspace.cn-beijing.maas.aliyuncs.com', path: '/api-ws/v1/realtime', handshakeTimeoutMs: 2345 }),
+    { apiFormat: 'qwen/realtime-ws' }
+  );
+  assert.equal(getRealtimeDefaultEndpoint({ enabled: false, protocol: '', baseURL: '', path: '' }), undefined);
+
+  const endpointDialog = readFileSync(new URL('../components/channels-endpoints-dialog.tsx', import.meta.url), 'utf8');
+  assert.match(endpointDialog, /getRealtimeDefaultEndpoint\(channel\.settings\?\.realtime\)/);
+  assert.match(endpointDialog, /if \(realtimeDefaultEndpoint\) return \[realtimeDefaultEndpoint\]/);
+  assert.match(endpointDialog, /const defaults = channel\.defaultEndpoints \?\? \[\]/);
+  assert.match(endpointDialog, /EndpointTable endpoints=\{defaultEndpoints\} readOnly hideBaseURL/);
+  assert.doesNotMatch(endpointDialog, /if \(channel\.settings\?\.realtime\?\.enabled\) \{\s*return \(/);
 });
 
 test('Realtime model discovery uses the HTTP API host derived from the selected WebSocket host', () => {

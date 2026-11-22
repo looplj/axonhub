@@ -37,6 +37,11 @@ export function getChannelBaseURLInputValue(format: string, channelBaseURL: stri
   return channelBaseURL ?? '';
 }
 
+export function getRealtimeDefaultEndpoint(realtime: ChannelRealtime | null | undefined): ChannelEndpoint | undefined {
+  if (!realtime?.enabled || (realtime.protocol !== 'openai/realtime-ws' && realtime.protocol !== 'qwen/realtime-ws')) return undefined;
+  return { apiFormat: realtime.protocol };
+}
+
 export function getModelFetchBaseURL(format: string, channelBaseURL: string | null | undefined, qwenRealtimeHost: string): string {
   if (format !== 'openai/realtime-ws' && format !== 'qwen/realtime-ws') return channelBaseURL ?? '';
   return getChannelBaseURLInputValue(format, channelBaseURL, qwenRealtimeHost).replace(/^wss:/i, 'https:').replace(/^ws:/i, 'http:');

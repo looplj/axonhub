@@ -63,7 +63,7 @@ import {
   parseQwenRealtimeBaseURL,
   type QwenRealtimeRegion,
 } from '../data/qwen-realtime';
-import { hasLegacyRealtimeEndpoints, isRealtimeProtocol } from '../data/channel-realtime';
+import { getRealtimeDefaultEndpoint, hasLegacyRealtimeEndpoints, isRealtimeProtocol } from '../data/channel-realtime';
 import { ChatProtocolIcon, MessagesProtocolIcon, ResponsesProtocolIcon } from './endpoint-protocol-icons';
 
 const RELAY_PROTOCOL_ICONS: Record<RelayProtocol, React.ComponentType<{ size?: number | string; className?: string }>> = {
@@ -256,12 +256,14 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   const wasOpenRef = useRef(false);
 
   const isCodexChannel = channel.type === 'codex';
+  const realtimeDefaultEndpoint = useMemo(() => getRealtimeDefaultEndpoint(channel.settings?.realtime), [channel.settings?.realtime]);
   // Codex Responses defaults are projected by the WebSocket checkbox, so only the
   // remaining built-in defaults are listed and validated as defaults.
   const defaultEndpoints = useMemo(() => {
+    if (realtimeDefaultEndpoint) return [realtimeDefaultEndpoint];
     const defaults = channel.defaultEndpoints ?? [];
     return channel.type === 'codex' ? defaults.filter((ep) => !isResponsesFamilyFormat(ep.apiFormat)) : defaults;
-  }, [channel.defaultEndpoints, channel.type]);
+  }, [channel.defaultEndpoints, channel.type, realtimeDefaultEndpoint]);
 
   const [endpoints, setEndpoints] = useState<ChannelEndpoint[]>(() => channel.endpoints ?? []);
   const legacyRealtimeEndpoints = hasLegacyRealtimeEndpoints(channel.endpoints ?? []);
@@ -708,19 +710,6 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     [newApiFormat, handleAddEndpoint]
   );
 
-  if (channel.settings?.realtime?.enabled) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('channels.endpoints.title')}</DialogTitle>
-            <DialogDescription>{t('channels.realtime.endpointsInactive')}</DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -731,6 +720,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
         </DialogHeader>
 
         <div className='min-h-0 flex-1 space-y-6 overflow-y-auto py-4'>
+          {realtimeDefaultEndpoint && <p className='text-muted-foreground rounded-md bg-muted/50 px-3 py-2 text-xs'>{t('channels.realtime.endpointsInactive')}</p>}
           {legacyRealtimeEndpoints && <div role='alert' className='text-destructive bg-destructive/10 rounded-md p-3 text-sm'>{t('channels.realtime.legacyEndpoint')}</div>}
           {isCodexChannel && (
             <div className='space-y-3'>
