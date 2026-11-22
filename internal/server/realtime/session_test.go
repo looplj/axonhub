@@ -18,9 +18,10 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	qwenrt "github.com/looplj/axonhub/llm/realtime"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
+
+	qwenrt "github.com/looplj/axonhub/llm/realtime"
 )
 
 func TestSessionSlowConsumerReceivesBackpressureCloseAndFlushes(t *testing.T) {
