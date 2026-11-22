@@ -98,7 +98,8 @@ test('Realtime provider badges vary by protocol while preserving the endpoint pr
   const endpointCell = columns.match(/const EndpointProtocolsCell[\s\S]*?EndpointProtocolsCell\.displayName/)?.[0];
   assert.match(providerCell, /getRealtimeProviderBadgeClass\(row\.original\.settings\?\.realtime\)/);
   assert.match(providerCell, /<span>\{t\(`channels\.providers\.\$\{provider\}`\)\}<\/span>/);
-  assert.doesNotMatch(endpointCell, /settings\?\.realtime|REALTIME_PROTOCOL_CLASSES/);
+  assert.match(endpointCell, /getChannelRelayProtocols\(channel\.defaultEndpoints, channel\.endpoints, channel\.settings\?\.realtime\?\.enabled\)/);
+  assert.doesNotMatch(endpointCell, /REALTIME_PROTOCOL_CLASSES|apiFormat\.formats/);
 });
 
 test('Realtime handshake timeout displays the server default unless the channel has an override', () => {
@@ -122,6 +123,10 @@ test('Realtime handshake timeout uses an info tooltip with localized default gui
   const actionDialog = readFileSync(new URL('../components/channels-action-dialog.tsx', import.meta.url), 'utf8');
   const timeoutRow = actionDialog.match(/data-testid='channel-realtime-timeout'>([\s\S]*?)<\/FormItem>/)?.[1];
   assert.ok(timeoutRow, 'Realtime handshake timeout row should exist');
+  assert.ok(
+    actionDialog.indexOf("t('channels.dialogs.responseTimeout.label')") < actionDialog.indexOf("data-testid='channel-realtime-timeout'"),
+    'Realtime handshake timeout should follow response timeout settings'
+  );
   assert.match(timeoutRow, /md:justify-start/);
   assert.match(timeoutRow, /aria-label=\{t\('channels\.endpoints\.realtime\.handshakeTimeoutHint'\)\}/);
   assert.match(timeoutRow, /<p>\{t\('channels\.endpoints\.realtime\.handshakeTimeoutHint'\)\}<\/p>/);

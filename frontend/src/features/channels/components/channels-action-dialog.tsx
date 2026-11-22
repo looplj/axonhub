@@ -2905,37 +2905,6 @@ export function ChannelsActionDialog({
                         }}
                       />
 
-                      {isRealtimeProtocol(selectedApiFormat) && (
-                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8' data-testid='channel-realtime-timeout'>
-                          <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
-                            <FormLabel className='font-medium'>{t('channels.endpoints.realtime.handshakeTimeout')}</FormLabel>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type='button'
-                                  className='text-muted-foreground hover:text-foreground inline-flex items-center'
-                                  aria-label={t('channels.endpoints.realtime.handshakeTimeoutHint')}
-                                >
-                                  <Info className='h-3.5 w-3.5' />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent className='max-w-sm'>
-                                <p>{t('channels.endpoints.realtime.handshakeTimeoutHint')}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </div>
-                          <div className='space-y-1 md:col-span-6'>
-                            <Input
-                              type='number'
-                              min={1000}
-                              max={60000}
-                              value={realtimeTimeout}
-                              onChange={(event) => setRealtimeTimeout(event.target.value)}
-                            />
-                          </div>
-                        </FormItem>
-                      )}
-
                       {isGeminiVertex && (
                         <FormField
                           control={form.control}
@@ -3804,6 +3773,37 @@ export function ChannelsActionDialog({
                           )}
                         </div>
                       </FormItem>
+
+                      {isRealtimeProtocol(selectedApiFormat) && (
+                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8' data-testid='channel-realtime-timeout'>
+                          <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
+                            <FormLabel className='font-medium'>{t('channels.endpoints.realtime.handshakeTimeout')}</FormLabel>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type='button'
+                                  className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                  aria-label={t('channels.endpoints.realtime.handshakeTimeoutHint')}
+                                >
+                                  <Info className='h-3.5 w-3.5' />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className='max-w-sm'>
+                                <p>{t('channels.endpoints.realtime.handshakeTimeoutHint')}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <div className='space-y-1 md:col-span-6'>
+                            <Input
+                              type='number'
+                              min={1000}
+                              max={60000}
+                              value={realtimeTimeout}
+                              onChange={(event) => setRealtimeTimeout(event.target.value)}
+                            />
+                          </div>
+                        </FormItem>
+                      )}
 
                       <FormField
                         control={form.control}

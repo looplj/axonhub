@@ -766,8 +766,8 @@ const RELAY_PROTOCOL_ACTIVE_CLASSES: Record<RelayProtocol, string> = {
 const EndpointProtocolsCell = memo(({ channel }: { channel: Channel }) => {
   const { t } = useTranslation();
   const protocols = useMemo(
-    () => getChannelRelayProtocols(channel.defaultEndpoints, channel.endpoints),
-    [channel.defaultEndpoints, channel.endpoints]
+    () => getChannelRelayProtocols(channel.defaultEndpoints, channel.endpoints, channel.settings?.realtime?.enabled),
+    [channel.defaultEndpoints, channel.endpoints, channel.settings?.realtime?.enabled]
   );
 
   return (
@@ -1055,7 +1055,7 @@ export const createColumns = (
     },
     {
       id: 'endpointProtocols',
-      accessorFn: (row) => Array.from(getChannelRelayProtocols(row.defaultEndpoints, row.endpoints)).join(','),
+      accessorFn: (row) => Array.from(getChannelRelayProtocols(row.defaultEndpoints, row.endpoints, row.settings?.realtime?.enabled)).join(','),
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('channels.columns.endpointProtocols')} className='justify-center' />
       ),

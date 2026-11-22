@@ -28,6 +28,15 @@ test('merges default endpoints and overrides without duplicates', () => {
   assert.deepEqual([...protocols].sort(), ['openai/chat_completions', 'openai/responses']);
 });
 
+test('Realtime-only channels do not report ordinary relay protocols as configured', () => {
+  const protocols = getChannelRelayProtocols(
+    [{ apiFormat: 'openai/chat_completions' }, { apiFormat: 'openai/responses' }],
+    [{ apiFormat: 'anthropic/messages' }],
+    true
+  );
+  assert.deepEqual([...protocols], []);
+});
+
 test('recognizes Gemini contents and ignores embedding formats', () => {
   assert.deepEqual(
     [...getChannelRelayProtocols([{ apiFormat: 'gemini/contents' }, { apiFormat: 'gemini/embeddings' }], null)],
