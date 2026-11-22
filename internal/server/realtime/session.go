@@ -21,9 +21,12 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"regexp"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -43,7 +46,10 @@ var ErrAccountingUnavailable = errors.New("realtime accounting unavailable")
 var (
 	ErrInvalidEvent = errors.New("unsupported or invalid realtime event")
 	ErrBackpressure = errors.New("realtime send queue exhausted")
+	ErrIdleTimeout  = errors.New("realtime session idle timeout")
 )
+
+var base64CloseCause = regexp.MustCompile(`[A-Za-z0-9+/_-]{24,}={0,2}`)
 
 const MaxMessageBytes = 256 << 10
 
@@ -257,6 +263,7 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 	}
 	var last atomic.Int64
 	last.Store(time.Now().UnixNano())
+	touchActivity := func() { last.Store(time.Now().UnixNano()) }
 	errs := make(chan error, 4)
 	var wg sync.WaitGroup
 	var closing atomic.Bool
@@ -298,21 +305,25 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 	read := func(conn *websocket.Conn, q *sendQueue, transform func([]byte) ([]byte, error), client bool) func() error {
 		return func() error {
 			conn.SetReadLimit(MaxMessageBytes)
-			if err := conn.SetReadDeadline(time.Now().Add(o.IdleTimeout)); err != nil {
-				return err
-			}
-			conn.SetPongHandler(func(string) error { return conn.SetReadDeadline(time.Now().Add(o.IdleTimeout)) })
+			conn.SetPingHandler(func(payload string) error {
+				touchActivity()
+				return conn.WriteControl(websocket.PongMessage, []byte(payload), time.Now().Add(o.WriteTimeout))
+			})
+			conn.SetPongHandler(func(string) error { touchActivity(); return nil })
 			window := time.Now()
 			events, bytes := 0, 0
 			for {
 				kind, data, err := conn.ReadMessage()
 				if err != nil {
+					if timeout, ok := errors.AsType[net.Error](err); ok && timeout.Timeout() {
+						return ErrIdleTimeout
+					}
 					return err
 				}
 				if client && (closing.Load() || ctx.Err() != nil) {
 					continue // Drain unread input through the peer's Close ACK; avoid TCP RST.
 				}
-				last.Store(time.Now().UnixNano())
+				touchActivity()
 				if client {
 					if time.Since(window) >= time.Second {
 						window = time.Now()
@@ -324,9 +335,6 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 					if events > 256 || bytes > 2<<20 {
 						return errors.New("realtime client data rate exceeded")
 					}
-				}
-				if err := conn.SetReadDeadline(time.Now().Add(o.IdleTimeout)); err != nil {
-					return err
 				}
 				if kind != websocket.TextMessage {
 					if !client {
@@ -448,7 +456,7 @@ loop:
 			break loop
 		case <-tick.C:
 			if time.Since(time.Unix(0, last.Load())) > o.IdleTimeout {
-				result = errors.New("realtime session idle timeout")
+				result = ErrIdleTimeout
 				break loop
 			}
 			if hooks.Check != nil {
@@ -591,7 +599,7 @@ func (e *SessionError) Error() string { return "realtime " + e.Side + " session 
 func (e *SessionError) Unwrap() error { return e.Cause }
 
 func IsAbnormal(err error) bool {
-	if err == nil || errors.Is(err, context.Canceled) {
+	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, ErrIdleTimeout) {
 		return false
 	}
 	var closed *websocket.CloseError
@@ -603,6 +611,9 @@ func IsAbnormal(err error) bool {
 
 // CloseStatus returns only gateway-generated reasons suitable for clients and audit.
 func CloseStatus(err error) (int, string) {
+	if errors.Is(err, ErrIdleTimeout) {
+		return websocket.CloseNormalClosure, "idle_timeout"
+	}
 	if !IsAbnormal(err) {
 		return websocket.CloseNormalClosure, "normal_closure"
 	}
@@ -630,6 +641,9 @@ func CloseStatus(err error) (int, string) {
 }
 
 func safeCloseCause(err error) string {
+	if err == nil {
+		return ""
+	}
 	if closed, ok := errors.AsType[*websocket.CloseError](err); ok {
 		return fmt.Sprintf("websocket close code %d", closed.Code)
 	}
@@ -645,5 +659,16 @@ func safeCloseCause(err error) string {
 		"realtime configuration acknowledgement timed out", "translation configuration acknowledgement timed out":
 		return err.Error()
 	}
-	return fmt.Sprintf("%T", err)
+	message := strings.Map(func(r rune) rune {
+		if r == '\n' || r == '\r' || unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, err.Error())
+	message = base64CloseCause.ReplaceAllString(message, "[redacted-base64]")
+	runes := []rune(message)
+	if len(runes) > 200 {
+		return string(runes[:199]) + "…"
+	}
+	return message
 }

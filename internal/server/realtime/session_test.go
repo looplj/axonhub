@@ -8,6 +8,7 @@ package realtime
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -142,6 +143,84 @@ func TestSessionInternalErrorCloseFrame(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("internal error close did not finish")
 	}
+}
+
+func TestSessionIdleTimeoutClosesWithNormalStatusAndReason(t *testing.T) {
+	client, downstream := socketPair(t)
+	upstream, _ := socketPair(t)
+	done := make(chan error, 1)
+	go runSessionForTest(t, done, func() error {
+		return Run(context.Background(), downstream, upstream, Options{IdleTimeout: 50 * time.Millisecond, PingInterval: time.Minute}, Hooks{})
+	})
+
+	require.NoError(t, client.SetReadDeadline(time.Now().Add(2*time.Second)))
+	_, _, err := client.ReadMessage()
+	var closed *websocket.CloseError
+	require.ErrorAs(t, err, &closed)
+	require.Equal(t, websocket.CloseNormalClosure, closed.Code)
+	require.Equal(t, "idle_timeout", closed.Text)
+	select {
+	case err := <-done:
+		require.ErrorIs(t, err, ErrIdleTimeout)
+	case <-time.After(time.Second):
+		t.Fatal("idle session did not terminate")
+	}
+}
+
+func TestSessionClientPingCountsAsIdleActivity(t *testing.T) {
+	client, downstream := socketPair(t)
+	upstream, _ := socketPair(t)
+	done := make(chan error, 1)
+	go runSessionForTest(t, done, func() error {
+		return Run(context.Background(), downstream, upstream, Options{IdleTimeout: 1100 * time.Millisecond, PingInterval: time.Minute}, Hooks{})
+	})
+
+	stopPings := make(chan struct{})
+	pingsDone := make(chan struct{})
+	go func() {
+		defer close(pingsDone)
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stopPings:
+				return
+			case <-ticker.C:
+				if err := client.WriteControl(websocket.PingMessage, []byte("client-activity"), time.Now().Add(time.Second)); err != nil {
+					return
+				}
+			}
+		}
+	}()
+	select {
+	case err := <-done:
+		t.Fatalf("client ping activity did not keep the session alive: %v", err)
+	case <-time.After(2200 * time.Millisecond):
+	}
+	close(stopPings)
+	<-pingsDone
+
+	require.NoError(t, client.SetReadDeadline(time.Now().Add(4*time.Second)))
+	_, _, err := client.ReadMessage()
+	var closed *websocket.CloseError
+	require.ErrorAs(t, err, &closed)
+	require.Equal(t, websocket.CloseNormalClosure, closed.Code)
+	require.Equal(t, "idle_timeout", closed.Text)
+	select {
+	case err := <-done:
+		require.ErrorIs(t, err, ErrIdleTimeout)
+	case <-time.After(time.Second):
+		t.Fatal("idle session did not close after pings stopped")
+	}
+}
+
+func TestSafeCloseCauseSanitizesAndBoundsUnknownErrors(t *testing.T) {
+	encoded := strings.Repeat("QUJD", 80)
+	message := safeCloseCause(errors.New("provider failure\nresponse=" + encoded))
+	require.Contains(t, message, "provider failure")
+	require.NotContains(t, message, "\n")
+	require.NotContains(t, message, encoded)
+	require.LessOrEqual(t, len([]rune(message)), 200)
 }
 
 func socketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
