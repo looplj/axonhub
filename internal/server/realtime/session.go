@@ -431,8 +431,7 @@ loop:
 	}
 	if IsAbnormal(result) {
 		cause := result
-		var side *SessionError
-		if errors.As(result, &side) {
+		if side, ok := errors.AsType[*SessionError](result); ok {
 			cause = side.Cause
 		}
 		// Provider close text and arbitrary nested errors can contain wire data.
@@ -564,8 +563,7 @@ func CloseStatus(err error) (int, string) {
 }
 
 func safeCloseCause(err error) string {
-	var closed *websocket.CloseError
-	if errors.As(err, &closed) {
+	if closed, ok := errors.AsType[*websocket.CloseError](err); ok {
 		return fmt.Sprintf("websocket close code %d", closed.Code)
 	}
 	for _, safe := range []error{ErrInvalidEvent, ErrAccountingUnavailable, ErrQuotaExceeded, ErrBackpressure, io.EOF, context.DeadlineExceeded} {

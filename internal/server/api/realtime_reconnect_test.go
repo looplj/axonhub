@@ -556,7 +556,7 @@ func TestRealtimeHTTPDisconnectedInputStoresSessionAuditWithoutUsage(t *testing.
 
 func TestRealtimeHTTPUpstreamHandshakeFailureIsAuditedWithoutHoldingLease(t *testing.T) {
 	db, dial, peak, _ := newRealtimeHTTPFixtureOptions(t, 0, false, true, true)
-	for attempt := 0; attempt < 2; attempt++ {
+	for range 2 {
 		conn, response, err := dial()
 		if conn != nil {
 			conn.Close()
