@@ -379,7 +379,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	if accountID != "" {
 		hreq.Headers.Set("Chatgpt-Account-Id", accountID)
-		if t.isOfficialCodex() && reqCopy.Model == autoReviewModel && reqCopy.RequestType != llm.RequestTypeCompact {
+		if t.isOfficialCodex() && reqCopy.Model == AutoReviewModel && reqCopy.RequestType != llm.RequestTypeCompact {
 			hreq.Headers.Set("X-Codex-Guardian", "reviewer")
 			hreq.Headers.Set("X-Openai-Subagent", "guardian")
 		}

@@ -1,6 +1,7 @@
 package codex
 
-const autoReviewModel = "codex-auto-review"
+// AutoReviewModel is the Codex subscription approval reviewer.
+const AutoReviewModel = "codex-auto-review"
 
 var codexImageModels = []string{
 	"gpt-image-2",
@@ -23,7 +24,7 @@ func DefaultModels() []string {
 		"gpt-6-sol",
 		"gpt-6-luna",
 		"gpt-6.1-sol",
-		autoReviewModel,
+		AutoReviewModel,
 	}
 	return append(models, codexImageModels...)
 }

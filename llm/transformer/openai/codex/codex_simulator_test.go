@@ -78,10 +78,10 @@ func TestCodexOutbound_GuardianHeaders(t *testing.T) {
 		model        string
 		wantGuardian bool
 	}{
-		{name: "subscription review", accessToken: testAccessTokenWithAccountID(t), model: autoReviewModel, wantGuardian: true},
+		{name: "subscription review", accessToken: testAccessTokenWithAccountID(t), model: AutoReviewModel, wantGuardian: true},
 		{name: "subscription chat", accessToken: testAccessTokenWithAccountID(t), model: "gpt-6-luna"},
-		{name: "API key", accessToken: "sk-test", model: autoReviewModel},
-		{name: "compatible relay", baseURL: "https://relay.example/v1", accessToken: testAccessTokenWithAccountID(t), model: autoReviewModel},
+		{name: "API key", accessToken: "sk-test", model: AutoReviewModel},
+		{name: "compatible relay", baseURL: "https://relay.example/v1", accessToken: testAccessTokenWithAccountID(t), model: AutoReviewModel},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outbound, err := NewOutboundTransformer(Params{

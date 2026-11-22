@@ -30,7 +30,7 @@ func newSafeguardsClassifier(parent *orchestrator.ChatCompletionOrchestrator) sa
 // choice ending with stop is accepted; verdict JSON validation happens later.
 func safeguardsClassifierWithProcess(process func(context.Context, *httpclient.Request) (orchestrator.ChatCompletionResult, error)) safeguards.ClassifierFunc {
 	return func(ctx context.Context, req safeguards.ClassifierRequest) (string, error) {
-		ctx = contexts.ForkRequest(ctx)
+		ctx = orchestrator.WithSafeguardsReview(contexts.ForkRequest(ctx))
 		id := tracing.GenerateRequestID()
 		ctx = contexts.WithRequestID(ctx, id)
 		ctx = contexts.WithOperationName(ctx, "safeguards-classifier")
