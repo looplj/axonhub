@@ -65,6 +65,10 @@ func newRealtimeHTTPFixture(t *testing.T, maxDuration time.Duration, translation
 }
 
 func newRealtimeHTTPFixtureWithPrice(t *testing.T, maxDuration time.Duration, translation, withPrice bool, configureKey ...func(*ent.APIKeyCreate)) (*ent.Client, func() (*websocket.Conn, *http.Response, error), *atomic.Int32, <-chan struct{}) {
+	return newRealtimeHTTPFixtureOptions(t, maxDuration, translation, withPrice, false, configureKey...)
+}
+
+func newRealtimeHTTPFixtureOptions(t *testing.T, maxDuration time.Duration, translation, withPrice, handshakeFailure bool, configureKey ...func(*ent.APIKeyCreate)) (*ent.Client, func() (*websocket.Conn, *http.Response, error), *atomic.Int32, <-chan struct{}) {
 	t.Helper()
 	db := enttest.NewEntClient(t, "sqlite3", "file:"+t.Name()+"?mode=memory&_fk=1")
 	t.Cleanup(func() { _ = db.Close() })
@@ -111,6 +115,10 @@ func newRealtimeHTTPFixtureWithPrice(t *testing.T, maxDuration time.Duration, tr
 	var active, peak atomic.Int32
 	observed := make(chan struct{}, 1)
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if handshakeFailure {
+			http.Error(w, "synthetic upstream unavailable", http.StatusServiceUnavailable)
+			return
+		}
 		c, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
 		if err != nil {
 			return
@@ -299,7 +307,7 @@ func TestRealtimeHTTPImmediateReconnectWhileDisconnectDetectionIsPending(t *test
 }
 
 func TestRealtimeHTTPLiveConcurrentSessionStillRejected(t *testing.T) {
-	_, dial, peak, _ := newRealtimeReconnectFixture(t)
+	db, dial, peak, _ := newRealtimeReconnectFixture(t)
 	first, _, err := dial()
 	require.NoError(t, err)
 	defer first.Close()
@@ -317,6 +325,20 @@ func TestRealtimeHTTPLiveConcurrentSessionStillRejected(t *testing.T) {
 	require.Equal(t, "rate_limit_exceeded", gjson.GetBytes(body, "error.code").String())
 	require.Contains(t, gjson.GetBytes(body, "error.message").String(), "API key connections")
 	require.Equal(t, int32(1), peak.Load(), "reconnect grace must not bypass concurrency")
+
+	seed := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	denied := db.Request.Query().Where(request.StatusEQ(request.StatusFailed)).OnlyX(seed)
+	require.Equal(t, "openai/realtime", denied.Format)
+	require.Equal(t, "admission_denied", gjson.GetBytes(denied.ResponseBody, "error.error_code").String())
+	require.Equal(t, "admission_denied", gjson.GetBytes(denied.RequestBody, "realtime.close_reason").String())
+	require.NotNil(t, denied.MetricsLatencyMs)
+	require.Zero(t, db.UsageLog.Query().CountX(seed), "denied admissions must not create usage or affect quotas")
+
+	first.Close()
+	reconnected, reconnectResponse, reconnectErr := dial()
+	require.NoError(t, reconnectErr, "an audit row for a denied attempt must not retain an admission lease")
+	require.Equal(t, http.StatusSwitchingProtocols, reconnectResponse.StatusCode)
+	reconnected.Close()
 }
 
 func TestRealtimeHTTPFailedRequestWithConfirmedUsageStillEnforcesQuota(t *testing.T) {
@@ -530,6 +552,31 @@ func TestRealtimeHTTPDisconnectedInputStoresSessionAuditWithoutUsage(t *testing.
 	require.EqualValues(t, 2, gjson.GetBytes(row.RequestBody, "realtime.audio_in_bytes").Int())
 	require.True(t, gjson.GetBytes(row.RequestBody, "realtime.interrupted").Bool())
 	require.Equal(t, 0, db.UsageLog.Query().CountX(ctx))
+}
+
+func TestRealtimeHTTPUpstreamHandshakeFailureIsAuditedWithoutHoldingLease(t *testing.T) {
+	db, dial, peak, _ := newRealtimeHTTPFixtureOptions(t, 0, false, true, true)
+	for attempt := 0; attempt < 2; attempt++ {
+		conn, response, err := dial()
+		if conn != nil {
+			conn.Close()
+		}
+		require.Error(t, err)
+		require.NotNil(t, response)
+		require.Equal(t, http.StatusBadGateway, response.StatusCode, "a previous handshake audit must not turn reconnect into 429")
+		response.Body.Close()
+	}
+	seed := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	rows := db.Request.Query().Where(request.StatusEQ(request.StatusFailed)).AllX(seed)
+	require.Len(t, rows, 2)
+	for _, row := range rows {
+		require.Equal(t, "upstream_handshake_failed", gjson.GetBytes(row.ResponseBody, "error.error_code").String())
+		require.Equal(t, "upstream_handshake_failed", gjson.GetBytes(row.RequestBody, "realtime.close_reason").String())
+		require.True(t, gjson.GetBytes(row.RequestBody, "realtime.close_code").Type == gjson.Null)
+		require.NotNil(t, row.MetricsLatencyMs)
+	}
+	require.Zero(t, db.UsageLog.Query().CountX(seed), "handshake failures do not create billable usage")
+	require.Zero(t, peak.Load())
 }
 
 func TestRealtimeHTTPUnpricedOpenAIRecordsUsageWithoutCost(t *testing.T) {

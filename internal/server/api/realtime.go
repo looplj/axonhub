@@ -254,6 +254,7 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 		project, _ := contexts.GetProjectID(ctx)
 		target.SessionID = "rt-session-" + uuid.NewString()
 		target.UserAgent = realtimeClientLabel(c.Request)
+		attemptStarted := time.Now()
 		release, err := limiter.AcquireForReconnect(ctx, target.APIKey.ID, project, target.Channel.ID, target.SessionID)
 		if err != nil {
 			metrics.Metrics.RealtimeEvent(ctx, "admission_rejected")
@@ -261,9 +262,11 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 				JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime admission unavailable"))
 				return
 			}
+			message := err.Error()
+			h.recordConnectionFailure(ctx, target, "admission_denied", message, attemptStarted)
 			log.Info(ctx, "realtime admission rejected", log.String("error_code", "admission_denied"), log.Int("channel_id", target.Channel.ID))
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": gin.H{
-				"type": "rate_limit_exceeded", "code": "rate_limit_exceeded", "message": err.Error(),
+				"type": "rate_limit_exceeded", "code": "rate_limit_exceeded", "message": message,
 			}})
 			return
 		}
@@ -288,8 +291,11 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 			if handshake, ok := errors.AsType[*rt.HandshakeError](err); ok {
 				status = handshake.Status
 			}
+			release()
+			message := "Realtime upstream handshake or configuration failed"
+			h.recordConnectionFailure(ctx, target, "upstream_handshake_failed", message, attemptStarted)
 			log.Warn(ctx, "realtime upstream establishment failed", log.String("error_code", "upstream_handshake_failed"), log.Int("channel_id", target.Channel.ID), log.Int("upstream_status", status))
-			JSONError(c, http.StatusBadGateway, errors.New("Realtime upstream handshake or configuration failed"))
+			JSONError(c, http.StatusBadGateway, errors.New(message))
 			return
 		}
 		defer conversation.PersistSessionMetadata()
@@ -366,6 +372,29 @@ func (h *RealtimeHandlers) trackSession(cancel context.CancelFunc) (func(), erro
 			}
 		})
 	}, nil
+}
+
+func (h *RealtimeHandlers) recordConnectionFailure(ctx context.Context, target *orchestrator.RealtimeTarget, code, message string, started time.Time) {
+	auditCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+	defer cancel()
+	metadata := map[string]any{
+		"model": target.ClientModel,
+		"realtime": map[string]any{
+			"interrupted": false, "close_code": nil, "close_reason": code, "turns": 0,
+			"audio_in_bytes": int64(0), "audio_out_bytes": int64(0),
+			"first_audio_latency_ms": nil,
+		},
+		"channel_id":      target.Channel.ID,
+		"upstream_model":  target.Model,
+		"upstream_format": target.APIFormat,
+		"native_qwen":     target.Native,
+	}
+	if err := h.service.Requests.RecordRealtimeConnectionFailure(
+		auditCtx, target.ClientModel, target.Channel.ID, target.SessionID,
+		metadata, code, message, time.Since(started).Milliseconds(), target.UserAgent,
+	); err != nil {
+		log.Warn(auditCtx, "realtime connection failure audit unavailable", log.String("error_code", code))
+	}
 }
 
 func realtimeClientLabel(r *http.Request) string {

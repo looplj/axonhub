@@ -378,7 +378,11 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
               </p>
             )}
             <JsonViewer
-              data={{ ...realtimeSession, error_code: request.responseBody?.error_code ?? undefined }}
+              data={{
+                ...realtimeSession,
+                error_code: request.responseBody?.error_code ?? undefined,
+                error: request.responseBody?.error ?? undefined,
+              }}
               rootName=''
               defaultExpanded={true}
               className='text-sm'

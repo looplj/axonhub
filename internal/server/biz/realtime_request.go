@@ -43,6 +43,61 @@ func (s *RequestService) CreateRealtimeRequest(ctx context.Context, model string
 	return create.Save(ctx)
 }
 
+// RecordRealtimeConnectionFailure stores an admission or upstream handshake
+// failure as an audit row without creating usage or changing quota accounting.
+func (s *RequestService) RecordRealtimeConnectionFailure(
+	ctx context.Context,
+	model string,
+	channelID int,
+	sessionID string,
+	requestMetadata map[string]any,
+	errorCode string,
+	message string,
+	latencyMs int64,
+	userAgent string,
+) error {
+	key, ok := contexts.GetAPIKey(ctx)
+	if !ok || key == nil {
+		return errors.New("realtime audit requires an API key")
+	}
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok {
+		return errors.New("realtime audit requires a project")
+	}
+	requestBody, err := json.Marshal(requestMetadata)
+	if err != nil {
+		return err
+	}
+	responseBody, err := json.Marshal(map[string]any{
+		"error": map[string]string{"error_code": errorCode, "message": message},
+	})
+	if err != nil {
+		return err
+	}
+	req, err := s.entFromContext(ctx).Request.Create().
+		SetProjectID(projectID).
+		SetAPIKeyID(key.ID).
+		SetModelID(model).
+		SetChannelID(channelID).
+		SetFormat(llm.APIFormatOpenAIRealtime.String()).
+		SetStatus(request.StatusFailed).
+		SetSource(request.SourceAPI).
+		SetStream(true).
+		SetExternalID(sessionID).
+		SetRequestBody(requestBody).
+		SetResponseBody(responseBody).
+		SetMetricsLatencyMs(latencyMs).
+		SetUserAgent(userAgent).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	metricRequest := *req
+	metricRequest.Status = request.StatusProcessing
+	s.recordChatRequestMetrics(ctx, &metricRequest, request.StatusFailed, &LatencyMetrics{LatencyMs: &latencyMs})
+	return nil
+}
+
 // UpdateRealtimeAudit persists gateway-generated accounting metadata independently
 // of the policy for storing response content. Callers must never pass media or conversation payloads.
 func (s *RequestService) UpdateRealtimeAudit(ctx context.Context, req *ent.Request, status request.Status, externalID string, metadata any, latency *LatencyMetrics, _ http.Header) error {
