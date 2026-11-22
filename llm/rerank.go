@@ -1,5 +1,7 @@
 package llm
 
+import "encoding/json"
+
 // RerankRequest represents a rerank request.
 // Note: Common fields like Model are in the parent Request struct, not here.
 type RerankRequest struct {
@@ -14,6 +16,10 @@ type RerankRequest struct {
 
 	// ReturnDocuments is a flag to indicate whether to return the original documents in the response. Optional.
 	ReturnDocuments *bool `json:"return_documents,omitempty"`
+
+	// NativeBody preserves the same-format request when query or documents
+	// uses the extended scoring input instead of the legacy text fields.
+	NativeBody map[string]json.RawMessage `json:"native_body,omitempty"`
 }
 
 // RerankResponse represents the response from a rerank request.
@@ -34,10 +40,11 @@ type RerankResult struct {
 	// RelevanceScore is the relevance score of the document to the query.
 	RelevanceScore float64 `json:"relevance_score"`
 
-	// Document is the original document text (optional, can be omitted to save bandwidth).
+	// Document is the original document, when returned by the upstream.
 	Document *RerankDocument `json:"document,omitempty"`
 }
 
 type RerankDocument struct {
-	Text string `json:"text"`
+	Text       string            `json:"text"`
+	MultiModal []json.RawMessage `json:"multi_modal,omitempty"`
 }

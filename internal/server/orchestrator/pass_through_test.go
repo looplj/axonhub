@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -24,6 +25,7 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
+	"github.com/looplj/axonhub/llm/transformer/jina"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	responsestransformer "github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
@@ -2292,6 +2294,36 @@ func TestApplyPassThroughBodyPreservesMappedModelForJinaRerank(t *testing.T) {
 	require.Equal(t, "Qwen/Qwen3-Reranker-8B", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, float64(2), gjson.GetBytes(processed.Body, "top_n").Float())
 	require.Equal(t, "Qwen-3-Rerank-8B", gjson.GetBytes(outbound.state.LlmRequest.RawRequest.Body, "model").String())
+}
+
+func TestMultimodalRerankKeepsMappedBodyWithPassThrough(t *testing.T) {
+	t.Parallel()
+	const original = `{"model":"first","model":"alias","query":"find a square","documents":[{"content":[{"type":"text","text":"red"}]}]}`
+	const effective = `[{"content":[{"type":"text","text":"red"},{"type":"image_url","image_url":{"url":"https://example.com/square.png"}}]}]`
+	for _, passThrough := range []bool{false, true} {
+		t.Run(fmt.Sprintf("pass through %t", passThrough), func(t *testing.T) {
+			req, err := jina.NewRerankInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{Body: []byte(original)})
+			require.NoError(t, err)
+			require.Equal(t, "alias", req.Model)
+			req.Model = "qwen3-vl-reranker-8b"
+			req.Rerank.NativeBody["documents"] = []byte(effective)
+			adapter, err := jina.NewOutboundTransformer("https://example.com", "key")
+			require.NoError(t, err)
+			outbound := &PersistentOutboundTransformer{wrapped: adapter, state: &PersistenceState{
+				LlmRequest: req,
+				CurrentCandidate: &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{
+					Settings: &objects.ChannelSettings{PassThroughBody: &passThrough},
+				}}},
+			}}
+			sent, err := adapter.TransformRequest(t.Context(), req)
+			require.NoError(t, err)
+			sent, err = applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(t.Context(), sent)
+			require.NoError(t, err)
+			require.JSONEq(t, `{"model":"qwen3-vl-reranker-8b","query":"find a square","documents":`+effective+`}`, string(sent.Body))
+			require.Equal(t, 1, bytes.Count(sent.Body, []byte(`"model":`)))
+			require.Equal(t, original, string(req.RawRequest.Body))
+		})
+	}
 }
 
 func TestApplyPassThroughBodyPreservesMappedModelForJinaEmbedding(t *testing.T) {
