@@ -89,6 +89,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
               edges {
                 node {
                   id
+                  modelID
                   promptTokens
                   completionTokens
                   completionReasoningTokens

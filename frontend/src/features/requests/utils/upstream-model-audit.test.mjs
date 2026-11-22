@@ -2,7 +2,7 @@ import i18next from 'i18next';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { getExecutionModelAuditVerdict, getRequestModelAuditTooltip, getUpstreamModelAudit } from './upstream-model-audit.ts';
+import { getExecutionModelAuditVerdict, getRealtimeRouteModel, getRequestModelAuditTooltip, getUpstreamModelAudit } from './upstream-model-audit.ts';
 
 const resources = Object.fromEntries(
   ['en', 'zh-CN'].map((locale) => [
@@ -77,6 +77,24 @@ test('request lifecycle takes precedence over model match tooltips', () => {
   for (const status of ['pending', 'processing', 'failed', 'canceled']) {
     const key = status === 'pending' || status === 'processing' ? 'upstreamModelRequestProcessing' : 'upstreamModelRequestFailed';
     assert.equal(getRequestModelAuditTooltip(audit, status, i18n.t), i18n.t('requests.tooltips.' + key));
+  }
+});
+
+test('Realtime request audit uses the recorded routed model while other formats keep execution auditing', () => {
+  assert.equal(getRealtimeRouteModel('openai/realtime', '  gpt-realtime-2.1-mini  '), 'gpt-realtime-2.1-mini');
+  assert.equal(getRealtimeRouteModel('openai/chat_completions', 'gpt-realtime-2.1-mini'), undefined);
+  assert.equal(getRealtimeRouteModel('openai/realtime', '  '), undefined);
+
+  const listQuery = readFileSync(new URL('../data/requests.ts', import.meta.url), 'utf8');
+  const requestColumns = readFileSync(new URL('../components/requests-columns.tsx', import.meta.url), 'utf8');
+  assert.match(listQuery, /usageLogs\(first: 1\)[\s\S]{0,100}modelID/);
+  assert.match(requestColumns, /getRealtimeRouteModel\(request\.format, request\.usageLogs\?\.edges\?\.\[0\]\?\.node\?\.modelID\)/);
+  assert.match(requestColumns, /realtimeRouteModel \? \(/);
+  assert.match(requestColumns, /<IconInfoCircle className='h-3\.5 w-3\.5' \/>/);
+  for (const locale of ['en', 'zh-CN']) {
+    const tooltip = i18n.getFixedT(locale)('requests.tooltips.realtimeRoutedModel', { model: 'gpt-realtime-2.1-mini' });
+    assert.ok(tooltip.includes('gpt-realtime-2.1-mini'));
+    assert.ok(!tooltip.includes('{{'));
   }
 });
 

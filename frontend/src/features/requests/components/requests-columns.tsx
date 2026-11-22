@@ -8,6 +8,7 @@ import {
   IconArrowsJoin2,
   IconCheck,
   IconCoin,
+  IconInfoCircle,
   IconQuestionMark,
   IconRoute,
 } from '@tabler/icons-react';
@@ -33,7 +34,7 @@ import {
   getTokensPerSecondValue,
   getTotalTimeTokensPerSecondValue,
 } from '../utils/tokens-per-second';
-import { getRequestModelAuditTooltip, getUpstreamModelAudit } from '../utils/upstream-model-audit';
+import { getRealtimeRouteModel, getRequestModelAuditTooltip, getUpstreamModelAudit } from '../utils/upstream-model-audit';
 import { useMetricColorSettings } from '../utils/use-metric-colors';
 import { getStatusColor } from './help';
 
@@ -187,6 +188,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const request = row.original;
         const originalModelId = request.modelID || t('requests.columns.unknown');
         const executions = request.executions?.edges?.flatMap((edge) => (edge.node ? [edge.node] : [])) ?? [];
+        const realtimeRouteModel = getRealtimeRouteModel(request.format, request.usageLogs?.edges?.[0]?.node?.modelID);
         const executionModelIds = Array.from(new Set(executions.map((exe) => exe.modelID || ''))).filter(
           (id) => id && id !== originalModelId
         );
@@ -199,12 +201,16 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
           ? 'text-sky-600 dark:text-sky-400 motion-safe:animate-pulse'
           : requestFailed
             ? 'text-red-600 dark:text-red-400'
-            : modelAudit.status === 'unknown'
-              ? 'text-amber-600 dark:text-amber-400'
-              : upstreamModelMatches
-                ? 'text-emerald-700 dark:text-emerald-300'
-                : 'text-red-700 dark:text-red-400';
-        const upstreamModelAuditTooltip = getRequestModelAuditTooltip(modelAudit, request.status, t);
+            : realtimeRouteModel
+              ? 'text-sky-600 dark:text-sky-400'
+              : modelAudit.status === 'unknown'
+                ? 'text-amber-600 dark:text-amber-400'
+                : upstreamModelMatches
+                  ? 'text-emerald-700 dark:text-emerald-300'
+                  : 'text-red-700 dark:text-red-400';
+        const upstreamModelAuditTooltip = realtimeRouteModel
+          ? t('requests.tooltips.realtimeRoutedModel', { model: realtimeRouteModel })
+          : getRequestModelAuditTooltip(modelAudit, request.status, t);
 
         const reasoningEffort = executions[0]?.reasoningEffort ?? request.reasoningEffort;
         const inboundFormat = request.format;
@@ -302,6 +308,8 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                       <IconQuestionMark className='h-3.5 w-3.5' />
                     ) : requestFailed ? (
                       <IconAlertTriangle className='h-3.5 w-3.5' />
+                    ) : realtimeRouteModel ? (
+                      <IconInfoCircle className='h-3.5 w-3.5' />
                     ) : modelAudit.status === 'unknown' ? (
                       <IconQuestionMark className='h-3.5 w-3.5' />
                     ) : upstreamModelMatches ? (
