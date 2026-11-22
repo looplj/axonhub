@@ -16,6 +16,7 @@ import (
 	"github.com/MoeForge/moejs/engine"
 	"go.uber.org/zap"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
@@ -127,6 +128,11 @@ func (h *hostCall) build(config, state, requestJSON, attemptJSON json.RawMessage
 	}
 	if err := h.defineJSONField(ctxObj, "request", requestJSON); err != nil {
 		return moejs.Undefined(), err
+	}
+	if metadata := contexts.GetPluginRequestContext(h.ctx); len(metadata.JSON) != 0 {
+		if err := h.defineJSONField(ctxObj, "requestContext", metadata.JSON); err != nil {
+			return moejs.Undefined(), err
+		}
 	}
 	if err := h.defineJSONField(ctxObj, "attempt", attemptJSON); err != nil {
 		return moejs.Undefined(), err

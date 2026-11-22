@@ -72,6 +72,11 @@ func requiredExports(manifest *objects.PluginManifest) []string {
 	if manifest.Hooks != nil && manifest.Hooks.Attempt.IsEnabled() {
 		required = append(required, "onAttempt")
 	}
+	if manifest.Server != nil {
+		for _, entry := range manifest.Server.Middleware {
+			required = append(required, entry.Handler)
+		}
+	}
 	return required
 }
 

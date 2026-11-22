@@ -140,9 +140,10 @@ type Manager struct {
 	extract         func(data []byte, dest string) ([]string, error)
 	// compileModule, when set, replaces compileContents for a package that
 	// contains plugin.js. Tests count calls and inject failures.
-	compileModule func(data []byte) (*moejs.Module, error)
-	forceNext     atomic.Bool
-	packageReads  atomic.Int64
+	compileModule    func(data []byte) (*moejs.Module, error)
+	forceNext        atomic.Bool
+	packageReads     atomic.Int64
+	serverMiddleware atomic.Pointer[Generation]
 
 	refreshMu   sync.Mutex
 	resourcesMu sync.Mutex
@@ -346,6 +347,7 @@ func (m *Manager) Stop(ctx context.Context) error {
 func (m *Manager) stop(ctx context.Context) error {
 	m.callsMu.Lock()
 	m.stopping = true
+	m.serverMiddleware.Store(nil)
 	m.callsMu.Unlock()
 	if m.dispatcher != nil {
 		m.dispatcher.close()
@@ -814,6 +816,15 @@ func (m *Manager) refresh(ctx context.Context, current *Generation, _ time.Time)
 }
 
 func (m *Manager) onSwap(old, next *Generation) {
+	m.callsMu.Lock()
+	if !m.stopping {
+		if next != nil && len(next.serverMiddleware) != 0 {
+			m.serverMiddleware.Store(next)
+		} else {
+			m.serverMiddleware.Store(nil)
+		}
+	}
+	m.callsMu.Unlock()
 	if old != nil && old != next {
 		m.retire(old)
 	}
@@ -1178,12 +1189,13 @@ func enabledIDs(gen *Generation) map[string]bool {
 // Generation is an immutable snapshot of installed plugins, sorted by priority.
 // A retired generation accepts no new calls. An acquired call runs to completion.
 type Generation struct {
-	manager     *Manager
-	plugins     []*LoadedPlugin
-	byID        map[int]*LoadedPlugin
-	byPluginID  map[string]*LoadedPlugin
-	fingerprint dbFingerprint
-	holds       []*pluginResource
+	manager          *Manager
+	plugins          []*LoadedPlugin
+	byID             map[int]*LoadedPlugin
+	byPluginID       map[string]*LoadedPlugin
+	fingerprint      dbFingerprint
+	holds            []*pluginResource
+	serverMiddleware []serverMiddlewareHandler
 
 	mu       sync.Mutex
 	refs     int
@@ -1202,6 +1214,11 @@ func newGeneration(manager *Manager, plugins []*LoadedPlugin) *Generation {
 		item.generation = gen
 		gen.byID[item.ID] = item
 		gen.byPluginID[item.PluginID] = item
+		if item.Status == RuntimeStatusActive && item.Manifest.Server != nil && item.resource != nil {
+			for _, entry := range item.Manifest.Server.Middleware {
+				gen.serverMiddleware = append(gen.serverMiddleware, serverMiddlewareHandler{plugin: item, export: entry.Handler})
+			}
+		}
 	}
 	return gen
 }

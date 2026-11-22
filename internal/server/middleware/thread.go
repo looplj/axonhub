@@ -21,6 +21,9 @@ func WithThread(config tracing.Config, threadService *biz.ThreadService) gin.Han
 	return func(c *gin.Context) {
 		threadID := c.GetHeader(threadHeader)
 		if threadID == "" {
+			threadID = contexts.GetPluginRequestContext(c.Request.Context()).ThreadID
+		}
+		if threadID == "" {
 			c.Next()
 			return
 		}

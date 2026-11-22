@@ -166,10 +166,29 @@ func DiffManifest(old, next *objects.PluginManifest) ManifestDiff {
 		Permissions: addedStrings(next.Permissions, old.Permissions),
 		Network:     addedStrings(next.NetworkGrants(), old.NetworkGrants()),
 		Events:      addedStrings(next.Events, old.Events),
-		Hooks:       addedHooks(old.Hooks, next.Hooks),
+		Hooks:       append(addedHooks(old.Hooks, next.Hooks), addedServerMiddleware(old.Server, next.Server)...),
 		Pages:       addedStrings(pageKeys(next.UI), pageKeys(old.UI)),
 		Actions:     addedActions(old.UI, next.UI),
 	}
+}
+
+func addedServerMiddleware(old, next *objects.PluginServerSpec) []string {
+	if next == nil {
+		return nil
+	}
+	existing := make(map[string]struct{})
+	if old != nil {
+		for _, entry := range old.Middleware {
+			existing[entry.Handler] = struct{}{}
+		}
+	}
+	var added []string
+	for _, entry := range next.Middleware {
+		if _, ok := existing[entry.Handler]; !ok {
+			added = append(added, "server.middleware: "+entry.Handler)
+		}
+	}
+	return added
 }
 
 // ConvergePermissions applies the upgrade grant rule.
