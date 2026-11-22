@@ -16,6 +16,7 @@ import (
 	"github.com/MoeForge/moejs/engine"
 	"go.uber.org/zap"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
@@ -70,15 +71,15 @@ func (e *requestRejectedError) Error() string {
 	return e.message
 }
 
-func (h *hostCall) build(config, state, requestJSON, attemptJSON json.RawMessage, allowReject bool) (moejs.Value, error) {
-	configValue, err := h.rt.ParseJSON(config)
+func (h *hostCall) build(in callExportInput) (moejs.Value, error) {
+	configValue, err := h.rt.ParseJSON(in.config)
 	if err != nil {
 		return moejs.Undefined(), err
 	}
 	if err := deepFreeze(h.rt, configValue); err != nil {
 		return moejs.Undefined(), err
 	}
-	stateValue, err := h.rt.ParseJSON(state)
+	stateValue, err := h.rt.ParseJSON(in.state)
 	if err != nil {
 		return moejs.Undefined(), err
 	}
@@ -125,13 +126,20 @@ func (h *hostCall) build(config, state, requestJSON, attemptJSON json.RawMessage
 	if err := defineHostFn(h.rt, ctxObj, "fetch", 1, h.fetch); err != nil {
 		return moejs.Undefined(), err
 	}
-	if err := h.defineJSONField(ctxObj, "request", requestJSON); err != nil {
+	if err := h.defineJSONField(ctxObj, "request", in.requestJSON); err != nil {
 		return moejs.Undefined(), err
 	}
-	if err := h.defineJSONField(ctxObj, "attempt", attemptJSON); err != nil {
+	requestContextJSON := in.requestContextJSON
+	if len(requestContextJSON) == 0 {
+		requestContextJSON = contexts.GetPluginRequestContext(h.ctx).JSON
+	}
+	if err := h.defineJSONField(ctxObj, "requestContext", requestContextJSON); err != nil {
 		return moejs.Undefined(), err
 	}
-	if allowReject {
+	if err := h.defineJSONField(ctxObj, "attempt", in.attemptJSON); err != nil {
+		return moejs.Undefined(), err
+	}
+	if in.allowReject {
 		if err := defineHostFn(h.rt, ctxObj, "reject", 2, h.reject); err != nil {
 			return moejs.Undefined(), err
 		}

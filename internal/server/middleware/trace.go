@@ -96,6 +96,10 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 			traceID = tryExtractTraceIDFromCodexRequest(c)
 		}
 
+		if traceID == "" {
+			traceID = contexts.GetPluginRequestContext(c.Request.Context()).TraceID
+		}
+
 		if traceID == "" && len(config.ExtraTraceBodyFields) > 0 {
 			var err error
 

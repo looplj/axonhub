@@ -45,7 +45,7 @@ var (
 // part of Timeout. ValidateReturn runs after a successful script return and
 // before the success counter. A non-nil error is a call failure.
 // HostRequest and HostAttempt are optional JSON objects placed on ctx.
-// AllowReject adds ctx.reject for onRequest.
+// AllowReject adds ctx.reject for onRequest and server middleware.
 type InvokeRequest struct {
 	InstallationID int
 	Export         string
@@ -59,6 +59,9 @@ type InvokeRequest struct {
 	HostRequest    json.RawMessage
 	HostAttempt    json.RawMessage
 	AllowReject    bool
+
+	serverMiddleware   bool
+	requestContextJSON json.RawMessage
 }
 
 // InvokeResult is a successful call.
@@ -129,7 +132,11 @@ func (m *Manager) Invoke(ctx context.Context, req InvokeRequest) (InvokeResult, 
 	}
 
 	exec := m.execFor(req.InstallationID)
-	if exec.rejectCall(m.nowCall()) {
+	circuit := &exec.circuit
+	if req.serverMiddleware {
+		circuit = exec.serverCircuit(req.Export)
+	}
+	if circuit.rejectCall(m.nowCall()) {
 		return InvokeResult{}, ErrCircuitOpen
 	}
 	borrowCtx := ctx
@@ -150,50 +157,52 @@ func (m *Manager) Invoke(ctx context.Context, req InvokeRequest) (InvokeResult, 
 	defer func() { exec.release(vm, discard) }()
 
 	result, callErr, discard := m.callExport(ctx, vm, callExportInput{
-		pluginID:       loaded.PluginID,
-		installationID: req.InstallationID,
-		export:         req.Export,
-		args:           req.Args,
-		state:          state,
-		config:         config,
-		timeout:        req.Timeout,
-		granted:        loaded.GrantedPermissions,
-		network:        loaded.GrantedNetwork,
-		requestJSON:    req.HostRequest,
-		attemptJSON:    req.HostAttempt,
-		allowReject:    req.AllowReject,
+		pluginID:           loaded.PluginID,
+		installationID:     req.InstallationID,
+		export:             req.Export,
+		args:               req.Args,
+		state:              state,
+		config:             config,
+		timeout:            req.Timeout,
+		granted:            loaded.GrantedPermissions,
+		network:            loaded.GrantedNetwork,
+		requestJSON:        req.HostRequest,
+		attemptJSON:        req.HostAttempt,
+		requestContextJSON: req.requestContextJSON,
+		allowReject:        req.AllowReject,
 	})
 	if callErr != nil {
 		if countsAsCallFailure(callErr) {
-			exec.recordFailure(m.nowCall())
+			circuit.recordFailure(m.nowCall())
 		}
 		return InvokeResult{}, callErr
 	}
 	if req.ValidateReturn != nil {
 		if err := req.ValidateReturn(result.Value); err != nil {
 			if !errors.Is(err, errProtectedRewrite) {
-				exec.recordFailure(m.nowCall())
+				circuit.recordFailure(m.nowCall())
 			}
 			return InvokeResult{}, err
 		}
 	}
-	exec.recordSuccess()
+	circuit.recordSuccess()
 	return result, nil
 }
 
 type callExportInput struct {
-	pluginID       string
-	installationID int
-	export         string
-	args           json.RawMessage
-	state          json.RawMessage
-	config         json.RawMessage
-	timeout        time.Duration
-	granted        []string
-	network        []string
-	requestJSON    json.RawMessage
-	attemptJSON    json.RawMessage
-	allowReject    bool
+	pluginID           string
+	installationID     int
+	export             string
+	args               json.RawMessage
+	state              json.RawMessage
+	config             json.RawMessage
+	timeout            time.Duration
+	granted            []string
+	network            []string
+	requestJSON        json.RawMessage
+	attemptJSON        json.RawMessage
+	requestContextJSON json.RawMessage
+	allowReject        bool
 }
 
 func (m *Manager) callExport(ctx context.Context, vm *pluginVM, in callExportInput) (InvokeResult, error, bool) {
@@ -243,7 +252,7 @@ func (h *hostCall) run(vm *pluginVM, in callExportInput) (discard bool, err erro
 	if err := vm.ensureLoaded(); err != nil {
 		return true, callFailed(err)
 	}
-	ctxValue, err := h.build(in.config, in.state, in.requestJSON, in.attemptJSON, in.allowReject)
+	ctxValue, err := h.build(in)
 	if err != nil {
 		return isFatalRuntime(err), callFailed(err)
 	}
@@ -434,8 +443,8 @@ func countsAsCallFailure(err error) bool {
 	return !rejected
 }
 
-// ConsecutiveFailures is the process-local circuit streak for one installation.
-// Overload does not increment it. Zero means the plugin is not in a failure streak.
+// ConsecutiveFailures returns the largest process-local circuit streak for an
+// installation. Overload does not increment a streak.
 func (m *Manager) ConsecutiveFailures(installationID int) int {
 	if m == nil || installationID <= 0 {
 		return 0
@@ -448,7 +457,11 @@ func (m *Manager) ConsecutiveFailures(installationID int) int {
 	}
 	exec.mu.Lock()
 	defer exec.mu.Unlock()
-	return exec.failures
+	failures := exec.circuit.consecutiveFailures()
+	for _, circuit := range exec.serverCircuits {
+		failures = max(failures, circuit.consecutiveFailures())
+	}
+	return failures
 }
 
 func isInterrupt(err error) bool {
@@ -565,19 +578,41 @@ func (m *Manager) closeExecs() {
 	}
 }
 
-// pluginExec is one installation's runtime pool and circuit breaker.
-// The breaker stays with the installation when the linked module changes.
+// pluginExec is one installation's shared runtime pool and its circuit breakers.
+// Its breakers stay with the installation when the linked module changes.
 type pluginExec struct {
+	mu             sync.Mutex
+	idle           []*pluginVM
+	borrowed       int
+	module         *moejs.Module
+	waiters        []chan struct{}
+	circuit        pluginCircuit
+	serverCircuits map[string]*pluginCircuit
+}
+
+// serverCircuit separates each handler's failures from other exports that can
+// run on the same request, while all exports continue to borrow from one pool.
+func (e *pluginExec) serverCircuit(export string) *pluginCircuit {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	circuit := e.serverCircuits[export]
+	if circuit == nil {
+		circuit = &pluginCircuit{}
+		if e.serverCircuits == nil {
+			e.serverCircuits = make(map[string]*pluginCircuit)
+		}
+		e.serverCircuits[export] = circuit
+	}
+	return circuit
+}
+
+type pluginCircuit struct {
 	mu        sync.Mutex
-	idle      []*pluginVM
-	borrowed  int
-	module    *moejs.Module
-	waiters   []chan struct{}
 	failures  int
 	openUntil time.Time
 }
 
-func (e *pluginExec) rejectCall(now time.Time) bool {
+func (e *pluginCircuit) rejectCall(now time.Time) bool {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.openUntil.IsZero() {
@@ -591,7 +626,7 @@ func (e *pluginExec) rejectCall(now time.Time) bool {
 	return false
 }
 
-func (e *pluginExec) recordFailure(now time.Time) {
+func (e *pluginCircuit) recordFailure(now time.Time) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if !e.openUntil.IsZero() && now.Before(e.openUntil) {
@@ -604,11 +639,17 @@ func (e *pluginExec) recordFailure(now time.Time) {
 	}
 }
 
-func (e *pluginExec) recordSuccess() {
+func (e *pluginCircuit) recordSuccess() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.failures = 0
 	e.openUntil = time.Time{}
+}
+
+func (e *pluginCircuit) consecutiveFailures() int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.failures
 }
 
 func (e *pluginExec) borrow(ctx context.Context, module *moejs.Module) (*pluginVM, error) {

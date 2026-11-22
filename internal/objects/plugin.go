@@ -55,6 +55,7 @@ var (
 		"network":          {},
 		"events":           {},
 		"hooks":            {},
+		"server":           {},
 		"configSchema":     {},
 		"ui":               {},
 		"providers":        {},
@@ -124,9 +125,19 @@ type PluginManifest struct {
 	Events              []string            `json:"events,omitempty"`
 	EventsPresent       bool                `json:"-"`
 	Hooks               *PluginHooksSpec    `json:"hooks,omitempty"`
+	Server              *PluginServerSpec   `json:"server,omitempty"`
 	ConfigSchema        *PluginConfigSchema `json:"configSchema,omitempty"`
 	UI                  *PluginUI           `json:"ui,omitempty"`
 	ProvidersPresent    bool                `json:"-"`
+}
+
+// PluginServerSpec declares extensions to the gateway HTTP request pipeline.
+type PluginServerSpec struct {
+	Middleware []PluginServerMiddleware `json:"middleware,omitempty"`
+}
+
+type PluginServerMiddleware struct {
+	Handler string `json:"handler"`
 }
 
 // PluginNetworkRule is one manifest.network entry.
@@ -297,6 +308,18 @@ func (m *PluginManifest) Validate() error {
 	if m.UI != nil {
 		if err := m.UI.Validate(); err != nil {
 			return err
+		}
+	}
+	if m.Server != nil {
+		seen := make(map[string]struct{}, len(m.Server.Middleware))
+		for i, entry := range m.Server.Middleware {
+			if entry.Handler == "" || strings.TrimSpace(entry.Handler) != entry.Handler || entry.Handler == "default" {
+				return fmt.Errorf("server.middleware[%d].handler must be a non-empty named export", i)
+			}
+			if _, ok := seen[entry.Handler]; ok {
+				return fmt.Errorf("server.middleware contains duplicate handler %q", entry.Handler)
+			}
+			seen[entry.Handler] = struct{}{}
 		}
 	}
 	if err := m.validateNetwork(); err != nil {
@@ -831,6 +854,13 @@ func (m *PluginManifest) UnmarshalJSON(data []byte) error {
 		}
 		m.Hooks = &hooks
 	}
+	if raw, ok := obj["server"]; ok {
+		server, err := decodePluginServer(raw)
+		if err != nil {
+			return err
+		}
+		m.Server = server
+	}
 	if raw, ok := obj["configSchema"]; ok {
 		var schema PluginConfigSchema
 		if err := json.Unmarshal(raw, &schema); err != nil {
@@ -846,6 +876,39 @@ func (m *PluginManifest) UnmarshalJSON(data []byte) error {
 		m.UI = &ui
 	}
 	return nil
+}
+
+func decodePluginServer(raw json.RawMessage) (*PluginServerSpec, error) {
+	obj, err := decodeObject(raw, "server")
+	if err != nil {
+		return nil, err
+	}
+	if err := rejectUnknownFields(obj, map[string]struct{}{"middleware": {}}, "server"); err != nil {
+		return nil, err
+	}
+	server := &PluginServerSpec{}
+	if raw, ok := obj["middleware"]; ok {
+		var entries []json.RawMessage
+		if err := json.Unmarshal(raw, &entries); err != nil || entries == nil {
+			return nil, errors.New("server.middleware must be an array")
+		}
+		for i, entry := range entries {
+			prefix := fmt.Sprintf("server.middleware[%d]", i)
+			fields, err := decodeObject(entry, prefix)
+			if err != nil {
+				return nil, err
+			}
+			if err := rejectUnknownFields(fields, map[string]struct{}{"handler": {}}, prefix); err != nil {
+				return nil, err
+			}
+			handler, err := decodeJSONString(fields["handler"], prefix+".handler")
+			if err != nil {
+				return nil, err
+			}
+			server.Middleware = append(server.Middleware, PluginServerMiddleware{Handler: handler})
+		}
+	}
+	return server, nil
 }
 
 // UnmarshalJSON decodes hooks and records unopened response fields without parsing them.

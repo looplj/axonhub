@@ -528,7 +528,7 @@ func (m *Manager) noteCallFailure(installationID int) {
 	if m == nil || installationID <= 0 {
 		return
 	}
-	m.execFor(installationID).recordFailure(m.nowCall())
+	m.execFor(installationID).circuit.recordFailure(m.nowCall())
 }
 
 func (m *Manager) addHookCounter(installationID int, overloaded bool) {
