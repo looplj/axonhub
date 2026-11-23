@@ -102,8 +102,8 @@ const UPDATE_PLUGIN_SETTINGS_MUTATION = `
 `;
 
 const DELETE_PLUGIN_MUTATION = `
-  mutation DeletePlugin($id: ID!) {
-    deletePlugin(id: $id)
+  mutation DeletePlugin($id: ID!, $purgeTables: Boolean) {
+    deletePlugin(id: $id, purgeTables: $purgeTables)
   }
 `;
 
@@ -417,7 +417,8 @@ export function useUpdatePluginSettings() {
 export function useDeletePlugin() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => graphqlRequest<{ deletePlugin: boolean }>(DELETE_PLUGIN_MUTATION, { id }),
+    mutationFn: (input: { id: string; purgeTables: boolean }) =>
+      graphqlRequest<{ deletePlugin: boolean }>(DELETE_PLUGIN_MUTATION, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
       queryClient.invalidateQueries({ queryKey: ['pluginTasks'] });

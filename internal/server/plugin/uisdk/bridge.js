@@ -10,6 +10,7 @@
     NOT_READY: "Not ready",
     UNAUTHENTICATED: "Unauthenticated",
     FORBIDDEN: "Forbidden",
+    CONFLICT: "Conflict",
     NOT_FOUND: "Not found",
     RATE_LIMITED: "Rate limited",
     TIMEOUT: "Timed out",
@@ -618,6 +619,48 @@
     return call("graphql", params);
   }
 
+  var TABLE_OPERATION_QUERY =
+    "mutation PluginTable($table: String!, $operation: PluginTableCommand!, $args: [JSONRawMessageInput!]!) {" +
+    "pluginTableOperation(table: $table, operation: $operation, args: $args)}";
+
+  function openTable(table) {
+    if (typeof table !== "string" || !/^[a-z][a-z0-9_]{0,31}$/.test(table)) {
+      throw bridgeError("INVALID_ARGUMENT");
+    }
+
+    function run(operation, args) {
+      return graphql(TABLE_OPERATION_QUERY, { table: table, operation: operation, args: args }).then(function (result) {
+        if (result && Array.isArray(result.errors) && result.errors.length > 0) {
+          var detail = result.errors[0];
+          var code = detail && detail.extensions && detail.extensions.code;
+          if (code === "INVALID_INPUT" || code === "VALIDATION_FAILED") {
+            code = "INVALID_ARGUMENT";
+          } else if (code === "ALREADY_EXISTS") {
+            code = "CONFLICT";
+          }
+          var error = bridgeError(code);
+          if (error.code !== "INTERNAL" && detail && typeof detail.message === "string" && detail.message !== "") {
+            error.message = detail.message;
+          }
+          throw error;
+        }
+        if (!result || !result.data || !Object.prototype.hasOwnProperty.call(result.data, "pluginTableOperation")) {
+          throw bridgeError("INTERNAL");
+        }
+        return result.data.pluginTableOperation;
+      });
+    }
+
+    return Object.freeze({
+      get: function (id) { return run("GET", [id]); },
+      list: function (options) { return run("LIST", options === undefined ? [] : [options]); },
+      insert: function (row) { return run("INSERT", [row]); },
+      update: function (id, patch) { return run("UPDATE", [id, patch]); },
+      upsert: function (options) { return run("UPSERT", [options]); },
+      delete: function (id) { return run("DELETE", [id]); }
+    });
+  }
+
   function isSitePath(path) {
     if (typeof path !== "string" || path.length === 0 || path.charAt(0) !== "/") {
       return false;
@@ -723,6 +766,7 @@
     onInit: onInit,
     onTheme: onTheme,
     graphql: graphql,
+    tables: Object.freeze({ open: openTable }),
     navigate: navigate,
     toast: toast,
     fetch: fetch

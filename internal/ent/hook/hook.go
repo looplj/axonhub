@@ -189,6 +189,30 @@ func (f PluginStorageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Valu
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PluginStorageMutation", m)
 }
 
+// The PluginTableOperationFunc type is an adapter to allow the use of ordinary
+// function as PluginTableOperation mutator.
+type PluginTableOperationFunc func(context.Context, *ent.PluginTableOperationMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PluginTableOperationFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PluginTableOperationMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PluginTableOperationMutation", m)
+}
+
+// The PluginTableStorageFunc type is an adapter to allow the use of ordinary
+// function as PluginTableStorage mutator.
+type PluginTableStorageFunc func(context.Context, *ent.PluginTableStorageMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PluginTableStorageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PluginTableStorageMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PluginTableStorageMutation", m)
+}
+
 // The ProjectFunc type is an adapter to allow the use of ordinary
 // function as Project mutator.
 type ProjectFunc func(context.Context, *ent.ProjectMutation) (ent.Value, error)

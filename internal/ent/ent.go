@@ -27,6 +27,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/pluginschedule"
 	"github.com/looplj/axonhub/internal/ent/pluginschedulerun"
 	"github.com/looplj/axonhub/internal/ent/pluginstorage"
+	"github.com/looplj/axonhub/internal/ent/plugintableoperation"
+	"github.com/looplj/axonhub/internal/ent/plugintablestorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
@@ -118,6 +120,8 @@ func checkColumn(t, c string) error {
 			pluginschedule.Table:           pluginschedule.ValidColumn,
 			pluginschedulerun.Table:        pluginschedulerun.ValidColumn,
 			pluginstorage.Table:            pluginstorage.ValidColumn,
+			plugintableoperation.Table:     plugintableoperation.ValidColumn,
+			plugintablestorage.Table:       plugintablestorage.ValidColumn,
 			project.Table:                  project.ValidColumn,
 			prompt.Table:                   prompt.ValidColumn,
 			promptprotectionrule.Table:     promptprotectionrule.ValidColumn,

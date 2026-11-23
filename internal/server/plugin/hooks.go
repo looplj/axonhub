@@ -48,8 +48,11 @@ func (m *Manager) Middleware(ctx context.Context) (orchestrator.RequestHooks, er
 	if m == nil {
 		return orchestrator.RequestHooks{}, nil
 	}
-	gen, err := acquireHookGeneration(ctx, m.current)
+	gen, err := acquireGeneration(ctx, m.current, generationHasRequestHooks)
 	if err != nil {
+		if errors.Is(err, ErrGenerationClosed) {
+			err = fmt.Errorf("acquire plugin request hooks: %w", err)
+		}
 		return orchestrator.RequestHooks{}, err
 	}
 	if gen == nil {
@@ -67,28 +70,6 @@ func (m *Manager) Middleware(ctx context.Context) (orchestrator.RequestHooks, er
 		Request: request,
 		Attempt: pipeline.OnRawRequest("plugin-attempt-hooks", request.OnAttemptRawRequest),
 	}, nil
-}
-
-// acquireHookGeneration retries if refresh retired the captured generation.
-// A closed generation that is still current indicates shutdown; return an error
-// rather than silently executing a request without its configured hooks.
-func acquireHookGeneration(ctx context.Context, current func() *Generation) (*Generation, error) {
-	for {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		gen := current()
-		if !generationHasRequestHooks(gen) {
-			return nil, nil
-		}
-		if err := gen.Acquire(); err != nil {
-			if errors.Is(err, ErrGenerationClosed) && current() != gen {
-				continue
-			}
-			return nil, fmt.Errorf("acquire plugin request hooks: %w", err)
-		}
-		return gen, nil
-	}
 }
 
 // PassThroughApplied records plugins whose non-model edits this attempt discarded

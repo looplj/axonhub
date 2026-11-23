@@ -60,7 +60,6 @@ type TaskState struct {
 type pluginTaskRun struct {
 	key          string
 	installation int
-	packageSHA   string
 	cancel       context.CancelFunc
 }
 
@@ -258,7 +257,7 @@ func (m *Manager) scanTasks(ctx context.Context) {
 					log.Error(ctx, "plugin task worker panicked", log.Any("panic", recovered), log.Stack("stack"))
 				}
 			}()
-			if _, err := m.executeTask(ctx, gen, loaded, row.Key, &slot); err != nil && !errors.Is(err, errTaskBusy) {
+			if _, err := m.executeTask(ctx, row.InstallationID, row.Key, &slot); err != nil && !errors.Is(err, errTaskBusy) {
 				log.Warn(ctx, "run plugin task", log.String("key", row.Key), log.Int("installation_id", row.InstallationID), log.Cause(err))
 			}
 			return nil
@@ -274,32 +273,43 @@ func scheduleMatches(spec objects.PluginScheduleSpec, row *ent.PluginSchedule, s
 }
 
 func (m *Manager) RunTask(ctx context.Context, installationID int, key string) (*ent.PluginScheduleRun, error) {
-	gen := m.Current()
-	loaded := activeTaskPlugin(gen, installationID)
-	if loaded == nil {
-		return nil, errors.New("plugin is not active")
-	}
-	return m.executeTask(ctx, gen, loaded, key, nil)
+	return m.executeTask(ctx, installationID, key, nil)
 }
 
-func (m *Manager) executeTask(ctx context.Context, gen *Generation, loaded *LoadedPlugin, key string, slot *time.Time) (*ent.PluginScheduleRun, error) {
+func (m *Manager) executeTask(ctx context.Context, installationID int, key string, slot *time.Time) (*ent.PluginScheduleRun, error) {
 	select {
 	case m.taskSlots <- struct{}{}:
 		defer func() { <-m.taskSlots }()
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+	gen, err := acquireGeneration(ctx, m.current, nil)
+	if err != nil {
+		return nil, err
+	}
+	if gen == nil {
+		return nil, errors.New("plugin is not active")
+	}
+	defer gen.Release()
+
+	loaded := activeTaskPlugin(gen, installationID)
+	if loaded == nil {
+		return nil, errors.New("plugin is not active")
+	}
+	if _, declared := loaded.Manifest.Tasks[key]; !declared {
+		return nil, errors.New("plugin task not found")
+	}
 	now := time.Now().UTC()
 	if slot != nil && !now.Truncate(time.Minute).Equal(*slot) {
 		return nil, nil
 	}
-	run, err := m.claimTask(ctx, loaded, key, slot, now)
+	run, err := m.claimTask(ctx, installationID, key, slot, now)
 	if err != nil || run == nil {
 		return run, err
 	}
 	runCtx, cancel := context.WithTimeout(ctx, scheduleTimeout)
 	defer cancel()
-	if !m.trackTask(run.ID, pluginTaskRun{key, loaded.ID, loaded.PackageSHA256, cancel}) {
+	if !m.trackTask(run.ID, pluginTaskRun{key: key, installation: installationID, cancel: cancel}) {
 		cancel()
 	}
 	defer func() {
@@ -345,14 +355,14 @@ func (m *Manager) executeTask(ctx context.Context, gen *Generation, loaded *Load
 	return run, err
 }
 
-func (m *Manager) claimTask(ctx context.Context, loaded *LoadedPlugin, key string, slot *time.Time, now time.Time) (*ent.PluginScheduleRun, error) {
+func (m *Manager) claimTask(ctx context.Context, installationID int, key string, slot *time.Time, now time.Time) (*ent.PluginScheduleRun, error) {
 	var run *ent.PluginScheduleRun
 	err := m.runInTx(ctx, func(ctx context.Context) error {
-		current, err := m.oneRecord(ctx, loaded.ID)
+		current, err := m.oneRecord(ctx, installationID)
 		if err != nil {
 			return err
 		}
-		if !current.Enabled || current.PackageSHA256 != loaded.PackageSHA256 {
+		if !current.Enabled {
 			return ErrGenerationClosed
 		}
 		spec, ok := current.Manifest.Tasks[key]
@@ -361,7 +371,7 @@ func (m *Manager) claimTask(ctx context.Context, loaded *LoadedPlugin, key strin
 		}
 		client := m.client(ctx)
 		row, err := client.PluginSchedule.Query().Where(
-			pluginschedule.InstallationIDEQ(loaded.ID), pluginschedule.KeyEQ(key),
+			pluginschedule.InstallationIDEQ(installationID), pluginschedule.KeyEQ(key),
 		).Only(ctx)
 		if err != nil {
 			return err
@@ -449,7 +459,7 @@ func (m *Manager) trackTask(id int, run pluginTaskRun) bool {
 
 func (run pluginTaskRun) matches(gen *Generation) bool {
 	loaded := activeTaskPlugin(gen, run.installation)
-	if loaded == nil || loaded.PackageSHA256 != run.packageSHA {
+	if loaded == nil {
 		return false
 	}
 	_, exists := loaded.Manifest.Tasks[run.key]

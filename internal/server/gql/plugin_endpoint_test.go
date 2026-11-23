@@ -279,6 +279,98 @@ func TestPluginKVGraphql(t *testing.T) {
 	require.Contains(t, graphqlErrorMessage(t, payload), "plugin kv", raw)
 }
 
+func TestPluginUITableOperations(t *testing.T) {
+	fx := newPluginEndpointFixture(t, "plugin_ui_tables")
+	ctx := fx.setupCtx
+	install := func(id string) int {
+		t.Helper()
+		columns := map[string]objects.PluginTableColumn{"title": {Type: "string", MaxLength: 120}, "done": {Type: "boolean"}}
+		bundle := pluginEndpointZip(t, id, []string{"tables"}, true, map[string]objects.PluginTableSpec{
+			"todos": {Columns: columns, Indexes: []objects.PluginTableIndex{{Columns: []string{"title"}, Unique: true}}},
+		})
+		result, err := fx.manager.Install(ctx, bundle, nil, nil)
+		require.NoError(t, err)
+		require.NoError(t, fx.manager.Enable(ctx, result.Plugin.ID, []string{"tables"}, nil))
+		return result.Plugin.ID
+	}
+	const pluginID = "acme.table-page"
+	const otherPluginID = "acme.other-table-page"
+	installation := install(pluginID)
+	install(otherPluginID)
+	const operationQuery = `mutation($table: String!, $operation: PluginTableCommand!, $args: [JSONRawMessageInput!]!) {
+		pluginTableOperation(table: $table, operation: $operation, args: $args)
+	}`
+	call := func(token, pluginID, table, operation string, args []any) map[string]any {
+		t.Helper()
+		code, payload, raw := fx.postPluginVars(token, pluginID, operationQuery, map[string]any{
+			"table": table, "operation": operation, "args": args,
+		})
+		require.Equal(t, http.StatusOK, code, raw)
+		return payload
+	}
+	result := func(payload map[string]any) any {
+		t.Helper()
+		require.NotContains(t, payload, "errors")
+		return payload["data"].(map[string]any)["pluginTableOperation"]
+	}
+	code, payload, raw := fx.postAdmin(fx.ownerToken, `mutation {
+		pluginTableOperation(table:"todos", operation:LIST, args:[])
+	}`)
+	require.Equal(t, http.StatusOK, code, raw)
+	require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, payload), raw)
+	require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, call(fx.readerToken, pluginID, "todos", "LIST", []any{})))
+	require.Equal(t, "NOT_FOUND", graphqlErrorCode(t, call(fx.ownerToken, pluginID, "undeclared", "LIST", []any{})))
+
+	row := result(call(fx.ownerToken, pluginID, "todos", "INSERT", []any{
+		map[string]any{"title": "Check channel quotas", "done": false},
+	})).(map[string]any)
+	require.Equal(t, "Check channel quotas", row["title"])
+	require.Equal(t, false, row["done"])
+	id := fmt.Sprint(row["id"])
+	require.Equal(t, row, result(call(fx.ownerToken, pluginID, "todos", "GET", []any{id})))
+	page := result(call(fx.ownerToken, pluginID, "todos", "LIST", []any{map[string]any{"first": 30}})).(map[string]any)
+	require.Equal(t, []any{row}, page["rows"])
+	other := result(call(fx.ownerToken, otherPluginID, "todos", "LIST", []any{})).(map[string]any)
+	require.Empty(t, other["rows"])
+	updated := result(call(fx.ownerToken, pluginID, "todos", "UPDATE", []any{id, map[string]any{"done": true}})).(map[string]any)
+	require.Equal(t, true, updated["done"])
+	upserted := result(call(fx.ownerToken, pluginID, "todos", "UPSERT", []any{
+		map[string]any{"conflict": []string{"title"}, "row": map[string]any{"title": row["title"], "done": false}},
+	})).(map[string]any)
+	require.Equal(t, row, upserted)
+	filtered := result(call(fx.ownerToken, pluginID, "todos", "LIST", []any{
+		map[string]any{"where": []any{
+			map[string]any{"column": "done", "op": "eq", "value": false},
+			map[string]any{"column": "id", "op": "gte", "value": id},
+		}},
+	})).(map[string]any)
+	require.Equal(t, []any{row}, filtered["rows"])
+	require.Equal(t, true, result(call(fx.ownerToken, pluginID, "todos", "DELETE", []any{id})))
+	require.Nil(t, result(call(fx.ownerToken, pluginID, "todos", "GET", []any{id})))
+	page = result(call(fx.ownerToken, pluginID, "todos", "LIST", []any{})).(map[string]any)
+	require.Empty(t, page["rows"])
+
+	cachedSHA := fx.manager.Current().ByID(installation).PackageSHA256
+	nextSHA := strings.Repeat("b", 64)
+	require.NotEqual(t, cachedSHA, nextSHA)
+	changed, err := fx.db.Plugin.UpdateOneID(installation).SetPackageSha256(nextSHA).Save(ctx)
+	require.NoError(t, err)
+	require.Equal(t, cachedSHA, fx.manager.Current().ByID(installation).PackageSHA256)
+	inserted := result(call(fx.ownerToken, pluginID, "todos", "INSERT", []any{
+		map[string]any{"title": "Still available after upgrade", "done": false},
+	})).(map[string]any)
+	require.Equal(t, "Still available after upgrade", inserted["title"])
+
+	manifest := changed.Manifest
+	manifest.UI = nil
+	require.NoError(t, fx.db.Plugin.UpdateOneID(installation).SetManifest(manifest).Exec(ctx))
+	require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, call(fx.ownerToken, pluginID, "todos", "LIST", []any{})))
+
+	require.NoError(t, fx.db.Plugin.UpdateOneID(installation).
+		SetManifest(changed.Manifest).SetGrantedPermissions([]string{}).Exec(ctx))
+	require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, call(fx.ownerToken, pluginID, "todos", "LIST", []any{})))
+}
+
 type pluginEndpointFixture struct {
 	db             *ent.Client
 	manager        *plugin.Manager
@@ -513,7 +605,7 @@ func mutationRootNames(schema interface{ Schema() *ast.Schema }) []string {
 	return names
 }
 
-func pluginEndpointZip(t *testing.T, id string, permissions []string, withPage bool) []byte {
+func pluginEndpointZip(t *testing.T, id string, permissions []string, withPage bool, tables ...map[string]objects.PluginTableSpec) []byte {
 	t.Helper()
 	encoded, err := json.Marshal(permissions)
 	require.NoError(t, err)
@@ -521,6 +613,12 @@ func pluginEndpointZip(t *testing.T, id string, permissions []string, withPage b
 	if withPage {
 		ui = `,
   "ui": {"pages": [{"key": "main", "entry": "ui/page.html", "title": "Overview"}]}`
+	}
+	tableFields := ""
+	if len(tables) > 0 {
+		encoded, err := json.Marshal(tables[0])
+		require.NoError(t, err)
+		tableFields = `, "tables": ` + string(encoded)
 	}
 	manifest := fmt.Sprintf(`{
   "schemaVersion": 1,
@@ -530,8 +628,8 @@ func pluginEndpointZip(t *testing.T, id string, permissions []string, withPage b
   "description": "UI only",
   "axonhubVersion": "^1.0.0",
   "pluginApiVersion": 1,
-  "permissions": %s%s
-}`, id, encoded, ui)
+  "permissions": %s%s%s
+}`, id, encoded, ui, tableFields)
 
 	var buf bytes.Buffer
 	writer := zip.NewWriter(&buf)
@@ -629,6 +727,7 @@ var pluginMutationFieldSnapshot = []string{
 	"installPlugin",
 	"installPluginFromMarket",
 	"loadApiKeyProfileTemplate",
+	"pluginTableOperation",
 	"previewPromptProtectionRule",
 	"removeUserFromProject",
 	"resetChannelQuotaNow",

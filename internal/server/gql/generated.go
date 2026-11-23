@@ -1170,7 +1170,7 @@ type ComplexityRoot struct {
 		DeleteChannelOverrideTemplate         func(childComplexity int, id objects.GUID) int
 		DeleteDisabledChannelAPIKeys          func(childComplexity int, channelID objects.GUID, keys []string) int
 		DeleteModel                           func(childComplexity int, id objects.GUID) int
-		DeletePlugin                          func(childComplexity int, id objects.GUID) int
+		DeletePlugin                          func(childComplexity int, id objects.GUID, purgeTables *bool) int
 		DeletePluginKv                        func(childComplexity int, namespace *string, key string) int
 		DeleteProject                         func(childComplexity int, id objects.GUID) int
 		DeletePrompt                          func(childComplexity int, id objects.GUID) int
@@ -1189,6 +1189,7 @@ type ComplexityRoot struct {
 		InstallPlugin                         func(childComplexity int, file graphql.Upload, grantedPermissions []string, grantedNetwork []string) int
 		InstallPluginFromMarket               func(childComplexity int, pluginID string, version string, grantedPermissions []string, grantedNetwork []string) int
 		LoadAPIKeyProfileTemplate             func(childComplexity int, input LoadAPIKeyProfileTemplateInput) int
+		PluginTableOperation                  func(childComplexity int, table string, operation PluginTableCommand, args []objects.JSONRawMessage) int
 		PreviewPromptProtectionRule           func(childComplexity int, input PromptProtectionRulePreviewInput) int
 		RemoveUserFromProject                 func(childComplexity int, input RemoveUserFromProjectInput) int
 		ResetChannelQuotaNow                  func(childComplexity int, channelID objects.GUID, resetID *string) int
@@ -2717,11 +2718,12 @@ type MutationResolver interface {
 	EnablePlugin(ctx context.Context, id objects.GUID, grantedPermissions []string, grantedNetwork []string) (*plugin.InstalledPlugin, error)
 	DisablePlugin(ctx context.Context, id objects.GUID) (*plugin.InstalledPlugin, error)
 	UpdatePluginSettings(ctx context.Context, id objects.GUID, priority int, config map[string]any) (*plugin.InstalledPlugin, error)
-	DeletePlugin(ctx context.Context, id objects.GUID) (bool, error)
+	DeletePlugin(ctx context.Context, id objects.GUID, purgeTables *bool) (bool, error)
 	UpdatePluginTask(ctx context.Context, id objects.GUID, key string, paused bool, cron *string, timezone *string) (*PluginTaskState, error)
 	RunPluginTask(ctx context.Context, id objects.GUID, key string) (*PluginTaskExecution, error)
 	SetPluginKv(ctx context.Context, namespace *string, key string, value string, ttlSeconds *int) (*plugin.KVEntry, error)
 	DeletePluginKv(ctx context.Context, namespace *string, key string) (bool, error)
+	PluginTableOperation(ctx context.Context, table string, operation PluginTableCommand, args []objects.JSONRawMessage) (objects.JSONRawMessage, error)
 	CreatePluginUISession(ctx context.Context, pluginID string, entry string) (*plugin.UISession, error)
 }
 type OIDCIdentityResolver interface {
@@ -7359,7 +7361,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeletePlugin(childComplexity, args["id"].(objects.GUID)), true
+		return e.complexity.Mutation.DeletePlugin(childComplexity, args["id"].(objects.GUID), args["purgeTables"].(*bool)), true
 	case "Mutation.deletePluginKV":
 		if e.complexity.Mutation.DeletePluginKv == nil {
 			break
@@ -7558,6 +7560,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.LoadAPIKeyProfileTemplate(childComplexity, args["input"].(LoadAPIKeyProfileTemplateInput)), true
+	case "Mutation.pluginTableOperation":
+		if e.complexity.Mutation.PluginTableOperation == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_pluginTableOperation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.PluginTableOperation(childComplexity, args["table"].(string), args["operation"].(PluginTableCommand), args["args"].([]objects.JSONRawMessage)), true
 	case "Mutation.previewPromptProtectionRule":
 		if e.complexity.Mutation.PreviewPromptProtectionRule == nil {
 			break
@@ -14914,6 +14927,11 @@ func (ec *executionContext) field_Mutation_deletePlugin_args(ctx context.Context
 		return nil, err
 	}
 	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "purgeTables", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["purgeTables"] = arg1
 	return args, nil
 }
 
@@ -15156,6 +15174,27 @@ func (ec *executionContext) field_Mutation_loadApiKeyProfileTemplate_args(ctx co
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_pluginTableOperation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "table", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["table"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "operation", ec.unmarshalNPluginTableCommand2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTableCommand)
+	if err != nil {
+		return nil, err
+	}
+	args["operation"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "args", ec.unmarshalNJSONRawMessageInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessageᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["args"] = arg2
 	return args, nil
 }
 
@@ -44942,7 +44981,7 @@ func (ec *executionContext) _Mutation_deletePlugin(ctx context.Context, field gr
 		ec.fieldContext_Mutation_deletePlugin,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().DeletePlugin(ctx, fc.Args["id"].(objects.GUID))
+			return ec.resolvers.Mutation().DeletePlugin(ctx, fc.Args["id"].(objects.GUID), fc.Args["purgeTables"].(*bool))
 		},
 		nil,
 		ec.marshalNBoolean2bool,
@@ -45173,6 +45212,47 @@ func (ec *executionContext) fieldContext_Mutation_deletePluginKV(ctx context.Con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deletePluginKV_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_pluginTableOperation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_pluginTableOperation,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().PluginTableOperation(ctx, fc.Args["table"].(string), fc.Args["operation"].(PluginTableCommand), fc.Args["args"].([]objects.JSONRawMessage))
+		},
+		nil,
+		ec.marshalNJSONRawMessage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_pluginTableOperation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSONRawMessage does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_pluginTableOperation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -112198,6 +112278,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "pluginTableOperation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_pluginTableOperation(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createPluginUISession":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createPluginUISession(ctx, field)
@@ -129190,6 +129277,36 @@ func (ec *executionContext) marshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋ
 	return v
 }
 
+func (ec *executionContext) unmarshalNJSONRawMessageInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessageᚄ(ctx context.Context, v any) ([]objects.JSONRawMessage, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.JSONRawMessage, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNJSONRawMessageInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessageᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.JSONRawMessage) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐJSONRawMessage(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalNLoadApiKeyProfileTemplateInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐLoadAPIKeyProfileTemplateInput(ctx context.Context, v any) (LoadAPIKeyProfileTemplateInput, error) {
 	res, err := ec.unmarshalInputLoadApiKeyProfileTemplateInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -130345,6 +130462,16 @@ func (ec *executionContext) marshalNPluginRuntimeStatus2ᚖgithubᚗcomᚋlooplj
 		return graphql.Null
 	}
 	return ec._PluginRuntimeStatus(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNPluginTableCommand2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTableCommand(ctx context.Context, v any) (PluginTableCommand, error) {
+	var res PluginTableCommand
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPluginTableCommand2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTableCommand(ctx context.Context, sel ast.SelectionSet, v PluginTableCommand) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNPluginTaskExecution2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskExecution(ctx context.Context, sel ast.SelectionSet, v PluginTaskExecution) graphql.Marshaler {

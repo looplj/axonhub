@@ -42,6 +42,10 @@ type Tx struct {
 	PluginScheduleRun *PluginScheduleRunClient
 	// PluginStorage is the client for interacting with the PluginStorage builders.
 	PluginStorage *PluginStorageClient
+	// PluginTableOperation is the client for interacting with the PluginTableOperation builders.
+	PluginTableOperation *PluginTableOperationClient
+	// PluginTableStorage is the client for interacting with the PluginTableStorage builders.
+	PluginTableStorage *PluginTableStorageClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
 	// Prompt is the client for interacting with the Prompt builders.
@@ -220,6 +224,8 @@ func (tx *Tx) init() {
 	tx.PluginSchedule = NewPluginScheduleClient(tx.config)
 	tx.PluginScheduleRun = NewPluginScheduleRunClient(tx.config)
 	tx.PluginStorage = NewPluginStorageClient(tx.config)
+	tx.PluginTableOperation = NewPluginTableOperationClient(tx.config)
+	tx.PluginTableStorage = NewPluginTableStorageClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)
 	tx.Prompt = NewPromptClient(tx.config)
 	tx.PromptProtectionRule = NewPromptProtectionRuleClient(tx.config)

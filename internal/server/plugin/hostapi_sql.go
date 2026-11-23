@@ -153,7 +153,6 @@ func (h *hostCall) runSQL(query bool, statement string, params []any) (moejs.Val
 			entsql.EQ(entplugin.FieldID, h.installationID),
 			entsql.EQ(entplugin.FieldEnabled, true),
 			entsql.EQ(entplugin.FieldDeletedAt, 0),
-			entsql.EQ(entplugin.FieldPackageSha256, h.packageSHA),
 		))
 	grantSQL, grantArgs := selector.Query()
 	var grants []byte

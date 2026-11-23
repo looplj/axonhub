@@ -91,23 +91,30 @@ export function onTask(ctx, run) {
 	require.NoError(t, manager.Enable(ctx, installed.ID, []string{"sql"}, nil))
 	require.NoError(t, peer.ForceRefresh(ctx))
 
+	// Another instance can update the stored package before these runtimes refresh.
+	cachedSHA := manager.Current().ByID(installed.ID).PackageSHA256
+	nextSHA := sha256Hex([]byte("another plugin package"))
+	require.NotEqual(t, cachedSHA, nextSHA)
+	require.NoError(t, client.Plugin.UpdateOneID(installed.ID).SetPackageSha256(nextSHA).Exec(ctx))
+	require.Equal(t, cachedSHA, manager.Current().ByID(installed.ID).PackageSHA256)
+
 	slot := time.Now().UTC().Add(-time.Hour).Truncate(time.Minute)
-	run, err := manager.claimTask(ctx, manager.Current().ByID(installed.ID), "report", &slot, slot.Add(time.Second))
+	run, err := manager.claimTask(ctx, installed.ID, "report", &slot, slot.Add(time.Second))
 	require.NoError(t, err)
 	require.NotNil(t, run)
 
-	duplicate, err := peer.claimTask(ctx, peer.Current().ByID(installed.ID), "report", &slot, slot.Add(time.Second))
+	duplicate, err := peer.claimTask(ctx, installed.ID, "report", &slot, slot.Add(time.Second))
 	require.NoError(t, err)
 	require.Nil(t, duplicate)
 
 	next := slot.Add(time.Minute)
-	duplicate, err = peer.claimTask(ctx, peer.Current().ByID(installed.ID), "report", &next, next)
+	duplicate, err = peer.claimTask(ctx, installed.ID, "report", &next, next)
 	require.NoError(t, err)
 	require.Nil(t, duplicate)
 	require.NoError(t, manager.finishTask(ctx, run, "succeeded", slot.Add(30*time.Second)))
 
 	// Another tick in the skipped minute cannot reclaim that slot.
-	duplicate, err = peer.claimTask(ctx, peer.Current().ByID(installed.ID), "report", &next, next)
+	duplicate, err = peer.claimTask(ctx, installed.ID, "report", &next, next)
 	require.NoError(t, err)
 	require.Nil(t, duplicate)
 
@@ -115,6 +122,7 @@ export function onTask(ctx, run) {
 	require.NoError(t, err)
 	require.Equal(t, "succeeded", manual.Status)
 	require.Nil(t, manual.ScheduledAt)
+	require.NoError(t, client.Plugin.UpdateOneID(installed.ID).SetPackageSha256(cachedSHA).Exec(ctx))
 
 	state, err := peer.ListTasks(ctx, installed.ID)
 	require.NoError(t, err)
@@ -154,4 +162,55 @@ export function onTask(ctx, run) {
 	count, err := client.PluginSchedule.Query().Where(pluginschedule.InstallationIDEQ(installed.ID)).Count(ctx)
 	require.NoError(t, err)
 	require.Zero(t, count)
+}
+
+func TestPluginTaskRunSurvivesUpgrade(t *testing.T) {
+	client := newPluginDB(t)
+	manager := newTestManager(t, client)
+	ctx := pluginCtx()
+	versionPackage := func(version string) []byte {
+		t.Helper()
+		return uiZip(t, func(_ *testing.T, manifest map[string]any) {
+			manifest["id"] = "acme.task-upgrade"
+			manifest["version"] = version
+			manifest["tasks"] = map[string]objects.PluginTaskSpec{
+				"report": {Schedule: objects.PluginScheduleSpec{Cron: "* * * * *"}},
+			}
+		}, map[string]string{
+			"plugin.js":    `export function onTask(ctx) { ctx.kv.set("version", "` + version + `"); }`,
+			"ui/page.html": "<html></html>",
+		})
+	}
+	installed := installUI(t, manager, versionPackage("1.0.0"))
+	require.NoError(t, manager.Enable(ctx, installed.ID, nil, nil))
+	run, err := manager.claimTask(ctx, installed.ID, "report", nil, time.Now().UTC())
+	require.NoError(t, err)
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	require.True(t, manager.trackTask(run.ID, pluginTaskRun{key: "report", installation: installed.ID, cancel: cancel}))
+	defer func() {
+		manager.taskMu.Lock()
+		delete(manager.taskRuns, run.ID)
+		manager.taskMu.Unlock()
+	}()
+
+	upgrade, err := manager.Install(ctx, versionPackage("1.1.0"), nil, nil)
+	require.NoError(t, err)
+	require.Nil(t, upgrade.Preview)
+	require.Equal(t, installed.ID, upgrade.Plugin.ID)
+	require.NotEqual(t, installed.PackageSha256, upgrade.Plugin.PackageSha256)
+	require.NoError(t, runCtx.Err())
+
+	require.NoError(t, manager.finishTask(ctx, run, "succeeded", time.Now().UTC()))
+	next, err := manager.RunTask(ctx, installed.ID, "report")
+	require.NoError(t, err)
+	require.Equal(t, "succeeded", next.Status)
+	entry, err := manager.KVGet(ctx, installed.PluginID, installed.ID, "default", "version")
+	require.NoError(t, err)
+	require.NotNil(t, entry)
+	require.Equal(t, "1.1.0", entry.Value)
+
+	require.NoError(t, manager.Disable(ctx, installed.ID))
+	require.ErrorIs(t, runCtx.Err(), context.Canceled)
 }

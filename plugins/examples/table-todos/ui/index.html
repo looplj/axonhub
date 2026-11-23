@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>待办清单</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <main>
+      <h1 id="title">待办清单</h1>
+      <form id="add-form" hidden>
+        <input id="new-title" type="text" maxlength="120" required aria-label="待办标题" placeholder="输入待办事项">
+        <button id="add-button" type="submit">添加</button>
+      </form>
+      <p id="status" role="status"></p>
+      <p id="empty" hidden>还没有待办。</p>
+      <ul id="todos" aria-labelledby="title"></ul>
+      <button id="more" type="button" hidden>加载更多</button>
+    </main>
+    <script crossorigin="anonymous" src="../_axonhub/bridge.js"></script>
+    <script type="module" crossorigin="anonymous" src="./app.js"></script>
+  </body>
+</html>

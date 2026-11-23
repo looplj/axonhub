@@ -41,11 +41,26 @@ interface GraphQLResult<T> {
 interface BridgeError extends Error {
   name: "AxonhubBridgeError";
   code: "INVALID_ARGUMENT" | "NOT_READY" | "UNAUTHENTICATED"
-    | "FORBIDDEN" | "NOT_FOUND" | "RATE_LIMITED" | "TIMEOUT"
+    | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "RATE_LIMITED" | "TIMEOUT"
     | "DISPOSED" | "NETWORK_ERROR" | "INTERNAL";
   status?: number; // 有 HTTP 响应时提供
 }
+type PluginTableRow = JSONObject & { id: number | string };
+interface PluginTable {
+  get(id: number | string): Promise<PluginTableRow | null>;
+  list(options?: {
+    where?: Array<{ column: string; op: "eq" | "lt" | "lte" | "gt" | "gte"; value: JSONValue }>;
+    orderBy?: Array<{ column: string; direction: "asc" | "desc" }>;
+    first?: number;
+    after?: string;
+  }): Promise<{ rows: PluginTableRow[]; nextCursor: string | null }>;
+  insert(row: JSONObject): Promise<PluginTableRow>;
+  update(id: number | string, patch: JSONObject): Promise<PluginTableRow | null>;
+  upsert(options: { conflict: string[]; row: JSONObject }): Promise<PluginTableRow>;
+  delete(id: number | string): Promise<boolean>;
+}
 interface AxonhubBridge {
+  tables: { open(name: string): PluginTable };
   ready(): Promise<Readonly<UIInit>>;
   onInit(handler: (init: Readonly<UIInit>) => void): () => void;
   onTheme(handler: (theme: Readonly<ThemeState>) => void): () => void;
@@ -70,6 +85,7 @@ interface AxonhubBridge {
 - `tokens` 是父页面 `<html>` 的计算样式。白名单和页面用法见 [插件开发文档](../../zh/development/plugins.md#页面主题)。空值，以及含控制字符、`;`、`{}`、`<>`、`\` 的值不发送。`bridge.js` 在通知监听之前把这些值写到 iframe 的 `documentElement`，白名单里这次没有的项会移除，并按 `theme` 设置 `color-scheme`。名单以外的变量仍由页面自己的 CSS 定义。宿主在微任务里读取，等配色 class 写上 `<html>` 之后再取计算值。切换主题沿用原来的 `theme` 消息，不轮询。
 - graphql/navigate/toast/fetch 在握手完成前等待 ready；握手失败则一起失败。query 必须是非空字符串，variables 默认 `{}`，不接受非 JSON 值；多 operation 文档须提供 operationName。页面没有直接 KV 方法，通过插件 GraphQL 的 KV 字段访问。
 - graphql 返回完整的 GraphQL envelope，不自动提取 data；HTTP 成功且包含 `errors` 时仍 resolve，保留部分 data。页面检查 `errors[].extensions.code` 处理业务错误。网络失败或非成功 HTTP 状态则 reject BridgeError：401/403/404/429 分别映射到 `UNAUTHENTICATED`/`FORBIDDEN`/`NOT_FOUND`/`RATE_LIMITED`，超时为 `TIMEOUT`，其他 HTTP 错误为 `INTERNAL`；message 不暴露服务端内部信息。
+- `tables.open(name)` 按逻辑表名创建句柄。读写方法沿用服务端 `ctx.tables` 的参数和结果，返回 Promise。宿主按当前插件的 `tables` 授权和调用者的 `write_plugins` 权限校验。业务错误通过 `BridgeError.code` 返回。
 - navigate 只接受以单个 `/` 开头的站内路径，可带 query/hash；拒绝 `//`、反斜杠、控制字符及解析后不同源的地址。沿用宿主路由权限检查，不能绕过 AuthGuard。宿主接受导航动作即 ack；若导航使页面卸载，尚未完成的调用按销毁规则结束。
 - toast 的 kind 默认 info，message 必须非空，按纯文本显示；宿主接收并显示通知后 ack，不等待通知消失。
 - fetch 与 `ctx.fetch` 使用同一套 [出站规则](plugin.js.md#出站请求)。目标不匹配已授权的路径或正则时返回 `FORBIDDEN`，不发出请求。非 2xx 仍 resolve，传输失败 reject `NETWORK_ERROR`。浏览器不直接连接该 URL。

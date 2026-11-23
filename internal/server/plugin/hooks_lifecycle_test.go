@@ -14,12 +14,12 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
-func TestAcquireHookGenerationRetriesRefresh(t *testing.T) {
+func TestAcquireGenerationRetriesRefresh(t *testing.T) {
 	m := newTestManager(t, newPluginDB(t))
 	installHook(t, m, "acme.refresh", true, false, `export function onRequest(ctx, req) { return req; }`)
 	old := m.current()
 	first := true
-	gen, err := acquireHookGeneration(t.Context(), func() *Generation {
+	gen, err := acquireGeneration(t.Context(), func() *Generation {
 		if first {
 			first = false
 			require.NoError(t, m.ForceRefresh(pluginCtx()))
@@ -27,18 +27,18 @@ func TestAcquireHookGenerationRetriesRefresh(t *testing.T) {
 			return old // Refresh completed after the caller captured the old pointer.
 		}
 		return m.current()
-	})
+	}, generationHasRequestHooks)
 	require.NoError(t, err)
 	require.Same(t, m.current(), gen)
 	gen.Release()
 
 	// A closed generation that remains current must return an error, not no hooks.
 	m.retire(gen)
-	_, err = acquireHookGeneration(t.Context(), m.current)
+	_, err = acquireGeneration(t.Context(), m.current, generationHasRequestHooks)
 	require.ErrorIs(t, err, ErrGenerationClosed)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	_, err = acquireHookGeneration(ctx, m.current)
+	_, err = acquireGeneration(ctx, m.current, generationHasRequestHooks)
 	require.ErrorIs(t, err, context.Canceled)
 }
 
