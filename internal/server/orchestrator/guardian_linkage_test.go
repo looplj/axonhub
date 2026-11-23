@@ -14,6 +14,8 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
+	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
@@ -32,7 +34,11 @@ func TestGuardianLinkage(t *testing.T) {
 			link := ctx.Value(guardianLinkageKey{}).(guardianLinkage)
 			reviewCtx := WithSafeguardsReview(ctx)
 			reviewLink := reviewCtx.Value(guardianLinkageKey{}).(guardianLinkage)
-			outbound := &PersistentOutboundTransformer{wrapped: &codex.OutboundTransformer{}}
+			parentChannel := quotaRoutingCandidate(2, "")
+			outbound := &PersistentOutboundTransformer{
+				wrapped: &codex.OutboundTransformer{},
+				state:   &PersistenceState{CurrentCandidate: parentChannel},
+			}
 			parent := guardianLinkageMiddleware{link: link, outbound: outbound}
 			review := guardianLinkageMiddleware{link: reviewLink, outbound: outbound}
 
@@ -63,6 +69,8 @@ func TestGuardianLinkage(t *testing.T) {
 				require.NoError(t, err)
 			}
 
+			require.Equal(t, parentChannel.Channel.ID, guardianReviewParentChannelID(reviewCtx))
+			require.Equal(t, llm.APIFormatOpenAIResponse.String(), guardianReviewParentAPIFormat(reviewCtx))
 			for _, tc := range []struct {
 				name string
 				req  *httpclient.Request
@@ -88,9 +96,12 @@ func TestGuardianLinkage(t *testing.T) {
 
 			outbound.wrapped = nil
 			next := guardianTestRequest(token, "gpt-6-luna")
+			next.APIFormat = llm.APIFormatAnthropicMessage.String()
 			_, err = parent.OnOutboundRawRequest(ctx, next)
 			require.NoError(t, err)
 			require.False(t, gjson.GetBytes(next.Body, "client_metadata.guardian_credits_requested").Exists())
+			require.Zero(t, guardianReviewParentChannelID(reviewCtx))
+			require.Equal(t, llm.APIFormatAnthropicMessage.String(), guardianReviewParentAPIFormat(reviewCtx))
 			outbound.wrapped = &codex.OutboundTransformer{}
 			unlinked, err := review.OnOutboundRawRequest(reviewCtx, guardianTestRequest(token, codex.AutoReviewModel))
 			require.NoError(t, err)
@@ -169,6 +180,105 @@ func TestGuardianResponsesLite(t *testing.T) {
 				require.False(t, liteFrameSignal.Exists())
 				require.Equal(t, "true", request.Headers.Get(codex.ResponsesLiteHeader))
 			}
+		})
+	}
+}
+
+func TestGuardianParentChannelPreference(t *testing.T) {
+	const parentID = 2
+	req := &llm.Request{Model: codex.AutoReviewModel}
+	fallback := quotaRoutingCandidate(1, "")
+	parent := quotaRoutingCandidate(parentID, "")
+	parent.Priority = 1 // Default routing would pick fallback even without retries.
+	for _, tc := range []struct {
+		name       string
+		isReview   bool
+		hasParent  bool
+		restricted bool
+		exhausted  bool
+		want       int
+	}{
+		{name: "eligible Codex parent", isReview: true, hasParent: true, want: parentID},
+		{name: "non-Codex parent", isReview: true, want: 1},
+		{name: "ordinary request", hasParent: true, want: 1},
+		{name: "parent is ineligible for reviewer", isReview: true, hasParent: true, restricted: true, want: 1},
+		{name: "parent quota is exhausted", isReview: true, hasParent: true, exhausted: true, want: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := WithSafeguardsParent(t.Context())
+			link := ctx.Value(guardianLinkageKey{}).(guardianLinkage)
+			if tc.hasParent {
+				link.parent.attempt = &guardianParentAttempt{channelID: parentID, responseID: "resp_parent"}
+			}
+			if tc.isReview {
+				ctx = WithSafeguardsReview(ctx)
+			}
+			candidates := []*ChannelModelsCandidate{fallback}
+			if !tc.restricted {
+				candidates = append(candidates, parent)
+			}
+			var statuses map[int]*biz.QuotaChannelStatus
+			if tc.exhausted {
+				statuses = map[int]*biz.QuotaChannelStatus{parentID: quotaExhaustedStatus()}
+			}
+			balanced, gate := newQuotaRoutingSelector(candidates, statuses, biz.QuotaRoutingSettings{})
+			balanced.retryPolicy = &biz.RetryPolicy{}
+			got, err := balanced.Select(ctx, req)
+			require.NoError(t, err)
+			require.NotEmpty(t, got)
+			require.Equal(t, tc.want, got[0].Channel.ID)
+			require.False(t, got[0].TraceSticky)
+
+			direct := WithQuotaRoutingSelector(&staticChannelSelector{candidates: candidates}, gate)
+			got, err = direct.Select(ctx, req)
+			require.NoError(t, err)
+			require.NotEmpty(t, got)
+			require.Equal(t, tc.want, got[0].Channel.ID)
+		})
+	}
+}
+
+func TestSafeguardsReviewerFollowsParentProtocol(t *testing.T) {
+	httpFormat := llm.APIFormatOpenAIResponse.String()
+	wsFormat := llm.APIFormatOpenAIResponseWebSocket.String()
+	anthropicFormat := llm.APIFormatAnthropicMessage.String()
+	for _, tc := range []struct {
+		name         string
+		parentFormat string
+		formats      []string
+		review       bool
+		forced       bool
+		want         string
+	}{
+		{name: "HTTP parent", parentFormat: httpFormat, formats: []string{wsFormat, httpFormat}, review: true, want: httpFormat},
+		{name: "WebSocket parent", parentFormat: wsFormat, formats: []string{httpFormat, wsFormat}, review: true, want: wsFormat},
+		{name: "Anthropic parent", parentFormat: anthropicFormat, formats: []string{httpFormat, anthropicFormat}, review: true, want: anthropicFormat},
+		{name: "no parent protocol uses normal endpoint order", formats: []string{httpFormat, wsFormat}, review: true, want: httpFormat},
+		{name: "missing parent endpoint uses normal endpoint order", parentFormat: wsFormat, formats: []string{httpFormat, anthropicFormat}, review: true, want: httpFormat},
+		{name: "HTTP-only model override", parentFormat: wsFormat, formats: []string{httpFormat}, review: true, forced: true, want: httpFormat},
+		{name: "ordinary request uses normal endpoint order", parentFormat: wsFormat, formats: []string{httpFormat, wsFormat}, want: httpFormat},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := WithSafeguardsParent(t.Context())
+			link := ctx.Value(guardianLinkageKey{}).(guardianLinkage)
+			parent := guardianLinkageMiddleware{link: link, outbound: &PersistentOutboundTransformer{}}
+			if tc.parentFormat != "" {
+				_, err := parent.OnOutboundRawRequest(ctx, &httpclient.Request{APIFormat: tc.parentFormat})
+				require.NoError(t, err)
+			}
+			if tc.review {
+				ctx = WithSafeguardsReview(ctx)
+			}
+			endpoints := make([]objects.ChannelEndpoint, 0, len(tc.formats))
+			for _, format := range tc.formats {
+				endpoints = append(endpoints, objects.ChannelEndpoint{APIFormat: format})
+			}
+			request := &llm.Request{
+				Model:       codex.AutoReviewModel,
+				APIFormat:   llm.APIFormatOpenAIChatCompletion,
+				RequestType: llm.RequestTypeChat,
+			}
+			require.Equal(t, tc.want, selectEndpointAPIFormat(ctx, endpoints, request, tc.forced))
 		})
 	}
 }

@@ -35,12 +35,14 @@ type guardianLinkage struct {
 }
 
 type guardianParent struct {
-	mu      sync.Mutex
-	attempt *guardianParentAttempt
+	mu        sync.Mutex
+	apiFormat string
+	attempt   *guardianParentAttempt
 }
 
 type guardianParentAttempt struct {
 	identity   guardianIdentity
+	channelID  int
 	responseID string
 }
 
@@ -64,6 +66,34 @@ func WithSafeguardsReview(ctx context.Context) context.Context {
 	return context.WithValue(ctx, guardianLinkageKey{}, link)
 }
 
+func guardianReviewLink(ctx context.Context) (guardianLinkage, bool) {
+	link, ok := ctx.Value(guardianLinkageKey{}).(guardianLinkage)
+	return link, ok && link.review
+}
+
+func guardianReviewParentChannelID(ctx context.Context) int {
+	link, ok := guardianReviewLink(ctx)
+	if !ok {
+		return 0
+	}
+	link.parent.mu.Lock()
+	defer link.parent.mu.Unlock()
+	if attempt := link.parent.attempt; attempt != nil && attempt.responseID != "" {
+		return attempt.channelID
+	}
+	return 0
+}
+
+func guardianReviewParentAPIFormat(ctx context.Context) string {
+	link, ok := guardianReviewLink(ctx)
+	if !ok {
+		return ""
+	}
+	link.parent.mu.Lock()
+	defer link.parent.mu.Unlock()
+	return link.parent.apiFormat
+}
+
 type guardianLinkageMiddleware struct {
 	pipeline.DummyMiddleware
 
@@ -79,6 +109,7 @@ func (m *guardianLinkageMiddleware) OnOutboundRawRequest(_ context.Context, requ
 	defer parent.mu.Unlock()
 
 	if !m.link.review {
+		parent.apiFormat = request.APIFormat
 		parent.attempt = nil
 	}
 	if _, ok := m.outbound.wrapped.(*codex.OutboundTransformer); !ok {
@@ -106,7 +137,10 @@ func (m *guardianLinkageMiddleware) OnOutboundRawRequest(_ context.Context, requ
 	if _, err := setGuardianMetadata(request, "guardian_credits_requested", "true"); err != nil {
 		return nil, err
 	}
-	parent.attempt = &guardianParentAttempt{identity: identity}
+	parent.attempt = &guardianParentAttempt{
+		identity:  identity,
+		channelID: m.outbound.GetCurrentChannel().ID,
+	}
 	return request, nil
 }
 
