@@ -9,7 +9,7 @@ type callContextKey struct{}
 type Call struct {
 	ManifestID     string
 	InstallationID int
-	KVWritable     bool
+	KVWritable     bool // The caller had write_plugins before delegation.
 }
 
 // WithCall stores the plugin call on ctx.

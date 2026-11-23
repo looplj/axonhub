@@ -51,6 +51,12 @@ type PluginScheduleRun func(*sql.Selector)
 // PluginStorage is the predicate function for pluginstorage builders.
 type PluginStorage func(*sql.Selector)
 
+// PluginTableOperation is the predicate function for plugintableoperation builders.
+type PluginTableOperation func(*sql.Selector)
+
+// PluginTableStorage is the predicate function for plugintablestorage builders.
+type PluginTableStorage func(*sql.Selector)
+
 // Project is the predicate function for project builders.
 type Project func(*sql.Selector)
 

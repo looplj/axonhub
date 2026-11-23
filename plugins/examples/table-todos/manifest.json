@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "example.table-todos",
+  "name": "Table Todos",
+  "version": "1.2.0",
+  "description": "A small to-do list backed by one plugin-owned table.",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "permissions": [
+    "tables"
+  ],
+  "tables": {
+    "todos": {
+      "columns": {
+        "title": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "done": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "ui": {
+    "pages": [
+      {
+        "key": "todos",
+        "entry": "ui/index.html",
+        "title": {
+          "en": "To-do list",
+          "zh-CN": "待办清单"
+        }
+      }
+    ]
+  }
+}

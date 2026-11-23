@@ -30,6 +30,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/pluginschedule"
 	"github.com/looplj/axonhub/internal/ent/pluginschedulerun"
 	"github.com/looplj/axonhub/internal/ent/pluginstorage"
+	"github.com/looplj/axonhub/internal/ent/plugintableoperation"
+	"github.com/looplj/axonhub/internal/ent/plugintablestorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
@@ -83,6 +85,10 @@ type Client struct {
 	PluginScheduleRun *PluginScheduleRunClient
 	// PluginStorage is the client for interacting with the PluginStorage builders.
 	PluginStorage *PluginStorageClient
+	// PluginTableOperation is the client for interacting with the PluginTableOperation builders.
+	PluginTableOperation *PluginTableOperationClient
+	// PluginTableStorage is the client for interacting with the PluginTableStorage builders.
+	PluginTableStorage *PluginTableStorageClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
 	// Prompt is the client for interacting with the Prompt builders.
@@ -143,6 +149,8 @@ func (c *Client) init() {
 	c.PluginSchedule = NewPluginScheduleClient(c.config)
 	c.PluginScheduleRun = NewPluginScheduleRunClient(c.config)
 	c.PluginStorage = NewPluginStorageClient(c.config)
+	c.PluginTableOperation = NewPluginTableOperationClient(c.config)
+	c.PluginTableStorage = NewPluginTableStorageClient(c.config)
 	c.Project = NewProjectClient(c.config)
 	c.Prompt = NewPromptClient(c.config)
 	c.PromptProtectionRule = NewPromptProtectionRuleClient(c.config)
@@ -266,6 +274,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		PluginSchedule:           NewPluginScheduleClient(cfg),
 		PluginScheduleRun:        NewPluginScheduleRunClient(cfg),
 		PluginStorage:            NewPluginStorageClient(cfg),
+		PluginTableOperation:     NewPluginTableOperationClient(cfg),
+		PluginTableStorage:       NewPluginTableStorageClient(cfg),
 		Project:                  NewProjectClient(cfg),
 		Prompt:                   NewPromptClient(cfg),
 		PromptProtectionRule:     NewPromptProtectionRuleClient(cfg),
@@ -316,6 +326,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		PluginSchedule:           NewPluginScheduleClient(cfg),
 		PluginScheduleRun:        NewPluginScheduleRunClient(cfg),
 		PluginStorage:            NewPluginStorageClient(cfg),
+		PluginTableOperation:     NewPluginTableOperationClient(cfg),
+		PluginTableStorage:       NewPluginTableStorageClient(cfg),
 		Project:                  NewProjectClient(cfg),
 		Prompt:                   NewPromptClient(cfg),
 		PromptProtectionRule:     NewPromptProtectionRuleClient(cfg),
@@ -364,10 +376,11 @@ func (c *Client) Use(hooks ...Hook) {
 		c.APIKey, c.APIKeyProfileTemplate, c.Channel, c.ChannelModelPrice,
 		c.ChannelModelPriceVersion, c.ChannelOverrideTemplate, c.ChannelProbe,
 		c.DataStorage, c.Invitation, c.Model, c.OIDCIdentity, c.Plugin,
-		c.PluginSchedule, c.PluginScheduleRun, c.PluginStorage, c.Project, c.Prompt,
-		c.PromptProtectionRule, c.ProviderQuotaStatus, c.Request, c.RequestBodyChunk,
-		c.RequestBodyChunkRef, c.RequestExecution, c.Role, c.System, c.Thread, c.Trace,
-		c.UsageLog, c.User, c.UserProject, c.UserRole,
+		c.PluginSchedule, c.PluginScheduleRun, c.PluginStorage, c.PluginTableOperation,
+		c.PluginTableStorage, c.Project, c.Prompt, c.PromptProtectionRule,
+		c.ProviderQuotaStatus, c.Request, c.RequestBodyChunk, c.RequestBodyChunkRef,
+		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
+		c.UserProject, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -380,10 +393,11 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.APIKey, c.APIKeyProfileTemplate, c.Channel, c.ChannelModelPrice,
 		c.ChannelModelPriceVersion, c.ChannelOverrideTemplate, c.ChannelProbe,
 		c.DataStorage, c.Invitation, c.Model, c.OIDCIdentity, c.Plugin,
-		c.PluginSchedule, c.PluginScheduleRun, c.PluginStorage, c.Project, c.Prompt,
-		c.PromptProtectionRule, c.ProviderQuotaStatus, c.Request, c.RequestBodyChunk,
-		c.RequestBodyChunkRef, c.RequestExecution, c.Role, c.System, c.Thread, c.Trace,
-		c.UsageLog, c.User, c.UserProject, c.UserRole,
+		c.PluginSchedule, c.PluginScheduleRun, c.PluginStorage, c.PluginTableOperation,
+		c.PluginTableStorage, c.Project, c.Prompt, c.PromptProtectionRule,
+		c.ProviderQuotaStatus, c.Request, c.RequestBodyChunk, c.RequestBodyChunkRef,
+		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
+		c.UserProject, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -422,6 +436,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.PluginScheduleRun.mutate(ctx, m)
 	case *PluginStorageMutation:
 		return c.PluginStorage.mutate(ctx, m)
+	case *PluginTableOperationMutation:
+		return c.PluginTableOperation.mutate(ctx, m)
+	case *PluginTableStorageMutation:
+		return c.PluginTableStorage.mutate(ctx, m)
 	case *ProjectMutation:
 		return c.Project.mutate(ctx, m)
 	case *PromptMutation:
@@ -2779,6 +2797,274 @@ func (c *PluginStorageClient) mutate(ctx context.Context, m *PluginStorageMutati
 		return (&PluginStorageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown PluginStorage mutation op: %q", m.Op())
+	}
+}
+
+// PluginTableOperationClient is a client for the PluginTableOperation schema.
+type PluginTableOperationClient struct {
+	config
+}
+
+// NewPluginTableOperationClient returns a client for the PluginTableOperation from the given config.
+func NewPluginTableOperationClient(c config) *PluginTableOperationClient {
+	return &PluginTableOperationClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `plugintableoperation.Hooks(f(g(h())))`.
+func (c *PluginTableOperationClient) Use(hooks ...Hook) {
+	c.hooks.PluginTableOperation = append(c.hooks.PluginTableOperation, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `plugintableoperation.Intercept(f(g(h())))`.
+func (c *PluginTableOperationClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PluginTableOperation = append(c.inters.PluginTableOperation, interceptors...)
+}
+
+// Create returns a builder for creating a PluginTableOperation entity.
+func (c *PluginTableOperationClient) Create() *PluginTableOperationCreate {
+	mutation := newPluginTableOperationMutation(c.config, OpCreate)
+	return &PluginTableOperationCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PluginTableOperation entities.
+func (c *PluginTableOperationClient) CreateBulk(builders ...*PluginTableOperationCreate) *PluginTableOperationCreateBulk {
+	return &PluginTableOperationCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PluginTableOperationClient) MapCreateBulk(slice any, setFunc func(*PluginTableOperationCreate, int)) *PluginTableOperationCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PluginTableOperationCreateBulk{err: fmt.Errorf("calling to PluginTableOperationClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PluginTableOperationCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PluginTableOperationCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PluginTableOperation.
+func (c *PluginTableOperationClient) Update() *PluginTableOperationUpdate {
+	mutation := newPluginTableOperationMutation(c.config, OpUpdate)
+	return &PluginTableOperationUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PluginTableOperationClient) UpdateOne(_m *PluginTableOperation) *PluginTableOperationUpdateOne {
+	mutation := newPluginTableOperationMutation(c.config, OpUpdateOne, withPluginTableOperation(_m))
+	return &PluginTableOperationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PluginTableOperationClient) UpdateOneID(id int) *PluginTableOperationUpdateOne {
+	mutation := newPluginTableOperationMutation(c.config, OpUpdateOne, withPluginTableOperationID(id))
+	return &PluginTableOperationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PluginTableOperation.
+func (c *PluginTableOperationClient) Delete() *PluginTableOperationDelete {
+	mutation := newPluginTableOperationMutation(c.config, OpDelete)
+	return &PluginTableOperationDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PluginTableOperationClient) DeleteOne(_m *PluginTableOperation) *PluginTableOperationDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PluginTableOperationClient) DeleteOneID(id int) *PluginTableOperationDeleteOne {
+	builder := c.Delete().Where(plugintableoperation.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PluginTableOperationDeleteOne{builder}
+}
+
+// Query returns a query builder for PluginTableOperation.
+func (c *PluginTableOperationClient) Query() *PluginTableOperationQuery {
+	return &PluginTableOperationQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePluginTableOperation},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PluginTableOperation entity by its id.
+func (c *PluginTableOperationClient) Get(ctx context.Context, id int) (*PluginTableOperation, error) {
+	return c.Query().Where(plugintableoperation.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PluginTableOperationClient) GetX(ctx context.Context, id int) *PluginTableOperation {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PluginTableOperationClient) Hooks() []Hook {
+	hooks := c.hooks.PluginTableOperation
+	return append(hooks[:len(hooks):len(hooks)], plugintableoperation.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *PluginTableOperationClient) Interceptors() []Interceptor {
+	return c.inters.PluginTableOperation
+}
+
+func (c *PluginTableOperationClient) mutate(ctx context.Context, m *PluginTableOperationMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PluginTableOperationCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PluginTableOperationUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PluginTableOperationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PluginTableOperationDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PluginTableOperation mutation op: %q", m.Op())
+	}
+}
+
+// PluginTableStorageClient is a client for the PluginTableStorage schema.
+type PluginTableStorageClient struct {
+	config
+}
+
+// NewPluginTableStorageClient returns a client for the PluginTableStorage from the given config.
+func NewPluginTableStorageClient(c config) *PluginTableStorageClient {
+	return &PluginTableStorageClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `plugintablestorage.Hooks(f(g(h())))`.
+func (c *PluginTableStorageClient) Use(hooks ...Hook) {
+	c.hooks.PluginTableStorage = append(c.hooks.PluginTableStorage, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `plugintablestorage.Intercept(f(g(h())))`.
+func (c *PluginTableStorageClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PluginTableStorage = append(c.inters.PluginTableStorage, interceptors...)
+}
+
+// Create returns a builder for creating a PluginTableStorage entity.
+func (c *PluginTableStorageClient) Create() *PluginTableStorageCreate {
+	mutation := newPluginTableStorageMutation(c.config, OpCreate)
+	return &PluginTableStorageCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PluginTableStorage entities.
+func (c *PluginTableStorageClient) CreateBulk(builders ...*PluginTableStorageCreate) *PluginTableStorageCreateBulk {
+	return &PluginTableStorageCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PluginTableStorageClient) MapCreateBulk(slice any, setFunc func(*PluginTableStorageCreate, int)) *PluginTableStorageCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PluginTableStorageCreateBulk{err: fmt.Errorf("calling to PluginTableStorageClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PluginTableStorageCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PluginTableStorageCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PluginTableStorage.
+func (c *PluginTableStorageClient) Update() *PluginTableStorageUpdate {
+	mutation := newPluginTableStorageMutation(c.config, OpUpdate)
+	return &PluginTableStorageUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PluginTableStorageClient) UpdateOne(_m *PluginTableStorage) *PluginTableStorageUpdateOne {
+	mutation := newPluginTableStorageMutation(c.config, OpUpdateOne, withPluginTableStorage(_m))
+	return &PluginTableStorageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PluginTableStorageClient) UpdateOneID(id int) *PluginTableStorageUpdateOne {
+	mutation := newPluginTableStorageMutation(c.config, OpUpdateOne, withPluginTableStorageID(id))
+	return &PluginTableStorageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PluginTableStorage.
+func (c *PluginTableStorageClient) Delete() *PluginTableStorageDelete {
+	mutation := newPluginTableStorageMutation(c.config, OpDelete)
+	return &PluginTableStorageDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PluginTableStorageClient) DeleteOne(_m *PluginTableStorage) *PluginTableStorageDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PluginTableStorageClient) DeleteOneID(id int) *PluginTableStorageDeleteOne {
+	builder := c.Delete().Where(plugintablestorage.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PluginTableStorageDeleteOne{builder}
+}
+
+// Query returns a query builder for PluginTableStorage.
+func (c *PluginTableStorageClient) Query() *PluginTableStorageQuery {
+	return &PluginTableStorageQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePluginTableStorage},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PluginTableStorage entity by its id.
+func (c *PluginTableStorageClient) Get(ctx context.Context, id int) (*PluginTableStorage, error) {
+	return c.Query().Where(plugintablestorage.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PluginTableStorageClient) GetX(ctx context.Context, id int) *PluginTableStorage {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PluginTableStorageClient) Hooks() []Hook {
+	hooks := c.hooks.PluginTableStorage
+	return append(hooks[:len(hooks):len(hooks)], plugintablestorage.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *PluginTableStorageClient) Interceptors() []Interceptor {
+	return c.inters.PluginTableStorage
+}
+
+func (c *PluginTableStorageClient) mutate(ctx context.Context, m *PluginTableStorageMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PluginTableStorageCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PluginTableStorageUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PluginTableStorageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PluginTableStorageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PluginTableStorage mutation op: %q", m.Op())
 	}
 }
 
@@ -5753,16 +6039,18 @@ type (
 		APIKey, APIKeyProfileTemplate, Channel, ChannelModelPrice,
 		ChannelModelPriceVersion, ChannelOverrideTemplate, ChannelProbe, DataStorage,
 		Invitation, Model, OIDCIdentity, Plugin, PluginSchedule, PluginScheduleRun,
-		PluginStorage, Project, Prompt, PromptProtectionRule, ProviderQuotaStatus,
-		Request, RequestBodyChunk, RequestBodyChunkRef, RequestExecution, Role, System,
-		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Hook
+		PluginStorage, PluginTableOperation, PluginTableStorage, Project, Prompt,
+		PromptProtectionRule, ProviderQuotaStatus, Request, RequestBodyChunk,
+		RequestBodyChunkRef, RequestExecution, Role, System, Thread, Trace, UsageLog,
+		User, UserProject, UserRole []ent.Hook
 	}
 	inters struct {
 		APIKey, APIKeyProfileTemplate, Channel, ChannelModelPrice,
 		ChannelModelPriceVersion, ChannelOverrideTemplate, ChannelProbe, DataStorage,
 		Invitation, Model, OIDCIdentity, Plugin, PluginSchedule, PluginScheduleRun,
-		PluginStorage, Project, Prompt, PromptProtectionRule, ProviderQuotaStatus,
-		Request, RequestBodyChunk, RequestBodyChunkRef, RequestExecution, Role, System,
-		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Interceptor
+		PluginStorage, PluginTableOperation, PluginTableStorage, Project, Prompt,
+		PromptProtectionRule, ProviderQuotaStatus, Request, RequestBodyChunk,
+		RequestBodyChunkRef, RequestExecution, Role, System, Thread, Trace, UsageLog,
+		User, UserProject, UserRole []ent.Interceptor
 	}
 )

@@ -20,6 +20,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/pluginschedule"
 	"github.com/looplj/axonhub/internal/ent/pluginschedulerun"
 	"github.com/looplj/axonhub/internal/ent/pluginstorage"
+	"github.com/looplj/axonhub/internal/ent/plugintableoperation"
+	"github.com/looplj/axonhub/internal/ent/plugintablestorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
 	"github.com/looplj/axonhub/internal/ent/promptprotectionrule"
@@ -725,6 +727,108 @@ func init() {
 			return nil
 		}
 	}()
+	plugintableoperation.Policy = privacy.NewPolicies(schema.PluginTableOperation{})
+	plugintableoperation.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := plugintableoperation.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	plugintableoperationFields := schema.PluginTableOperation{}.Fields()
+	_ = plugintableoperationFields
+	// plugintableoperationDescStorageID is the schema descriptor for storage_id field.
+	plugintableoperationDescStorageID := plugintableoperationFields[0].Descriptor()
+	// plugintableoperation.StorageIDValidator is a validator for the "storage_id" field. It is called by the builders before save.
+	plugintableoperation.StorageIDValidator = plugintableoperationDescStorageID.Validators[0].(func(int) error)
+	// plugintableoperationDescKind is the schema descriptor for kind field.
+	plugintableoperationDescKind := plugintableoperationFields[1].Descriptor()
+	// plugintableoperation.KindValidator is a validator for the "kind" field. It is called by the builders before save.
+	plugintableoperation.KindValidator = func() func(string) error {
+		validators := plugintableoperationDescKind.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(kind string) error {
+			for _, fn := range fns {
+				if err := fn(kind); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// plugintableoperationDescTables is the schema descriptor for tables field.
+	plugintableoperationDescTables := plugintableoperationFields[2].Descriptor()
+	// plugintableoperation.DefaultTables holds the default value on creation for the tables field.
+	plugintableoperation.DefaultTables = plugintableoperationDescTables.Default.(map[string]objects.PluginTableSpec)
+	// plugintableoperationDescNames is the schema descriptor for names field.
+	plugintableoperationDescNames := plugintableoperationFields[3].Descriptor()
+	// plugintableoperation.DefaultNames holds the default value on creation for the names field.
+	plugintableoperation.DefaultNames = plugintableoperationDescNames.Default.(map[string]string)
+	// plugintableoperationDescPackageSha is the schema descriptor for package_sha field.
+	plugintableoperationDescPackageSha := plugintableoperationFields[4].Descriptor()
+	// plugintableoperation.DefaultPackageSha holds the default value on creation for the package_sha field.
+	plugintableoperation.DefaultPackageSha = plugintableoperationDescPackageSha.Default.(string)
+	// plugintableoperation.PackageShaValidator is a validator for the "package_sha" field. It is called by the builders before save.
+	plugintableoperation.PackageShaValidator = plugintableoperationDescPackageSha.Validators[0].(func(string) error)
+	// plugintableoperationDescLastError is the schema descriptor for last_error field.
+	plugintableoperationDescLastError := plugintableoperationFields[5].Descriptor()
+	// plugintableoperation.DefaultLastError holds the default value on creation for the last_error field.
+	plugintableoperation.DefaultLastError = plugintableoperationDescLastError.Default.(string)
+	// plugintableoperation.LastErrorValidator is a validator for the "last_error" field. It is called by the builders before save.
+	plugintableoperation.LastErrorValidator = plugintableoperationDescLastError.Validators[0].(func(string) error)
+	// plugintableoperationDescRetryAt is the schema descriptor for retry_at field.
+	plugintableoperationDescRetryAt := plugintableoperationFields[6].Descriptor()
+	// plugintableoperation.DefaultRetryAt holds the default value on creation for the retry_at field.
+	plugintableoperation.DefaultRetryAt = plugintableoperationDescRetryAt.Default.(int64)
+	plugintablestorage.Policy = privacy.NewPolicies(schema.PluginTableStorage{})
+	plugintablestorage.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := plugintablestorage.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	plugintablestorageFields := schema.PluginTableStorage{}.Fields()
+	_ = plugintablestorageFields
+	// plugintablestorageDescPluginID is the schema descriptor for plugin_id field.
+	plugintablestorageDescPluginID := plugintablestorageFields[0].Descriptor()
+	// plugintablestorage.PluginIDValidator is a validator for the "plugin_id" field. It is called by the builders before save.
+	plugintablestorage.PluginIDValidator = func() func(string) error {
+		validators := plugintablestorageDescPluginID.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(plugin_id string) error {
+			for _, fn := range fns {
+				if err := fn(plugin_id); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// plugintablestorageDescActivePluginID is the schema descriptor for active_plugin_id field.
+	plugintablestorageDescActivePluginID := plugintablestorageFields[1].Descriptor()
+	// plugintablestorage.ActivePluginIDValidator is a validator for the "active_plugin_id" field. It is called by the builders before save.
+	plugintablestorage.ActivePluginIDValidator = plugintablestorageDescActivePluginID.Validators[0].(func(string) error)
+	// plugintablestorageDescTables is the schema descriptor for tables field.
+	plugintablestorageDescTables := plugintablestorageFields[2].Descriptor()
+	// plugintablestorage.DefaultTables holds the default value on creation for the tables field.
+	plugintablestorage.DefaultTables = plugintablestorageDescTables.Default.(map[string]objects.PluginTableSpec)
+	// plugintablestorageDescNames is the schema descriptor for names field.
+	plugintablestorageDescNames := plugintablestorageFields[3].Descriptor()
+	// plugintablestorage.DefaultNames holds the default value on creation for the names field.
+	plugintablestorage.DefaultNames = plugintablestorageDescNames.Default.(map[string]string)
+	// plugintablestorageDescRevision is the schema descriptor for revision field.
+	plugintablestorageDescRevision := plugintablestorageFields[4].Descriptor()
+	// plugintablestorage.DefaultRevision holds the default value on creation for the revision field.
+	plugintablestorage.DefaultRevision = plugintablestorageDescRevision.Default.(int)
 	projectMixin := schema.Project{}.Mixin()
 	project.Policy = privacy.NewPolicies(schema.Project{})
 	project.Hooks[0] = func(next ent.Mutator) ent.Mutator {

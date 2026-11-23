@@ -128,7 +128,7 @@ func (r *mutationResolver) UpdatePluginSettings(ctx context.Context, id objects.
 }
 
 // DeletePlugin is the resolver for the deletePlugin field.
-func (r *mutationResolver) DeletePlugin(ctx context.Context, id objects.GUID) (bool, error) {
+func (r *mutationResolver) DeletePlugin(ctx context.Context, id objects.GUID, purgeTables *bool) (bool, error) {
 	if err := requirePluginOwner(ctx); err != nil {
 		return false, err
 	}
@@ -140,7 +140,7 @@ func (r *mutationResolver) DeletePlugin(ctx context.Context, id objects.GUID) (b
 	if err != nil {
 		return false, err
 	}
-	if err := manager.Delete(ctx, rowID); err != nil {
+	if err := manager.DeleteWithTables(ctx, rowID, lo.FromPtr(purgeTables)); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -216,6 +216,15 @@ func (r *mutationResolver) DeletePluginKv(ctx context.Context, namespace *string
 		return false, err
 	}
 	return manager.KVDelete(ctx, call.ManifestID, call.InstallationID, lo.FromPtr(namespace), key)
+}
+
+// PluginTableOperation is the resolver for the pluginTableOperation field.
+func (r *mutationResolver) PluginTableOperation(ctx context.Context, table string, operation PluginTableCommand, args []objects.JSONRawMessage) (objects.JSONRawMessage, error) {
+	manager, err := r.pluginManagerOrErr()
+	if err != nil {
+		return nil, err
+	}
+	return manager.RunUITableOperation(ctx, table, string(operation), args)
 }
 
 // CreatePluginUISession is the resolver for the createPluginUISession field.

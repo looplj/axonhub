@@ -201,7 +201,15 @@ export function PluginGrantDialog({
                   isNew={newPermissions.has(permission)}
                   onCheckedChange={(checked) => setSelected((current) => toggle(current, permission, checked))}
                   label={permission}
-                  hint={permission === 'sql' ? t('plugins.grant.sqlAccess') : writePermission ? t('plugins.grant.writeAccess') : undefined}
+                  hint={
+                    permission === 'sql'
+                      ? t('plugins.grant.sqlAccess')
+                      : permission === 'tables'
+                        ? t('plugins.grant.tablesAccess')
+                        : writePermission
+                          ? t('plugins.grant.writeAccess')
+                          : undefined
+                  }
                 />
               );
             })}

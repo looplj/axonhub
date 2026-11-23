@@ -19,10 +19,14 @@ var Module = fx.Module("plugin",
 				if err := manager.Start(ctx); err != nil {
 					return err
 				}
+				if err := s.Register(ctx, scheduler.TaskSpec{Name: tableSchedulerName, FixRate: scheduleTick}, manager.scanTablePurges); err != nil {
+					return err
+				}
 				return manager.registerTaskScheduler(ctx, s)
 			},
 			OnStop: func(ctx context.Context) error {
 				s.Unregister(taskSchedulerName)
+				s.Unregister(tableSchedulerName)
 				return manager.Stop(ctx)
 			},
 		})

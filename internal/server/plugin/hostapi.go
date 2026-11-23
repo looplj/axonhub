@@ -44,7 +44,6 @@ type hostCall struct {
 	ctx            context.Context
 	pluginID       string
 	installationID int
-	packageSHA     string
 	export         string
 	alive          bool
 	granted        map[string]struct{}
@@ -149,6 +148,9 @@ func (h *hostCall) build(in callExportInput) (moejs.Value, error) {
 		return moejs.Undefined(), err
 	}
 	if err := h.attachSQLAPI(ctxObj); err != nil {
+		return moejs.Undefined(), err
+	}
+	if err := h.attachTablesAPI(ctxObj); err != nil {
 		return moejs.Undefined(), err
 	}
 	return engine.ObjectValue(ctxObj), nil
