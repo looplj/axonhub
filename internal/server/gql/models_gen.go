@@ -334,11 +334,12 @@ type FastestModel struct {
 }
 
 type FetchModelsPayload struct {
-	Models                    []*biz.ModelIdentify     `json:"models"`
-	Error                     *string                  `json:"error,omitempty"`
-	Fallback                  bool                     `json:"fallback"`
-	CodexCatalogVersion       *biz.CodexCatalogVersion `json:"codexCatalogVersion,omitempty"`
-	CodexCatalogSkippedReason *string                  `json:"codexCatalogSkippedReason,omitempty"`
+	Models                    []*biz.ModelIdentify            `json:"models"`
+	Error                     *string                         `json:"error,omitempty"`
+	Fallback                  bool                            `json:"fallback"`
+	FallbackReason            *biz.ModelCatalogFallbackReason `json:"fallbackReason,omitempty"`
+	CodexCatalogVersion       *biz.CodexCatalogVersion        `json:"codexCatalogVersion,omitempty"`
+	CodexCatalogSkippedReason *string                         `json:"codexCatalogSkippedReason,omitempty"`
 }
 
 type GetCacheDiagnosticsInput struct {

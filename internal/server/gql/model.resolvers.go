@@ -170,6 +170,7 @@ func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsIn
 		Models:                    models,
 		Error:                     result.Error,
 		Fallback:                  result.Fallback,
+		FallbackReason:            result.FallbackReason,
 		CodexCatalogVersion:       result.CodexCatalogVersion,
 		CodexCatalogSkippedReason: result.CodexCatalogSkippedReason,
 	}, nil

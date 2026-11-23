@@ -73,6 +73,8 @@ converters:
 
 # This section declares type mapping between the GraphQL and Go type systems.
 models:
+  ModelCatalogFallbackReason:
+    model: github.com/looplj/axonhub/internal/server/biz.ModelCatalogFallbackReason
   ReferencePriceField:
     model: github.com/looplj/axonhub/internal/server/biz.ReferencePriceField
   CatalogImportStatus:
