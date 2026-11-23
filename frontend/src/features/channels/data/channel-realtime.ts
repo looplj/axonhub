@@ -82,7 +82,8 @@ export function realtimeForSelection(format: string, current: ChannelRealtime | 
   const parsedHost = (() => {
     try { return new URL(baseURL); } catch { return null; }
   })();
-  const validWebSocketURL = parsedHost && parsedHost.protocol === 'wss:' && parsedHost.hostname !== '' && parsedHost.username === '' && !baseURL.includes('@') && parsedHost.search === '' && parsedHost.hash === '' && (parsedHost.pathname === '' || parsedHost.pathname === '/');
+  const ipLiteral = parsedHost && (parsedHost.hostname.includes(':') || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(parsedHost.hostname));
+  const validWebSocketURL = parsedHost && parsedHost.protocol === 'wss:' && parsedHost.hostname !== '' && !ipLiteral && parsedHost.username === '' && !baseURL.includes('@') && parsedHost.search === '' && parsedHost.hash === '' && (parsedHost.pathname === '' || parsedHost.pathname === '/');
   if (!validWebSocketURL || (!openai && !/^wss:\/\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:cn-beijing|ap-southeast-1)\.maas\.aliyuncs\.com$/i.test(baseURL))) {
     throw new Error('channels.realtime.invalidHost');
   }

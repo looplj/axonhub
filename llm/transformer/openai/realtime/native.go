@@ -13,6 +13,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/url"
 	"strings"
 
@@ -53,7 +54,7 @@ func ValidateEndpoint(baseURL, path string) error {
 		baseURL = "wss://api.openai.com"
 	}
 	u, err := url.Parse(baseURL)
-	if err != nil || u.Scheme != "wss" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" || u.RawPath != "" || (u.Path != "" && u.Path != "/") {
+	if err != nil || u.Scheme != "wss" || u.Hostname() == "" || net.ParseIP(u.Hostname()) != nil || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" || u.RawPath != "" || (u.Path != "" && u.Path != "/") {
 		return errors.New("OpenAI Realtime requires a wss:// host without a path or query")
 	}
 	if path != "" && path != "/v1/realtime" {

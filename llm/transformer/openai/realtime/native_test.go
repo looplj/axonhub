@@ -55,7 +55,7 @@ func TestNativeEndpointAllowsWebSocketHosts(t *testing.T) {
 	target, err = EndpointURL("wss://proxy.example.test", "/v1/realtime", "gpt-realtime-2.1")
 	require.NoError(t, err)
 	require.Equal(t, "wss://proxy.example.test/v1/realtime?model=gpt-realtime-2.1", target)
-	for _, bad := range []string{"http://api.openai.com", "ws://api.openai.com", "wss://", "wss://user@api.openai.com", "wss://api.openai.com?x=1", "wss://api.openai.com/custom"} {
+	for _, bad := range []string{"http://api.openai.com", "ws://api.openai.com", "wss://", "wss://127.0.0.1", "wss://user@api.openai.com", "wss://api.openai.com?x=1", "wss://api.openai.com/custom"} {
 		_, err := EndpointURL(bad, "", "gpt-realtime-2.1")
 		require.Error(t, err)
 	}
