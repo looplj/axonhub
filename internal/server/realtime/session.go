@@ -52,8 +52,10 @@ var (
 
 var base64CloseCause = regexp.MustCompile(`[A-Za-z0-9+/_-]{24,}={0,2}`)
 
-const MaxMessageBytes = 256 << 10
-const defaultClientEventsPerSecond = 1024
+const (
+	MaxMessageBytes              = 256 << 10
+	defaultClientEventsPerSecond = 1024
+)
 
 // One configuration is in flight and at most four more are waiting.
 const maxQueuedUpdates = 4
@@ -267,9 +269,11 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 		}
 		return ctx.Err()
 	}
-	var last atomic.Int64
-	last.Store(time.Now().UnixNano())
-	touchActivity := func() { last.Store(time.Now().UnixNano()) }
+	started := time.Now()
+	var lastDownstream, lastUpstream atomic.Int64
+	// Give each peer time to receive and answer a gateway ping even when
+	// IdleTimeout is configured shorter than the heartbeat interval.
+	peerTimeout := max(o.IdleTimeout, 2*o.PingInterval)
 	errs := make(chan error, 4)
 	var wg sync.WaitGroup
 	var closing atomic.Bool
@@ -310,6 +314,11 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 	}
 	read := func(conn *websocket.Conn, q *sendQueue, transform func([]byte) ([]byte, error), client bool) func() error {
 		return func() error {
+			last := &lastUpstream
+			if client {
+				last = &lastDownstream
+			}
+			touchActivity := func() { last.Store(int64(time.Since(started))) }
 			conn.SetReadLimit(MaxMessageBytes)
 			conn.SetPingHandler(func(payload string) error {
 				touchActivity()
@@ -465,7 +474,10 @@ loop:
 			}
 			break loop
 		case <-tick.C:
-			if time.Since(time.Unix(0, last.Load())) > o.IdleTimeout {
+			elapsed := time.Since(started)
+			downstreamIdle := elapsed - time.Duration(lastDownstream.Load())
+			upstreamIdle := elapsed - time.Duration(lastUpstream.Load())
+			if min(downstreamIdle, upstreamIdle) > o.IdleTimeout || downstreamIdle > peerTimeout || upstreamIdle > peerTimeout {
 				result = ErrIdleTimeout
 				break loop
 			}

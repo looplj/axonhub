@@ -309,6 +309,31 @@ func TestSessionClientPingCountsAsIdleActivity(t *testing.T) {
 	}
 }
 
+func TestSessionUpstreamPongsCannotKeepSilentClientAlive(t *testing.T) {
+	_, downstream := socketPair(t)
+	upstream, provider := socketPair(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go runSessionForTest(t, done, func() error {
+		return Run(ctx, downstream, upstream, Options{IdleTimeout: 350 * time.Millisecond, PingInterval: 100 * time.Millisecond}, Hooks{})
+	})
+
+	// Read provider-side pings so Gorilla answers them with pongs. Leave the
+	// client socket unread until shutdown, as with a silently lost connection.
+	providerDone := make(chan error, 1)
+	go runSessionForTest(t, providerDone, func() error {
+		_, _, err := provider.ReadMessage()
+		return err
+	})
+	select {
+	case err := <-done:
+		require.ErrorIs(t, err, ErrIdleTimeout)
+	case <-time.After(3 * time.Second):
+		t.Fatal("upstream pongs kept a silent client session alive")
+	}
+}
+
 func TestSafeCloseCauseSanitizesAndBoundsUnknownErrors(t *testing.T) {
 	encoded := strings.Repeat("QUJD", 80)
 	message := safeCloseCause(errors.New("provider failure\nresponse=" + encoded))
