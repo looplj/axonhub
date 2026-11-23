@@ -129,6 +129,6 @@ func TestEndpointURLRejectsBadBase(t *testing.T) {
 		t.Error("expected port rejection")
 	}
 	if _, err := EndpointURL("ws://a.cn-beijing.maas.aliyuncs.com", qwenRealtimePath, "qwen3.5-omni-plus-realtime"); err == nil {
-		t.Error("expected scheme rejection")
+		t.Error("expected ws scheme rejection")
 	}
 }

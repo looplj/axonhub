@@ -21,7 +21,10 @@ func TestTranslationEndpointAndEvents(t *testing.T) {
 	require.Error(t, err)
 	_, err = EndpointURL("", "", TranslationModel)
 	require.Error(t, err)
-	_, err = TranslationEndpointURL("wss://untrusted.example", "", TranslationModel)
+	proxyTarget, err := TranslationEndpointURL("wss://proxy.example.test", "", TranslationModel)
+	require.NoError(t, err)
+	require.Equal(t, "wss://proxy.example.test/v1/realtime/translations?model=gpt-realtime-translate", proxyTarget)
+	_, err = TranslationEndpointURL("ws://proxy.example.test", "", TranslationModel)
 	require.Error(t, err)
 	adapter := &Translation{}
 	created := []byte(`{"type":"session.created","session":{"type":"translation","model":"gpt-realtime-translate"}}`)

@@ -12,11 +12,13 @@ test('channel Realtime configuration saves and echoes without an endpoint', () =
   assert.equal(getInitialApiFormatForChannel('bailian', 'openai/chat_completions', [], { ...config, enabled: false }), 'openai/chat_completions');
 });
 
-test('OpenAI channel uses its official host while malformed hosts/timeouts are rejected', () => {
+test('Realtime Base URL is editable, defaults by provider, and accepts only secure WSS URLs', () => {
   assert.deepEqual(realtimeForSelection('openai/realtime-ws', undefined, '', ''), { enabled: true, protocol: 'openai/realtime-ws', baseURL: 'wss://api.openai.com', path: '/v1/realtime' });
-  assert.equal(realtimeForSelection('openai/realtime-ws', undefined, 'wss://api.openai.com/v1/realtime', '').baseURL, 'wss://api.openai.com');
-  for (const host of ['ws://api.openai.com', 'wss://api.openai.com.evil.test', 'wss://api.openai.com/path']) assert.throws(() => realtimeForSelection('openai/realtime-ws', undefined, host, ''));
-  for (const host of ['wss://127.0.0.1', 'wss://workspace.cn-beijing.maas.aliyuncs.com?api_key=x', 'https://workspace.cn-beijing.maas.aliyuncs.com']) assert.throws(() => realtimeForSelection('qwen/realtime-ws', undefined, host, ''));
+  assert.equal(getChannelBaseURLInputValue('openai/realtime-ws', '', ''), 'wss://api.openai.com');
+  assert.equal(realtimeForSelection('openai/realtime-ws', undefined, 'wss://proxy.example.test', '').baseURL, 'wss://proxy.example.test');
+  assert.equal(getChannelBaseURLInputValue('qwen/realtime-ws', '', ''), 'wss://llm-<workspace-id>.cn-beijing.maas.aliyuncs.com');
+  for (const host of ['http://proxy.example.test', 'ws://proxy.example.test', 'wss://', 'wss://proxy.example.test/path', 'wss://user@proxy.example.test']) assert.throws(() => realtimeForSelection('openai/realtime-ws', undefined, host, ''));
+  for (const host of ['ws://llm-workspace.cn-beijing.maas.aliyuncs.com', 'wss://127.0.0.1', 'wss://workspace.cn-beijing.maas.aliyuncs.com?api_key=x', 'https://workspace.cn-beijing.maas.aliyuncs.com', 'wss://llm-<workspace-id>.cn-beijing.maas.aliyuncs.com']) assert.throws(() => realtimeForSelection('qwen/realtime-ws', undefined, host, ''));
   for (const timeout of ['NaN', '999', '60001', '1234.5']) assert.throws(() => realtimeForSelection('openai/realtime-ws', undefined, '', timeout));
 });
 
@@ -133,6 +135,8 @@ test('Realtime Host reuses the channel Base URL control without a separate panel
   const actionDialog = readFileSync(new URL('../components/channels-action-dialog.tsx', import.meta.url), 'utf8');
   assert.match(actionDialog, /name='baseURL'/);
   assert.match(actionDialog, /getChannelBaseURLInputValue\(selectedApiFormat/);
+  assert.doesNotMatch(actionDialog, /readOnly=\{selectedApiFormat === 'openai\/realtime-ws'\}/);
+  assert.match(actionDialog, /onChange=\{isRealtimeProtocol\(selectedApiFormat\) \? \(event\) => setRealtimeHost\(event\.target\.value\) : field\.onChange\}/);
   assert.doesNotMatch(actionDialog, /isRealtimeProtocol\(selectedApiFormat\) \? t\('channels\.realtime\.host'\)/);
   assert.doesNotMatch(actionDialog, /data-testid='channel-realtime-config'/);
   assert.doesNotMatch(actionDialog, /data-testid='channel-realtime-host'/);

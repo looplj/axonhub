@@ -1,7 +1,7 @@
 {
   "channels.realtime.host": "Realtime API Host（WSS）",
   "channels.realtime.qwenHostPlaceholder": "示例：wss://llm-<workspace-id>.cn-beijing.maas.aliyuncs.com",
-  "channels.realtime.invalidHost": "请填写 OpenAI 官方 WSS Host，或百炼控制台提供的对应地域 Workspace 专属 WSS Host；不要附加路径或查询参数。",
+  "channels.realtime.invalidHost": "请填写 wss:// 地址，不要附加路径或查询参数；百炼地址中的 <workspace-id> 需要替换为实际 Workspace ID。",
   "channels.realtime.endpointsInactive": "当前渠道仅处理 Realtime 请求。切回普通协议后，原有默认端点和自定义端点会恢复可用。",
   "channels.realtime.legacyEndpoint": "该渠道包含历史 Realtime 端点。Realtime 必须在渠道主表单配置；请等待服务端迁移后刷新，端点管理不能保存此配置。",
   "channels.endpoints.realtime.handshakeTimeout": "握手超时",

@@ -25,7 +25,9 @@ export function isRealtimeQuickModel(model: string): boolean {
 }
 
 export const OPENAI_REALTIME_HOST = 'wss://api.openai.com';
+export const DEFAULT_QWEN_REALTIME_HOST = 'wss://llm-<workspace-id>.cn-beijing.maas.aliyuncs.com';
 export const DEFAULT_REALTIME_HANDSHAKE_TIMEOUT_MS = 15000;
+const qwenRealtimeHostPattern = /^wss:\/\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:cn-beijing|ap-southeast-1)\.maas\.aliyuncs\.com\/?$/i;
 
 export function getRealtimeHandshakeTimeoutInputValue(timeoutMs: number | null | undefined): string {
   return timeoutMs == null ? '' : String(timeoutMs);
@@ -36,8 +38,8 @@ export function getRealtimeClientEventsPerSecondInputValue(limit: number | null 
 }
 
 export function getChannelBaseURLInputValue(format: string, channelBaseURL: string | null | undefined, qwenRealtimeHost: string): string {
-  if (format === 'openai/realtime-ws') return OPENAI_REALTIME_HOST;
-  if (format === 'qwen/realtime-ws') return qwenRealtimeHost;
+  if (format === 'openai/realtime-ws') return qwenRealtimeHost && !qwenRealtimeHostPattern.test(qwenRealtimeHost) ? qwenRealtimeHost : OPENAI_REALTIME_HOST;
+  if (format === 'qwen/realtime-ws') return qwenRealtimeHostPattern.test(qwenRealtimeHost) ? qwenRealtimeHost : DEFAULT_QWEN_REALTIME_HOST;
   return channelBaseURL ?? '';
 }
 
@@ -48,7 +50,9 @@ export function getRealtimeDefaultEndpoint(realtime: ChannelRealtime | null | un
 
 export function getModelFetchBaseURL(format: string, channelBaseURL: string | null | undefined, qwenRealtimeHost: string): string {
   if (format !== 'openai/realtime-ws' && format !== 'qwen/realtime-ws') return channelBaseURL ?? '';
-  return getChannelBaseURLInputValue(format, channelBaseURL, qwenRealtimeHost).replace(/^wss:/i, 'https:').replace(/^ws:/i, 'http:');
+  const realtimeBaseURL = getChannelBaseURLInputValue(format, channelBaseURL, qwenRealtimeHost);
+  if (realtimeBaseURL.includes('<workspace-id>')) return '';
+  return realtimeBaseURL.replace(/^wss:/i, 'https:');
 }
 
 export function getRealtimeProviderBadgeClass(realtime: Pick<ChannelRealtime, 'enabled' | 'protocol'> | null | undefined): string | undefined {
@@ -73,10 +77,13 @@ export function withoutRealtimeModelProtocols(protocols: readonly ModelProtocol[
 export function realtimeForSelection(format: string, current: ChannelRealtime | null | undefined, host: string, timeout: string, clientEventsPerSecond?: string): ChannelRealtime | undefined {
   if (!isRealtimeProtocol(format)) return current ? { ...current, enabled: false } : undefined;
   if (format === 'openai/realtime') throw new Error('channels.realtime.invalidHost');
-  let baseURL = (host.trim() || (format === 'openai/realtime-ws' ? 'wss://api.openai.com' : '')).replace(/\/$/, '');
-  if (format === 'openai/realtime-ws' && baseURL === 'wss://api.openai.com/v1/realtime') baseURL = 'wss://api.openai.com';
   const openai = format === 'openai/realtime-ws';
-  if (openai ? baseURL !== 'wss://api.openai.com' : !/^wss:\/\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:cn-beijing|ap-southeast-1)\.maas\.aliyuncs\.com$/.test(baseURL)) {
+  const baseURL = (host.trim() || (openai ? OPENAI_REALTIME_HOST : '')).replace(/\/$/, '');
+  const parsedHost = (() => {
+    try { return new URL(baseURL); } catch { return null; }
+  })();
+  const validWebSocketURL = parsedHost && parsedHost.protocol === 'wss:' && parsedHost.hostname !== '' && parsedHost.username === '' && !baseURL.includes('@') && parsedHost.search === '' && parsedHost.hash === '' && (parsedHost.pathname === '' || parsedHost.pathname === '/');
+  if (!validWebSocketURL || (!openai && !/^wss:\/\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:cn-beijing|ap-southeast-1)\.maas\.aliyuncs\.com$/i.test(baseURL))) {
     throw new Error('channels.realtime.invalidHost');
   }
   const handshakeTimeoutMs = timeout.trim() === '' ? undefined : Number(timeout);

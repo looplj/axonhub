@@ -27,7 +27,13 @@ func TestRealtimeEndpointExplicitAndTrusted(t *testing.T) {
 	cfg := &objects.ChannelRealtimeConfig{Enabled: true, Protocol: ep.APIFormat, BaseURL: ep.BaseURL, Path: ep.Path}
 	require.NoError(t, ValidateChannelRealtime(channel.TypeBailian, cfg))
 	require.Error(t, ValidateChannelRealtime(channel.TypeOpenai, cfg), "provider isolation must remain enforced at the channel layer")
-	for _, bad := range []string{"ws://workspace.cn-beijing.maas.aliyuncs.com", "wss://127.0.0.1", "wss://workspace.cn-beijing.maas.aliyuncs.com.evil.test", "https://dashscope.aliyuncs.com"} {
+	cfg.BaseURL = "ws://workspace.cn-beijing.maas.aliyuncs.com"
+	require.Error(t, ValidateChannelRealtime(channel.TypeBailian, cfg), "Realtime Base URLs must use wss")
+	openai := &objects.ChannelRealtimeConfig{Enabled: true, Protocol: "openai/realtime-ws", BaseURL: "wss://proxy.example.test", Path: "/v1/realtime"}
+	require.NoError(t, ValidateChannelRealtime(channel.TypeOpenai, openai), "OpenAI Realtime accepts a configured WebSocket host")
+	openai.BaseURL = "https://proxy.example.test"
+	require.Error(t, ValidateChannelRealtime(channel.TypeOpenai, openai), "non-WebSocket schemes must be rejected")
+	for _, bad := range []string{"wss://127.0.0.1", "wss://workspace.cn-beijing.maas.aliyuncs.com.evil.test", "https://dashscope.aliyuncs.com"} {
 		ep.BaseURL = bad
 		require.Error(t, ValidateEndpoints([]objects.ChannelEndpoint{ep}))
 		cfg.BaseURL = bad

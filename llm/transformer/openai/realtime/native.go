@@ -53,8 +53,8 @@ func ValidateEndpoint(baseURL, path string) error {
 		baseURL = "wss://api.openai.com"
 	}
 	u, err := url.Parse(baseURL)
-	if err != nil || u.Scheme != "wss" || u.Host != "api.openai.com" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" || u.RawPath != "" || (u.Path != "" && u.Path != "/" && u.Path != "/v1/realtime") {
-		return errors.New("OpenAI Realtime requires the trusted wss://api.openai.com host")
+	if err != nil || u.Scheme != "wss" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" || u.RawPath != "" || (u.Path != "" && u.Path != "/") {
+		return errors.New("OpenAI Realtime requires a wss:// host without a path or query")
 	}
 	if path != "" && path != "/v1/realtime" {
 		return errors.New("OpenAI Realtime path must be /v1/realtime")
@@ -68,7 +68,10 @@ func EndpointURL(baseURL, path, model string) (string, error) {
 	if _, err := NewAdapter(model); err != nil {
 		return "", err
 	}
-	return "wss://api.openai.com/v1/realtime?" + url.Values{"model": []string{model}}.Encode(), nil
+	if baseURL == "" {
+		baseURL = "wss://api.openai.com"
+	}
+	return strings.TrimSuffix(baseURL, "/") + "/v1/realtime?" + url.Values{"model": []string{model}}.Encode(), nil
 }
 func (a *Adapter) Client(data []byte) ([]byte, error) {
 	var event map[string]json.RawMessage

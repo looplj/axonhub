@@ -32,7 +32,10 @@ func TranslationEndpointURL(baseURL, path, model string) (string, error) {
 	if model != TranslationModel {
 		return "", errors.New("unsupported OpenAI Realtime Translation model")
 	}
-	return "wss://api.openai.com/v1/realtime/translations?" + url.Values{"model": []string{model}}.Encode(), nil
+	if baseURL == "" {
+		baseURL = "wss://api.openai.com"
+	}
+	return strings.TrimSuffix(baseURL, "/") + "/v1/realtime/translations?" + url.Values{"model": []string{model}}.Encode(), nil
 }
 
 // Translation serializes state through the owning conversation.

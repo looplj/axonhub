@@ -2891,8 +2891,7 @@ export function ChannelsActionDialog({
                                     placeholder={isRealtimeProtocol(selectedApiFormat)
                                       ? selectedApiFormat === 'qwen/realtime-ws' ? t('channels.realtime.qwenHostPlaceholder') : ''
                                       : baseURLPlaceholder}
-                                    readOnly={selectedApiFormat === 'openai/realtime-ws'}
-                                    autoComplete='new-password'
+                                    autoComplete='off'
                                     data-form-type='other'
                                     aria-invalid={!isRealtimeProtocol(selectedApiFormat) && !!fieldState.error}
                                     data-testid='channel-base-url-input'
