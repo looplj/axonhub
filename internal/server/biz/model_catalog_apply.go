@@ -8,6 +8,7 @@
 // 注意事项:
 //
 //	新建模型须在行事务内复核公开请求名；单行冲突不撤销其他行，更新价格保留已有渠道关联。
+
 package biz
 
 import (
@@ -26,6 +27,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"modernc.org/sqlite"
+
 	sqlite3 "modernc.org/sqlite/lib"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -39,9 +41,11 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
-var errCatalogConflict = errors.New("model changed since preview")
-var errCatalogQuoteChanged = errors.New("catalog offer changed since preview")
-var errCatalogSelection = errors.New("invalid catalog selection")
+var (
+	errCatalogConflict     = errors.New("model changed since preview")
+	errCatalogQuoteChanged = errors.New("catalog offer changed since preview")
+	errCatalogSelection    = errors.New("invalid catalog selection")
+)
 
 // SQLite cannot upgrade a stale read snapshot to a writer after another connection commits.
 func catalogWriteBusy(err error) bool {
@@ -396,18 +400,18 @@ func newImportCard(o *CatalogImportOffer) (*objects.ModelCard, error) {
 	}
 	// Catalog keys shared with the global card include modalities, limit and reasoning.
 	var metadata struct {
-		Reasoning        objects.ModelCardReasoning
-		Modalities       objects.ModelCardModalities
-		Limit            objects.ModelCardLimit
-		Vision           *bool
-		Temperature      bool
-		Knowledge        string
-		ToolCall         bool   `json:"tool_call"`
-		ReleaseDate      string `json:"release_date"`
-		LastUpdated      string `json:"last_updated"`
+		Reasoning        objects.ModelCardReasoning  `json:"reasoning"`
+		Modalities       objects.ModelCardModalities `json:"modalities"`
+		Limit            objects.ModelCardLimit      `json:"limit"`
+		Vision           *bool                       `json:"vision"`
+		Temperature      bool                        `json:"temperature"`
+		Knowledge        string                      `json:"knowledge"`
+		ToolCall         bool                        `json:"tool_call"`
+		ReleaseDate      string                      `json:"release_date"`
+		LastUpdated      string                      `json:"last_updated"`
 		ReasoningOptions []struct {
-			Type   string
-			Values []string
+			Type   string   `json:"type"`
+			Values []string `json:"values"`
 		} `json:"reasoning_options"`
 	}
 	raw, err := json.Marshal(o.entry)

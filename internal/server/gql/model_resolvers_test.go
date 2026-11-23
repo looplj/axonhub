@@ -111,7 +111,8 @@ func TestCreateModelReferencePricesGraphQL(t *testing.T) {
 	const create = `mutation Create($input: CreateModelInput!, $edits: [ManualPriceEdit!]) {
 		createModel(input:$input, editedPrices:$edits) { missingReferencePrices modelCard { cost { input output } } }
 	}`
-	input := map[string]any{"developer": "dev", "name": "Manual", "modelID": "manual", "icon": "dev", "group": "dev",
+	input := map[string]any{
+		"developer": "dev", "name": "Manual", "modelID": "manual", "icon": "dev", "group": "dev",
 		"modelCard": map[string]any{"cost": map[string]float64{"input": 3, "output": 0}},
 		"settings":  map[string]any{"associations": []any{}},
 	}
