@@ -2,8 +2,8 @@
 // 关联文件:
 //
 //	internal/server/api/realtime.go
-//	docs/en/development/realtime.md
-//	docs/zh/development/realtime.md
+//	docs/en/guides/realtime.md
+//	docs/zh/guides/realtime.md
 //
 // 注意事项:
 //

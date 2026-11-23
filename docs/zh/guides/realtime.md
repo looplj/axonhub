@@ -1,19 +1,12 @@
-# Realtime Gateway
+# Realtime API 使用指南
 
-本文描述独立的 Realtime WebSocket 协议入口。开发分支为 `feat/qwen-realtime`。它与 `/v1/responses` WebSocket、Chat、TTS、STT 使用不同的协议和会话处理。
+AxonHub 提供面向 OpenAI Realtime GA 客户端的 WebSocket API，以及独立的 Qwen 原生 Realtime 入口。本指南介绍如何配置服务商渠道、选择客户端入口，并了解连接限制、用量和计费。
 
-## 验证状态与上线门槛
-
-- 以 `.agents/summary/realtime-delivery.md` 中保存的实际测试结果为准。Mock 验证只能证明本地契约与资源管理，不能证明官方模型可用、音质或实际账单正确。
-- `gpt-realtime-2.1`、`gpt-realtime-2.1-mini`、Qwen3.8 及两个 Qwen3.5 模型分别需要真实官方账户验收。
-- 本环境的 OpenAI 环境凭证属于第三方中转地址，不作为 OpenAI 官方凭证使用；没有百炼凭证及 Workspace。官方真实验收未执行，属于上线阻断项。
-- 上线前还需要验证实际反向代理、Redis 故障模式、取消/断线、多轮、实际音频质量与时长、费用和供应商控制台账单。
-
-## 管理界面配置
+## 配置 Realtime 渠道
 
 1. 保留现有 `openai` 或 `bailian` 渠道，不新建服务商类型。在渠道密钥管理中加入对应官方 API Key。
-2. 在渠道主表单中为 OpenAI 选择 `openai/realtime-ws`，为百炼选择 `qwen/realtime-ws`。独立保存在渠道的 `settings.realtime`，包含 `enabled`、`protocol`、`baseURL`、`path` 和可选的 `handshakeTimeoutMs`、`clientEventsPerSecond`。握手超时可设为 1000–60000 毫秒，留空继承服务配置。客户端事件速率可设为每秒 256–4096 条，留空继承服务端默认值 1024。Realtime WS 地址使用独立字段，不修改渠道原有 HTTP Base URL。
-3. OpenAI 官方使用 `wss://api.openai.com` 和 `/v1/realtime`。首批支持 `gpt-realtime-2.1`、`gpt-realtime-2.1-mini`，不自动选择已弃用型号。
+2. 在渠道主表单中为 OpenAI 选择 `openai/realtime-ws`，为百炼选择 `qwen/realtime-ws`。独立保存在渠道的 `settings.realtime`，包含 `enabled`、`protocol`、`baseURL`、`path` 和可选的 `handshakeTimeoutMs`、`clientEventsPerSecond`。握手超时可设为 1000–60000 毫秒，留空继承服务配置。客户端事件速率可设为每秒 256–4096 条，留空继承服务端默认值 1024。选择 Realtime 后，在现有的 **Base URL** 输入框中填写 WSS Host。AxonHub 将其保存在 `settings.realtime.baseURL`，并保留渠道原有的 HTTP Base URL。
+3. OpenAI 官方使用 `wss://api.openai.com` 和 `/v1/realtime`。支持的型号包括 `gpt-realtime-2.1` 和 `gpt-realtime-2.1-mini`。
 4. 百炼应从控制台复制所选业务空间的可信 API Host，使用其 WSS 地址，路径为 `/api-ws/v1/realtime`。Host 仅接受 `maas.aliyuncs.com` 下的 `cn-beijing` 和 `ap-southeast-1` 地域；保留控制台提供的完整主机标签，包括实际存在的 `llm-` 前缀。Workspace、地域、密钥必须属于同一官方资源配置。
 5. 在渠道层配置支持模型白名单、模型映射、模型关联和 API Key Profile 授权。Qwen 首批型号为 `qwen3.8-omni-flash-realtime`、`qwen3.5-omni-plus-realtime`、`qwen3.5-omni-flash-realtime`。Realtime 协议选择属于渠道主表单，不通过端点管理设置。
 6. 配置分项价格，不能用普通文本模型的 `prompt_tokens`/`completion_tokens` 代替实时价格。使用管理员维护的官方当前费率与币种，不能混合人民币与美元。
@@ -35,7 +28,7 @@ Realtime 渠道配置适用于现有 OpenAI 和百炼渠道类型。xAI Subscrip
 
 迁移遵循现有数据库自动迁移开关；若已关闭，需要先受控启用迁移启动一次，再开放迁移后的 Realtime 渠道。混合版本发布时先排空 Realtime 流量，完成全部实例升级后再开放，旧二进制不能读取新的渠道配置。
 
-## 客户端契约
+## 选择客户端入口
 
 统一入口为 `GET /v1/realtime?model={网关模型或别名}`，使用标准 WebSocket Upgrade 和 `Authorization: Bearer {AxonHub API Key}`。只支持服务端客户端；浏览器 Origin、URL 凭证及客户端指定的上游 Host 均被拒绝。入口使用严格鉴权，不回退到 No-Auth。
 
@@ -89,7 +82,7 @@ ws.on('message', (bytes) => {
 
 Qwen 原生入口使用相同 Header，`session.update` 使用 `session.modalities: ['text']`、`session.turn_detection: null`，省略 GA 的 `session.type`。原生文本事件仍是 Qwen 的 `response.text.delta/done`。
 
-## 用量、价格与配额
+## 了解用量、价格与配额
 
 在发送音频或 `response.create` 前预约仅含元数据的请求记录，随后将 `response.created` 关联到该记录；`response.done` 的确认 usage 恰好记账一次。会话可包含多条独立记录，每会话最多 512 条审计预约，已完成、已清空和在途记录均计入该边界，去重集合也有界。异常关闭保留已经确认的用量，没有最终 usage 的响应记为失败且 `usage_confirmed: false`，不生成伪造零用量账单。
 
@@ -103,7 +96,7 @@ Qwen3.8 的语音及对应文本按各自已配置的官方输出费率计费；
 
 在建立连接前检查配额，并在会话中周期检查及阻止后续输入；VAD 自主生成期间也检查。它是使用量核查，不是供应商端硬费用预付锁：一条已经生成的响应可能在最终 usage 确认前超过余额。灰度前必须按业务预算确认这一边界。
 
-## 连接限制与部署
+## 配置连接限制和代理
 
 配置例子：
 
@@ -152,18 +145,9 @@ location /v1/realtime {
 
 复用现有 OpenTelemetry Provider 导出 `axonhub_realtime_active_sessions`、建连/拒绝/上游失败事件计数、会话时长、首次输出延迟及分模态 Token。请求与用量页面展示确认的费用；日志只含渠道、网关密钥记录 ID、时长和关闭状态，不包含长期凭证、原始媒体、Base64 或对话文本。
 
-## 实际验收与回滚
+## 测试并回滚
 
-从仓库根目录执行可复现 smoke（凭证只从环境读取，不放命令行或 URL）：
-
-```sh
-go run ./scripts/realtime-smoke -model gpt-realtime-2.1-mini -audio-pcm /secure/input-24k-mono.pcm
-go run ./scripts/realtime-smoke -model gpt-realtime-2.1 -audio-pcm /secure/input-24k-mono.pcm
-go run ./scripts/realtime-smoke -model qwen3.8-omni-flash-realtime -audio-pcm /secure/input-24k-mono.pcm
-go run ./scripts/realtime-smoke -qwen-native -model qwen3.8-omni-flash-realtime -audio-pcm /secure/input-24k-mono.pcm
-```
-
-需设置 `AXONHUB_API_KEY`。脚本覆盖配置、文本、音频输入/输出、多轮和工具结果继续生成，打印确认 usage；它不播放或保存音频，音质和时长需单独验收，VAD、取消和异常网络还需按测试清单验证。
+使用渠道的**测试**操作检查上游握手和会话配置。该探测不会生成语音，也不能验证音质。正式接入前，用客户端 SDK 分别测试各型号，确认音频可以播放，并将记录用量与供应商账单核对。
 
 先备份数据库和渠道配置，在单个受限项目启用渠道的 Realtime 配置，设低并发/短时长/小配额，核对供应商账单再扩大。回滚先关闭 `settings.realtime.enabled` 或禁用相应渠道，等待有界会话结束或停止服务取消连接，再回滚应用版本。迁移不新增表或列，但 JSON 配置结构已变化：只读取旧实时端点的应用不会使用 `settings.realtime`。若旧版本仍需提供 Realtime，切换版本后恢复与其匹配的渠道配置备份，不要通过当前端点 API 写回实时协议。运行旧代码前检查价格枚举兼容性，保留已经确认的账单审计记录。
 
@@ -179,9 +163,9 @@ go run ./scripts/realtime-smoke -qwen-native -model qwen3.8-omni-flash-realtime 
 - [百炼服务端事件](https://help.aliyun.com/zh/model-studio/server-events)
 - [Qwen3.8](https://help.aliyun.com/zh/model-studio/qwen3-8-omni-flash-realtime)
 
-Nginx 本地验证可执行 `go run ./scripts/realtime-proxy-check`（需要 Docker 与 `nginx:alpine`）。该脚本使用本地 Mock 回显，验证真实 Nginx 的 HTTP 101、鉴权 Header、查询参数和双向帧，不连接官方 Provider。
+请通过反向代理的公开地址测试 WebSocket。HTTP 健康检查只能确认 AxonHub 进程运行，不能验证代理是否正确转发 WebSocket Upgrade。
 
-## 会计安全策略与明确限制
+## 处理未确认的用量
 
 未知使用量不按比例猜测，也不回退普通文本费率。未确认的输入/生成异常关闭后保留 `usage_confirmed: false`、模型、价格引用和完整价格快照。缺少 UsageLog 表示消费尚未确认，不等于确认欠费，不会永久阻止该 Key 建立后续会话；新连接仍受并发预约和已确认消费配额约束。不能将未核对记录当成零费用。
 
@@ -193,19 +177,17 @@ OpenAI 的独立输入转录（`session.audio.input.transcription`）有单独�
 
 请求数在创建新审计预约时按既有已确认 UsageLog 的计数检查，运行中的 Token/费用配额单独核查，不因已预约的请求数达到上限而提前取消它自身。无法验证的 usage 明细仍按既有校验进入核对流程；仅缺少某个模态的价格不阻止会话，该模态不计入费用。全局费用仍属于实际用量核查，不提供供应商端硬金额预付锁。
 
-计划扩展：独立转录计费、供应商自动对账和人工对账管理页、浏览器有限权限短期令牌、经验证后开放 MCP/搜索/视频/多声道。上述能力不计入本期已验证清单。
-
-进程崩溃或数据库收尾失败留下的 `processing` 预约会保留供排查；孤立审计记录不构成欠费证据，不会永久阻止该 Key 建连。并发通过会话租约限制，Redis 模式跨实例共享，本地模式仅适用于单进程。元数据直接原子写入 Request，不受媒体请求体存储开关影响。
+会话并发由租约限制；配置 Redis 时可跨实例共享，未配置时仅在单进程内生效。审计元数据保存在请求记录中，不受媒体/正文存储设置影响。
 
 Qwen3.5 的一个响应若同时包含音频和 Function Calling 文本，而上游只有聚合文本 Token，无法证明哪些属于免费转录、哪些属于工具参数。该情况保留已观察到的 Token 并进入核对流程，不猜测拆分；可将工具调用阶段配置为纯文本输出，或优先使用 Qwen3.8/OpenAI。
 
 同一渠道沿用一个凭证池。HTTP 配置和渠道级 Realtime 配置必须使用相匹配的官方密钥与地域；跨地域或跨凭证域应配置不同渠道，不能把中转服务密钥当成 OpenAI 官方密钥。渠道连接测试及逐密钥测试均走实际 WebSocket 探测。
 
-## 原生保真与安全边界
+## 协议行为与支持范围
 
 OpenAI 原生 Adapter 对每个有效 JSON 消息返回相同字节，包括字段顺序与错误消息；客户端的 session.update、response.create、input_audio_buffer.clear 或 input_audio_buffer.commit 缺少事件 ID 或 ID 为空时，网关会补上 ID，以便把上游拒绝关联到该次客户端事件。网关也会对上游 error 及 status_details.error 脱敏。WebSocket 传输保留 JSON 消息边界，不承诺保留底层 RFC6455 分片方式或 TCP 包边界。
 
-## OpenAI 实时翻译
+## 配置 OpenAI Realtime 翻译
 
 在现有 OpenAI 渠道启用 Realtime，配置上游模型 `gpt-realtime-translate`，在模型价格中填写「实时翻译音频采样数（按分钟计价）」并选择按量计费。客户端使用网关 API Key 连接 `/v1/realtime/translations?model=gpt-realtime-translate`，用 `session.update` 设置 `session.audio.output.language`，等 `session.updated` 后通过 `session.input_audio_buffer.append` 流式发送 24 kHz 单声道 PCM16。结束时发送 `session.close`，读取剩余译文及音频直至收到 `session.closed`。
 
