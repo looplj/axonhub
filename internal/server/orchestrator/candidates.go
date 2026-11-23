@@ -742,6 +742,17 @@ func WithRoutingPolicyLoadBalancedSelector(
 }
 
 func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
+	return s.selectCandidates(ctx, req, false)
+}
+
+// SelectAll returns the effective policy ordering without applying the retry
+// shortlist or tracking a selection. The caller tracks the first candidate
+// that can actually serve its request.
+func (s *LoadBalancedSelector) SelectAll(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
+	return s.selectCandidates(ctx, req, true)
+}
+
+func (s *LoadBalancedSelector) selectCandidates(ctx context.Context, req *llm.Request, selectAll bool) ([]*ChannelModelsCandidate, error) {
 	candidates, err := s.wrapped.Select(ctx, req)
 	if err != nil {
 		return nil, err
@@ -771,7 +782,9 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	}
 
 	requiredCount := 1
-	if retryPolicy.Enabled {
+	if selectAll {
+		requiredCount = len(candidates)
+	} else if retryPolicy.Enabled {
 		requiredCount = 1 + retryPolicy.MaxChannelRetries
 	}
 
@@ -804,14 +817,14 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 		result = append(result, fallbackCandidates...)
 		result = append(result, quotaFallback...)
 
-		if loadBalancer != nil {
+		if loadBalancer != nil && !selectAll {
 			loadBalancer.TrackSelection(pinned)
 		}
 
 		return result, nil
 	}
 
-	preferred := s.sortCandidates(ctx, loadBalancer, candidates, req, requiredCount, requiredCount, true)
+	preferred := s.sortCandidates(ctx, loadBalancer, candidates, req, requiredCount, requiredCount, !selectAll)
 	if len(quotaFallback) == 0 {
 		return preferred, nil
 	}

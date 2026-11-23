@@ -34,6 +34,35 @@ import (
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 )
 
+type realtimeAPIKeyFailureRecorder struct {
+	channelID int
+	apiKey    string
+	status    int
+	message   string
+}
+
+func (r *realtimeAPIKeyFailureRecorder) EvaluateAPIKeyRulesForFailure(_ context.Context, channelID int, apiKey string, status int, message string) bool {
+	r.channelID = channelID
+	r.apiKey = apiKey
+	r.status = status
+	r.message = message
+	return true
+}
+
+func TestRealtimeHandshakeFailureAppliesAutoDisableToSelectedChannelKey(t *testing.T) {
+	ctx := contexts.EnsureContainer(context.Background())
+	contexts.WithChannelAPIKey(ctx, "selected-provider-key")
+	recorder := &realtimeAPIKeyFailureRecorder{}
+	target := &orchestrator.RealtimeTarget{Channel: &biz.Channel{Channel: &ent.Channel{ID: 17}}}
+
+	evaluateRealtimeAPIKeyFailure(ctx, recorder, target, http.StatusUnauthorized, "upstream handshake rejected")
+
+	require.Equal(t, 17, recorder.channelID)
+	require.Equal(t, "selected-provider-key", recorder.apiKey)
+	require.Equal(t, http.StatusUnauthorized, recorder.status)
+	require.Equal(t, "upstream handshake rejected", recorder.message)
+}
+
 func TestRealtimeReconcileBoundaryRejectsNonOwner(t *testing.T) {
 	for _, authenticated := range []bool{false, true} {
 		router := gin.New()

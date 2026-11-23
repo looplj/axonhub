@@ -60,7 +60,7 @@ func (s *State) Connecting() error {
 func (s *State) Update() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.phase != Configured && s.phase != Active && (s.phase != Connecting || !s.seenCreated) || (s.phase == Active && s.pending) {
+	if s.phase != Configured && s.phase != Active && (s.phase != Connecting || !s.seenCreated) {
 		return errors.New("session cannot be updated before configuration acknowledgement or during generation")
 	}
 	if s.pending {

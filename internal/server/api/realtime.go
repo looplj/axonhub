@@ -416,11 +416,17 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 			status := http.StatusForbidden
 			if errors.Is(err, biz.ErrInvalidModel) {
 				status = http.StatusNotFound
+			} else if errors.Is(err, orchestrator.ErrRealtimeCircuitBreakerOpen) {
+				status = http.StatusServiceUnavailable
 			}
 			message := "Realtime model unavailable, permission denied, quota exceeded, or invalid price configuration"
+			if errors.Is(err, orchestrator.ErrRealtimeCircuitBreakerOpen) {
+				message = err.Error()
+			}
 			JSONError(c, status, errors.New(message))
 			return
 		}
+		defer h.service.ReleaseRealtimeProbe(target)
 		setupTimings := realtimeSetupTimings{Started: time.Now()}
 		attemptStarted := setupTimings.Started
 		admissionStarted := time.Now()
@@ -483,6 +489,12 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 			upstreamStatus := 0
 			if handshake, ok := errors.AsType[*rt.HandshakeError](setup.DialErr); ok {
 				upstreamStatus = handshake.Status
+			}
+			if upstreamStatus > 0 {
+				evaluateRealtimeAPIKeyFailure(ctx, h.service.Channels, target, upstreamStatus, message)
+			}
+			if !errors.Is(setup.DialErr, context.Canceled) {
+				h.service.RecordRealtimeFailure(ctx, target)
 			}
 			release()
 			h.recordConnectionFailure(ctx, target, errorCode, message, attemptStarted)
@@ -601,6 +613,21 @@ func (h *RealtimeHandlers) recordConnectionFailure(ctx context.Context, target *
 	); err != nil {
 		log.Warn(auditCtx, "realtime connection failure audit unavailable", log.String("error_code", code))
 	}
+}
+
+type realtimeAPIKeyFailureEvaluator interface {
+	EvaluateAPIKeyRulesForFailure(context.Context, int, string, int, string) bool
+}
+
+func evaluateRealtimeAPIKeyFailure(ctx context.Context, channels realtimeAPIKeyFailureEvaluator, target *orchestrator.RealtimeTarget, status int, message string) {
+	if target == nil || target.Channel == nil || channels == nil || status == 0 {
+		return
+	}
+	key, ok := contexts.GetChannelAPIKey(ctx)
+	if !ok || key == "" {
+		return
+	}
+	channels.EvaluateAPIKeyRulesForFailure(ctx, target.Channel.ID, key, status, message)
 }
 
 func realtimeClientLabel(r *http.Request) string {

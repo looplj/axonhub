@@ -56,7 +56,7 @@ func TestNativeProviderConfirmedDefaultsAreUsable(t *testing.T) {
 	require.True(t, s.Ready())
 }
 
-func TestStateDoesNotQueuePendingUpdateDuringGeneration(t *testing.T) {
+func TestStateReturnsPendingUpdateDuringGeneration(t *testing.T) {
 	s := NewState()
 	require.NoError(t, s.Connecting())
 	require.NoError(t, s.ObserveServer("session.created"))
@@ -64,6 +64,5 @@ func TestStateDoesNotQueuePendingUpdateDuringGeneration(t *testing.T) {
 	require.NoError(t, s.ObserveServer("response.created"))
 	require.NoError(t, s.Update())
 	err := s.Update()
-	require.Error(t, err)
-	require.NotErrorIs(t, err, ErrUpdatePending)
+	require.ErrorIs(t, err, ErrUpdatePending)
 }

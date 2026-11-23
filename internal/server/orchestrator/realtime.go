@@ -64,6 +64,7 @@ type RealtimeService struct {
 	System              *biz.SystemService
 	LoadBalancers       map[string]*LoadBalancer
 	QuotaStatusProvider ProviderQuotaStatusProvider
+	modelCircuitBreaker *biz.ModelCircuitBreaker
 }
 
 type RealtimeServiceParams struct {
@@ -95,10 +96,21 @@ type RealtimeTarget struct {
 	SafetyIdentifier        string
 	Channel                 *biz.Channel
 	Model, ClientModel, URL string
+	RoutingModel            string
 	Price                   *biz.RealtimePriceSnapshot
 	APIKey                  *ent.APIKey
 	Native                  bool
 	Translation             bool
+	CircuitBreakerEnabled   bool
+	CircuitBreakerProbe     bool
+}
+
+type realtimeCandidateRoute struct {
+	entry    biz.ChannelModelEntry
+	format   string
+	url      string
+	price    *biz.RealtimePriceSnapshot
+	endpoint objects.ChannelEndpoint
 }
 
 // Prepare deliberately completes authorization and model mapping before dialing or upgrading.
@@ -135,83 +147,183 @@ func (s *RealtimeService) prepare(ctx context.Context, model string, native, tra
 		return nil, err
 	}
 	mapped := NewModelMapper().MapModel(ctx, key, model)
-	candidates, err := s.selectCandidates(ctx, key, mapped)
+	routes := make(map[*ChannelModelsCandidate][]realtimeCandidateRoute)
+	eligible := func(candidate *ChannelModelsCandidate) bool {
+		candidateRoutes := s.realtimeCandidateRoutes(ctx, candidate, native, translation)
+		routes[candidate] = candidateRoutes
+		return len(candidateRoutes) > 0
+	}
+	candidates, routingPolicy, err := s.selectCandidates(ctx, key, mapped, eligible)
 	if err != nil {
 		return nil, err
 	}
+	probeBlocked := false
 	for _, candidate := range candidates {
-		ch := candidate.Channel
-		for i, entry := range candidate.Models {
-			format := candidate.APIFormat
-			if i < len(candidate.modelAPIFormats) {
-				format = candidate.modelAPIFormats[i]
-			}
-			if native && format != llm.APIFormatQwenRealtimeWebSocket.String() {
-				continue
-			}
-			var endpointURL func(string, string, string) (string, error)
-			switch {
-			case translation:
-				if format != llm.APIFormatOpenAIRealtimeWebSocket.String() || ch.Type != channel.TypeOpenai || entry.ActualModel != openairt.TranslationModel {
-					continue
-				}
-				endpointURL = openairt.TranslationEndpointURL
-			case format == llm.APIFormatOpenAIRealtimeWebSocket.String() && ch.Type == channel.TypeOpenai:
-				if _, err := openairt.NewAdapter(entry.ActualModel); err != nil {
-					continue
-				}
-				endpointURL = openairt.EndpointURL
-			case format == llm.APIFormatQwenRealtimeWebSocket.String() && ch.Type == channel.TypeBailian:
-				if _, err := protocol.NewAdapter(entry.ActualModel, native); err != nil {
-					continue
-				}
-				endpointURL = protocol.EndpointURL
-			default:
-				continue
-			}
-			for _, ep := range ch.ResolveEndpoints() {
-				if ep.APIFormat != format {
-					continue
-				}
-				target, err := endpointURL(ep.BaseURL, ep.Path, entry.ActualModel)
-				if err != nil {
-					log.Warn(ctx, "realtime candidate configuration rejected", log.Int("channel_id", ch.ID))
-					continue
-				}
-				quotePrice := s.Usage.RealtimePrice
-				if translation {
-					quotePrice = s.Usage.RealtimeTranslationPrice
-				}
-				price, err := quotePrice(ctx, ch.ID, entry.ActualModel)
-				if err != nil {
-					log.Warn(ctx, "realtime candidate configuration rejected", log.Int("channel_id", ch.ID))
-					continue
-				}
-				if price != nil && !translation && format == llm.APIFormatOpenAIRealtimeWebSocket.String() {
-					if err := objects.ValidateOpenAIRealtimePrice(price.Price); err != nil {
-						log.Warn(ctx, "realtime candidate configuration rejected", log.Int("channel_id", ch.ID))
+		for _, route := range routes[candidate] {
+			probe := false
+			circuitBreakerEnabled := routingPolicy.LoadBalancerStrategy == biz.LoadBalancerStrategyCircuitBreaker && s.modelCircuitBreaker != nil
+			if circuitBreakerEnabled {
+				stats := s.modelCircuitBreaker.GetModelCircuitBreakerStats(ctx, candidate.Channel.ID, mapped)
+				if stats.State == biz.StateOpen {
+					if !s.modelCircuitBreaker.TryBeginProbe(ctx, candidate.Channel.ID, mapped) {
+						probeBlocked = true
 						continue
 					}
-					price.RequireOpenAIImageCacheRates = true
+					probe = true
 				}
-				identifier := sha256.Sum256([]byte("axonhub-realtime-v1:" + key.Key + ":" + strconv.Itoa(key.UserID) + ":" + strconv.Itoa(key.ProjectID)))
-				timeout := time.Duration(0)
-				if ep.HandshakeTimeoutMs != nil {
-					timeout = time.Duration(*ep.HandshakeTimeoutMs) * time.Millisecond
-				}
-				clientEventsPerSecond := 0
-				if ch.Settings != nil && ch.Settings.Realtime != nil && ch.Settings.Realtime.ClientEventsPerSecond != nil {
-					clientEventsPerSecond = int(*ch.Settings.Realtime.ClientEventsPerSecond)
-				}
-				return &RealtimeTarget{HandshakeTimeout: timeout, ClientEventsPerSecond: clientEventsPerSecond, Channel: ch, Model: entry.ActualModel, ClientModel: model, URL: target, Price: price, APIKey: key, Native: native, Translation: translation, APIFormat: llm.APIFormat(format), SafetyIdentifier: hex.EncodeToString(identifier[:])}, nil
 			}
+			if loadBalancer := s.LoadBalancers[routingPolicy.LoadBalancerStrategy]; loadBalancer != nil {
+				loadBalancer.TrackSelection(candidate)
+			}
+			clientEventsPerSecond := 0
+			if candidate.Channel.Settings != nil && candidate.Channel.Settings.Realtime != nil && candidate.Channel.Settings.Realtime.ClientEventsPerSecond != nil {
+				clientEventsPerSecond = int(*candidate.Channel.Settings.Realtime.ClientEventsPerSecond)
+			}
+			identifier := sha256.Sum256([]byte("axonhub-realtime-v1:" + key.Key + ":" + strconv.Itoa(key.UserID) + ":" + strconv.Itoa(key.ProjectID)))
+			return &RealtimeTarget{
+				HandshakeTimeout:      realtimeHandshakeTimeout(route.endpoint),
+				ClientEventsPerSecond: clientEventsPerSecond,
+				Channel:               candidate.Channel,
+				Model:                 route.entry.ActualModel,
+				ClientModel:           model,
+				RoutingModel:          mapped,
+				URL:                   route.url,
+				Price:                 route.price,
+				APIKey:                key,
+				Native:                native,
+				Translation:           translation,
+				APIFormat:             llm.APIFormat(route.format),
+				SafetyIdentifier:      hex.EncodeToString(identifier[:]),
+				CircuitBreakerEnabled: circuitBreakerEnabled,
+				CircuitBreakerProbe:   probe,
+			}, nil
 		}
+	}
+	if probeBlocked {
+		return nil, ErrRealtimeCircuitBreakerOpen
 	}
 	return nil, biz.ErrInvalidModel
 }
 
-func (s *RealtimeService) selectCandidates(ctx context.Context, key *ent.APIKey, model string) ([]*ChannelModelsCandidate, error) {
-	var selector CandidateSelector = s.Selector
+var ErrRealtimeCircuitBreakerOpen = errors.New("all eligible realtime channels are circuit open")
+
+func (s *RealtimeService) ReleaseRealtimeProbe(target *RealtimeTarget) {
+	if s.modelCircuitBreaker == nil || target == nil || !target.CircuitBreakerProbe || target.Channel == nil {
+		return
+	}
+	s.modelCircuitBreaker.EndProbe(target.Channel.ID, target.RoutingModel)
+	target.CircuitBreakerProbe = false
+}
+
+func (s *RealtimeService) RecordRealtimeSuccess(ctx context.Context, target *RealtimeTarget) {
+	if s.modelCircuitBreaker == nil || target == nil || !target.CircuitBreakerEnabled || target.Channel == nil {
+		return
+	}
+	s.ReleaseRealtimeProbe(target)
+	s.modelCircuitBreaker.RecordSuccess(ctx, target.Channel.ID, target.RoutingModel)
+}
+
+func (s *RealtimeService) RecordRealtimeFailure(ctx context.Context, target *RealtimeTarget) {
+	if s.modelCircuitBreaker == nil || target == nil || !target.CircuitBreakerEnabled || target.Channel == nil {
+		return
+	}
+	wasProbe := target.CircuitBreakerProbe
+	s.ReleaseRealtimeProbe(target)
+	s.modelCircuitBreaker.RecordError(ctx, target.Channel.ID, target.RoutingModel, wasProbe)
+}
+
+func (s *RealtimeService) realtimeCandidateRoutes(ctx context.Context, candidate *ChannelModelsCandidate, native, translation bool) []realtimeCandidateRoute {
+	if candidate == nil || candidate.Channel == nil {
+		return nil
+	}
+	var routes []realtimeCandidateRoute
+	for i, entry := range candidate.Models {
+		format := candidate.APIFormat
+		if i < len(candidate.modelAPIFormats) {
+			format = candidate.modelAPIFormats[i]
+		}
+		if native && format != llm.APIFormatQwenRealtimeWebSocket.String() {
+			continue
+		}
+		var endpointURL func(string, string, string) (string, error)
+		switch {
+		case translation:
+			if format != llm.APIFormatOpenAIRealtimeWebSocket.String() || candidate.Channel.Type != channel.TypeOpenai || entry.ActualModel != openairt.TranslationModel {
+				continue
+			}
+			endpointURL = openairt.TranslationEndpointURL
+		case format == llm.APIFormatOpenAIRealtimeWebSocket.String() && candidate.Channel.Type == channel.TypeOpenai:
+			if _, err := openairt.NewAdapter(entry.ActualModel); err != nil {
+				continue
+			}
+			endpointURL = openairt.EndpointURL
+		case format == llm.APIFormatQwenRealtimeWebSocket.String() && candidate.Channel.Type == channel.TypeBailian:
+			if _, err := protocol.NewAdapter(entry.ActualModel, native); err != nil {
+				continue
+			}
+			endpointURL = protocol.EndpointURL
+		default:
+			continue
+		}
+		for _, endpoint := range candidate.Channel.ResolveEndpoints() {
+			if endpoint.APIFormat != format {
+				continue
+			}
+			url, err := endpointURL(endpoint.BaseURL, endpoint.Path, entry.ActualModel)
+			if err != nil {
+				log.Warn(ctx, "realtime candidate configuration rejected", log.Int("channel_id", candidate.Channel.ID))
+				continue
+			}
+			quotePrice := s.Usage.RealtimePrice
+			if translation {
+				quotePrice = s.Usage.RealtimeTranslationPrice
+			}
+			price, err := quotePrice(ctx, candidate.Channel.ID, entry.ActualModel)
+			if err != nil {
+				log.Warn(ctx, "realtime candidate configuration rejected", log.Int("channel_id", candidate.Channel.ID))
+				continue
+			}
+			if price != nil && !translation && format == llm.APIFormatOpenAIRealtimeWebSocket.String() {
+				if err := objects.ValidateOpenAIRealtimePrice(price.Price); err != nil {
+					log.Warn(ctx, "realtime candidate configuration rejected", log.Int("channel_id", candidate.Channel.ID))
+					continue
+				}
+				price.RequireOpenAIImageCacheRates = true
+			}
+			routes = append(routes, realtimeCandidateRoute{entry: entry, format: format, url: url, price: price, endpoint: endpoint})
+		}
+	}
+	return routes
+}
+
+func realtimeHandshakeTimeout(endpoint objects.ChannelEndpoint) time.Duration {
+	if endpoint.HandshakeTimeoutMs == nil {
+		return 0
+	}
+	return time.Duration(*endpoint.HandshakeTimeoutMs) * time.Millisecond
+}
+
+type realtimeCandidateEligibilitySelector struct {
+	wrapped  CandidateSelector
+	eligible func(*ChannelModelsCandidate) bool
+}
+
+func (s realtimeCandidateEligibilitySelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
+	candidates, err := s.wrapped.Select(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	filtered := make([]*ChannelModelsCandidate, 0, len(candidates))
+	for _, candidate := range candidates {
+		if s.eligible(candidate) {
+			filtered = append(filtered, candidate)
+		}
+	}
+	return filtered, nil
+}
+
+func (s *RealtimeService) selectCandidates(ctx context.Context, key *ent.APIKey, model string, eligible func(*ChannelModelsCandidate) bool) ([]*ChannelModelsCandidate, EffectiveRoutingPolicy, error) {
+	selector := s.Selector
 	profile := key.GetActiveProfile()
 	if project := key.Edges.Project; project != nil {
 		if p := project.GetActiveProfile(); p != nil {
@@ -232,10 +344,13 @@ func (s *RealtimeService) selectCandidates(ctx context.Context, key *ent.APIKey,
 		}
 	}
 	selector = WithStreamPolicySelector(selector)
+	if eligible != nil {
+		selector = realtimeCandidateEligibilitySelector{wrapped: selector, eligible: eligible}
+	}
 	if s.System != nil && len(s.LoadBalancers) > 0 {
 		retryPolicy := s.System.RetryPolicyOrDefault(ctx)
 		routingPolicy := EffectiveRoutingPolicy{}
-		selector = WithRoutingPolicyLoadBalancedSelector(
+		loadBalanced := WithRoutingPolicyLoadBalancedSelector(
 			selector,
 			s.LoadBalancers,
 			retryPolicy,
@@ -244,9 +359,12 @@ func (s *RealtimeService) selectCandidates(ctx context.Context, key *ent.APIKey,
 			&routingPolicy,
 			NewQuotaRoutingGate(s.QuotaStatusProvider, s.System.QuotaRoutingSettingsOrDefault(ctx)),
 		)
+		candidates, err := loadBalanced.SelectAll(ctx, &llm.Request{Model: model, RequestType: llm.RequestTypeRealtime, APIFormat: llm.APIFormatOpenAIRealtime, Stream: lo.ToPtr(true)})
+		return candidates, routingPolicy, err
 	}
 
-	return selector.Select(ctx, &llm.Request{Model: model, RequestType: llm.RequestTypeRealtime, APIFormat: llm.APIFormatOpenAIRealtime, Stream: lo.ToPtr(true)})
+	candidates, err := selector.Select(ctx, &llm.Request{Model: model, RequestType: llm.RequestTypeRealtime, APIFormat: llm.APIFormatOpenAIRealtime, Stream: lo.ToPtr(true)})
+	return candidates, EffectiveRoutingPolicy{}, err
 }
 
 func (s *RealtimeService) checkQuota(ctx context.Context, key *ent.APIKey, includeRequests ...bool) error {
@@ -436,37 +554,38 @@ type realtimeAudioCommit struct {
 }
 
 type RealtimeConversation struct {
-	translation            *translationAccounting
-	pendingConfigurationID string
-	pendingClearID         string
-	preClearCreates        int
-	reservationOrder       int
-	clearingInput          *realtimeResponse
-	auditsCreated          int
-	pendingInput           *realtimeResponse
-	committedInputs        []*realtimeResponse
-	pendingCommits         []realtimeAudioCommit
-	pendingResponses       []*realtimeResponse
-	service                *RealtimeService
-	target                 *RealtimeTarget
-	adapter                realtimeAdapter
-	state                  *rt.State
-	ctx                    context.Context
-	started                time.Time
-	mu                     sync.Mutex
-	responses              map[string]*realtimeResponse
-	credential             string
-	audioBytes             int64
-	audioInBytes           atomic.Int64
-	audioOutBytes          int64
-	firstAudioLatency      *int64
-	turns                  int
-	auditIDs               []int
-	closeStats             *realtimeCloseStats
-	checkMu                sync.Mutex
-	lastCheck              time.Time
-	lastCheckErr           error
-	latestKey              *ent.APIKey
+	translation                   *translationAccounting
+	pendingConfigurationID        string
+	pendingClearID                string
+	preClearCreates               int
+	reservationOrder              int
+	clearingInput                 *realtimeResponse
+	auditsCreated                 int
+	pendingInput                  *realtimeResponse
+	committedInputs               []*realtimeResponse
+	pendingCommits                []realtimeAudioCommit
+	pendingResponses              []*realtimeResponse
+	service                       *RealtimeService
+	target                        *RealtimeTarget
+	adapter                       realtimeAdapter
+	state                         *rt.State
+	ctx                           context.Context
+	started                       time.Time
+	mu                            sync.Mutex
+	responses                     map[string]*realtimeResponse
+	credential                    string
+	audioBytes                    int64
+	audioInBytes                  atomic.Int64
+	audioOutBytes                 int64
+	firstAudioLatency             *int64
+	turns                         int
+	auditIDs                      []int
+	closeStats                    *realtimeCloseStats
+	circuitBreakerFailureRecorded bool
+	checkMu                       sync.Mutex
+	lastCheck                     time.Time
+	lastCheckErr                  error
+	latestKey                     *ent.APIKey
 }
 
 func (c *RealtimeConversation) Check(ctx context.Context) error {
@@ -915,6 +1034,14 @@ func (c *RealtimeConversation) finishResponse(data []byte, id string) error {
 		return errors.New("realtime audit update failed")
 	}
 	response.auditFinalized = true
+	switch status {
+	case request.StatusCompleted:
+		c.service.RecordRealtimeSuccess(billingCtx, c.target)
+		c.circuitBreakerFailureRecorded = false
+	case request.StatusFailed:
+		c.service.RecordRealtimeFailure(billingCtx, c.target)
+		c.circuitBreakerFailureRecorded = true
+	}
 	return nil
 }
 
@@ -1149,6 +1276,9 @@ type realtimeCloseStats struct {
 func (c *RealtimeConversation) RecordSessionEnd(result error) {
 	code, reason := rt.CloseStatus(result)
 	c.closeStats = &realtimeCloseStats{time.Since(c.started).Milliseconds(), code, reason, rt.IsAbnormal(result)}
+	if reason == "upstream_unavailable" && !c.circuitBreakerFailureRecorded {
+		c.service.RecordRealtimeFailure(context.WithoutCancel(c.ctx), c.target)
+	}
 }
 
 func (c *RealtimeConversation) Close() {
@@ -1247,8 +1377,10 @@ func (c *RealtimeConversation) PersistSessionMetadata() {
 
 func NewRealtimeService(params RealtimeServiceParams) *RealtimeService {
 	var loadBalancers map[string]*LoadBalancer
+	var modelCircuitBreaker *biz.ModelCircuitBreaker
 	if params.System != nil {
-		loadBalancers = newRealtimeLoadBalancers(params.Channels, params.ChannelLimiterManager)
+		modelCircuitBreaker = biz.NewModelCircuitBreaker()
+		loadBalancers = newRealtimeLoadBalancers(params.Channels, params.ChannelLimiterManager, modelCircuitBreaker)
 	}
 	return &RealtimeService{
 		Transport:           params.Transport,
@@ -1261,10 +1393,11 @@ func NewRealtimeService(params RealtimeServiceParams) *RealtimeService {
 		System:              params.System,
 		LoadBalancers:       loadBalancers,
 		QuotaStatusProvider: params.QuotaStatusProvider,
+		modelCircuitBreaker: modelCircuitBreaker,
 	}
 }
 
-func newRealtimeLoadBalancers(channels *biz.ChannelService, limiterManager *ChannelLimiterManager) map[string]*LoadBalancer {
+func newRealtimeLoadBalancers(channels *biz.ChannelService, limiterManager *ChannelLimiterManager, modelCircuitBreaker *biz.ModelCircuitBreaker) map[string]*LoadBalancer {
 	selectionTracker := NewChannelRequestTracker()
 	rateLimitStrategy := NewRateLimitAwareStrategy(selectionTracker, limiterManager)
 
@@ -1282,7 +1415,7 @@ func newRealtimeLoadBalancers(channels *biz.ChannelService, limiterManager *Chan
 		),
 		biz.LoadBalancerStrategyCircuitBreaker: NewLoadBalancer(nil, channels,
 			NewWeightStrategy(),
-			NewModelAwareCircuitBreakerStrategy(biz.NewModelCircuitBreaker()),
+			NewModelAwareCircuitBreakerStrategy(modelCircuitBreaker),
 			rateLimitStrategy,
 		),
 		biz.LoadBalancerStrategyRoundRobin: NewLoadBalancer(channels, channels,

@@ -30,10 +30,11 @@ import (
 func TestRealtimeCandidateSelectionAppliesConfiguredLoadBalancer(t *testing.T) {
 	ctx, db := setupTest(t)
 	system := newTestSystemService(db)
+	require.NoError(t, system.SetRetryPolicy(ctx, &biz.RetryPolicy{LoadBalancerStrategy: biz.LoadBalancerStrategyRoundRobin}))
 	key := &ent.APIKey{}
 	selector := &staticChannelSelector{candidates: []*ChannelModelsCandidate{
-		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, OrderingWeight: 10}}, ModelRoutingPolicy: &ModelRoutingPolicy{LoadBalancerStrategy: biz.LoadBalancerStrategyRoundRobin}},
-		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, OrderingWeight: 90}}, ModelRoutingPolicy: &ModelRoutingPolicy{LoadBalancerStrategy: biz.LoadBalancerStrategyRoundRobin}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, OrderingWeight: 100}}, ModelRoutingPolicy: &ModelRoutingPolicy{LoadBalancerStrategy: biz.LoadBalancerStrategyRoundRobin}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, OrderingWeight: 10}}, ModelRoutingPolicy: &ModelRoutingPolicy{LoadBalancerStrategy: biz.LoadBalancerStrategyRoundRobin}},
 	}}
 	service := &RealtimeService{
 		Selector: selector,
@@ -43,9 +44,33 @@ func TestRealtimeCandidateSelectionAppliesConfiguredLoadBalancer(t *testing.T) {
 		},
 	}
 
-	candidates, err := service.selectCandidates(ctx, key, "voice")
+	candidates, _, err := service.selectCandidates(ctx, key, "voice", func(candidate *ChannelModelsCandidate) bool {
+		return candidate.Channel.ID != 1
+	})
 	require.NoError(t, err)
 	require.Equal(t, 2, candidates[0].Channel.ID)
+}
+
+func TestRealtimeCircuitBreakerRecordsUpstreamFailuresAndSuccesses(t *testing.T) {
+	ctx := context.Background()
+	breaker := biz.NewModelCircuitBreaker()
+	service := &RealtimeService{modelCircuitBreaker: breaker}
+	target := &RealtimeTarget{
+		Channel:               &biz.Channel{Channel: &ent.Channel{ID: 17}},
+		RoutingModel:          "mapped-realtime-model",
+		CircuitBreakerEnabled: true,
+		CircuitBreakerProbe:   true,
+	}
+
+	service.RecordRealtimeFailure(ctx, target)
+	stats := breaker.GetModelCircuitBreakerStats(ctx, 17, "mapped-realtime-model")
+	require.Equal(t, 1, stats.ConsecutiveFailures)
+	require.False(t, target.CircuitBreakerProbe, "a failed probe must release its lease")
+
+	service.RecordRealtimeSuccess(ctx, target)
+	stats = breaker.GetModelCircuitBreakerStats(ctx, 17, "mapped-realtime-model")
+	require.Equal(t, 0, stats.ConsecutiveFailures)
+	require.Equal(t, biz.StateClosed, stats.State)
 }
 
 func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {

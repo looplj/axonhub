@@ -26,6 +26,8 @@ Realtime channel configuration is available on the existing OpenAI and Bailian c
 
 At handshake time, AxonHub applies the API Key profile filters, model routing policy, quota-routing policy and configured load-balancing strategy, then pins the session to one channel for its lifetime. Realtime sessions do not move between providers after the WebSocket is established.
 
+Handshake failures with an upstream HTTP status are passed to the selected channel's API Key auto-disable rules. With the `priority` key strategy, disabling a matching credential lets later connections select the next enabled key. The Realtime `circuit-breaker` strategy records upstream handshake failures, failed responses and completed responses for later channel selection.
+
 The existing startup data-migration pipeline moves legacy Realtime entries from `endpoints` to `settings.realtime` before the channel cache loads. Each channel update moves the configuration and removes the legacy entries atomically, while preserving ordinary endpoints and unrelated settings. An existing channel-owned Realtime setting wins, including an explicit disabled setting. Re-running the migration makes no further channel writes. This changes the JSON configuration shape and adds no database table or column.
 
 Backup restore uses the same conversion for valid legacy endpoints. At startup, an invalid legacy configuration is left in place and logged, and its legacy endpoint stays inactive. A restore containing invalid Realtime configuration returns an error and rolls back.
