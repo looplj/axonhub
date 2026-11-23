@@ -200,7 +200,7 @@ func skipGraphqlTransaction(oc *graphql.OperationContext) bool {
 	}
 	for _, f := range graphql.CollectFields(oc, op.SelectionSet, []string{"Mutation"}) {
 		switch f.Name {
-		case "bulkImportChannels", "applyCatalogImport", "checkProviderQuotas", "resetChannelQuotaNow":
+		case "bulkImportChannels", "applyCatalogImport", "checkModelCatalogNow", "checkProviderQuotas", "resetChannelQuotaNow":
 			return true
 		case "runPluginTask":
 			// The schedule claim commits before JavaScript runs on its own connections.

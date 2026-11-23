@@ -100,6 +100,9 @@ var Module = fx.Module("biz",
 			},
 		})
 	}),
+	fx.Invoke(func(lc fx.Lifecycle, svc *ModelService, s *scheduler.Scheduler) {
+		lc.Append(fx.Hook{OnStart: func(ctx context.Context) error { return svc.registerCatalogCheck(ctx, s) }})
+	}),
 	fx.Invoke(func(lc fx.Lifecycle, svc *DataStorageService, s *scheduler.Scheduler) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {

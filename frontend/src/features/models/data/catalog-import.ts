@@ -1,4 +1,4 @@
-// 职责: 请求模型目录预览和批量应用。
+// 职责: 请求模型目录预览、批量应用和站点定时检查设置。
 // 关联文件:
 //   frontend/src/features/models/components/models-catalog-import.tsx
 //   internal/server/gql/model.graphql
@@ -11,6 +11,7 @@ export interface ImportScope {
   channels: boolean;
   providers: string[];
   ignorePrefix: boolean;
+  tracked: boolean;
 }
 export interface ImportRate {
   field: ReferencePriceField;
@@ -80,12 +81,29 @@ export interface ImportSelection {
   identity: string;
   prices: PriceSelection[];
 }
+export interface CheckSettings {
+  enabled: boolean;
+  time: string;
+  timezone: string;
+  providers: string[];
+  ignorePrefix: boolean;
+}
+export interface CheckStatus {
+  settings: CheckSettings;
+  nextCheck: string | null;
+  lastAttempt: string | null;
+  lastSuccess: string | null;
+  failed: boolean;
+  available: number;
+  changed: number;
+}
 export interface Outcome {
   modelID: string;
   status: 'applied' | 'invalid' | 'conflict' | 'catalogChanged' | 'failed';
 }
 
 const offerFields = 'canonical provider modelID name developer identity type rates { field base tiers { label value } }';
+const statusFields = 'settings { enabled time timezone providers ignorePrefix } nextCheck lastAttempt lastSuccess failed available changed';
 const previewQuery = `query CatalogImportPreview($scope: CatalogImportScope!) {
   catalogImportPreview(scope: $scope) {
     source upstreamURL revision providers rows { modelID name members { id identity } routes { channelID channelName actual requests } version archived changed
@@ -93,9 +111,10 @@ const previewQuery = `query CatalogImportPreview($scope: CatalogImportScope!) {
     }
   }
 }`;
-export function useCatalogPreview(scope: ImportScope) {
+export function useCatalogPreview(scope: ImportScope, enabled: boolean) {
   return useQuery({
     queryKey: ['catalog-import', scope],
+    enabled,
     queryFn: async ({ signal }) =>
       (await graphqlRequest<{ catalogImportPreview: CatalogPreview }>(previewQuery, { scope }, undefined, { signal })).catalogImportPreview,
     refetchOnWindowFocus: false,
@@ -118,5 +137,43 @@ export function useCatalogApply() {
       client.invalidateQueries({ queryKey: ['models'] }),
       client.invalidateQueries({ queryKey: ['catalog-import'] }),
     ]),
+  });
+}
+export function useCatalogCheckStatus(enabled = true) {
+  return useQuery({
+    queryKey: ['model-catalog-check'],
+    enabled,
+    queryFn: async () =>
+      (await graphqlRequest<{ catalogCheckStatus: CheckStatus }>(`query CatalogCheckStatus { catalogCheckStatus { ${statusFields} } }`))
+        .catalogCheckStatus,
+    refetchInterval: 60_000,
+  });
+}
+export function useSaveCatalogSchedule() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CheckSettings) =>
+      (
+        await graphqlRequest<{ saveCatalogCheckSettings: CheckStatus }>(
+          `mutation SaveCatalogCheckSettings($input: CatalogCheckSettingsInput!) { saveCatalogCheckSettings(input: $input) { ${statusFields} } }`,
+          { input }
+        )
+      ).saveCatalogCheckSettings,
+    onSuccess: (data) => client.setQueryData(['model-catalog-check'], data),
+  });
+}
+export function useCheckCatalogNow() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      (
+        await graphqlRequest<{ checkModelCatalogNow: CheckStatus }>(
+          `mutation CheckModelCatalogNow { checkModelCatalogNow { ${statusFields} } }`
+        )
+      ).checkModelCatalogNow,
+    onSuccess: (data) => {
+      client.setQueryData(['model-catalog-check'], data);
+      client.invalidateQueries({ queryKey: ['catalog-import'] });
+    },
   });
 }

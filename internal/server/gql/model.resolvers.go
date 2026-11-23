@@ -133,6 +133,22 @@ func (r *mutationResolver) ApplyCatalogImport(ctx context.Context, scope biz.Cat
 	return lo.ToSlicePtr(results), err
 }
 
+// SaveCatalogCheckSettings is the resolver for the saveCatalogCheckSettings field.
+func (r *mutationResolver) SaveCatalogCheckSettings(ctx context.Context, input biz.CatalogCheckSettings) (*biz.CatalogCheckStatus, error) {
+	if err := authz.RequireSystemUserScope(ctx, scopes.ScopeWriteSettings); err != nil {
+		return nil, err
+	}
+	return r.modelService.SaveCatalogCheckSettings(ctx, input)
+}
+
+// CheckModelCatalogNow is the resolver for the checkModelCatalogNow field.
+func (r *mutationResolver) CheckModelCatalogNow(ctx context.Context) (*biz.CatalogCheckStatus, error) {
+	if err := authz.RequireSystemUserScope(ctx, scopes.ScopeWriteChannels); err != nil {
+		return nil, err
+	}
+	return r.modelService.CheckModelCatalog(ctx)
+}
+
 // PreviewChannelModelEntries is the resolver for the previewChannelModelEntries field.
 func (r *queryResolver) PreviewChannelModelEntries(ctx context.Context, input ChannelModelPreviewInput) ([]*biz.ChannelModelEntry, error) {
 	if err := authz.RequireScope(ctx, scopes.ScopeReadChannels); err != nil {
@@ -250,4 +266,14 @@ func (r *queryResolver) CatalogImportPreview(ctx context.Context, scope biz.Cata
 		return nil, err
 	}
 	return r.modelService.CatalogImportPreview(authz.WithScopeDecision(ctx, scopes.ScopeWriteChannels), scope)
+}
+
+// CatalogCheckStatus is the resolver for the catalogCheckStatus field.
+func (r *queryResolver) CatalogCheckStatus(ctx context.Context) (*biz.CatalogCheckStatus, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeReadSettings) {
+		if err := authz.RequireSystemUserScope(ctx, scopes.ScopeWriteChannels); err != nil {
+			return nil, err
+		}
+	}
+	return r.modelService.CatalogCheckStatus(ctx)
 }

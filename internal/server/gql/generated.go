@@ -346,6 +346,24 @@ type ComplexityRoot struct {
 		Updated  func(childComplexity int) int
 	}
 
+	CatalogCheckSettings struct {
+		Enabled      func(childComplexity int) int
+		IgnorePrefix func(childComplexity int) int
+		Providers    func(childComplexity int) int
+		Time         func(childComplexity int) int
+		Timezone     func(childComplexity int) int
+	}
+
+	CatalogCheckStatus struct {
+		Available   func(childComplexity int) int
+		Changed     func(childComplexity int) int
+		Failed      func(childComplexity int) int
+		LastAttempt func(childComplexity int) int
+		LastSuccess func(childComplexity int) int
+		NextCheck   func(childComplexity int) int
+		Settings    func(childComplexity int) int
+	}
+
 	CatalogImportLocalPrice struct {
 		Canonical func(childComplexity int) int
 		Field     func(childComplexity int) int
@@ -1147,6 +1165,7 @@ type ComplexityRoot struct {
 		BulkRemoveChannelTags                 func(childComplexity int, ids []*objects.GUID, tags []string) int
 		BulkUpdateChannelAutoDisable          func(childComplexity int, input biz.BulkUpdateChannelAutoDisableInput) int
 		BulkUpdateChannelOrdering             func(childComplexity int, input BulkUpdateChannelOrderingInput) int
+		CheckModelCatalogNow                  func(childComplexity int) int
 		CheckProviderQuotas                   func(childComplexity int) int
 		ClearCache                            func(childComplexity int, input ClearCacheInput) int
 		ClearChannelOverrideTemplates         func(childComplexity int, input ClearChannelOverrideTemplatesInput) int
@@ -1198,6 +1217,7 @@ type ComplexityRoot struct {
 		RetainTrace                           func(childComplexity int, id objects.GUID) int
 		RotateAPIKey                          func(childComplexity int, id objects.GUID) int
 		RunPluginTask                         func(childComplexity int, id objects.GUID, key string) int
+		SaveCatalogCheckSettings              func(childComplexity int, input biz.CatalogCheckSettings) int
 		SaveChannelEndpoints                  func(childComplexity int, input biz.SaveChannelEndpointsInput) int
 		SaveChannelModelPrices                func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
 		SaveProxyPreset                       func(childComplexity int, input biz.ProxyPreset) int
@@ -1707,6 +1727,7 @@ type ComplexityRoot struct {
 		AnalyticsOverview               func(childComplexity int, filter *AnalyticsFilter) int
 		AutoBackupSettings              func(childComplexity int) int
 		BrandSettings                   func(childComplexity int) int
+		CatalogCheckStatus              func(childComplexity int) int
 		CatalogImportPreview            func(childComplexity int, scope biz.CatalogImportScope) int
 		CatalogSettings                 func(childComplexity int) int
 		ChannelOverrideTemplates        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) int
@@ -2692,6 +2713,8 @@ type MutationResolver interface {
 	BulkEnableModels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkDeleteModels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	ApplyCatalogImport(ctx context.Context, scope biz.CatalogImportScope, revision string, selections []*biz.CatalogImportSelection) ([]*biz.CatalogImportOutcome, error)
+	SaveCatalogCheckSettings(ctx context.Context, input biz.CatalogCheckSettings) (*biz.CatalogCheckStatus, error)
+	CheckModelCatalogNow(ctx context.Context) (*biz.CatalogCheckStatus, error)
 	Backup(ctx context.Context, input backup.BackupOptions) (*BackupPayload, error)
 	Restore(ctx context.Context, file graphql.Upload, input backup.RestoreOptions) (*RestorePayload, error)
 	UpdateAutoBackupSettings(ctx context.Context, input UpdateAutoBackupSettingsInput) (bool, error)
@@ -2833,6 +2856,7 @@ type QueryResolver interface {
 	QueryModelChannelConnections(ctx context.Context, associations []*objects.ModelAssociation) ([]*biz.ModelChannelConnection, error)
 	QueryUnassociatedChannels(ctx context.Context) ([]*biz.UnassociatedChannel, error)
 	CatalogImportPreview(ctx context.Context, scope biz.CatalogImportScope) (*biz.CatalogImportPreview, error)
+	CatalogCheckStatus(ctx context.Context) (*biz.CatalogCheckStatus, error)
 	AutoBackupSettings(ctx context.Context) (*biz.AutoBackupSettings, error)
 	ChannelProbeData(ctx context.Context, input biz.GetChannelProbeDataInput) ([]*biz.ChannelProbeData, error)
 	AnalyticsMetadata(ctx context.Context) (*AnalyticsMetadata, error)
@@ -3878,6 +3902,80 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BulkUpdateChannelOrderingResult.Updated(childComplexity), true
+
+	case "CatalogCheckSettings.enabled":
+		if e.complexity.CatalogCheckSettings.Enabled == nil {
+			break
+		}
+
+		return e.complexity.CatalogCheckSettings.Enabled(childComplexity), true
+	case "CatalogCheckSettings.ignorePrefix":
+		if e.complexity.CatalogCheckSettings.IgnorePrefix == nil {
+			break
+		}
+
+		return e.complexity.CatalogCheckSettings.IgnorePrefix(childComplexity), true
+	case "CatalogCheckSettings.providers":
+		if e.complexity.CatalogCheckSettings.Providers == nil {
+			break
+		}
+
+		return e.complexity.CatalogCheckSettings.Providers(childComplexity), true
+	case "CatalogCheckSettings.time":
+		if e.complexity.CatalogCheckSettings.Time == nil {
+			break
+		}
+
+		return e.complexity.CatalogCheckSettings.Time(childComplexity), true
+	case "CatalogCheckSettings.timezone":
+		if e.complexity.CatalogCheckSettings.Timezone == nil {
+			break
+		}
+
+		return e.complexity.CatalogCheckSettings.Timezone(childComplexity), true
+
+	case "CatalogCheckStatus.available":
+		if e.complexity.CatalogCheckStatus.Available == nil {
+			break
+		}
+
+		return e.complexity.CatalogCheckStatus.Available(childComplexity), true
+	case "CatalogCheckStatus.changed":
+		if e.complexity.CatalogCheckStatus.Changed == nil {
+			break
+		}
+
+		return e.complexity.CatalogCheckStatus.Changed(childComplexity), true
+	case "CatalogCheckStatus.failed":
+		if e.complexity.CatalogCheckStatus.Failed == nil {
+			break
+		}
+
+		return e.complexity.CatalogCheckStatus.Failed(childComplexity), true
+	case "CatalogCheckStatus.lastAttempt":
+		if e.complexity.CatalogCheckStatus.LastAttempt == nil {
+			break
+		}
+
+		return e.complexity.CatalogCheckStatus.LastAttempt(childComplexity), true
+	case "CatalogCheckStatus.lastSuccess":
+		if e.complexity.CatalogCheckStatus.LastSuccess == nil {
+			break
+		}
+
+		return e.complexity.CatalogCheckStatus.LastSuccess(childComplexity), true
+	case "CatalogCheckStatus.nextCheck":
+		if e.complexity.CatalogCheckStatus.NextCheck == nil {
+			break
+		}
+
+		return e.complexity.CatalogCheckStatus.NextCheck(childComplexity), true
+	case "CatalogCheckStatus.settings":
+		if e.complexity.CatalogCheckStatus.Settings == nil {
+			break
+		}
+
+		return e.complexity.CatalogCheckStatus.Settings(childComplexity), true
 
 	case "CatalogImportLocalPrice.canonical":
 		if e.complexity.CatalogImportLocalPrice.Canonical == nil {
@@ -7101,6 +7199,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.BulkUpdateChannelOrdering(childComplexity, args["input"].(BulkUpdateChannelOrderingInput)), true
+	case "Mutation.checkModelCatalogNow":
+		if e.complexity.Mutation.CheckModelCatalogNow == nil {
+			break
+		}
+
+		return e.complexity.Mutation.CheckModelCatalogNow(childComplexity), true
 	case "Mutation.checkProviderQuotas":
 		if e.complexity.Mutation.CheckProviderQuotas == nil {
 			break
@@ -7652,6 +7756,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RunPluginTask(childComplexity, args["id"].(objects.GUID), args["key"].(string)), true
+	case "Mutation.saveCatalogCheckSettings":
+		if e.complexity.Mutation.SaveCatalogCheckSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_saveCatalogCheckSettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SaveCatalogCheckSettings(childComplexity, args["input"].(biz.CatalogCheckSettings)), true
 	case "Mutation.saveChannelEndpoints":
 		if e.complexity.Mutation.SaveChannelEndpoints == nil {
 			break
@@ -10093,6 +10208,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.BrandSettings(childComplexity), true
+	case "Query.catalogCheckStatus":
+		if e.complexity.Query.CatalogCheckStatus == nil {
+			break
+		}
+
+		return e.complexity.Query.CatalogCheckStatus(childComplexity), true
 	case "Query.catalogImportPreview":
 		if e.complexity.Query.CatalogImportPreview == nil {
 			break
@@ -13684,6 +13805,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputBulkImportChannelsInput,
 		ec.unmarshalInputBulkUpdateChannelAutoDisableInput,
 		ec.unmarshalInputBulkUpdateChannelOrderingInput,
+		ec.unmarshalInputCatalogCheckSettingsInput,
 		ec.unmarshalInputCatalogImportMemberInput,
 		ec.unmarshalInputCatalogImportPriceInput,
 		ec.unmarshalInputCatalogImportScope,
@@ -15259,6 +15381,17 @@ func (ec *executionContext) field_Mutation_runPluginTask_args(ctx context.Contex
 		return nil, err
 	}
 	args["key"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_saveCatalogCheckSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCatalogCheckSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogCheckSettings)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -22761,6 +22894,366 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_channel
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogCheckSettings_enabled(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogCheckSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogCheckSettings_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogCheckSettings_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogCheckSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogCheckSettings_time(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogCheckSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogCheckSettings_time,
+		func(ctx context.Context) (any, error) {
+			return obj.Time, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogCheckSettings_time(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogCheckSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogCheckSettings_timezone(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogCheckSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogCheckSettings_timezone,
+		func(ctx context.Context) (any, error) {
+			return obj.Timezone, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogCheckSettings_timezone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogCheckSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogCheckSettings_providers(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogCheckSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogCheckSettings_providers,
+		func(ctx context.Context) (any, error) {
+			return obj.Providers, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogCheckSettings_providers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogCheckSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogCheckSettings_ignorePrefix(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogCheckSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogCheckSettings_ignorePrefix,
+		func(ctx context.Context) (any, error) {
+			return obj.IgnorePrefix, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogCheckSettings_ignorePrefix(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogCheckSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogCheckStatus_settings(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogCheckStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogCheckStatus_settings,
+		func(ctx context.Context) (any, error) {
+			return obj.Settings, nil
+		},
+		nil,
+		ec.marshalNCatalogCheckSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogCheckSettings,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogCheckStatus_settings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogCheckStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_CatalogCheckSettings_enabled(ctx, field)
+			case "time":
+				return ec.fieldContext_CatalogCheckSettings_time(ctx, field)
+			case "timezone":
+				return ec.fieldContext_CatalogCheckSettings_timezone(ctx, field)
+			case "providers":
+				return ec.fieldContext_CatalogCheckSettings_providers(ctx, field)
+			case "ignorePrefix":
+				return ec.fieldContext_CatalogCheckSettings_ignorePrefix(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogCheckSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogCheckStatus_nextCheck(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogCheckStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogCheckStatus_nextCheck,
+		func(ctx context.Context) (any, error) {
+			return obj.NextCheck, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogCheckStatus_nextCheck(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogCheckStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogCheckStatus_lastAttempt(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogCheckStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogCheckStatus_lastAttempt,
+		func(ctx context.Context) (any, error) {
+			return obj.LastAttempt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogCheckStatus_lastAttempt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogCheckStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogCheckStatus_lastSuccess(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogCheckStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogCheckStatus_lastSuccess,
+		func(ctx context.Context) (any, error) {
+			return obj.LastSuccess, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogCheckStatus_lastSuccess(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogCheckStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogCheckStatus_failed(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogCheckStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogCheckStatus_failed,
+		func(ctx context.Context) (any, error) {
+			return obj.Failed, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogCheckStatus_failed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogCheckStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogCheckStatus_available(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogCheckStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogCheckStatus_available,
+		func(ctx context.Context) (any, error) {
+			return obj.Available, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogCheckStatus_available(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogCheckStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogCheckStatus_changed(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogCheckStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogCheckStatus_changed,
+		func(ctx context.Context) (any, error) {
+			return obj.Changed, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogCheckStatus_changed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogCheckStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -43667,6 +44160,108 @@ func (ec *executionContext) fieldContext_Mutation_applyCatalogImport(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_saveCatalogCheckSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_saveCatalogCheckSettings,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().SaveCatalogCheckSettings(ctx, fc.Args["input"].(biz.CatalogCheckSettings))
+		},
+		nil,
+		ec.marshalNCatalogCheckStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogCheckStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_saveCatalogCheckSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "settings":
+				return ec.fieldContext_CatalogCheckStatus_settings(ctx, field)
+			case "nextCheck":
+				return ec.fieldContext_CatalogCheckStatus_nextCheck(ctx, field)
+			case "lastAttempt":
+				return ec.fieldContext_CatalogCheckStatus_lastAttempt(ctx, field)
+			case "lastSuccess":
+				return ec.fieldContext_CatalogCheckStatus_lastSuccess(ctx, field)
+			case "failed":
+				return ec.fieldContext_CatalogCheckStatus_failed(ctx, field)
+			case "available":
+				return ec.fieldContext_CatalogCheckStatus_available(ctx, field)
+			case "changed":
+				return ec.fieldContext_CatalogCheckStatus_changed(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogCheckStatus", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_saveCatalogCheckSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_checkModelCatalogNow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_checkModelCatalogNow,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Mutation().CheckModelCatalogNow(ctx)
+		},
+		nil,
+		ec.marshalNCatalogCheckStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogCheckStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_checkModelCatalogNow(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "settings":
+				return ec.fieldContext_CatalogCheckStatus_settings(ctx, field)
+			case "nextCheck":
+				return ec.fieldContext_CatalogCheckStatus_nextCheck(ctx, field)
+			case "lastAttempt":
+				return ec.fieldContext_CatalogCheckStatus_lastAttempt(ctx, field)
+			case "lastSuccess":
+				return ec.fieldContext_CatalogCheckStatus_lastSuccess(ctx, field)
+			case "failed":
+				return ec.fieldContext_CatalogCheckStatus_failed(ctx, field)
+			case "available":
+				return ec.fieldContext_CatalogCheckStatus_available(ctx, field)
+			case "changed":
+				return ec.fieldContext_CatalogCheckStatus_changed(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogCheckStatus", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_backup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -57256,6 +57851,51 @@ func (ec *executionContext) fieldContext_Query_catalogImportPreview(ctx context.
 	if fc.Args, err = ec.field_Query_catalogImportPreview_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_catalogCheckStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_catalogCheckStatus,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().CatalogCheckStatus(ctx)
+		},
+		nil,
+		ec.marshalNCatalogCheckStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogCheckStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_catalogCheckStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "settings":
+				return ec.fieldContext_CatalogCheckStatus_settings(ctx, field)
+			case "nextCheck":
+				return ec.fieldContext_CatalogCheckStatus_nextCheck(ctx, field)
+			case "lastAttempt":
+				return ec.fieldContext_CatalogCheckStatus_lastAttempt(ctx, field)
+			case "lastSuccess":
+				return ec.fieldContext_CatalogCheckStatus_lastSuccess(ctx, field)
+			case "failed":
+				return ec.fieldContext_CatalogCheckStatus_failed(ctx, field)
+			case "available":
+				return ec.fieldContext_CatalogCheckStatus_available(ctx, field)
+			case "changed":
+				return ec.fieldContext_CatalogCheckStatus_changed(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogCheckStatus", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -76569,6 +77209,61 @@ func (ec *executionContext) unmarshalInputBulkUpdateChannelOrderingInput(ctx con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCatalogCheckSettingsInput(ctx context.Context, obj any) (biz.CatalogCheckSettings, error) {
+	var it biz.CatalogCheckSettings
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enabled", "time", "timezone", "providers", "ignorePrefix"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		case "time":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("time"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Time = data
+		case "timezone":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timezone"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Timezone = data
+		case "providers":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providers"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Providers = data
+		case "ignorePrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ignorePrefix"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IgnorePrefix = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCatalogImportMemberInput(ctx context.Context, obj any) (biz.CatalogImportMember, error) {
 	var it biz.CatalogImportMember
 	asMap := map[string]any{}
@@ -76683,7 +77378,7 @@ func (ec *executionContext) unmarshalInputCatalogImportScope(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"channels", "providers", "ignorePrefix"}
+	fieldsInOrder := [...]string{"channels", "providers", "ignorePrefix", "tracked"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76711,6 +77406,13 @@ func (ec *executionContext) unmarshalInputCatalogImportScope(ctx context.Context
 				return it, err
 			}
 			it.IgnorePrefix = data
+		case "tracked":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tracked"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Tracked = data
 		}
 	}
 
@@ -104543,6 +105245,125 @@ func (ec *executionContext) _BulkUpdateChannelOrderingResult(ctx context.Context
 	return out
 }
 
+var catalogCheckSettingsImplementors = []string{"CatalogCheckSettings"}
+
+func (ec *executionContext) _CatalogCheckSettings(ctx context.Context, sel ast.SelectionSet, obj *biz.CatalogCheckSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, catalogCheckSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CatalogCheckSettings")
+		case "enabled":
+			out.Values[i] = ec._CatalogCheckSettings_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "time":
+			out.Values[i] = ec._CatalogCheckSettings_time(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "timezone":
+			out.Values[i] = ec._CatalogCheckSettings_timezone(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "providers":
+			out.Values[i] = ec._CatalogCheckSettings_providers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ignorePrefix":
+			out.Values[i] = ec._CatalogCheckSettings_ignorePrefix(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var catalogCheckStatusImplementors = []string{"CatalogCheckStatus"}
+
+func (ec *executionContext) _CatalogCheckStatus(ctx context.Context, sel ast.SelectionSet, obj *biz.CatalogCheckStatus) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, catalogCheckStatusImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CatalogCheckStatus")
+		case "settings":
+			out.Values[i] = ec._CatalogCheckStatus_settings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nextCheck":
+			out.Values[i] = ec._CatalogCheckStatus_nextCheck(ctx, field, obj)
+		case "lastAttempt":
+			out.Values[i] = ec._CatalogCheckStatus_lastAttempt(ctx, field, obj)
+		case "lastSuccess":
+			out.Values[i] = ec._CatalogCheckStatus_lastSuccess(ctx, field, obj)
+		case "failed":
+			out.Values[i] = ec._CatalogCheckStatus_failed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "available":
+			out.Values[i] = ec._CatalogCheckStatus_available(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "changed":
+			out.Values[i] = ec._CatalogCheckStatus_changed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var catalogImportLocalPriceImplementors = []string{"CatalogImportLocalPrice"}
 
 func (ec *executionContext) _CatalogImportLocalPrice(ctx context.Context, sel ast.SelectionSet, obj *biz.CatalogImportLocalPrice) graphql.Marshaler {
@@ -111988,6 +112809,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "saveCatalogCheckSettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_saveCatalogCheckSettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "checkModelCatalogNow":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_checkModelCatalogNow(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "backup":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_backup(ctx, field)
@@ -117755,6 +118590,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_catalogImportPreview(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "catalogCheckStatus":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_catalogCheckStatus(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -126563,6 +127420,29 @@ func (ec *executionContext) marshalNBulkUpdateChannelOrderingResult2ᚖgithubᚗ
 		return graphql.Null
 	}
 	return ec._BulkUpdateChannelOrderingResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNCatalogCheckSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogCheckSettings(ctx context.Context, sel ast.SelectionSet, v biz.CatalogCheckSettings) graphql.Marshaler {
+	return ec._CatalogCheckSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNCatalogCheckSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogCheckSettings(ctx context.Context, v any) (biz.CatalogCheckSettings, error) {
+	res, err := ec.unmarshalInputCatalogCheckSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCatalogCheckStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogCheckStatus(ctx context.Context, sel ast.SelectionSet, v biz.CatalogCheckStatus) graphql.Marshaler {
+	return ec._CatalogCheckStatus(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCatalogCheckStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogCheckStatus(ctx context.Context, sel ast.SelectionSet, v *biz.CatalogCheckStatus) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CatalogCheckStatus(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNCatalogImportLocalPrice2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogImportLocalPrice(ctx context.Context, sel ast.SelectionSet, v biz.CatalogImportLocalPrice) graphql.Marshaler {

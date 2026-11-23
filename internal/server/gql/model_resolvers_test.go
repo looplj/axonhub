@@ -140,3 +140,52 @@ func TestCreateModelReferencePricesGraphQL(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, 2, db.Model.Query().CountX(authz.WithTestBypass(t.Context())))
 }
+
+func TestCatalogCheckSitePermissionsAndValidation(t *testing.T) {
+	db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	t.Cleanup(func() { _ = db.Close() })
+	system := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: xcache.Config{Mode: xcache.ModeMemory}, Ent: db})
+	srv := NewGraphqlHandlers(Dependencies{Ent: db, ModelService: biz.NewModelService(biz.ModelServiceParams{Ent: db, SystemService: system})})
+	const status = `query { catalogCheckStatus { failed } }`
+	const save = `mutation SetTime($zone:String!,$time:String!) { saveCatalogCheckSettings(input:{enabled:true,providers:[],ignorePrefix:false,time:$time,timezone:$zone}) { failed } }`
+	for _, tc := range []struct {
+		name                    string
+		siteScope, projectScope string
+		query, zone, time, code string
+	}{
+		{"project channel grant", "", "write_channels", status, "", "", "FORBIDDEN"},
+		{"site settings reader", "read_settings", "", status, "", "", ""},
+		{"project settings reader", "", "read_settings", status, "", "", "FORBIDDEN"},
+		{"site channel grant", "write_channels", "", status, "", "", ""},
+		{"channel editor cannot configure schedule", "write_channels", "", save, "UTC", "08:30", "FORBIDDEN"},
+		{"project settings grant", "", "write_settings", save, "UTC", "08:30", "FORBIDDEN"},
+		{"invalid time", "write_settings", "", save, "UTC", "24:60", "VALIDATION_FAILED"},
+		{"invalid timezone", "write_settings", "", save, "Invalid/Timezone", "08:30", "VALIDATION_FAILED"},
+		{"site settings grant", "write_settings", "", save, "UTC", "08:30", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			u := &ent.User{ID: 1}
+			if tc.siteScope != "" {
+				u.Scopes = []string{tc.siteScope}
+			}
+			if tc.projectScope != "" {
+				u.Edges.ProjectUsers = []*ent.UserProject{{ProjectID: 100, Scopes: []string{tc.projectScope}}}
+			}
+			api := client.New(srv.Graphql, func(r *client.Request) {
+				ctx := authz.NewUserContext(r.HTTP.Context(), u.ID)
+				r.HTTP = r.HTTP.WithContext(contexts.WithProjectID(contexts.WithUser(ctx, u), 100))
+			})
+			var options []client.Option
+			if tc.query == save {
+				options = []client.Option{client.Var("zone", tc.zone), client.Var("time", tc.time)}
+			}
+			var response map[string]any
+			err := api.Post(tc.query, &response, options...)
+			if tc.code == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tc.code)
+			}
+		})
+	}
+}

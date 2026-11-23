@@ -4,7 +4,7 @@
 //   frontend/src/features/models/components/models-catalog-prices.tsx
 //   frontend/src/features/models/data/catalog-import.ts
 // 注意事项:
-//   导入提交使用隔离响应。
+//   导入提交使用隔离响应，角色场景使用独立浏览器上下文。
 import { expect, test } from '@playwright/test';
 import { gotoAndEnsureAuth } from './auth.utils';
 
@@ -219,6 +219,63 @@ test('reference prices show the bound source and distinguish missing from unsele
     type: 'embedding', name: 'Vector embedding', developer: 'custom', prices: [],
     routes: [{ channelID: 12, actual: 'zero', request: 'public-zero' }],
   })]);
+});
+
+test('only the schedule dialog and the channel editor badge poll for check status', async ({ page }) => {
+  let importReads = 0;
+  let statusReads = 0;
+  let scopes = ['read_channels', 'read_settings'];
+  await page.route('**/admin/graphql', async (route) => {
+    const { operationName } = route.request().postDataJSON();
+    if (operationName === 'CatalogImportPreview') importReads++;
+    if (operationName === 'CatalogCheckStatus') {
+      statusReads++;
+      const catalogCheckStatus = {
+        settings: { enabled: false, time: '08:30', timezone: 'UTC', providers: [], ignorePrefix: false },
+        lastAttempt: null, lastSuccess: '2026-01-01T00:00:00Z', nextCheck: null, failed: false, available: 2, changed: 1,
+      };
+      return route.fulfill({ json: { data: { catalogCheckStatus } } });
+    }
+    if (operationName === 'MyProjects') return route.fulfill({ json: { data: { myProjects: [] } } });
+    if (operationName !== 'Me') return route.fallback();
+    const response = await route.fetch();
+    const json = await response.json();
+    Object.assign(json.data.me, { isOwner: false, scopes, projects: [], preferLanguage: scopes.includes('write_settings') ? 'zh-CN' : 'en' });
+    return route.fulfill({ json });
+  });
+  await gotoAndEnsureAuth(page, '/models');
+  const open = page.getByTestId('catalog-import-open');
+  await expect(open).toBeVisible();
+  await page.clock.install();
+  await page.clock.fastForward(61_000);
+  expect(statusReads).toBe(0);
+  await open.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('button', { name: /Check now|立即检查/i })).toHaveCount(0);
+  await expect(dialog.getByRole('heading', { name: 'Update checks' })).toBeVisible();
+  await expect(dialog.locator('input[type=time]')).toBeDisabled();
+  expect(statusReads).toBeGreaterThan(0);
+  const openReads = statusReads;
+  await page.clock.fastForward(61_000);
+  await expect.poll(() => statusReads).toBeGreaterThan(openReads);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  const closedReads = statusReads;
+  await page.clock.fastForward(61_000);
+  expect(statusReads).toBe(closedReads);
+  scopes = [...scopes, 'write_settings'];
+  await page.reload();
+  await open.click();
+  await expect(dialog.getByRole('heading', { name: '检查更新' })).toBeVisible();
+  await expect(dialog.locator('input[type=time]')).toBeEnabled();
+  expect(importReads).toBe(0);
+
+  scopes = ['read_channels', 'write_channels'];
+  await page.reload();
+  await expect(open).toContainText('3');
+  const badgeReads = statusReads;
+  await page.clock.fastForward(61_000);
+  await expect.poll(() => statusReads).toBeGreaterThan(badgeReads);
 });
 
 test('a lost apply response requires a refreshed preview before retrying', async ({ page }) => {

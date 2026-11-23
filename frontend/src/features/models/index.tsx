@@ -16,6 +16,7 @@ import { ModelsOnboardingFlow } from './components/models-onboarding-flow';
 import { ModelsTable } from './components/models-table';
 import ModelsProvider, { useModels } from './context/models-context';
 import { useQueryAllModels } from './data/models';
+import { useCatalogCheckStatus } from './data/catalog-import';
 import { ModelsCatalogStatus } from './components/models-catalog-status';
 import { useDevelopersData } from './data/providers';
 
@@ -105,13 +106,17 @@ function BulkAddButton() {
   );
 }
 
-function CatalogImportButton() {
+function CatalogImportButton({ canImport }: { canImport: boolean }) {
   const { t } = useTranslation();
   const { setOpen } = useModels();
+  const { data } = useCatalogCheckStatus(canImport);
   return (
     <Button variant='outline' className='shrink-0' onClick={() => setOpen('catalogImport')} data-testid='catalog-import-open'>
       <IconDownload className='mr-2 h-4 w-4' />
-      {t('models.import.title')}
+      {t(canImport ? 'models.import.title' : 'models.import.schedule')}
+      {canImport && data?.lastSuccess && data.available + data.changed > 0 && (
+        <span className='rounded-full bg-muted px-2 text-xs' title={t('models.import.lastCounts', { available: data.available, changed: data.changed })}>{data.available + data.changed}</span>
+      )}
     </Button>
   );
 }
@@ -154,7 +159,7 @@ function ActionButtons() {
           <CreateButton />
         </>
       </PermissionGuard>
-      {canImport && <CatalogImportButton />}
+      {(canImport || hasSystemScope('read_settings')) && <CatalogImportButton canImport={canImport} />}
     </div>
   );
 }

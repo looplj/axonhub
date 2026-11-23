@@ -1,8 +1,9 @@
-// 职责: 使用隔离目录与数据库验证批量导入和价格所有权。
+// 职责: 使用隔离目录与数据库验证批量导入、价格所有权及每日差异检查。
 // 关联文件:
 //
 //	internal/server/biz/model_catalog_preview.go
 //	internal/server/biz/model_catalog_apply.go
+//	internal/server/biz/model_catalog_schedule.go
 //
 // 注意事项:
 //
@@ -29,6 +30,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
 const testCatalog = `{"providers":{
@@ -127,7 +129,7 @@ func TestCatalogImportScopesAndConflicts(t *testing.T) {
 	scope.IgnorePrefix = true
 	preview := f.preview(t, scope)
 	require.Len(t, preview.Rows, 5)
-	combined := f.preview(t, CatalogImportScope{Channels: true, Providers: []string{"relay"}, IgnorePrefix: true})
+	combined := f.preview(t, CatalogImportScope{Channels: true, Providers: []string{"relay"}, IgnorePrefix: true, Tracked: true})
 	require.Len(t, combined.Rows, 5)
 	require.Equal(t, []string{"a/shared", "b/shared"}, memberIDs(selection(t, combined, "shared")))
 	kimi := selection(t, preview, "kimi-k3")
@@ -199,15 +201,45 @@ func TestCatalogImportTierAndManualEdits(t *testing.T) {
 	require.False(t, f.preview(t, scope).Rows[0].Changed)
 }
 
-func TestCatalogImportFallback(t *testing.T) {
+func TestCatalogCheckOnlyReportsFollowedFieldsAndSubscribedProviders(t *testing.T) {
 	f := catalogFixture(t)
 	scope := CatalogImportScope{Providers: []string{"moonshot-ai"}}
 	preview := f.preview(t, scope)
 	sel := selection(t, preview, "kimi-k3")
 	sel.Prices[1].Action = CatalogPriceFixBase
 	require.Equal(t, []string{"applied"}, f.apply(t, scope, preview, sel))
+	f.changeCatalog(strings.Replace(testCatalog, `"input":3,"output":15`, `"input":4,"output":20`, 1))
+	state, err := f.svc.CheckModelCatalog(f.ctx)
+	require.NoError(t, err)
+	require.False(t, state.Settings.Enabled)
+	require.Zero(t, state.Available)
+	require.Equal(t, 1, state.Changed)
+	cfg := CatalogCheckSettings{Enabled: true, Time: "08:30", Timezone: "Asia/Shanghai", Providers: scope.Providers}
+	previousSuccess := state.LastSuccess
+	state, err = f.svc.SaveCatalogCheckSettings(f.ctx, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, state.NextCheck)
+	require.Equal(t, previousSuccess, state.LastSuccess)
+	now := time.Date(2026, 11, 22, 0, 30, 0, 0, time.UTC)
+	state, err = f.svc.checkModelCatalog(f.ctx, now, true)
+	require.NoError(t, err)
+	require.Equal(t, 1, state.Available)
+	require.Equal(t, 1, state.Changed)
 	m := f.db.Model.Query().OnlyX(f.ctx)
+	require.Equal(t, 3.0, m.ModelCard.Cost.Input)
+	require.Equal(t, 15.0, m.ModelCard.Cost.Output)
+	f.changeCatalog(`{"providers":{}}`)
+	again, err := f.svc.checkModelCatalog(f.ctx, now.Add(time.Second), true)
+	require.NoError(t, err)
+	require.Equal(t, state.LastSuccess, again.LastSuccess)
+	again, err = f.svc.CheckModelCatalog(f.ctx)
+	require.NoError(t, err)
+	require.Zero(t, again.Changed)
 	f.changeCatalog("offline")
+	failed, err := f.svc.CheckModelCatalog(f.ctx)
+	require.NoError(t, err)
+	require.True(t, failed.Failed)
+	require.Equal(t, again.LastSuccess, failed.LastSuccess)
 	fallback := f.preview(t, CatalogImportScope{Providers: []string{"moonshot"}})
 	require.Equal(t, catalogSourceFallback, fallback.Source)
 	selected := selection(t, fallback, m.ModelID)
@@ -217,6 +249,43 @@ func TestCatalogImportFallback(t *testing.T) {
 	selected = selection(t, fallback, other.ModelID)
 	selected.Developer = "moonshot"
 	require.Equal(t, []string{"applied"}, f.apply(t, CatalogImportScope{Providers: []string{"moonshot"}}, fallback, selected))
+}
+
+func TestCatalogCheckAfterProviderRemovesModel(t *testing.T) {
+	f := catalogFixture(t)
+	scope := CatalogImportScope{Providers: []string{"moonshot", "moonshot-ai"}}
+	p := f.preview(t, scope)
+	sel := selection(t, p, "kimi-k3")
+	sel.Prices[0].Provider, sel.Prices[0].Expected = "moonshot", lo.ToPtr(2.9879)
+	require.Equal(t, []string{"applied"}, f.apply(t, scope, p, sel))
+
+	tracked := CatalogImportScope{Tracked: true}
+	delisted := strings.Replace(testCatalog, `"id":"kimi-k3","name"`, `"id":"replacement","name"`, 1)
+	f.changeCatalog(strings.Replace(delisted, `"moonshot-ai":`, `"other":`, 1))
+	require.Empty(t, f.preview(t, tracked).Rows)
+	for _, tc := range []struct {
+		catalog string
+		changed int
+	}{
+		{delisted, 0},
+		{strings.Replace(delisted, "2.9879", "4", 1), 1},
+	} {
+		f.changeCatalog(tc.catalog)
+		state, err := f.svc.CheckModelCatalog(f.ctx)
+		require.NoError(t, err)
+		require.False(t, state.Failed)
+		require.Equal(t, tc.changed, state.Changed)
+		p = f.preview(t, tracked)
+		require.Len(t, p.Rows, 1)
+		require.Equal(t, "kimi-k3", p.Rows[0].ModelID)
+		require.True(t, p.Rows[0].needsReview)
+		require.Equal(t, tc.changed > 0, p.Rows[0].Changed)
+	}
+	edit := selection(t, p, "kimi-k3")
+	edit.Prices = []CatalogImportPriceInput{{Field: "output", Action: CatalogPriceFix}}
+	require.Equal(t, []string{"applied"}, f.apply(t, tracked, p, edit))
+	f.changeCatalog(delisted)
+	require.Empty(t, f.preview(t, tracked).Rows)
 }
 
 func TestCatalogModelTypes(t *testing.T) {
@@ -285,7 +354,7 @@ func TestCatalogImportRecognizesStoredAliasesAcrossScopes(t *testing.T) {
 	group := selection(t, preview, "shared")
 	group.Developer = "dev"
 	require.Equal(t, []string{"applied"}, f.apply(t, scope, preview, group))
-	for _, scope := range []CatalogImportScope{{Providers: []string{"relay"}}, {Channels: true}} {
+	for _, scope := range []CatalogImportScope{{Providers: []string{"relay"}}, {Channels: true, Tracked: true}} {
 		for _, row := range f.preview(t, scope).Rows {
 			require.NotContains(t, []string{"a/shared", "b/shared"}, row.ModelID)
 		}
@@ -296,7 +365,7 @@ func TestCatalogImportPreservesUnrelatedExistingMergeTarget(t *testing.T) {
 	f := catalogFixture(t)
 	f.channel(t, channel.StatusEnabled, "a/shared", "b/shared")
 	f.db.Model.Create().SetModelID("shared").SetName("Different model").SetGroup("other").SetDeveloper("other").SetIcon("other").SetSettings(&objects.ModelSettings{}).SetModelCard(&objects.ModelCard{}).SaveX(f.ctx)
-	p := f.preview(t, CatalogImportScope{Channels: true, IgnorePrefix: true})
+	p := f.preview(t, CatalogImportScope{Channels: true, Tracked: true, IgnorePrefix: true})
 	require.Len(t, p.Rows, 2)
 	for _, row := range p.Rows {
 		require.True(t, row.MergeTargetOccupied)
@@ -305,6 +374,24 @@ func TestCatalogImportPreservesUnrelatedExistingMergeTarget(t *testing.T) {
 	for _, id := range []string{"a/shared", "b/shared"} {
 		require.Empty(t, selection(t, p, id).Version)
 	}
+}
+
+func TestCatalogCheckFetchesAfterPreview(t *testing.T) {
+	f := catalogFixture(t)
+	f.preview(t, CatalogImportScope{Channels: true})
+	reads := f.requests.Load()
+	f.body.Store("offline")
+	state, err := f.svc.CheckModelCatalog(f.ctx)
+	require.NoError(t, err)
+	require.True(t, state.Failed)
+	require.Equal(t, reads+1, f.requests.Load())
+	require.Nil(t, state.LastSuccess)
+	f.body.Store(testCatalog)
+	state, err = f.svc.CheckModelCatalog(f.ctx)
+	require.NoError(t, err)
+	require.False(t, state.Failed)
+	require.Equal(t, reads+2, f.requests.Load())
+	require.NotNil(t, state.LastSuccess)
 }
 
 func TestCatalogAutomaticallyMergesVerifiedNestedIDs(t *testing.T) {
@@ -344,6 +431,46 @@ func TestCatalogImportUnverifiedOffer(t *testing.T) {
 	require.Len(t, p.Rows, 1)
 	require.Len(t, p.Rows[0].Offers, 1)
 	require.Nil(t, p.Rows[0].Preferred)
+}
+
+func TestCatalogCheckScopeUnion(t *testing.T) {
+	f := catalogFixture(t)
+	f.channel(t, channel.StatusEnabled, "kimi-k3")
+	offers := func(scope CatalogImportScope) []string {
+		p := f.preview(t, scope)
+		providers := []string{}
+		for _, row := range p.Rows {
+			if row.ModelID == "kimi-k3" {
+				for _, o := range row.Offers {
+					providers = append(providers, o.Provider)
+				}
+			}
+		}
+		return providers
+	}
+	expected := offers(CatalogImportScope{Channels: true, Tracked: true})
+	require.ElementsMatch(t, []string{"moonshot", "moonshot-ai"}, expected)
+	require.ElementsMatch(t, expected, offers(CatalogImportScope{Channels: true, Tracked: true, Providers: []string{"moonshot"}}))
+}
+
+func TestCatalogCheckAcrossInstances(t *testing.T) {
+	f := catalogFixture(t)
+	secondSystem := NewSystemService(SystemServiceParams{Ent: f.db, CacheConfig: xcache.Config{Mode: xcache.ModeMemory}})
+	secondCatalog := NewCatalogService(secondSystem, f.svc.catalog.httpClient)
+	second := NewModelService(ModelServiceParams{Ent: f.db, Catalog: secondCatalog, SystemService: secondSystem})
+	firstRun, err := f.svc.CheckModelCatalog(f.ctx)
+	require.NoError(t, err)
+	cached, err := second.CatalogCheckStatus(f.ctx)
+	require.NoError(t, err)
+	require.Equal(t, firstRun.LastSuccess, cached.LastSuccess)
+	_, err = f.svc.CheckModelCatalog(f.ctx)
+	require.NoError(t, err)
+	before := f.requests.Load()
+	f.body.Store("unavailable")
+	now, err := second.CheckModelCatalog(f.ctx)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), f.requests.Load()-before)
+	require.True(t, now.Failed)
 }
 
 func TestCatalogImportConcurrentEdit(t *testing.T) {
@@ -453,6 +580,9 @@ func TestCatalogPreviewAfterProviderRemovesModel(t *testing.T) {
 	p = f.preview(t, scope)
 	require.Len(t, p.Rows, 1)
 	require.Equal(t, []string{"other-alias"}, memberIDs(selection(t, p, "local-kimi")))
+	watched := f.preview(t, CatalogImportScope{Tracked: true, Providers: scope.Providers})
+	require.Len(t, watched.Rows, 1)
+	require.Equal(t, p.Rows[0].Members, watched.Rows[0].Members)
 	f.changeCatalog(`{"providers":{"other":{"models":[]}}}`)
 	require.Empty(t, f.preview(t, scope).Rows)
 	f.changeCatalog(`{"providers":{"moonshot-ai":{"models":[]},"other":{"models":[]}}}`)
@@ -558,9 +688,10 @@ func TestCatalogPriceIdentityAndWithdrawal(t *testing.T) {
 	require.Equal(t, 16., updated.ModelCard.Cost.Output)
 
 	f.changeCatalog(strings.Replace(testCatalog, `"input":3,"output":15`, `"output":16`, 1))
-	row, ok := lo.Find(f.preview(t, scope).Rows, func(r *CatalogImportRow) bool { return r.ModelID == "kimi-k3" })
-	require.True(t, ok)
-	require.False(t, row.Changed)
+	state, err := f.svc.CheckModelCatalog(f.ctx)
+	require.NoError(t, err)
+	require.Zero(t, state.Changed)
+	require.Len(t, f.preview(t, CatalogImportScope{Tracked: true}).Rows, 1)
 	require.Equal(t, 3., *f.db.Model.Query().OnlyX(f.ctx).ModelCard.ReferencePrice("input"))
 }
 
@@ -649,4 +780,22 @@ func TestCatalogCanonicalAliasMatchesOnlyUnambiguousVariants(t *testing.T) {
 	require.Len(t, p.Rows, 3)
 	require.Equal(t, []string{"kimi-k3", "moonshotai/kimi-k3"}, memberIDs(selection(t, p, "kimi-k3")))
 	require.Len(t, selection(t, p, "moonshotai/kimi-k3.1-pro").Members, 1)
+}
+
+func TestCatalogScheduleDST(t *testing.T) {
+	cfg := CatalogCheckSettings{Time: "02:30", Timezone: "America/New_York"}
+	now := time.Date(2026, 3, 8, 6, 29, 0, 0, time.UTC)
+	next, err := cfg.next(now, "")
+	require.NoError(t, err)
+	require.True(t, next.Equal(time.Date(2026, 3, 9, 6, 30, 0, 0, time.UTC)), next)
+	cfg.Time = "01:30"
+	first, err := cfg.next(time.Date(2026, 11, 1, 4, 0, 0, 0, time.UTC), "")
+	require.NoError(t, err)
+	second, err := cfg.next(first, first.Format(time.DateOnly))
+	require.NoError(t, err)
+	require.Equal(t, "2026-11-02 01:30", second.Format("2006-01-02 15:04"))
+	cfg.Time = "18:00"
+	next, err = cfg.next(first, first.Format(time.DateOnly))
+	require.NoError(t, err)
+	require.Equal(t, "2026-11-02 18:00", next.Format("2006-01-02 15:04"))
 }

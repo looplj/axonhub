@@ -259,6 +259,7 @@ input CatalogImportScope {
   channels: Boolean!
   providers: [String!]!
   ignorePrefix: Boolean!
+  tracked: Boolean!
 }
 
 type CatalogImportTier {
@@ -349,9 +350,35 @@ type CatalogImportOutcome {
   modelID: String!
   status: CatalogImportStatus!
 }
+input CatalogCheckSettingsInput {
+  enabled: Boolean!
+  time: String!
+  timezone: String!
+  providers: [String!]!
+  ignorePrefix: Boolean!
+}
+type CatalogCheckSettings {
+  enabled: Boolean!
+  time: String!
+  timezone: String!
+  providers: [String!]!
+  ignorePrefix: Boolean!
+}
+type CatalogCheckStatus {
+  settings: CatalogCheckSettings!
+  nextCheck: Time
+  lastAttempt: Time
+  lastSuccess: Time
+  failed: Boolean!
+  available: Int!
+  changed: Int!
+}
 extend type Query {
   catalogImportPreview(scope: CatalogImportScope!): CatalogImportPreview!
+  catalogCheckStatus: CatalogCheckStatus!
 }
 extend type Mutation {
   applyCatalogImport(scope: CatalogImportScope!, revision: String!, selections: [CatalogImportSelection!]!): [CatalogImportOutcome!]!
+  saveCatalogCheckSettings(input: CatalogCheckSettingsInput!): CatalogCheckStatus!
+  checkModelCatalogNow: CatalogCheckStatus!
 }
