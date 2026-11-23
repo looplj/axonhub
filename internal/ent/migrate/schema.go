@@ -506,6 +506,50 @@ var (
 			},
 		},
 	}
+	// PluginTableOperationsColumns holds the columns for the "plugin_table_operations" table.
+	PluginTableOperationsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "storage_id", Type: field.TypeInt},
+		{Name: "kind", Type: field.TypeString, Size: 16},
+		{Name: "tables", Type: field.TypeJSON},
+		{Name: "names", Type: field.TypeJSON},
+		{Name: "package_sha", Type: field.TypeString, Size: 64, Default: ""},
+		{Name: "last_error", Type: field.TypeString, Size: 512, Default: ""},
+		{Name: "retry_at", Type: field.TypeInt64, Default: 0},
+	}
+	// PluginTableOperationsTable holds the schema information for the "plugin_table_operations" table.
+	PluginTableOperationsTable = &schema.Table{
+		Name:       "plugin_table_operations",
+		Columns:    PluginTableOperationsColumns,
+		PrimaryKey: []*schema.Column{PluginTableOperationsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "plugin_table_operations_by_storage_kind",
+				Unique:  true,
+				Columns: []*schema.Column{PluginTableOperationsColumns[1], PluginTableOperationsColumns[2]},
+			},
+			{
+				Name:    "plugin_table_operations_by_kind_retry",
+				Unique:  false,
+				Columns: []*schema.Column{PluginTableOperationsColumns[2], PluginTableOperationsColumns[7], PluginTableOperationsColumns[0]},
+			},
+		},
+	}
+	// PluginTableStoragesColumns holds the columns for the "plugin_table_storages" table.
+	PluginTableStoragesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "plugin_id", Type: field.TypeString, Size: 64},
+		{Name: "active_plugin_id", Type: field.TypeString, Unique: true, Nullable: true, Size: 64},
+		{Name: "tables", Type: field.TypeJSON},
+		{Name: "names", Type: field.TypeJSON},
+		{Name: "revision", Type: field.TypeInt, Default: 0},
+	}
+	// PluginTableStoragesTable holds the schema information for the "plugin_table_storages" table.
+	PluginTableStoragesTable = &schema.Table{
+		Name:       "plugin_table_storages",
+		Columns:    PluginTableStoragesColumns,
+		PrimaryKey: []*schema.Column{PluginTableStoragesColumns[0]},
+	}
 	// ProjectsColumns holds the columns for the "projects" table.
 	ProjectsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -1262,6 +1306,8 @@ var (
 		PluginSchedulesTable,
 		PluginScheduleRunsTable,
 		PluginStoragesTable,
+		PluginTableOperationsTable,
+		PluginTableStoragesTable,
 		ProjectsTable,
 		PromptsTable,
 		PromptProtectionRulesTable,

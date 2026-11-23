@@ -433,6 +433,66 @@ test("graphql keeps partial data and errors and does not retry", async () => {
   assert.equal(await cleared, undefined);
 });
 
+test("managed table methods forward JSON arguments and return the operation result", async () => {
+  const env = setup();
+  await handshake(env);
+  const table = env.window.axonhub.tables.open("todos");
+  const row = { id: "9007199254740993", title: "Check quotas", done: false };
+  const draft = { title: row.title, done: row.done };
+  const options = {
+    where: [{ column: "done", op: "eq", value: false }, { column: "id", op: "gte", value: 10 }],
+    orderBy: [{ column: "id", direction: "desc" }],
+    first: 30,
+    after: "cursor-1",
+  };
+  const page = { rows: [row], nextCursor: "cursor-2" };
+  const upsert = { conflict: ["title"], row: draft };
+  for (const [name, args, operation, expectedArgs, answer] of [
+    ["get", [row.id], "GET", [row.id], row],
+    ["get", [1], "GET", [1], null],
+    ["list", [], "LIST", [], { rows: [], nextCursor: null }],
+    ["list", [options], "LIST", [options], page],
+    ["insert", [draft], "INSERT", [draft], row],
+    ["update", [row.id, { done: true }], "UPDATE", [row.id, { done: true }], { ...row, done: true }],
+    ["upsert", [upsert], "UPSERT", [upsert], row],
+    ["delete", [row.id], "DELETE", [row.id], true],
+  ]) {
+    const pending = table[name](...args);
+    const sent = calls(env).at(-1).data;
+    assert.equal(sent.method, "graphql");
+    assert.match(sent.params.query, /pluginTableOperation/);
+    assert.deepEqual(json(sent.params.variables), { table: "todos", operation, args: expectedArgs });
+    deliver(env, reply(sent.id, { ok: true, result: { data: { pluginTableOperation: answer } } }));
+    assert.deepEqual(json(await pending), answer);
+  }
+});
+
+test("managed tables reject invalid names and report table error codes", async () => {
+  const env = setup();
+  const tables = env.window.axonhub.tables;
+  assert.throws(() => tables.open("todos.invalid"), { code: "INVALID_ARGUMENT" });
+  assert.equal(calls(env).length, 0);
+  await handshake(env);
+
+  for (const [hostCode, code] of [
+    ["FORBIDDEN", "FORBIDDEN"],
+    ["VALIDATION_FAILED", "INVALID_ARGUMENT"],
+    ["ALREADY_EXISTS", "CONFLICT"],
+    ["RATE_LIMITED", "RATE_LIMITED"],
+    ["TIMEOUT", "TIMEOUT"],
+    ["UNEXPECTED", "INTERNAL"],
+  ]) {
+    const pending = tables.open("todos").list();
+    const id = calls(env).at(-1).data.id;
+    deliver(env, reply(id, { ok: true, result: { errors: [{ message: "table error", extensions: { code: hostCode } }] } }));
+    await assert.rejects(pending, {
+      code,
+      name: "AxonhubBridgeError",
+      message: code === "INTERNAL" ? "Internal error" : "table error",
+    });
+  }
+});
+
 test("host reply status and code map without exposing server internals", async () => {
   const cases = [
     [{ code: "INTERNAL", message: "password=secret", status: 401 }, "UNAUTHENTICATED", 401],

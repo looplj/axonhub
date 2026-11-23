@@ -437,6 +437,7 @@ export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>;
 
 // Channel Credentials
 export const channelCredentialsSchema = z.object({
+  isOAuth: z.boolean().optional(),
   apiKey: z.string().optional().nullable(),
   apiKeys: z.array(z.string()).optional().nullable(),
   // Read-side shape only: persisted credentials are echoed for the form and may
@@ -747,11 +748,11 @@ function validateOAuthCredentials(type: string, apiKey: string | undefined, ctx:
     return;
   }
 
-  // GitHub Copilot only requires access_token, others may require refresh_token
+  // Copilot and Claude Code can also use access-only credentials.
   const parsed = z
     .object({
       access_token: z.string().min(1),
-      refresh_token: isCopilot ? z.string().optional() : z.string().min(1),
+      refresh_token: isCopilot || type === 'claudecode' ? z.string().optional() : z.string().min(1),
     })
     .safeParse(json);
 
@@ -879,7 +880,7 @@ export const createChannelInputSchema = z
     const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
     const isOAuthType =
       (data.type === 'codex' && !hasApiKeys) ||
-      data.type === 'claudecode' ||
+      (data.type === 'claudecode' && !hasApiKeys) ||
       data.type === 'antigravity' ||
       data.type === 'github_copilot' ||
       data.type === 'xai_subscription';
@@ -986,7 +987,7 @@ export const updateChannelInputSchema = z
     // (which indicates OAuth credentials are being set)
     const isOAuthType =
       (effectiveType === 'codex' && !hasApiKeys) ||
-      effectiveType === 'claudecode' ||
+      (effectiveType === 'claudecode' && !hasApiKeys) ||
       effectiveType === 'antigravity' ||
       effectiveType === 'github_copilot' ||
       effectiveType === 'xai_subscription';
@@ -1003,9 +1004,9 @@ export const updateChannelInputSchema = z
 
     // If we have an OAuth key but no type, check if it looks like Copilot credentials
     const isCopilotKey = hasApiKey && data.credentials?.apiKey?.trim().startsWith('{');
-    const isThirdPartyCodex = effectiveType === 'codex' && hasApiKeys;
+    const usesThirdPartyKeys = (effectiveType === 'codex' || effectiveType === 'claudecode') && hasApiKeys;
 
-    if (!isThirdPartyCodex && (isOAuthType || derivedType === 'github_copilot' || isCopilotKey)) {
+    if (!usesThirdPartyKeys && (isOAuthType || derivedType === 'github_copilot' || isCopilotKey)) {
       if (isCopilotKey && !derivedType) {
         try {
           const parsed = JSON.parse(data.credentials.apiKey);

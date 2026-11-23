@@ -1125,6 +1125,7 @@ const FETCH_MODELS_QUERY = `
       }
       error
       fallback
+      fallbackReason
       codexCatalogVersion {
         version
         source
@@ -1220,6 +1221,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             }
           }
           credentials {
+            isOAuth
             apiKey
             apiKeys
             vertexApiKeys {
@@ -2436,6 +2438,8 @@ export type CodexCatalogVersion = z.infer<typeof codexCatalogVersionSchema>;
 const codexCatalogSkippedReasonSchema = z.enum(['no_credentials', 'unsupported_url']);
 export type CodexCatalogSkippedReason = z.infer<typeof codexCatalogSkippedReasonSchema>;
 
+export type ModelCatalogFallbackReason = 'NO_CREDENTIALS' | 'AUTHORIZATION' | 'UNAVAILABLE';
+
 const syncChannelModelsPayloadSchema = z.object({
   channelID: z.string(),
   supportedModels: z.array(z.string()),
@@ -2451,16 +2455,20 @@ export function useSyncChannelModels() {
   const { handleError } = useErrorHandler();
 
   return useMutation({
-    mutationFn: async (input: { channelID: string; pattern?: string }) => {
+    mutationFn: async ({ channelID, pattern }: { channelID: string; channelType: string; pattern?: string }) => {
       try {
-        const data = await graphqlRequest<{ syncChannelModels: unknown }>(SYNC_CHANNEL_MODELS_MUTATION, input);
+        const data = await graphqlRequest<{ syncChannelModels: unknown }>(SYNC_CHANNEL_MODELS_MUTATION, { channelID, pattern });
         return syncChannelModelsPayloadSchema.parse(data.syncChannelModels);
       } catch (error) {
         handleError(error, { context: 'Sync Channel Models' });
         throw error;
       }
     },
-    onSuccess: ({ fallback, codexCatalogVersion, codexCatalogSkippedReason }) => {
+    onSuccess: ({ fallback, codexCatalogVersion, codexCatalogSkippedReason }, input) => {
+      if (fallback && input.channelType === 'claudecode') {
+        toast.info(t('channels.messages.claudeCatalogManualSync'));
+        return;
+      }
       if (codexCatalogSkippedReason) {
         toast.info(t(`channels.messages.codexCatalogSyncSkipped.${codexCatalogSkippedReason}`));
         return;
@@ -2489,6 +2497,7 @@ export function useFetchModels() {
     mutationFn: async (input: {
       channelType: string;
       baseURL: string;
+      proxy?: ProxyConfig;
       apiKey?: string;
       projectID?: string;
       region?: string;
@@ -2500,6 +2509,7 @@ export function useFetchModels() {
             models: Array<{ id: string; pricing?: ModelPrice | null }>;
             error?: string | null;
             fallback: boolean;
+            fallbackReason: ModelCatalogFallbackReason | null;
             codexCatalogVersion: CodexCatalogVersion | null;
             codexCatalogSkippedReason: CodexCatalogSkippedReason | null;
           };
@@ -2513,7 +2523,7 @@ export function useFetchModels() {
     onSuccess: (data, input) => {
       if (data.error) {
         toast.error(t('common.errors.internalServerError'));
-      } else if (input.channelType !== 'codex' || !data.fallback) {
+      } else if (!(data.fallback && (input.channelType === 'codex' || input.channelType === 'claudecode'))) {
         const count = data.models.length;
         if (count > 100) {
           toast.success(t('channels.messages.fetchModelsSuccessLarge', { count }));

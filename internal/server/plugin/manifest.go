@@ -67,6 +67,7 @@ var pluginPermissionGates = []permissionGate{
 	{name: "write_channels", open: true},
 	{name: "webhook", open: true},
 	{name: permSQL, open: true},
+	{name: permTables, open: true},
 	{name: "fetch", message: errFetchNotEnabled},
 }
 
@@ -150,7 +151,7 @@ func ValidateManifest(manifest *objects.PluginManifest, axonhubVersion string) e
 	if err := validateTasks(manifest.Tasks); err != nil {
 		return err
 	}
-	return nil
+	return validatePluginTables(manifest.Tables, manifest.Permissions)
 }
 
 // ValidateCurrentManifest validates a manifest against the running AxonHub version.
@@ -170,10 +171,20 @@ func DiffManifest(old, next *objects.PluginManifest) ManifestDiff {
 		Permissions: addedStrings(next.Permissions, old.Permissions),
 		Network:     addedStrings(next.NetworkGrants(), old.NetworkGrants()),
 		Events:      addedStrings(next.Events, old.Events),
-		Hooks:       slices.Concat(addedHooks(old.Hooks, next.Hooks), addedServerMiddleware(old.Server, next.Server), changedTasks(old.Tasks, next.Tasks)),
+		Hooks:       slices.Concat(addedHooks(old.Hooks, next.Hooks), addedServerMiddleware(old.Server, next.Server), changedTasks(old.Tasks, next.Tasks), changedPluginTables(old.Tables, next.Tables)),
 		Pages:       addedStrings(pageKeys(next.UI), pageKeys(old.UI)),
 		Actions:     addedActions(old.UI, next.UI),
 	}
+}
+
+func changedPluginTables(old, next map[string]objects.PluginTableSpec) []string {
+	var result []string
+	for _, name := range slices.Sorted(maps.Keys(next)) {
+		if !equalPluginTableSpec(old[name], next[name]) {
+			result = append(result, "tables: "+name)
+		}
+	}
+	return result
 }
 
 func addedServerMiddleware(old, next *objects.PluginServerSpec) []string {
@@ -304,6 +315,9 @@ func MigrateConfig(old map[string]any, schema *objects.PluginConfigSchema) (map[
 func PrepareUpgrade(old, next *objects.PluginManifest, oldGrant []string, oldNetwork []string, oldConfig map[string]any, submitted *[]string, submittedNetwork *[]string) (*UpgradePlan, error) {
 	if old == nil || next == nil {
 		return nil, errors.New("manifest is required")
+	}
+	if err := compatiblePluginTables(old.Tables, next.Tables); err != nil {
+		return nil, err
 	}
 	diff := DiffManifest(old, next)
 	granted, err := ConvergePermissions(oldGrant, next.Permissions, submitted)

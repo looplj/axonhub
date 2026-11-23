@@ -12,7 +12,7 @@ extend type Mutation {
   enablePlugin(id: ID!, grantedPermissions: [String!]!, grantedNetwork: [String!]!): Plugin!
   disablePlugin(id: ID!): Plugin!
   updatePluginSettings(id: ID!, priority: Int!, config: Map!): Plugin!
-  deletePlugin(id: ID!): Boolean!
+  deletePlugin(id: ID!, purgeTables: Boolean): Boolean!
   updatePluginTask(id: ID!, key: String!, paused: Boolean!, cron: String, timezone: String): PluginTaskState!
   runPluginTask(id: ID!, key: String!): PluginTaskExecution!
 }
@@ -140,6 +140,19 @@ extend type Query {
 extend type Mutation {
   setPluginKV(namespace: String, key: String!, value: String!, ttlSeconds: Int): PluginKVEntry!
   deletePluginKV(namespace: String, key: String!): Boolean!
+}
+
+enum PluginTableCommand {
+  GET
+  LIST
+  INSERT
+  UPDATE
+  UPSERT
+  DELETE
+}
+
+extend type Mutation {
+  pluginTableOperation(table: String!, operation: PluginTableCommand!, args: [JSONRawMessageInput!]!): JSONRawMessage!
 }
 
 type PluginUIPage {

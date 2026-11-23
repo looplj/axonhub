@@ -1,0 +1,47 @@
+:root {
+  color-scheme: light dark;
+  font: 15px/1.5 Inter, system-ui, sans-serif;
+  background: var(--background, Canvas);
+  color: var(--foreground, CanvasText);
+}
+
+body { margin: 0; }
+main { max-width: 40rem; margin: 2.5rem auto; padding: 0 1rem; }
+h1 { margin: 0 0 1.25rem; font-size: 1.65rem; font-weight: 650; }
+[hidden] { display: none !important; }
+
+form { display: flex; gap: .75rem; }
+#new-title { flex: 1; min-width: 0; }
+input[type="text"], button {
+  padding: .6rem .75rem;
+  border: 1px solid var(--border, GrayText);
+  border-radius: var(--radius, .5rem);
+  background: var(--background, Canvas);
+  color: inherit;
+  font: inherit;
+}
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: .55; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--ring, Highlight); outline-offset: 2px; }
+#add-button {
+  background: var(--primary, Highlight);
+  color: var(--primary-foreground, HighlightText);
+  border-color: transparent;
+}
+
+#status, #empty { color: var(--muted-foreground, GrayText); }
+#status:empty { display: none; }
+#todos { padding: 0; list-style: none; }
+#todos li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .8rem 0;
+  border-bottom: 1px solid var(--border, GrayText);
+}
+#todos label { display: flex; align-items: flex-start; gap: .65rem; min-width: 0; }
+#todos label span { overflow-wrap: anywhere; }
+#todos input[type="checkbox"] { margin: .25rem 0 0; accent-color: var(--primary, Highlight); }
+#todos input:checked + span { text-decoration: line-through; color: var(--muted-foreground, GrayText); }
+#todos button { flex: none; }

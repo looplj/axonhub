@@ -334,11 +334,12 @@ type FastestModel struct {
 }
 
 type FetchModelsPayload struct {
-	Models                    []*biz.ModelIdentify     `json:"models"`
-	Error                     *string                  `json:"error,omitempty"`
-	Fallback                  bool                     `json:"fallback"`
-	CodexCatalogVersion       *biz.CodexCatalogVersion `json:"codexCatalogVersion,omitempty"`
-	CodexCatalogSkippedReason *string                  `json:"codexCatalogSkippedReason,omitempty"`
+	Models                    []*biz.ModelIdentify            `json:"models"`
+	Error                     *string                         `json:"error,omitempty"`
+	Fallback                  bool                            `json:"fallback"`
+	FallbackReason            *biz.ModelCatalogFallbackReason `json:"fallbackReason,omitempty"`
+	CodexCatalogVersion       *biz.CodexCatalogVersion        `json:"codexCatalogVersion,omitempty"`
+	CodexCatalogSkippedReason *string                         `json:"codexCatalogSkippedReason,omitempty"`
 }
 
 type GetCacheDiagnosticsInput struct {
@@ -821,6 +822,69 @@ func (e *OverrideApplyMode) UnmarshalJSON(b []byte) error {
 }
 
 func (e OverrideApplyMode) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type PluginTableCommand string
+
+const (
+	PluginTableCommandGet    PluginTableCommand = "GET"
+	PluginTableCommandList   PluginTableCommand = "LIST"
+	PluginTableCommandInsert PluginTableCommand = "INSERT"
+	PluginTableCommandUpdate PluginTableCommand = "UPDATE"
+	PluginTableCommandUpsert PluginTableCommand = "UPSERT"
+	PluginTableCommandDelete PluginTableCommand = "DELETE"
+)
+
+var AllPluginTableCommand = []PluginTableCommand{
+	PluginTableCommandGet,
+	PluginTableCommandList,
+	PluginTableCommandInsert,
+	PluginTableCommandUpdate,
+	PluginTableCommandUpsert,
+	PluginTableCommandDelete,
+}
+
+func (e PluginTableCommand) IsValid() bool {
+	switch e {
+	case PluginTableCommandGet, PluginTableCommandList, PluginTableCommandInsert, PluginTableCommandUpdate, PluginTableCommandUpsert, PluginTableCommandDelete:
+		return true
+	}
+	return false
+}
+
+func (e PluginTableCommand) String() string {
+	return string(e)
+}
+
+func (e *PluginTableCommand) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = PluginTableCommand(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid PluginTableCommand", str)
+	}
+	return nil
+}
+
+func (e PluginTableCommand) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *PluginTableCommand) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e PluginTableCommand) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

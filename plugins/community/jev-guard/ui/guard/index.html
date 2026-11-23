@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Jev Guard</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <main>
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">local.jev-guard</p>
+          <h1 id="title">Jev Guard</h1>
+          <p id="summary" class="muted"></p>
+        </div>
+        <div class="actions">
+          <button id="refresh" type="button" class="secondary"></button>
+          <button id="clear" type="button" class="secondary" hidden></button>
+        </div>
+      </header>
+      <p id="status" class="status" role="status"></p>
+      <p id="count" class="count"></p>
+      <p id="empty" class="empty" hidden></p>
+      <ol id="records" class="log"></ol>
+    </main>
+    <script crossorigin="anonymous" src="../../_axonhub/bridge.js"></script>
+    <script type="module" crossorigin="anonymous" src="./app.js"></script>
+  </body>
+</html>

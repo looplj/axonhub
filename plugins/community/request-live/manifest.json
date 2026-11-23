@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "local.request-live",
+  "name": "实时请求",
+  "version": "0.3.0",
+  "description": "实时查看客户端、API 密钥，以及这些请求实际打到的渠道。",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "permissions": ["read_api_keys", "read_requests", "read_channels"],
+  "ui": {
+    "pages": [
+      {
+        "key": "live",
+        "entry": "ui/live/index.html",
+        "title": { "en": "Live requests", "zh-CN": "实时请求" }
+      }
+    ]
+  }
+}

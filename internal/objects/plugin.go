@@ -55,6 +55,7 @@ var (
 		"network":          {},
 		"events":           {},
 		"tasks":            {},
+		"tables":           {},
 		"hooks":            {},
 		"server":           {},
 		"configSchema":     {},
@@ -112,25 +113,26 @@ var (
 // Closed fields are recorded as presence flags so a later check can reject
 // them with a dedicated error. Their structure is intentionally not defined.
 type PluginManifest struct {
-	SchemaVersion       int                       `json:"schemaVersion,omitempty"`
-	SchemaVersionSet    bool                      `json:"-"`
-	ID                  string                    `json:"id,omitempty"`
-	Name                string                    `json:"name,omitempty"`
-	Version             string                    `json:"version,omitempty"`
-	Description         string                    `json:"description,omitempty"`
-	AxonhubVersion      string                    `json:"axonhubVersion,omitempty"`
-	PluginAPIVersion    int                       `json:"pluginApiVersion,omitempty"`
-	PluginAPIVersionSet bool                      `json:"-"`
-	Permissions         []string                  `json:"permissions,omitempty"`
-	Network             []PluginNetworkRule       `json:"network,omitempty"`
-	Events              []string                  `json:"events,omitempty"`
-	EventsPresent       bool                      `json:"-"`
-	Tasks               map[string]PluginTaskSpec `json:"tasks,omitempty"`
-	Hooks               *PluginHooksSpec          `json:"hooks,omitempty"`
-	Server              *PluginServerSpec         `json:"server,omitempty"`
-	ConfigSchema        *PluginConfigSchema       `json:"configSchema,omitempty"`
-	UI                  *PluginUI                 `json:"ui,omitempty"`
-	ProvidersPresent    bool                      `json:"-"`
+	SchemaVersion       int                        `json:"schemaVersion,omitempty"`
+	SchemaVersionSet    bool                       `json:"-"`
+	ID                  string                     `json:"id,omitempty"`
+	Name                string                     `json:"name,omitempty"`
+	Version             string                     `json:"version,omitempty"`
+	Description         string                     `json:"description,omitempty"`
+	AxonhubVersion      string                     `json:"axonhubVersion,omitempty"`
+	PluginAPIVersion    int                        `json:"pluginApiVersion,omitempty"`
+	PluginAPIVersionSet bool                       `json:"-"`
+	Permissions         []string                   `json:"permissions,omitempty"`
+	Network             []PluginNetworkRule        `json:"network,omitempty"`
+	Events              []string                   `json:"events,omitempty"`
+	EventsPresent       bool                       `json:"-"`
+	Tasks               map[string]PluginTaskSpec  `json:"tasks,omitempty"`
+	Tables              map[string]PluginTableSpec `json:"tables,omitempty"`
+	Hooks               *PluginHooksSpec           `json:"hooks,omitempty"`
+	Server              *PluginServerSpec          `json:"server,omitempty"`
+	ConfigSchema        *PluginConfigSchema        `json:"configSchema,omitempty"`
+	UI                  *PluginUI                  `json:"ui,omitempty"`
+	ProvidersPresent    bool                       `json:"-"`
 }
 
 type PluginTaskSpec struct {
@@ -863,6 +865,16 @@ func (m *PluginManifest) UnmarshalJSON(data []byte) error {
 		m.Tasks, err = decodePluginTasks(raw)
 		if err != nil {
 			return err
+		}
+	}
+	m.Tables = nil
+	if raw, ok := obj["tables"]; ok {
+		if _, err := decodeObject(raw, "tables"); err != nil {
+			return err
+		}
+		m.Tables, err = decodePluginTables(raw)
+		if err != nil {
+			return fmt.Errorf("tables: %w", err)
 		}
 	}
 	if raw, ok := obj["hooks"]; ok {

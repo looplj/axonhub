@@ -248,6 +248,66 @@ Pass-through can overwrite non-model edits from onRequest, recorded in overridde
 
 ctx.request uses camelCase: projectId, apiKeyId, model, requestType, and apiFormat, captured at middleware entry; Playground uses a null apiKeyId. ctx.attempt exists only on onAttempt and includes channel (id, name, type), the actual model, and outbound apiFormat, with no credentials. The body need not contain model; read ctx.attempt.model instead. This interface does not expose URL, method, HTTP header, or credential edits.
 
+## Managed tables
+
+Declare tables in `manifest.json` and request the `tables` permission. AxonHub
+creates the physical tables on enable and resolves their names from the current
+installation. The same manifest ID resumes its existing data automatically after
+reinstall. Uninstall retains managed table data by default. Select **Also
+permanently delete managed table data** to clear it.
+
+Physical names use the `axp_` prefix, for example `axp_42_daily_usage`.
+Plugin code uses the declared name `daily_usage`. On MySQL and TiDB, table
+migrations and purges require at least two primary database connections.
+
+```json
+{
+  "permissions": ["tables"],
+  "tables": {
+    "daily_usage": {
+      "columns": {
+        "day": { "type": "string", "maxLength": 10 },
+        "requests": { "type": "integer" }
+      },
+      "indexes": [{ "columns": ["day"], "unique": true }]
+    }
+  }
+}
+```
+
+```js
+const usage = ctx.tables.open("daily_usage")
+usage.upsert({ conflict: ["day"], row: { day: "2026-11-23", requests: 42 } })
+const page = usage.list({
+  where: [{ column: "day", op: "gte", value: "2026-11-01" }],
+  orderBy: [{ column: "day", direction: "desc" }],
+  first: 30
+})
+```
+
+- Each row has a host-assigned integer `id`. Use `insert(row)`, `get(id)`,
+  `update(id, patch)`, `delete(id)` or `upsert({ conflict, row })`. Upsert's
+  conflict columns must match a declared unique index in order. Get and update
+  return `null` for missing rows, and delete returns a boolean.
+- `list({ where, orderBy, first, after })` returns `{ rows, nextCursor }`. Pass
+  the cursor back with the same filters and ordering. Filters are combined with
+  AND and support `eq`, `lt`, `lte`, `gt`, `gte`. Ordering uses non-nullable
+  columns and adds the primary key to break ties. Pages default to 50 rows and
+  allow up to 100.
+- Column types are `string`, `text`, `integer`, `number` and `boolean`.
+  Strings require `maxLength`. Columns are required unless declared `nullable`.
+  Integers outside JavaScript's safe range use decimal strings. An upgrade can
+  add tables, nullable columns and ordinary indexes. Unique indexes can be
+  declared on new tables.
+- Tables are accessible with `tables` alone. Raw `sql` keeps its existing
+  full-database access. The managed API bounds argument size, result size, write
+  rate and execution time.
+
+Plugin pages can open the same managed table with `window.axonhub.tables.open("daily_usage")`.
+Method names, arguments, and result values match `ctx.tables`, with each page operation returning a Promise.
+The plugin must have the `tables` grant, and the caller must be an Owner or have `write_plugins`.
+See the [to-do list example](../../../plugins/examples/table-todos/README.md) for the page flow.
+
 ## Scheduled tasks and dynamic SQL
 
 A manifest can declare scheduled tasks and the `sql` permission. This example shows the two fields and their JavaScript entry point.
@@ -281,7 +341,7 @@ export function onTask(ctx, run) {
 
 A plugin can declare up to 16 tasks, keyed by task ID. Each `schedule` requires a five-field `cron` expression and accepts an optional IANA `timezone` (UTC by default). The host calls `onTask(ctx, { key, runId, trigger, scheduledAt })`. The trigger is `scheduled` or `manual`. Manual runs receive `null` for `scheduledAt`.
 
-The plugin details show the next trigger and the last 20 runs. Owners can pause automatic triggers, change the schedule, and run a task on demand. Instances share the database claim record. The scheduler claims a slot at most once and skips missed minutes or ticks while an earlier run is active. A task has a 30-second deadline. Unfinished runs show an unknown outcome after the instance exits and its lease expires.
+The plugin details show the next trigger and the last 20 runs. Owners can pause automatic triggers, change the schedule, and run a task on demand. Instances share the database claim record. The scheduler claims a slot at most once and skips missed minutes or ticks while an earlier run is active. A task has a 30-second deadline. A running task can finish across upgrades while it remains declared and the plugin stays active. Disabling the plugin or removing the task cancels its run. Unfinished runs show an unknown outcome after the instance exits and its lease expires.
 
 Upgrade every replica before installing a plugin that declares `tasks`.
 
@@ -609,15 +669,17 @@ The owner enables a plugin with a subset of `permissions` and a subset of `netwo
 
 ## Publishing
 
-AxonHub reads the [community plugin index](https://raw.githubusercontent.com/looplj/axonhub-plugins/main/registry.json). The index updates independently of AxonHub releases. Development examples live in the AxonHub repository.
+AxonHub reads the [community plugin index](https://raw.githubusercontent.com/looplj/axonhub-plugins/main/registry.json). The index updates independently of AxonHub releases.
 
-To submit plugin source for centralized packaging and release, open a pull request under `plugins/` in [axonhub-plugins](https://github.com/looplj/axonhub-plugins). If you maintain your plugin in a separate repository, publish the zip at an HTTPS URL, such as a GitHub Release. Compute `sha256` as 64 lowercase hex characters of the raw zip bytes:
+For centralized packaging and release, submit the source under [`plugins/community/`](../../../plugins/community/) in AxonHub and bump the plugin version in `manifest.json`. After the change merges to `unstable`, AxonHub sends a `community-plugins` event to [axonhub-plugins](https://github.com/looplj/axonhub-plugins) with that commit SHA. The workflow there checks out the commit, packages new versions, creates tags and GitHub Releases, and updates the market index.
+
+If you maintain your plugin in a separate repository, publish the zip at an HTTPS URL, such as a GitHub Release. Compute `sha256` as 64 lowercase hex characters of the raw zip bytes:
 
 ```bash
 shasum -a 256 temperature-cap-1.0.0.axplugin
 ```
 
-To list a plugin maintained separately, open a pull request in [axonhub-plugins](https://github.com/looplj/axonhub-plugins) that adds a plugin object to the `plugins` array in `external-plugins.json`. Each `versions` item needs `version`, `url`, `sha256`, and `axonhubVersion`:
+To list a plugin maintained separately, open a pull request in [axonhub-plugins](https://github.com/looplj/axonhub-plugins) that adds a plugin object to the `plugins` array in `external-plugins.json`. Merging it to `main` rewrites the index from that file. Each `versions` item needs `version`, `url`, `sha256`, and `axonhubVersion`:
 
 ```json
 {

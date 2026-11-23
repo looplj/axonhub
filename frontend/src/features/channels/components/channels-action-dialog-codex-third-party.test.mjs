@@ -20,12 +20,12 @@ let dialogHelpers;
 async function loadDialogHelpers() {
   if (dialogHelpers) return dialogHelpers;
 
-  const helperNames = ['isOfficialCodexChannel', 'getCodexThirdPartySubmitCredentials', 'getFetchModelsApiKey', 'getCodexThirdPartyCredentialError', 'parseOauthToken'];
+  const helperNames = ['isOfficialClaudeCodeChannel', 'isClaudeCodeOAuthCredential', 'isOfficialCodexChannel', 'getThirdPartySubmitCredentials', 'getFetchModelsApiKey', 'getThirdPartyCredentialError', 'parseOauthToken'];
   const helperNodes = ast.statements.filter((node) => ts.isFunctionDeclaration(node) && helperNames.includes(node.name?.text));
   assert.equal(helperNodes.length, helperNames.length, 'Codex credential-mode helpers must stay in channels-action-dialog.tsx');
 
   const helperModule = [
-    `const getDefaultBaseURL = (type) => (type === 'codex' ? '${CODEX_BASE}' : '');`,
+    `const getDefaultBaseURL = (type) => (type === 'codex' ? '${CODEX_BASE}' : 'https://api.anthropic.com/v1');`,
     ...helperNodes.map((node) => `export ${node.getText(ast).replace(/^export\s+/, '')}`),
   ].join('\n');
   const { outputText } = ts.transpileModule(helperModule, {
@@ -44,21 +44,21 @@ function between(startMarker, endMarker) {
 }
 
 test('a copied OAuth row switched to third-party submits no OAuth JSON and keeps the custom Base URL', async () => {
-  const { getCodexThirdPartySubmitCredentials } = await loadDialogHelpers();
+  const { getThirdPartySubmitCredentials } = await loadDialogHelpers();
   const credentials = { apiKey: OAUTH_JSON, apiKeys: ['sk-synthetic-third-party'] };
 
-  const submitted = getCodexThirdPartySubmitCredentials(credentials, { type: 'codex', authMode: 'third-party' });
+  const submitted = getThirdPartySubmitCredentials(credentials, { type: 'codex', authMode: 'third-party' });
   assert.equal(submitted.apiKey, undefined, 'the inherited OAuth JSON must be dropped in third-party mode');
   assert.deepEqual(submitted.apiKeys, ['sk-synthetic-third-party'], 'the plain API key must be kept');
 
   // The custom URL survives submit: only official/auth.json override the Base URL.
   const submit = between('const onSubmit = async', 'const addModel = () =>');
   assert.match(submit, /isCodexType && \(authMode === 'official' \|\| authMode === 'auth-json'\)/);
-  assert.match(submit, /getCodexThirdPartySubmitCredentials\(/);
+  assert.match(submit, /getThirdPartySubmitCredentials\(/);
 
   // The submit payload itself must be the sanitized credential.
   assert.match(submit, /const valuesForSubmit = isEdit/);
-  assert.match(submit, /credentials:\s*credentials\s*\n\s*\? getCodexThirdPartySubmitCredentials\(credentials/);
+  assert.match(submit, /credentials:\s*credentials\s*\n\s*\? getThirdPartySubmitCredentials\(credentials/);
   assert.match(submit, /type: valuesForSubmit\.type,/);
 });
 
@@ -76,11 +76,11 @@ test('a third-party Codex channel with a synthetic plain key fetches models with
 });
 
 test('official and auth.json Codex channels still submit and fetch their OAuth credential with the preset Base URL', async () => {
-  const { getCodexThirdPartySubmitCredentials, getFetchModelsApiKey } = await loadDialogHelpers();
+  const { getThirdPartySubmitCredentials, getFetchModelsApiKey } = await loadDialogHelpers();
   const credentials = { apiKey: OAUTH_JSON, apiKeys: [] };
 
   for (const authMode of ['official', 'auth-json']) {
-    const submitted = getCodexThirdPartySubmitCredentials(credentials, { type: 'codex', authMode });
+    const submitted = getThirdPartySubmitCredentials(credentials, { type: 'codex', authMode });
     assert.equal(submitted, credentials, `${authMode} must submit the OAuth credential unchanged`);
     assert.equal(getFetchModelsApiKey({ type: 'codex', authMode, oauthApiKey: OAUTH_JSON, apiKeys: [] }), OAUTH_JSON, `${authMode} must fetch with the OAuth credential`);
   }
@@ -102,40 +102,40 @@ test('non-Codex providers keep their OAuth credential preference when fetching m
 });
 
 test('an empty or OAuth-JSON third-party credential is rejected instead of saved', async () => {
-  const { getCodexThirdPartyCredentialError } = await loadDialogHelpers();
+  const { getThirdPartyCredentialError } = await loadDialogHelpers();
 
   const requiredKey = 'channels.dialogs.oauth.errors.codexThirdPartyApiKeyRequired';
   const invalidKey = 'channels.dialogs.oauth.errors.codexThirdPartyApiKeyInvalid';
 
   assert.equal(
-    getCodexThirdPartyCredentialError({ type: 'codex', authMode: 'third-party', apiKeys: [] }),
+    getThirdPartyCredentialError({ type: 'codex', authMode: 'third-party', apiKeys: [] }),
     requiredKey,
     'an empty third-party credential must be rejected'
   );
   assert.equal(
-    getCodexThirdPartyCredentialError({ type: 'codex', authMode: 'third-party', apiKeys: ['   ', ''] }),
+    getThirdPartyCredentialError({ type: 'codex', authMode: 'third-party', apiKeys: ['   ', ''] }),
     requiredKey,
     'blank keys must not count as a credential'
   );
   assert.equal(
-    getCodexThirdPartyCredentialError({ type: 'codex', authMode: 'third-party', apiKeys: [OAUTH_JSON] }),
+    getThirdPartyCredentialError({ type: 'codex', authMode: 'third-party', apiKeys: [OAUTH_JSON] }),
     invalidKey,
     'the inherited OAuth JSON must not be pasted as a plain key'
   );
   assert.equal(
-    getCodexThirdPartyCredentialError({ type: 'codex', authMode: 'third-party', apiKeys: ['sk-synthetic-third-party'] }),
+    getThirdPartyCredentialError({ type: 'codex', authMode: 'third-party', apiKeys: ['sk-synthetic-third-party'] }),
     undefined,
     'a plain key must pass validation'
   );
   assert.equal(
-    getCodexThirdPartyCredentialError({ type: 'codex', authMode: 'official', apiKeys: [] }),
+    getThirdPartyCredentialError({ type: 'codex', authMode: 'official', apiKeys: [] }),
     undefined,
     'official mode must not be constrained by the third-party rule'
   );
 
   // The submit path must consult the guard before building the payload.
   const submit = between('const onSubmit = async', 'const addModel = () =>');
-  assert.match(submit, /getCodexThirdPartyCredentialError\(\{/);
+  assert.match(submit, /getThirdPartyCredentialError\(\{/);
   assert.match(submit, /form\.setError\('credentials\.apiKeys'/);
 
   for (const locale of ['en', 'zh-CN']) {
@@ -151,4 +151,33 @@ test('schema does not validate inherited Codex OAuth JSON when a third-party key
     /\(data\.type === 'codex' && !hasApiKeys\)/,
     'Codex OAuth JSON validation must be skipped when third-party apiKeys are present'
   );
+});
+
+test('Claude Code fetch uses the selected authentication mode on the official URL and on relays', async () => {
+  const { getFetchModelsApiKey, getThirdPartySubmitCredentials, getThirdPartyCredentialError, isOfficialClaudeCodeChannel } = await loadDialogHelpers();
+  const baseURL = 'https://api.anthropic.com/v1';
+  const input = { type: 'claudecode', oauthApiKey: OAUTH_JSON, apiKeys: ['relay-key'] };
+  assert.equal(getFetchModelsApiKey({ ...input, authMode: 'official' }), OAUTH_JSON);
+  assert.equal(getFetchModelsApiKey({ ...input, authMode: 'third-party' }), 'relay-key');
+  assert.equal(getFetchModelsApiKey({ ...input, apiKeys: [], authMode: 'third-party' }), '');
+  assert.equal(getFetchModelsApiKey({ ...input, oauthApiKey: '', authMode: 'official' }), '');
+  assert.equal(isOfficialClaudeCodeChannel({ baseURL, credentials: { apiKeys: ['relay-key'] } }), false);
+  assert.equal(isOfficialClaudeCodeChannel({ baseURL, credentials: { apiKey: OAUTH_JSON } }), true);
+  assert.equal(isOfficialClaudeCodeChannel({ baseURL: 'https://api.anthropic.com', credentials: { isOAuth: true } }), true);
+  assert.equal(getThirdPartyCredentialError({ ...input, authMode: 'third-party' }), undefined);
+  assert.ok(getThirdPartyCredentialError({ ...input, apiKeys: [], authMode: 'third-party' }));
+  assert.deepEqual(getThirdPartySubmitCredentials({ apiKey: OAUTH_JSON, apiKeys: ['relay-key'] }, { ...input, authMode: 'third-party' }), { apiKeys: ['relay-key'] });
+});
+
+test('Claude Code create and edit schemas accept access-only OAuth and validate the selected third-party key', async () => {
+  const source = schemaSource.replace("from 'zod'", `from '${import.meta.resolve('zod')}'`)
+    .replace("import { pageInfoSchema } from '@/gql/pagination'", 'const pageInfoSchema = z.object({})');
+  const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 } });
+  const { createChannelInputSchema, updateChannelInputSchema } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
+  const input = { type: 'claudecode', name: 'Fixture', baseURL: 'https://api.anthropic.com/v1', supportedModels: ['fixture'], defaultTestModel: 'fixture' };
+  for (const schema of [createChannelInputSchema, updateChannelInputSchema]) {
+    assert.ok(schema.safeParse({ ...input, credentials: { apiKey: '{"access_token":"fixture"}' } }).success);
+    assert.ok(schema.safeParse({ ...input, credentials: { apiKey: '{invalid old credential', apiKeys: ['fixture-relay'] } }).success);
+    assert.equal(schema.safeParse({ ...input, credentials: { apiKey: '{}' } }).success, false);
+  }
 });

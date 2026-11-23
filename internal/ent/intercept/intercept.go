@@ -23,6 +23,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/pluginschedule"
 	"github.com/looplj/axonhub/internal/ent/pluginschedulerun"
 	"github.com/looplj/axonhub/internal/ent/pluginstorage"
+	"github.com/looplj/axonhub/internal/ent/plugintableoperation"
+	"github.com/looplj/axonhub/internal/ent/plugintablestorage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -503,6 +505,60 @@ func (f TraversePluginStorage) Traverse(ctx context.Context, q ent.Query) error 
 	return fmt.Errorf("unexpected query type %T. expect *ent.PluginStorageQuery", q)
 }
 
+// The PluginTableOperationFunc type is an adapter to allow the use of ordinary function as a Querier.
+type PluginTableOperationFunc func(context.Context, *ent.PluginTableOperationQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f PluginTableOperationFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.PluginTableOperationQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.PluginTableOperationQuery", q)
+}
+
+// The TraversePluginTableOperation type is an adapter to allow the use of ordinary function as Traverser.
+type TraversePluginTableOperation func(context.Context, *ent.PluginTableOperationQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraversePluginTableOperation) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraversePluginTableOperation) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.PluginTableOperationQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.PluginTableOperationQuery", q)
+}
+
+// The PluginTableStorageFunc type is an adapter to allow the use of ordinary function as a Querier.
+type PluginTableStorageFunc func(context.Context, *ent.PluginTableStorageQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f PluginTableStorageFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.PluginTableStorageQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.PluginTableStorageQuery", q)
+}
+
+// The TraversePluginTableStorage type is an adapter to allow the use of ordinary function as Traverser.
+type TraversePluginTableStorage func(context.Context, *ent.PluginTableStorageQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraversePluginTableStorage) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraversePluginTableStorage) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.PluginTableStorageQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.PluginTableStorageQuery", q)
+}
+
 // The ProjectFunc type is an adapter to allow the use of ordinary function as a Querier.
 type ProjectFunc func(context.Context, *ent.ProjectQuery) (ent.Value, error)
 
@@ -968,6 +1024,10 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.PluginScheduleRunQuery, predicate.PluginScheduleRun, pluginschedulerun.OrderOption]{typ: ent.TypePluginScheduleRun, tq: q}, nil
 	case *ent.PluginStorageQuery:
 		return &query[*ent.PluginStorageQuery, predicate.PluginStorage, pluginstorage.OrderOption]{typ: ent.TypePluginStorage, tq: q}, nil
+	case *ent.PluginTableOperationQuery:
+		return &query[*ent.PluginTableOperationQuery, predicate.PluginTableOperation, plugintableoperation.OrderOption]{typ: ent.TypePluginTableOperation, tq: q}, nil
+	case *ent.PluginTableStorageQuery:
+		return &query[*ent.PluginTableStorageQuery, predicate.PluginTableStorage, plugintablestorage.OrderOption]{typ: ent.TypePluginTableStorage, tq: q}, nil
 	case *ent.ProjectQuery:
 		return &query[*ent.ProjectQuery, predicate.Project, project.OrderOption]{typ: ent.TypeProject, tq: q}, nil
 	case *ent.PromptQuery:

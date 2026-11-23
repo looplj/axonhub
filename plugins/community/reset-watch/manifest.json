@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "local.reset-watch",
+  "name": "重置监控",
+  "version": "0.1.0",
+  "description": "从顶栏打开 Codex、Antigravity 和 Claude 的额度重置与重置卡。数据来自 AIHOT 的公开日历，完整快照缓存在本插件的 KV 里。",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "network": [
+    { "regex": "^https://aihot\\.news/api/v1/(codex|antigravity|claude)-resets$" }
+  ],
+  "ui": {
+    "actions": [
+      {
+        "key": "resets",
+        "slot": "app.header.actions",
+        "title": { "en": "Reset watch", "zh-CN": "重置监控" },
+        "icon": "activity",
+        "effect": { "type": "dialog", "entry": "ui/resets/index.html" }
+      }
+    ]
+  }
+}

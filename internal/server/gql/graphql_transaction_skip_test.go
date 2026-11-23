@@ -67,6 +67,26 @@ func TestSkipGraphqlTransaction(t *testing.T) {
 			wantSkip: true,
 		},
 		{
+			name:     "plugin enable persists table migration intents independently",
+			op:       mutationOp("Enable", "enablePlugin"),
+			wantSkip: true,
+		},
+		{
+			name:     "plugin upload persists table migration intents independently",
+			op:       mutationOp("Upload", "installPlugin"),
+			wantSkip: true,
+		},
+		{
+			name:     "market install persists table migration intents independently",
+			op:       mutationOp("Market", "installPluginFromMarket"),
+			wantSkip: true,
+		},
+		{
+			name:     "plugin delete queues table cleanup in the enclosing transaction",
+			op:       mutationOp("Delete", "deletePlugin"),
+			wantSkip: false,
+		},
+		{
 			name:     "syncChannelModels uses the enclosing transaction",
 			op:       mutationOp("UpdateModels", "syncChannelModels"),
 			wantSkip: false,

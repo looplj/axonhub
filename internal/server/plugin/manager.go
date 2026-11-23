@@ -202,6 +202,7 @@ type Manager struct {
 
 	scanningTasks atomic.Bool
 	sqlSlots      chan struct{}
+	tableDDLSlot  chan struct{}
 	taskSlots     chan struct{}
 	taskMu        sync.Mutex
 	taskRuns      map[int]pluginTaskRun
@@ -279,6 +280,7 @@ func newManager(params ManagerParams, cfg managerConfig) (*Manager, error) {
 		channels:        params.Channels,
 		webhooks:        params.Webhooks,
 		sqlSlots:        make(chan struct{}, pluginSQLConcurrency),
+		tableDDLSlot:    make(chan struct{}, 1),
 		taskSlots:       make(chan struct{}, scheduleWorkers),
 		taskRuns:        make(map[int]pluginTaskRun),
 	}
@@ -474,6 +476,27 @@ func (m *Manager) current() *Generation {
 	return m.cache.GetData()
 }
 
+// acquireGeneration pins a usable generation, retrying if a concurrent refresh
+// replaced it before the acquire.
+func acquireGeneration(ctx context.Context, current func() *Generation, usable func(*Generation) bool) (*Generation, error) {
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		gen := current()
+		if gen == nil || (usable != nil && !usable(gen)) {
+			return nil, nil
+		}
+		if err := gen.Acquire(); err != nil {
+			if errors.Is(err, ErrGenerationClosed) && current() != gen {
+				continue
+			}
+			return nil, err
+		}
+		return gen, nil
+	}
+}
+
 // Refresh runs one non-forced refresh, the same comparison the interval uses.
 func (m *Manager) Refresh(ctx context.Context) error {
 	return m.cache.Load(ctx, false)
@@ -607,7 +630,10 @@ func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip [
 		saved   *ent.Plugin
 		preview *UpgradePreview
 	)
-	err := m.runInTx(ctx, func(txCtx context.Context) error {
+	err := m.writeWithPluginTables(ctx, func(txCtx context.Context, provision tableProvisionFn) error {
+		if err := m.lockTableInstallation(txCtx, current.ID); err != nil {
+			return err
+		}
 		row, err := m.oneRecord(txCtx, current.ID)
 		if err != nil {
 			return err
@@ -626,6 +652,11 @@ func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip [
 			preview = previewFrom(row, pkg, plan.Diff)
 			saved = row.entity()
 			return errUpgradePreview
+		}
+		if row.Enabled && len(pkg.Manifest.Tables) > 0 {
+			if err := provision(txCtx, row, pkg.SHA256, pkg.Manifest.Tables); err != nil {
+				return err
+			}
 		}
 		updated, err := m.client(txCtx).Plugin.UpdateOneID(row.ID).
 			SetName(pkg.Manifest.Name).
@@ -667,7 +698,10 @@ func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip [
 // It fails while any configSchema.required field is missing.
 func (m *Manager) Enable(ctx context.Context, id int, granted []string, grantedNetwork []string) error {
 	ctx = authz.WithSystemBypass(ctx, pluginBypassReason)
-	err := m.runInTx(ctx, func(txCtx context.Context) error {
+	err := m.writeWithPluginTables(ctx, func(txCtx context.Context, provision tableProvisionFn) error {
+		if err := m.lockTableInstallation(txCtx, id); err != nil {
+			return err
+		}
 		row, err := m.oneRecord(txCtx, id)
 		if err != nil {
 			return err
@@ -682,6 +716,11 @@ func (m *Manager) Enable(ctx context.Context, id int, granted []string, grantedN
 		network, err := networkSubset(grantedNetwork, row.Manifest.NetworkGrants())
 		if err != nil {
 			return err
+		}
+		if len(row.Manifest.Tables) > 0 {
+			if err := provision(txCtx, row, row.PackageSHA256, row.Manifest.Tables); err != nil {
+				return err
+			}
 		}
 		return m.client(txCtx).Plugin.UpdateOneID(id).
 			SetEnabled(true).
@@ -746,14 +785,27 @@ func (m *Manager) UpdateSettings(ctx context.Context, id int, priority int, conf
 // Delete clears the package bytes, keeps package_sha256, deletes KV rows for
 // this installation, and soft-deletes the row. All three writes share one transaction.
 func (m *Manager) Delete(ctx context.Context, id int) error {
+	return m.DeleteWithTables(ctx, id, false)
+}
+
+// DeleteWithTables optionally detaches the storage generation and queues it for permanent deletion.
+func (m *Manager) DeleteWithTables(ctx context.Context, id int, purgeTables bool) error {
 	ctx = authz.WithSystemBypass(ctx, pluginBypassReason)
 	err := m.runInTx(ctx, func(txCtx context.Context) error {
+		if err := m.lockTableInstallation(txCtx, id); err != nil {
+			return err
+		}
 		row, err := m.oneRecord(txCtx, id)
 		if err != nil {
 			return err
 		}
 		if m.IsBuiltin(row.PluginID) {
 			return fmt.Errorf("plugin %q is built in and cannot be deleted", row.PluginID)
+		}
+		if purgeTables {
+			if err := m.queueTablePurge(txCtx, row.PluginID); err != nil {
+				return err
+			}
 		}
 		if err := m.client(txCtx).Plugin.UpdateOneID(id).ClearPackage().Exec(txCtx); err != nil {
 			return err
@@ -766,7 +818,7 @@ func (m *Manager) Delete(ctx context.Context, id int) error {
 				return err
 			}
 		}
-		return m.client(txCtx).Plugin.DeleteOneID(id).Exec(txCtx)
+		return m.softDeletePlugin(txCtx, row)
 	})
 	if err != nil {
 		return err

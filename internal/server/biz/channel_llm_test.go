@@ -2,6 +2,7 @@ package biz
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -9,7 +10,42 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+func TestClaudeCodeAccessOnlyInference(t *testing.T) {
+	const token = "fixture"
+	for _, tt := range []struct {
+		name    string
+		creds   objects.ChannelCredentials
+		expired bool
+	}{
+		{"legacy JSON", objects.ChannelCredentials{APIKey: `{"access_token":"fixture"}`}, false},
+		{"structured", objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{AccessToken: token}}, false},
+		{"unexpired", objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{AccessToken: token, ExpiresAt: time.Now().Add(time.Hour)}}, false},
+		{"expired", objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{AccessToken: token, ExpiresAt: time.Now().Add(-time.Hour)}}, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ch, err := (&ChannelService{}).buildChannelWithTransformer(&ent.Channel{
+				Type:        channel.TypeClaudecode,
+				BaseURL:     claudeCodeAPI,
+				Credentials: tt.creds,
+			})
+			require.NoError(t, err)
+			req, err := ch.Outbound.TransformRequest(t.Context(), &llm.Request{
+				Model:    "fixture-model",
+				Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: new("hello")}}},
+			})
+			if tt.expired {
+				require.ErrorContains(t, err, "refresh_token is empty")
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, httpclient.AuthTypeBearer, req.Auth.Type)
+			require.Equal(t, token, req.Auth.APIKey)
+		})
+	}
+}
 
 func TestChannelService_BuildResponsesWebSocketOutbound(t *testing.T) {
 	// Given a channel with a WebSocket Responses endpoint and a usable key

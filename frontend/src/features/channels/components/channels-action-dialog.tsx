@@ -53,6 +53,7 @@ import {
   useSyncChannelModels,
   type CodexCatalogSkippedReason,
   type CodexCatalogVersion,
+  type ModelCatalogFallbackReason,
 } from '../data/channels';
 import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
 import { codexDecodeAuthJSON, codexOAuthExchange, codexOAuthStart } from '../data/codex';
@@ -340,6 +341,7 @@ const FetchedModelItem = memo(
     noPricingLabel: string;
   }) => (
     <div
+      data-testid='catalog-model-row'
       className={`flex items-center gap-2 rounded-md p-2 text-sm transition-colors ${
         isAdded && !isSelected
           ? 'bg-muted/50 text-muted-foreground'
@@ -352,7 +354,7 @@ const FetchedModelItem = memo(
       <Tooltip>
         <TooltipTrigger asChild>
           <span className={`flex min-w-0 flex-1 flex-col ${disabled ? '' : 'cursor-pointer'}`} onClick={disabled ? undefined : onToggle}>
-            <span className='truncate'>{model}</span>
+            <span data-testid='catalog-model-id' className='truncate'>{model}</span>
             <span className='text-muted-foreground block truncate text-xs'>{pricingSummary ?? noPricingLabel}</span>
           </span>
         </TooltipTrigger>
@@ -428,10 +430,16 @@ function isOfficialCodexChannel(channel: { credentials?: { apiKey?: string | nul
   }
 }
 
-function isOfficialClaudeCodeChannel(channel: { credentials?: { apiKey?: string | null } | null; baseURL: string }): boolean {
-  const apiKey = channel.credentials?.apiKey || '';
-  const defaultURL = getDefaultBaseURL('claudecode');
-  return apiKey.includes('sk-ant-oat') || apiKey.includes('sk-ant-api03') || channel.baseURL === defaultURL;
+function isClaudeCodeOAuthCredential(raw: string): boolean {
+  const key = raw.trim();
+  return key.startsWith('{') || key.startsWith('sk-ant-oat');
+}
+
+function isOfficialClaudeCodeChannel(channel: Pick<Channel, 'baseURL' | 'credentials'>): boolean {
+  const { apiKey, apiKeys, isOAuth } = channel.credentials ?? {};
+  if (isOAuth || isClaudeCodeOAuthCredential(apiKey || '') || apiKeys?.some(isClaudeCodeOAuthCredential)) return true;
+  if (apiKey || apiKeys?.some((key) => key.trim())) return false;
+  return channel.baseURL === getDefaultBaseURL('claudecode');
 }
 
 function extractCodexAuthJSONText(apiKey: string | undefined): string | undefined {
@@ -485,22 +493,22 @@ function parseOauthToken(oauthApiKey: string): string {
   return oauthApiKey;
 }
 
-// A third-party Codex channel authenticates with a plain API key only. An OAuth
+// Third-party Codex and Claude Code channels use plain API keys. An OAuth
 // or auth.json row that is copied/edited into third-party mode still carries its
 // old JSON in `credentials.apiKey`; the backend replaces credentials wholesale,
 // so the inherited value must be dropped before submit or it silently revives.
-function getCodexThirdPartySubmitCredentials<T extends { apiKey?: string | null; apiKeys?: string[] | null }>(
+function getThirdPartySubmitCredentials<T extends { apiKey?: string | null; apiKeys?: string[] | null }>(
   credentials: T,
   channel: { type?: ChannelType | null; authMode: string }
 ): T {
-  if (channel.type !== 'codex' || channel.authMode !== 'third-party') return credentials;
+  if (channel.authMode !== 'third-party' || (channel.type !== 'codex' && channel.type !== 'claudecode')) return credentials;
+  if (channel.type === 'claudecode' && !credentials.apiKeys?.length && !isClaudeCodeOAuthCredential(credentials.apiKey || '')) return credentials;
 
   const { apiKey: _inheritedOAuthCredentials, ...thirdPartyCredentials } = credentials;
   return thirdPartyCredentials as T;
 }
 
-// Model fetch mirrors submit: third-party Codex uses only the plain key, every
-// other provider keeps preferring an OAuth credential when one is present.
+// An unsaved change of authentication mode must use that mode’s credential.
 function getFetchModelsApiKey(input: {
   type?: string | null;
   authMode: string;
@@ -510,6 +518,13 @@ function getFetchModelsApiKey(input: {
   const plainApiKey = (input.apiKeys || []).find((key) => (key || '').trim().length > 0)?.trim() || '';
   const oauthApiKey = input.oauthApiKey || '';
 
+  if (input.type === 'claudecode') {
+    if (input.authMode === 'official') {
+      return isClaudeCodeOAuthCredential(oauthApiKey) ? oauthApiKey : (input.apiKeys || []).find((key) => key && isClaudeCodeOAuthCredential(key)) || '';
+    }
+    // Older API-key channels stored a single plain key in apiKey.
+    return plainApiKey || (isClaudeCodeOAuthCredential(oauthApiKey) ? '' : oauthApiKey);
+  }
   if (input.type === 'codex' && input.authMode === 'third-party') {
     return plainApiKey;
   }
@@ -524,12 +539,21 @@ function getFetchModelsApiKey(input: {
 
 // Third-party Codex rejects an empty or OAuth-shaped credential so a save can
 // never persist a channel that still authenticates with the inherited JSON.
-function getCodexThirdPartyCredentialError(channel: {
+function getThirdPartyCredentialError(channel: {
   type?: string | null;
   authMode: string;
+  oauthApiKey?: string | null;
   apiKeys?: (string | null | undefined)[] | null;
 }): string | undefined {
-  if (channel.type !== 'codex' || channel.authMode !== 'third-party') return undefined;
+  if (channel.authMode !== 'third-party') return undefined;
+  if (channel.type === 'claudecode') {
+    const key = getFetchModelsApiKey(channel);
+    if (!key || channel.apiKeys?.some((key) => key && isClaudeCodeOAuthCredential(key))) {
+      return 'channels.dialogs.oauth.errors.thirdPartyPlainKeyRequired';
+    }
+    return undefined;
+  }
+  if (channel.type !== 'codex') return undefined;
 
   const apiKeys = (channel.apiKeys || []).map((key) => (key || '').trim()).filter((key) => key.length > 0);
   if (apiKeys.length === 0) {
@@ -574,11 +598,14 @@ export function ChannelsActionDialog({
   const [newModel, setNewModel] = useState('');
   const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([]);
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
-  const [codexCatalog, setCodexCatalog] = useState<{
+  const [modelCatalog, setModelCatalog] = useState<{
+    provider: 'codex' | 'claudecode';
     version: CodexCatalogVersion | null;
     fallback: boolean;
     skippedReason: CodexCatalogSkippedReason | null;
+    fallbackReason: ModelCatalogFallbackReason | null;
   }>();
+  const catalogGeneration = useRef(0);
   const [fetchedModelPrices, setFetchedModelPrices] = useState<Record<string, ModelPrice>>({});
   const [useFetchedModels, setUseFetchedModels] = useState(false);
   const providerRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -837,6 +864,15 @@ export function ChannelsActionDialog({
     }
   }, [open, resetCodexOAuth, resetClaudecodeOAuth, resetAntigravityOAuth, resetXaiOAuth, initialCodexResponses.enabled]);
 
+  const resetFetchedCatalog = useCallback(() => {
+    setFetchedModels([]);
+    setFetchedModelPrices({});
+    setModelCatalog(undefined);
+    setUseFetchedModels(false);
+    setShowFetchedModelsPanel(false);
+    setSelectedFetchedModels([]);
+  }, []);
+
   useEffect(() => {
     if (!open) {
       setShowApiKey(false);
@@ -849,20 +885,16 @@ export function ChannelsActionDialog({
       setConfirmRemoveKey(null);
       setConfirmDisableKey(null);
       setPatternError(null);
-      setFetchedModels([]);
-      setCodexCatalog(undefined);
-      setUseFetchedModels(false);
-      setShowFetchedModelsPanel(false);
+      resetFetchedCatalog();
       setShowSupportedModelsPanel(false);
       setSelectedDefaultModels([]);
       setFetchedModelsSearch('');
       setSupportedModelsSearch('');
-      setSelectedFetchedModels([]);
       setShowNotAddedModelsOnly(false);
       setApplyPatternFilter(false);
       setSupportedModelsExpanded(false);
     }
-  }, [open]);
+  }, [open, resetFetchedCatalog]);
 
   useEffect(() => {
     if (!open) return;
@@ -1057,6 +1089,12 @@ export function ChannelsActionDialog({
   });
   const { dirtyFields } = form.formState;
   const hasFormChanges = Object.keys(dirtyFields).length > 0;
+  const keepSavedClaudeOAuth =
+    isEdit &&
+    currentRow?.type === 'claudecode' &&
+    authMode === 'official' &&
+    isOfficialClaudeCodeChannel(currentRow) &&
+    !dirtyFields.credentials?.apiKey;
 
   // These controls live outside react-hook-form, but navigating away must still
   // warn before discarding their edits.
@@ -1191,6 +1229,20 @@ export function ChannelsActionDialog({
   }, [selectedType, derivedChannelType, selectedApiFormat, responsesTransport, t]);
 
   const watchedBaseURL = form.watch('baseURL');
+  const claudeCredential = isClaudeCodeType
+    ? getFetchModelsApiKey({
+        type: activeChannelType,
+        authMode,
+        oauthApiKey: form.watch('credentials.apiKey'),
+        apiKeys: form.watch('credentials.apiKeys'),
+      })
+    : undefined;
+  useEffect(() => {
+    resetFetchedCatalog();
+    return () => {
+      catalogGeneration.current++;
+    };
+  }, [activeChannelType, authMode, claudeCredential, watchedBaseURL, currentRow?.id, open, resetFetchedCatalog]);
   const codexResponsesWebSocketURL =
     isCodexType && codexResponsesWebSocket ? getCodexResponsesWebSocketURL(watchedBaseURL, initialRow?.endpoints) : undefined;
 
@@ -1690,15 +1742,16 @@ export function ChannelsActionDialog({
 
       // A third-party Codex channel authenticates with a plain API key: reject an
       // empty or inherited OAuth-shaped credential instead of saving it.
-      const codexThirdPartyCredentialError = getCodexThirdPartyCredentialError({
+      const thirdPartyCredentialError = getThirdPartyCredentialError({
         type: values.type || derivedChannelType,
         authMode,
+        oauthApiKey: values.credentials?.apiKey,
         apiKeys: values.credentials?.apiKeys,
       });
-      if (codexThirdPartyCredentialError) {
+      if (thirdPartyCredentialError) {
         form.setError('credentials.apiKeys', {
           type: 'manual',
-          message: t(codexThirdPartyCredentialError),
+          message: t(thirdPartyCredentialError),
         });
         return;
       }
@@ -1708,7 +1761,7 @@ export function ChannelsActionDialog({
         supportedModels,
         manualModels,
         credentials: credentials
-          ? getCodexThirdPartySubmitCredentials(credentials, {
+          ? getThirdPartySubmitCredentials(credentials, {
               type: valuesForSubmit.type,
               authMode,
             })
@@ -1819,7 +1872,8 @@ export function ChannelsActionDialog({
         const hasVertexApiKeys =
           values.credentials?.vertexApiKeys && values.credentials.vertexApiKeys.some((binding) => binding.apiKey.trim() !== '');
 
-        if (!hasApiKey && !hasApiKeys && !hasManagementApiKey && !hasGcpCredentials && !hasVertexApiKeys) {
+        // A catalog preview can refresh the saved credentials while the form is open.
+        if (keepSavedClaudeOAuth || (!hasApiKey && !hasApiKeys && !hasManagementApiKey && !hasGcpCredentials && !hasVertexApiKeys)) {
           delete updateInput.credentials;
         }
 
@@ -1982,6 +2036,7 @@ export function ChannelsActionDialog({
       return;
     }
 
+    const generation = ++catalogGeneration.current;
     try {
       // For OAuth-based providers (like Copilot), prefer oauthApiKey first
       let firstApiKey = '';
@@ -1996,27 +2051,36 @@ export function ChannelsActionDialog({
         });
       }
 
-      // Fall back to Vertex API keys if neither OAuth nor flat apiKeys are present
+      const claudeOAuth = channelType === 'claudecode' && authMode === 'official';
+      const sameSavedClaudeOAuth = claudeOAuth && keepSavedClaudeOAuth && baseURL === currentRow?.baseURL;
+      // A blank draft in official mode must not borrow the stored third-party key.
+      const includeChannelID = isEdit && (!claudeOAuth || sameSavedClaudeOAuth || !!firstApiKey);
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
-        apiKey: firstApiKey || undefined,
+        apiKey: sameSavedClaudeOAuth ? undefined : firstApiKey || undefined,
+        proxy: claudeOAuth
+          ? { type: proxyType, ...proxyConfig, disableConnectionReuse: currentRow?.settings?.proxy?.disableConnectionReuse ?? undefined }
+          : undefined,
         projectID: selectedVertexCredential?.projectID.trim() || undefined,
         region: selectedVertexCredential?.region.trim() || undefined,
-        channelID: isEdit ? currentRow?.id : undefined,
+        channelID: includeChannelID ? currentRow?.id : undefined,
       });
 
+      if (generation !== catalogGeneration.current) return;
       if (result.error) {
         toast.error(result.error);
         return;
       }
 
-      setCodexCatalog(
-        channelType === 'codex'
+      setModelCatalog(
+        channelType === 'codex' || (channelType === 'claudecode' && (claudeOAuth || result.fallback))
           ? {
+              provider: channelType,
               version: result.codexCatalogVersion,
               fallback: result.fallback,
               skippedReason: result.codexCatalogSkippedReason,
+              fallbackReason: result.fallbackReason,
             }
           : undefined
       );
@@ -2043,7 +2107,7 @@ export function ChannelsActionDialog({
     } catch (_error) {
       // Error is already handled by the mutation
     }
-  }, [fetchModels, form, isEdit, currentRow, authMode, selectedApiFormat, realtimeHost]);
+  }, [fetchModels, form, isEdit, currentRow, authMode, selectedApiFormat, realtimeHost, keepSavedClaudeOAuth, proxyConfig, proxyType]);
 
   const handleSyncNow = useCallback(async () => {
     if (!currentRow) return [];
@@ -2056,6 +2120,7 @@ export function ChannelsActionDialog({
     const formPattern = form.getValues('autoSyncModelPattern') || '';
     const result = await syncChannelModels.mutateAsync({
       channelID: channelId,
+      channelType: currentRow.type,
       pattern: formPattern.trim() ? formPattern : undefined,
     });
     if (result.fallback) return [];
@@ -2073,6 +2138,10 @@ export function ChannelsActionDialog({
     const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
     const vertexApiKeys = form.watch('credentials.vertexApiKeys');
     const hasVertexApiKey = vertexApiKeys?.some((credential) => credential.apiKey.trim().length > 0);
+
+    if (isClaudeCodeType) {
+      return !!baseURL && (authMode === 'official' || !!claudeCredential);
+    }
 
     if (isCodexType || isAntigravityType || isClineType || isXAISubscriptionType) {
       return !!baseURL;
@@ -2132,9 +2201,9 @@ export function ChannelsActionDialog({
   // Select all filtered models
   const selectAllFilteredModels = useCallback(() => {
     setSelectedFetchedModels(
-      codexCatalog?.fallback ? filteredFetchedModels.filter((model) => !supportedModels.includes(model)) : filteredFetchedModels
+      modelCatalog?.fallback ? filteredFetchedModels.filter((model) => !supportedModels.includes(model)) : filteredFetchedModels
     );
-  }, [codexCatalog, filteredFetchedModels, supportedModels]);
+  }, [modelCatalog, filteredFetchedModels, supportedModels]);
 
   // Deselect all
   const deselectAllFetchedModels = useCallback(() => {
@@ -2150,7 +2219,7 @@ export function ChannelsActionDialog({
 
       selectedFetchedModels.forEach((model) => {
         if (prev.includes(model)) {
-          if (!codexCatalog?.fallback) modelsToRemove.push(model);
+          if (!modelCatalog?.fallback) modelsToRemove.push(model);
         } else {
           modelsToAdd.push(model);
         }
@@ -2166,7 +2235,7 @@ export function ChannelsActionDialog({
     }
 
     setSelectedFetchedModels([]);
-  }, [codexCatalog, selectedFetchedModels]);
+  }, [modelCatalog, selectedFetchedModels]);
 
   // Close panel handler
   const closeFetchedModelsPanel = useCallback(() => {
@@ -2212,7 +2281,7 @@ export function ChannelsActionDialog({
 
   // Remove deprecated models (models in supportedModels but not in fetchedModels and not manual)
   const removeDeprecatedModels = useCallback(() => {
-    if (codexCatalog?.fallback) return;
+    if (modelCatalog?.fallback) return;
     const fetchedModelsSet = new Set(fetchedModels);
     const manualModelsSet = new Set(manualModels);
     // Deprecated = not fetched AND not manual
@@ -2221,7 +2290,7 @@ export function ChannelsActionDialog({
     setSupportedModels((prev) => prev.filter((model) => fetchedModelsSet.has(model) || manualModelsSet.has(model)));
     // Remove deprecated models from manualModels (should be none, but for consistency)
     setManualModels((prev) => prev.filter((model) => !deprecatedModels.includes(model)));
-  }, [codexCatalog, fetchedModels, supportedModels, manualModels]);
+  }, [modelCatalog, fetchedModels, supportedModels, manualModels]);
 
   // Count of deprecated models
   const deprecatedModelsCount = useMemo(() => {
@@ -2275,16 +2344,12 @@ export function ChannelsActionDialog({
     setSupportedModels(initialRow?.supportedModels || []);
     setManualModels(initialRow?.manualModels || []);
     setSelectedDefaultModels([]);
-    setFetchedModels([]);
-    setCodexCatalog(undefined);
-    setUseFetchedModels(false);
+    resetFetchedCatalog();
     // Reset expandable panel states
-    setShowFetchedModelsPanel(false);
     setShowSupportedModelsPanel(false);
     setShowApiKeysPanel(false);
     setFetchedModelsSearch('');
     setSupportedModelsSearch('');
-    setSelectedFetchedModels([]);
     setShowNotAddedModelsOnly(false);
     setApplyPatternFilter(false);
     setSupportedModelsExpanded(false);
@@ -3500,6 +3565,7 @@ export function ChannelsActionDialog({
                               <div className='flex items-center gap-2'>
                                 <Button
                                   type='button'
+                                  data-testid='fetch-channel-models'
                                   onClick={handleFetchModels}
                                   size='sm'
                                   variant='outline'
@@ -3913,18 +3979,25 @@ export function ChannelsActionDialog({
                   </Button>
                 </div>
 
-                {codexCatalog?.version && (
+                {modelCatalog?.version && (
                   <p className='text-muted-foreground mb-2 text-xs'>
                     {t('channels.messages.codexCatalogVersion', {
-                      version: codexCatalog.version.version,
-                      source: t(`channels.messages.codexCatalogVersionSources.${codexCatalog.version.source}`),
+                      version: modelCatalog.version.version,
+                      source: t(`channels.messages.codexCatalogVersionSources.${modelCatalog.version.source}`),
                     })}
                   </p>
                 )}
-                {codexCatalog?.fallback && (
+                {modelCatalog?.provider === 'claudecode' && (
+                  <p role='status' data-testid='claude-catalog-source' className='text-muted-foreground mb-2 text-xs'>
+                    {modelCatalog.fallback
+                      ? t(`channels.messages.claudeCatalogFallback.${modelCatalog.fallbackReason ?? 'UNAVAILABLE'}`)
+                      : t('channels.messages.claudeCatalogLive', { count: fetchedModels.length })}
+                  </p>
+                )}
+                {modelCatalog?.provider === 'codex' && modelCatalog.fallback && (
                   <p role='status' className='text-muted-foreground mb-2 text-xs'>
-                    {codexCatalog.skippedReason
-                      ? t(`channels.messages.codexCatalogFetchSkipped.${codexCatalog.skippedReason}`)
+                    {modelCatalog.skippedReason
+                      ? t(`channels.messages.codexCatalogFetchSkipped.${modelCatalog.skippedReason}`)
                       : t('channels.messages.codexCatalogFetchFallback')}
                   </p>
                 )}
@@ -4033,7 +4106,7 @@ export function ChannelsActionDialog({
                             model={model}
                             isAdded={isAdded}
                             isSelected={isSelected}
-                            disabled={isAdded && codexCatalog?.fallback === true}
+                            disabled={isAdded && modelCatalog?.fallback === true}
                             onToggle={() => toggleFetchedModelSelection(model)}
                             addedLabel={t('channels.dialogs.fields.supportedModels.added')}
                             willRemoveLabel={t('channels.dialogs.fields.supportedModels.willRemove')}
@@ -4064,8 +4137,9 @@ export function ChannelsActionDialog({
                     variant='outline'
                     className='flex-1'
                     size='sm'
+                    data-testid='clean-fetched-models'
                     onClick={removeDeprecatedModels}
-                    disabled={codexCatalog?.fallback || deprecatedModelsCount === 0}
+                    disabled={modelCatalog?.fallback || deprecatedModelsCount === 0}
                   >
                     <Trash2 className='mr-1 h-4 w-4' />
                     {t('channels.dialogs.buttons.removeDeprecated', { count: deprecatedModelsCount })}
