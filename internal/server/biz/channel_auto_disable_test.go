@@ -323,6 +323,29 @@ func TestChannelService_SuccessClearsErrorCounts(t *testing.T) {
 	require.False(t, keyExists)
 }
 
+func TestChannelService_RealtimeCredentialSuccessClearsErrorCounts(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc := newTestChannelService(client)
+	ch := createTestChannelWithAPIKeys(t, client, ctx, "realtime-success", []string{"key1", "key2"})
+	withGlobalAutoDisable(t, svc, ctx, ch, []objects.APIKeyAutoDisableRule{{
+		StatusCodes: []int{401}, Times: 3, Action: objects.APIKeyAutoDisableActionPermanent,
+	}})
+
+	for range 2 {
+		svc.EvaluateAPIKeyRulesForFailure(ctx, ch.ID, "key1", 401, "unauthorized")
+	}
+	svc.apiKeyErrorCountsLock.Lock()
+	require.Len(t, svc.apiKeyErrorCounts[ch.ID], 1)
+	svc.apiKeyErrorCountsLock.Unlock()
+
+	svc.RecordRealtimeCredentialSuccess(ch.ID, "key1")
+	svc.apiKeyErrorCountsLock.Lock()
+	require.Empty(t, svc.apiKeyErrorCounts[ch.ID])
+	svc.apiKeyErrorCountsLock.Unlock()
+}
+
 func TestChannelService_KeylessSuccessClearsOnlyKeylessCounters(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
