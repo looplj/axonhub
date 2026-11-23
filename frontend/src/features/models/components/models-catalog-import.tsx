@@ -324,6 +324,7 @@ export function ModelsCatalogImport() {
         <div className='flex flex-wrap items-center gap-2'>
           {!isSchedule && (
             <select
+              data-testid='catalog-import-scope'
               aria-label={t('models.import.scopeLabel')}
               className={selectStyle}
               value={mode}
@@ -362,7 +363,7 @@ export function ModelsCatalogImport() {
             </label>
           )}
           {canImport && (
-            <Button size='sm' variant='outline' className='ms-auto' onClick={() => setIsSchedule(!isSchedule)}>
+            <Button data-testid='catalog-schedule-toggle' size='sm' variant='outline' className='ms-auto' onClick={() => setIsSchedule(!isSchedule)}>
               {t(isSchedule ? 'models.import.preview' : 'models.import.schedule')}
             </Button>
           )}

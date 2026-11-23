@@ -19,6 +19,8 @@ import (
 	"slices"
 	"time"
 
+	"entgo.io/ent/dialect/sql/sqlgraph"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/system"
@@ -148,8 +150,8 @@ func (svc *ModelService) saveCheckResult(ctx context.Context, previous string, s
 	db := svc.entFromContext(ctx)
 	if previous == "" {
 		err = db.System.Create().SetKey(catalogCheckResultKey).SetValue(value).Exec(ctx)
-		if ent.IsConstraintError(err) {
-			return "", errCheckClaimChanged
+		if sqlgraph.IsUniqueConstraintError(err) {
+			return "", fmt.Errorf("%w: %w", errCheckClaimChanged, err)
 		}
 	} else {
 		var count int
@@ -165,10 +167,12 @@ func (svc *ModelService) saveCheckResult(ctx context.Context, previous string, s
 }
 
 func (svc *ModelService) claimCatalogCheck(ctx context.Context, now time.Time, scheduled bool) (*CatalogCheckStatus, string, error) {
-	var state *CatalogCheckStatus
-	var token string
+	var dueDay string
+	var err error
 	for range 3 {
-		err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
+		var state *CatalogCheckStatus
+		var token string
+		err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
 			var old string
 			var err error
 			state, old, err = svc.readCatalogCheck(ctx)
@@ -184,21 +188,34 @@ func (svc *ModelService) claimCatalogCheck(ctx context.Context, now time.Time, s
 				if err != nil {
 					return err
 				}
-				day := due.Format(time.DateOnly)
 				if !due.Equal(minute) {
 					return nil
 				}
-				state.ScheduledDay = day
+				dueDay = due.Format(time.DateOnly)
+				state.ScheduledDay = dueDay
 			}
 			state.LastAttempt = &now
 			token, err = svc.saveCheckResult(ctx, old, state.catalogCheckResult)
 			return err
 		})
+		if err == nil {
+			return state, token, nil
+		}
 		if !errors.Is(err, errCheckClaimChanged) && !catalogWriteBusy(err) {
-			return state, token, err
+			return nil, "", err
 		}
 	}
-	return nil, "", errCheckClaimChanged
+	if dueDay != "" {
+		// A busy write alone doesn't establish that another replica claimed this day.
+		state, readErr := svc.CatalogCheckStatus(ctx)
+		if readErr != nil {
+			return nil, "", fmt.Errorf("confirm scheduled catalog check claim: %w", readErr)
+		}
+		if state.ScheduledDay == dueDay {
+			return state, "", nil
+		}
+	}
+	return nil, "", err
 }
 
 func (svc *ModelService) CheckModelCatalog(ctx context.Context) (*CatalogCheckStatus, error) {

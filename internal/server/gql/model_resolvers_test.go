@@ -174,6 +174,9 @@ func TestCatalogImportLegacyScope(t *testing.T) {
 	require.Len(t, applied.ApplyCatalogImport, 1)
 	require.Equal(t, biz.CatalogApplied, applied.ApplyCatalogImport[0].Status)
 
+	require.NoError(t, api.Post(preview, &result, client.Var("scope", scope)))
+	require.Len(t, result.CatalogImportPreview.Rows, 1)
+	require.Equal(t, "example", result.CatalogImportPreview.Rows[0].ModelID)
 	for tracked, wantRows := range map[bool]int{false: 1, true: 0} {
 		scope["tracked"] = tracked
 		require.NoError(t, api.Post(preview, &result, client.Var("scope", scope)))

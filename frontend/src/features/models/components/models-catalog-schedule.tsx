@@ -69,7 +69,7 @@ export function CatalogSchedule({
             <Button size='sm' variant='outline' disabled={check.isPending} onClick={() => check.mutate()}>
               {t('models.import.checkNow')}
             </Button>
-            <Button size='sm' variant='outline' onClick={onReview}>
+            <Button data-testid='catalog-schedule-review' size='sm' variant='outline' onClick={onReview}>
               {t('models.import.reviewWatch')}
             </Button>
           </div>
@@ -91,7 +91,7 @@ export function CatalogSchedule({
           </label>
           <label>
             {t('models.import.timezone')}
-            <Input value={draft.timezone} onChange={(e) => setDraft({ ...draft, timezone: e.target.value })} />
+            <Input data-testid='catalog-check-timezone' value={draft.timezone} onChange={(e) => setDraft({ ...draft, timezone: e.target.value })} />
           </label>
         </div>
         <label className='flex items-center gap-2'>

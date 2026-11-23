@@ -3,6 +3,8 @@
 //   frontend/src/features/models/components/models-catalog-import.tsx
 //   internal/server/gql/model.graphql
 //   frontend/src/features/models/data/schema.ts
+// 注意事项:
+//   关闭预览时需切离原查询键，重新进入检查范围才能等到本次响应后再开放候选操作。
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import type { ReferencePriceField } from './schema';

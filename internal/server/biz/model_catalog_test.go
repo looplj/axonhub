@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -26,9 +27,11 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
@@ -454,15 +457,15 @@ func TestCatalogCheckScopeUnion(t *testing.T) {
 	require.ElementsMatch(t, expected, offers(CatalogImportScope{Channels: true, Tracked: true, Providers: []string{"moonshot"}}))
 }
 
-func (f *importFixture) peer() *ModelService {
-	secondSystem := NewSystemService(SystemServiceParams{Ent: f.db, CacheConfig: xcache.Config{Mode: xcache.ModeMemory}})
-	secondCatalog := NewCatalogService(secondSystem, f.svc.catalog.httpClient)
-	return NewModelService(ModelServiceParams{Ent: f.db, Catalog: secondCatalog, SystemService: secondSystem})
+func newCatalogTestInstance(db *ent.Client) *ModelService {
+	sys := NewSystemService(SystemServiceParams{Ent: db, CacheConfig: xcache.Config{Mode: xcache.ModeMemory}})
+	return NewModelService(ModelServiceParams{Ent: db, Catalog: NewCatalogService(sys, nil), SystemService: sys})
 }
 
 func TestCatalogCheckAcrossInstances(t *testing.T) {
 	f := catalogFixture(t)
-	second := f.peer()
+	second := newCatalogTestInstance(f.db)
+	second.catalog.httpClient = f.svc.catalog.httpClient
 	provider := CatalogImportScope{Providers: []string{"moonshot-ai"}}
 	p := f.preview(t, provider)
 	require.Equal(t, []string{"applied"}, f.apply(t, provider, p, selection(t, p, "kimi-k3")))
@@ -493,27 +496,81 @@ func TestCatalogCheckAcrossInstances(t *testing.T) {
 }
 
 func TestCatalogScheduledCheckClaimsMinuteOnce(t *testing.T) {
-	f := catalogFixture(t)
-	now := time.Date(2026, 11, 23, 8, 30, 0, 0, time.UTC)
-	_, err := f.svc.SaveCatalogCheckSettings(f.ctx, CatalogCheckSettings{Enabled: true, Time: "08:30", Timezone: "UTC"})
+	dsn := "file:" + filepath.Join(t.TempDir(), "catalog.db") + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(0)"
+	open := func() *ModelService {
+		db := enttest.NewEntClient(t, "sqlite3", dsn)
+		t.Cleanup(func() { _ = db.Close() })
+		return newCatalogTestInstance(db)
+	}
+	owner, peer := open(), open()
+	ctx, cancel := context.WithTimeout(authz.WithTestBypass(t.Context()), 10*time.Second)
+	defer cancel()
+	fetching, finish := make(chan struct{}), make(chan struct{})
+	var requests atomic.Int32
+	useCatalogUpstream(t, ctx, owner.systemService, owner.catalog, func(w http.ResponseWriter, _ *http.Request) {
+		if requests.Add(1) == 1 {
+			close(fetching)
+		}
+		select {
+		case <-finish:
+			_, _ = io.WriteString(w, testCatalog)
+		case <-ctx.Done():
+		}
+	})
+	peer.catalog.httpClient = owner.catalog.httpClient
+	now := time.Date(2026, 11, 23, 16, 30, 0, 0, time.UTC) // 00:30 the next day in Shanghai.
+	_, err := owner.SaveCatalogCheckSettings(ctx, CatalogCheckSettings{Enabled: true, Time: "00:30", Timezone: "Asia/Shanghai"})
 	require.NoError(t, err)
-	start := make(chan struct{})
-	before := f.requests.Load()
-	var wg sync.WaitGroup
-	var errs [2]error
-	for i, svc := range []*ModelService{f.svc, f.peer()} {
-		wg.Go(func() {
-			<-start
-			_, errs[i] = svc.checkModelCatalog(f.ctx, now, true)
+	lock, err := owner.db.Tx(ctx)
+	require.NoError(t, err)
+	defer func() { _ = lock.Rollback() }()
+	require.NoError(t, lock.System.Create().SetKey("unrelated").SetValue("busy").Exec(ctx))
+	t.Run("unrelated writer", func(t *testing.T) {
+		_, err := peer.checkModelCatalog(ctx, now, true)
+		require.True(t, catalogWriteBusy(err), "expected SQLite contention, got %v", err)
+		require.Zero(t, requests.Load())
+	})
+
+	// Release the owner's connection after the peer's last failed write. Its claim
+	// will be committed, but its upstream response is still pending when the peer re-reads.
+	attempts := 0
+	peer.db.System.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			value, err := next.Mutate(ctx, m)
+			attempts++
+			if attempts == 3 && catalogWriteBusy(err) {
+				if unlockErr := lock.Rollback(); unlockErr != nil {
+					return nil, unlockErr
+				}
+				select {
+				case <-fetching:
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+			}
+			return value, err
 		})
-	}
-	close(start)
+	})
+	var wg sync.WaitGroup
+	var ownerErr error
+	wg.Go(func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("scheduled check panicked: %v", r)
+			}
+		}()
+		_, ownerErr = owner.checkModelCatalog(ctx, now, true)
+	})
+	seen, peerErr := peer.checkModelCatalog(ctx, now, true)
+	close(finish)
 	wg.Wait()
-	for _, err := range errs {
-		require.NoError(t, err)
-	}
-	require.EqualValues(t, 1, f.requests.Load()-before)
-	state, err := f.svc.CatalogCheckStatus(f.ctx)
+	require.NoError(t, ownerErr)
+	require.NoError(t, peerErr)
+	require.Equal(t, 3, attempts)
+	require.Equal(t, "2026-11-24", seen.ScheduledDay)
+	require.Nil(t, seen.LastSuccess)
+	require.EqualValues(t, 1, requests.Load())
+	state, err := peer.CatalogCheckStatus(ctx)
 	require.NoError(t, err)
 	require.NotNil(t, state.LastSuccess)
 }

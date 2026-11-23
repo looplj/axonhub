@@ -1,7 +1,8 @@
-// 职责: 验证批量导入的分项报价来源、缺价提示和跨页选择在刷新后的行为。
+// 职责: 验证批量导入的报价与选择、计划设置权限，以及重新进入复核列表时的刷新行为。
 // 关联文件:
 //   frontend/src/features/models/components/models-catalog-import.tsx
 //   frontend/src/features/models/components/models-catalog-prices.tsx
+//   frontend/src/features/models/components/models-catalog-schedule.tsx
 //   frontend/src/features/models/data/catalog-import.ts
 // 注意事项:
 //   导入提交使用隔离响应，角色场景使用独立浏览器上下文。
@@ -269,8 +270,8 @@ test('only the schedule dialog and the channel editor badge poll for check statu
   await open.click();
   await expect(dialog.getByRole('heading', { name: '检查更新' })).toBeVisible();
   await expect(dialog.getByTestId('catalog-check-time')).toBeEnabled();
-  await expect(dialog.getByLabel(/站点时区/)).toHaveValue('Test/Unsupported');
-  await dialog.getByLabel(/站点时区/).fill('Asia/Shanghai');
+  await expect(dialog.getByTestId('catalog-check-timezone')).toHaveValue('Test/Unsupported');
+  await dialog.getByTestId('catalog-check-timezone').fill('Asia/Shanghai');
   expect(importReads).toBe(0);
 
   scopes = ['read_channels', 'write_channels'];
@@ -314,17 +315,17 @@ test('watched candidates refresh on entry and keep the current draft across stat
   const open = page.getByTestId('catalog-import-open');
   await open.click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByRole('combobox', { name: /Model source|模型来源/ }).selectOption('watch');
+  await dialog.getByTestId('catalog-import-scope').selectOption('watch');
   await expect(dialog.getByTestId('catalog-import-rows')).toHaveCount(0);
   releaseSettings();
   await expect(dialog.getByTestId('catalog-import-expand-model-1')).toBeVisible();
-  await dialog.getByRole('button', { name: /Update checks|检查更新/ }).click();
-  await dialog.getByRole('button', { name: /Review candidates|预览检查范围/ }).click();
+  await dialog.getByTestId('catalog-schedule-toggle').click();
+  await dialog.getByTestId('catalog-schedule-review').click();
   await expect.poll(() => watchReads).toBe(2);
   await expect(dialog.getByTestId('catalog-import-rows')).toHaveCount(0);
   release();
   await dialog.getByTestId('catalog-import-expand-model-2').click();
-  const name = dialog.getByRole('textbox', { name: /^(Name|名称)$/ });
+  const name = dialog.getByTestId('catalog-import-model-name');
   await name.fill('Reviewed name');
   const selected = dialog.getByRole('checkbox', { name: 'model-2', exact: true });
   await selected.check();
@@ -336,7 +337,7 @@ test('watched candidates refresh on entry and keep the current draft across stat
   expect(watchReads).toBe(2);
   await page.keyboard.press('Escape');
   await open.click();
-  await dialog.getByRole('combobox', { name: /Model source|模型来源/ }).selectOption('watch');
+  await dialog.getByTestId('catalog-import-scope').selectOption('watch');
   await expect(dialog.getByTestId('catalog-import-expand-model-3')).toBeVisible();
 });
 

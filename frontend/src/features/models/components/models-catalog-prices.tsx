@@ -99,7 +99,7 @@ export function PriceEditor({
         <div className='grid gap-2 sm:grid-cols-3'>
           <label className='text-sm'>
             {t('models.fields.name')}
-            <Input value={draft.name} onChange={(e) => onChange({ ...draft, name: e.target.value })} />
+            <Input data-testid='catalog-import-model-name' value={draft.name} onChange={(e) => onChange({ ...draft, name: e.target.value })} />
           </label>
           <label className='text-sm'>
             {t('models.fields.developer')}
