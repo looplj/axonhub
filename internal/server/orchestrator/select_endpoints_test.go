@@ -68,6 +68,69 @@ func TestSelectAPIFormat_PrefersResponsesProtocolMatchingInboundTransport(t *tes
 	require.Equal(t, llm.APIFormatOpenAIResponseWebSocket.String(), format)
 }
 
+func TestPopulateAPIFormat_PrefersExplicitResponsesWebSocket(t *testing.T) {
+	httpFormat := llm.APIFormatOpenAIResponse.String()
+	wsFormat := llm.APIFormatOpenAIResponseWebSocket.String()
+	dual := []objects.ChannelEndpoint{{APIFormat: httpFormat}, {APIFormat: wsFormat}}
+
+	for _, tc := range []struct {
+		name       string
+		configured []objects.ChannelEndpoint
+		inbound    llm.APIFormat
+		forced     []string
+		want       string
+	}{
+		{
+			name: "default WebSocket keeps HTTP priority", inbound: llm.APIFormatOpenAIResponse, want: httpFormat,
+		},
+		{
+			name: "HTTP only keeps HTTP", configured: dual[:1], inbound: llm.APIFormatOpenAIResponse, want: httpFormat,
+		},
+		{
+			name: "explicit WebSocket wins over inbound HTTP", configured: dual,
+			inbound: llm.APIFormatOpenAIResponse, want: wsFormat,
+		},
+		{
+			name: "explicit WebSocket wins over HTTP fallback", configured: dual,
+			inbound: llm.APIFormatOpenAIChatCompletion, want: wsFormat,
+		},
+		{
+			name: "legacy WebSocket endpoint counts as explicitly enabled",
+			configured: []objects.ChannelEndpoint{
+				{APIFormat: httpFormat},
+				{APIFormat: httpFormat, Transport: objects.ChannelEndpointTransportWebSocket},
+			},
+			inbound: llm.APIFormatOpenAIResponse, want: wsFormat,
+		},
+		{
+			name: "model protocol override keeps HTTP", configured: dual,
+			inbound: llm.APIFormatOpenAIResponse, forced: []string{httpFormat}, want: httpFormat,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const model = "test-model"
+
+			ch := &biz.Channel{Channel: &ent.Channel{Type: channel.TypeCodex, Endpoints: tc.configured}}
+			if len(tc.forced) > 0 {
+				ch.Settings = &objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
+					{Model: model, APIFormats: tc.forced},
+				}}
+			}
+			candidate := &ChannelModelsCandidate{
+				Channel: ch,
+				Models:  []biz.ChannelModelEntry{{ActualModel: model}},
+			}
+			got := populateAPIFormat(t.Context(), []*ChannelModelsCandidate{candidate}, &llm.Request{
+				Model: model, RequestType: llm.RequestTypeChat, APIFormat: tc.inbound,
+			})
+
+			require.Len(t, got, 1)
+			require.Equal(t, tc.want, got[0].APIFormat)
+			require.Equal(t, []string{tc.want}, got[0].modelAPIFormats)
+		})
+	}
+}
+
 func TestSelectAPIFormat_PrefersResponsesTransportFamilyOverUnrelatedFormat(t *testing.T) {
 	tests := []struct {
 		name   string

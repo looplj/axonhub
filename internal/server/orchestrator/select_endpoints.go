@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"slices"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -30,6 +31,7 @@ func selectForcedAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request
 
 func selectEndpointAPIFormat(
 	ctx context.Context,
+	ch *biz.Channel,
 	endpoints []objects.ChannelEndpoint,
 	req *llm.Request,
 	forced bool,
@@ -49,7 +51,22 @@ func selectEndpointAPIFormat(
 		return selectForcedAPIFormat(endpoints, req)
 	}
 
-	return SelectAPIFormat(endpoints, req)
+	format := SelectAPIFormat(endpoints, req)
+	if format != llm.APIFormatOpenAIResponse.String() || req.RequestType != llm.RequestTypeChat {
+		return format
+	}
+
+	// Codex may expose WebSocket by default. Give it priority only when
+	// the channel configuration explicitly enables it.
+	isWebSocket := func(ep objects.ChannelEndpoint) bool {
+		return ep.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String()
+	}
+	if slices.ContainsFunc(endpoints, isWebSocket) &&
+		slices.ContainsFunc(biz.NormalizeEndpoints(ch.Endpoints, ch.BaseURL), isWebSocket) {
+		return llm.APIFormatOpenAIResponseWebSocket.String()
+	}
+
+	return format
 }
 
 func selectAPIFormat(
