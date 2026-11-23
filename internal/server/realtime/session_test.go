@@ -118,9 +118,7 @@ func TestClientEventRateLimitDefaultAllowsMoreThanLegacy256(t *testing.T) {
 	client, downstream := socketPair(t)
 	upstream, _ := socketPair(t)
 	done := make(chan error, 1)
-	go func() {
-		done <- Run(context.Background(), downstream, upstream, Options{}, Hooks{})
-	}()
+	go runSessionForTest(t, done, func() error { return Run(context.Background(), downstream, upstream, Options{}, Hooks{}) })
 	for range 300 {
 		require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"ping"}`)))
 	}
@@ -141,9 +139,7 @@ func TestClientEventRateLimitDefaultAllows400EventsPerSecondForTenSeconds(t *tes
 	client, downstream := socketPair(t)
 	upstream, _ := socketPair(t)
 	done := make(chan error, 1)
-	go func() {
-		done <- Run(context.Background(), downstream, upstream, Options{}, Hooks{})
-	}()
+	go runSessionForTest(t, done, func() error { return Run(context.Background(), downstream, upstream, Options{}, Hooks{}) })
 	ticker := time.NewTicker(time.Second / 400)
 	defer ticker.Stop()
 	for range 4000 {
@@ -167,9 +163,7 @@ func TestClientEventRateLimitDefaultClosesAfter1024Events(t *testing.T) {
 	client, downstream := socketPair(t)
 	upstream, _ := socketPair(t)
 	done := make(chan error, 1)
-	go func() {
-		done <- Run(context.Background(), downstream, upstream, Options{}, Hooks{})
-	}()
+	go runSessionForTest(t, done, func() error { return Run(context.Background(), downstream, upstream, Options{}, Hooks{}) })
 	for range 1025 {
 		require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"ping"}`)))
 	}
@@ -190,9 +184,9 @@ func TestClientEventRateLimitUsesOverrideAndSendsPolicyClose(t *testing.T) {
 	client, downstream := socketPair(t)
 	upstream, _ := socketPair(t)
 	done := make(chan error, 1)
-	go func() {
-		done <- Run(context.Background(), downstream, upstream, Options{ClientEventsPerSecond: 300}, Hooks{})
-	}()
+	go runSessionForTest(t, done, func() error {
+		return Run(context.Background(), downstream, upstream, Options{ClientEventsPerSecond: 300}, Hooks{})
+	})
 	for range 301 {
 		require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"ping"}`)))
 	}

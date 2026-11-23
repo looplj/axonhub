@@ -12,7 +12,7 @@
 ## 管理界面配置
 
 1. 保留现有 `openai` 或 `bailian` 渠道，不新建服务商类型。在渠道密钥管理中加入对应官方 API Key。
-2. 在渠道主表单中为 OpenAI 选择 `openai/realtime-ws`，为百炼选择 `qwen/realtime-ws`。独立保存在渠道的 `settings.realtime`，包含 `enabled`、`protocol`、`baseURL`、`path` 和可选的 `handshakeTimeoutMs`。握手超时可设为 1000–60000 毫秒，留空继承服务配置。Realtime WS 地址使用独立字段，不修改渠道原有 HTTP Base URL。
+2. 在渠道主表单中为 OpenAI 选择 `openai/realtime-ws`，为百炼选择 `qwen/realtime-ws`。独立保存在渠道的 `settings.realtime`，包含 `enabled`、`protocol`、`baseURL`、`path` 和可选的 `handshakeTimeoutMs`、`clientEventsPerSecond`。握手超时可设为 1000–60000 毫秒，留空继承服务配置。客户端事件速率可设为每秒 256–4096 条，留空继承服务端默认值 1024。Realtime WS 地址使用独立字段，不修改渠道原有 HTTP Base URL。
 3. OpenAI 官方使用 `wss://api.openai.com` 和 `/v1/realtime`。首批支持 `gpt-realtime-2.1`、`gpt-realtime-2.1-mini`，不自动选择已弃用型号。
 4. 百炼应从控制台复制所选业务空间的可信 API Host，使用其 WSS 地址，路径为 `/api-ws/v1/realtime`。Host 仅接受 `maas.aliyuncs.com` 下的 `cn-beijing` 和 `ap-southeast-1` 地域；保留控制台提供的完整主机标签，包括实际存在的 `llm-` 前缀。Workspace、地域、密钥必须属于同一官方资源配置。
 5. 在渠道层配置支持模型白名单、模型映射、模型关联和 API Key Profile 授权。Qwen 首批型号为 `qwen3.8-omni-flash-realtime`、`qwen3.5-omni-plus-realtime`、`qwen3.5-omni-flash-realtime`。Realtime 协议选择属于渠道主表单，不通过端点管理设置。
@@ -24,6 +24,8 @@
 渠道选择 Realtime 后只承接实时请求。原有 HTTP Base URL、自定义端点和模型配置继续保存在渠道中，端点管理在此模式下显示停用提示。切回普通协议后，默认端点和自定义端点恢复路由。此前混合使用的渠道如果两种流量都需要，请分别配置普通渠道和 Realtime 渠道。
 
 Realtime 渠道配置适用于现有 OpenAI 和百炼渠道类型。xAI Subscription 使用服务商管理的端点，不接受自定义 Realtime 端点。
+
+握手时，AxonHub 先应用 API Key Profile 渠道过滤、模型路由策略、渠道配额路由策略和已配置的负载均衡策略，再将整个会话固定到一个渠道。WebSocket 建立后不会在不同上游之间切换。
 
 现有启动数据迁移流程会在渠道缓存加载之前，把历史 `endpoints` 中的 Realtime 配置搬到 `settings.realtime`。每个渠道的配置搬迁与旧条目清理原子完成，保留普通端点及其他设置。已有渠道级 Realtime 设置优先，包括显式禁用状态；重复执行不再写入渠道。该迁移只改变 JSON 配置结构，不新增数据库表或列。
 
@@ -121,7 +123,7 @@ server:
 
 共享 Redis 从现有 `cache.redis` 配置读取，在第一次实时会话时延迟连接。四个维度的并发与每密钥建连频率在单槽 Lua 中原子获取，租约超过会话硬时限，崩溃自动到期；Redis 不可用时拒绝新会话。没有 Redis 时计数仅适用于单进程；多实例部署必须使用相同 Redis 和相同限制，不可称本地计数为集群配额。Redis 的数据持久化、主从切换丢写风险必须纳入部署验收。
 
-单消息上限 256 KiB，音频块解码上限 64 KiB，每方向发送队列最多 8 条，队列满时关闭而非丢弃媒体。慢客户端、握手、配置确认、空闲和总时长均有边界。停止服务时取消现有会话并关闭两端，不无限等待长连接。
+单消息上限 256 KiB，音频块解码上限 64 KiB，每方向发送队列最多 8 条。客户端事件速率限制与 2 MiB/s 的消息字节保护分别生效，事件超限时用 `1008 client_rate_limited` 关闭。队列满时关闭而非丢弃媒体。服务端分别记录两个 WebSocket 对端的活动，包括 ping/pong；上游 pong 不会延长无响应客户端的会话，单端等待期限会给心跳最多两个间隔的 pong 时间。两端都空闲时，按配置的空闲时限用 `1000 idle_timeout` 关闭。握手、配置确认和总时长也有边界。停止服务时取消现有会话并关闭两端，不无限等待长连接。
 
 Nginx 示例（放入现有 TLS server；保留其他路由）：
 

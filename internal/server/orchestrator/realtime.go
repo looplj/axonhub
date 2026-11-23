@@ -54,25 +54,31 @@ import (
 )
 
 type RealtimeService struct {
-	Transport rt.Dialer
-	Auth      *biz.AuthService
-	Selector  *DefaultSelector
-	Channels  *biz.ChannelService
-	Quota     *biz.QuotaService
-	Usage     *biz.UsageLogService
-	Requests  *biz.RequestService
+	Transport           rt.Dialer
+	Auth                *biz.AuthService
+	Selector            CandidateSelector
+	Channels            *biz.ChannelService
+	Quota               *biz.QuotaService
+	Usage               *biz.UsageLogService
+	Requests            *biz.RequestService
+	System              *biz.SystemService
+	LoadBalancers       map[string]*LoadBalancer
+	QuotaStatusProvider ProviderQuotaStatusProvider
 }
 
 type RealtimeServiceParams struct {
 	fx.In
 
-	Transport rt.Dialer
-	Auth      *biz.AuthService
-	Selector  *DefaultSelector
-	Channels  *biz.ChannelService
-	Quota     *biz.QuotaService
-	Usage     *biz.UsageLogService
-	Requests  *biz.RequestService
+	Transport             rt.Dialer
+	Auth                  *biz.AuthService
+	Selector              *DefaultSelector
+	Channels              *biz.ChannelService
+	Quota                 *biz.QuotaService
+	Usage                 *biz.UsageLogService
+	Requests              *biz.RequestService
+	System                *biz.SystemService          `optional:"true"`
+	ChannelLimiterManager *ChannelLimiterManager      `optional:"true"`
+	QuotaStatusProvider   ProviderQuotaStatusProvider `optional:"true"`
 }
 
 type realtimeAdapter interface {
@@ -129,26 +135,7 @@ func (s *RealtimeService) prepare(ctx context.Context, model string, native, tra
 		return nil, err
 	}
 	mapped := NewModelMapper().MapModel(ctx, key, model)
-	var selector CandidateSelector = s.Selector
-	if project := key.Edges.Project; project != nil {
-		if p := project.GetActiveProfile(); p != nil {
-			if len(p.ChannelIDs) > 0 {
-				selector = WithSelectedChannelsSelector(selector, p.ChannelIDs)
-			}
-			if len(p.ChannelTags) > 0 {
-				selector = WithChannelTagsFilterSelector(selector, p.ChannelTags, p.ChannelTagsMatchMode)
-			}
-		}
-	}
-	if profile != nil {
-		if len(profile.ChannelIDs) > 0 {
-			selector = WithSelectedChannelsSelector(selector, profile.ChannelIDs)
-		}
-		if len(profile.ChannelTags) > 0 {
-			selector = WithChannelTagsFilterSelector(selector, profile.ChannelTags, profile.ChannelTagsMatchMode)
-		}
-	}
-	candidates, err := selector.Select(ctx, &llm.Request{Model: mapped, RequestType: llm.RequestTypeRealtime, APIFormat: llm.APIFormatOpenAIRealtime, Stream: lo.ToPtr(true)})
+	candidates, err := s.selectCandidates(ctx, key, mapped)
 	if err != nil {
 		return nil, err
 	}
@@ -214,14 +201,52 @@ func (s *RealtimeService) prepare(ctx context.Context, model string, native, tra
 				}
 				clientEventsPerSecond := 0
 				if ch.Settings != nil && ch.Settings.Realtime != nil && ch.Settings.Realtime.ClientEventsPerSecond != nil {
-					realtime := ch.Settings.Realtime
-					clientEventsPerSecond = int(*realtime.ClientEventsPerSecond)
+					clientEventsPerSecond = int(*ch.Settings.Realtime.ClientEventsPerSecond)
 				}
 				return &RealtimeTarget{HandshakeTimeout: timeout, ClientEventsPerSecond: clientEventsPerSecond, Channel: ch, Model: entry.ActualModel, ClientModel: model, URL: target, Price: price, APIKey: key, Native: native, Translation: translation, APIFormat: llm.APIFormat(format), SafetyIdentifier: hex.EncodeToString(identifier[:])}, nil
 			}
 		}
 	}
 	return nil, biz.ErrInvalidModel
+}
+
+func (s *RealtimeService) selectCandidates(ctx context.Context, key *ent.APIKey, model string) ([]*ChannelModelsCandidate, error) {
+	var selector CandidateSelector = s.Selector
+	profile := key.GetActiveProfile()
+	if project := key.Edges.Project; project != nil {
+		if p := project.GetActiveProfile(); p != nil {
+			if len(p.ChannelIDs) > 0 {
+				selector = WithSelectedChannelsSelector(selector, p.ChannelIDs)
+			}
+			if len(p.ChannelTags) > 0 {
+				selector = WithChannelTagsFilterSelector(selector, p.ChannelTags, p.ChannelTagsMatchMode)
+			}
+		}
+	}
+	if profile != nil {
+		if len(profile.ChannelIDs) > 0 {
+			selector = WithSelectedChannelsSelector(selector, profile.ChannelIDs)
+		}
+		if len(profile.ChannelTags) > 0 {
+			selector = WithChannelTagsFilterSelector(selector, profile.ChannelTags, profile.ChannelTagsMatchMode)
+		}
+	}
+	selector = WithStreamPolicySelector(selector)
+	if s.System != nil && len(s.LoadBalancers) > 0 {
+		retryPolicy := s.System.RetryPolicyOrDefault(ctx)
+		routingPolicy := EffectiveRoutingPolicy{}
+		selector = WithRoutingPolicyLoadBalancedSelector(
+			selector,
+			s.LoadBalancers,
+			retryPolicy,
+			s.Requests,
+			key,
+			&routingPolicy,
+			NewQuotaRoutingGate(s.QuotaStatusProvider, s.System.QuotaRoutingSettingsOrDefault(ctx)),
+		)
+	}
+
+	return selector.Select(ctx, &llm.Request{Model: model, RequestType: llm.RequestTypeRealtime, APIFormat: llm.APIFormatOpenAIRealtime, Stream: lo.ToPtr(true)})
 }
 
 func (s *RealtimeService) checkQuota(ctx context.Context, key *ent.APIKey, includeRequests ...bool) error {
@@ -1221,7 +1246,50 @@ func (c *RealtimeConversation) PersistSessionMetadata() {
 }
 
 func NewRealtimeService(params RealtimeServiceParams) *RealtimeService {
-	return &RealtimeService{Transport: params.Transport, Auth: params.Auth, Selector: params.Selector, Channels: params.Channels, Quota: params.Quota, Usage: params.Usage, Requests: params.Requests}
+	var loadBalancers map[string]*LoadBalancer
+	if params.System != nil {
+		loadBalancers = newRealtimeLoadBalancers(params.Channels, params.ChannelLimiterManager)
+	}
+	return &RealtimeService{
+		Transport:           params.Transport,
+		Auth:                params.Auth,
+		Selector:            params.Selector,
+		Channels:            params.Channels,
+		Quota:               params.Quota,
+		Usage:               params.Usage,
+		Requests:            params.Requests,
+		System:              params.System,
+		LoadBalancers:       loadBalancers,
+		QuotaStatusProvider: params.QuotaStatusProvider,
+	}
+}
+
+func newRealtimeLoadBalancers(channels *biz.ChannelService, limiterManager *ChannelLimiterManager) map[string]*LoadBalancer {
+	selectionTracker := NewChannelRequestTracker()
+	rateLimitStrategy := NewRateLimitAwareStrategy(selectionTracker, limiterManager)
+
+	return map[string]*LoadBalancer{
+		biz.LoadBalancerStrategyAdaptive: NewLoadBalancer(channels, channels,
+			NewErrorAwareStrategy(),
+			NewWeightRoundRobinStrategy(),
+			NewLatencyAwareStrategy(),
+			rateLimitStrategy,
+		),
+		biz.LoadBalancerStrategyFailover: NewLoadBalancer(nil, channels,
+			NewWeightStrategy(),
+			NewRandomStrategy(),
+			rateLimitStrategy,
+		),
+		biz.LoadBalancerStrategyCircuitBreaker: NewLoadBalancer(nil, channels,
+			NewWeightStrategy(),
+			NewModelAwareCircuitBreakerStrategy(biz.NewModelCircuitBreaker()),
+			rateLimitStrategy,
+		),
+		biz.LoadBalancerStrategyRoundRobin: NewLoadBalancer(channels, channels,
+			NewRoundRobinStrategy(),
+			rateLimitStrategy,
+		).WithoutWeightTieBreaker().WithRoundRobinHealthFilter(NewRoundRobinHealthStrategy()),
+	}
 }
 
 func (c *RealtimeConversation) WithContext(ctx context.Context) { c.ctx = ctx }

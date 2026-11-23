@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -25,6 +26,27 @@ import (
 	"github.com/looplj/axonhub/llm"
 	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 )
+
+func TestRealtimeCandidateSelectionAppliesConfiguredLoadBalancer(t *testing.T) {
+	ctx, db := setupTest(t)
+	system := newTestSystemService(db)
+	key := &ent.APIKey{}
+	selector := &staticChannelSelector{candidates: []*ChannelModelsCandidate{
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, OrderingWeight: 10}}, ModelRoutingPolicy: &ModelRoutingPolicy{LoadBalancerStrategy: biz.LoadBalancerStrategyRoundRobin}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, OrderingWeight: 90}}, ModelRoutingPolicy: &ModelRoutingPolicy{LoadBalancerStrategy: biz.LoadBalancerStrategyRoundRobin}},
+	}}
+	service := &RealtimeService{
+		Selector: selector,
+		System:   system,
+		LoadBalancers: map[string]*LoadBalancer{
+			biz.LoadBalancerStrategyRoundRobin: NewLoadBalancer(nil, nil, NewWeightStrategy()),
+		},
+	}
+
+	candidates, err := service.selectCandidates(ctx, key, "voice")
+	require.NoError(t, err)
+	require.Equal(t, 2, candidates[0].Channel.ID)
+}
 
 func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	ctx, db := setupTest(t)
@@ -53,7 +75,8 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	channels.PreloadModelPricesForTest(ctx, built)
 	channels.SetEnabledChannelsForTest([]*biz.Channel{built})
 	system := newTestSystemService(db)
-	service := &RealtimeService{Channels: channels, Selector: NewDefaultSelector(channels, newTestModelService(db), system), Usage: biz.NewUsageLogService(db, system, channels)}
+	defaultSelector := NewDefaultSelector(channels, newTestModelService(db), system)
+	service := &RealtimeService{Channels: channels, Selector: defaultSelector, Usage: biz.NewUsageLogService(db, system, channels)}
 	_, err = service.Prepare(context.Background(), "voice", false)
 	require.Error(t, err)
 	ctx = contexts.WithAPIKey(ctx, key)
@@ -80,7 +103,7 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	require.Equal(t, "/custom/chat", db.Channel.GetX(ctx, row.ID).Endpoints[0].Path)
 
 	built.Settings.Realtime.Enabled = false
-	chatCandidates, err = service.Selector.selectChannelCadidates(ctx, &llm.Request{Model: actual, RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIChatCompletion})
+	chatCandidates, err = defaultSelector.selectChannelCadidates(ctx, &llm.Request{Model: actual, RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIChatCompletion})
 	require.NoError(t, err)
 	require.Len(t, chatCandidates, 1)
 	require.Equal(t, llm.APIFormatOpenAIChatCompletion.String(), chatCandidates[0].APIFormat)
@@ -90,7 +113,7 @@ func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	_, err = service.PrepareTranslation(ctx, "voice")
 	require.ErrorIs(t, err, biz.ErrInvalidModel, "translation route excludes ordinary realtime models")
 	httpRequest := &llm.Request{Model: openairt.TranslationModel, RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIChatCompletion}
-	translationChat, err := service.Selector.selectChannelCadidates(ctx, httpRequest)
+	translationChat, err := defaultSelector.selectChannelCadidates(ctx, httpRequest)
 	require.NoError(t, err)
 	require.Empty(t, translationChat, "ordinary HTTP cannot select the translation model even when the channel has built-in chat endpoints")
 	require.Empty(t, SelectAPIFormat([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIRealtimeWebSocket.String()}}, httpRequest))
