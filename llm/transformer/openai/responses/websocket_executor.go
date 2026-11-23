@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -37,7 +36,7 @@ const (
 	webSocketAccountIDHeader  = "Chatgpt-Account-Id"
 	webSocketOriginatorHeader = "Originator"
 	webSocketUserAgentHeader  = "User-Agent"
-	webSocketOrgHeader        = "OpenAI-Organization"
+	webSocketOrgHeader        = "Openai-Organization"
 	webSocketProjectHeader    = "OpenAI-Project"
 	// OpenAI limits Responses WebSocket connections to 60 minutes. The
 	// Codex store=false path depends on connection-local state: real upstream
@@ -525,7 +524,6 @@ type webSocketLease struct {
 }
 
 func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header, payload map[string]any) (*webSocketLease, error) {
-	originalPayload := clonePayloadMap(payload)
 	lease, err := e.acquire(ctx, request, wsURL, headers)
 	if err != nil {
 		return nil, err
@@ -534,23 +532,8 @@ func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *h
 	lease.native = shared.IsResponsesWebSocket(ctx)
 	if err := prepareWebSocketPayloadForLease(payload, lease); err != nil {
 		lease.release(true)
-		var reconnectErr *webSocketReconnectRequiredError
-		if !errors.As(err, &reconnectErr) {
-			return nil, err
-		}
-
-		restorePayloadMap(payload, originalPayload)
-		lease, err = e.acquire(ctx, request, wsURL, headers)
-		if err != nil {
-			return nil, err
-		}
-		lease.native = shared.IsResponsesWebSocket(ctx)
-		if err := prepareWebSocketPayloadForLease(payload, lease); err != nil {
-			lease.release(true)
-			return nil, err
-		}
+		return nil, err
 	}
-	lease.native = shared.IsResponsesWebSocket(ctx)
 	if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
 		origin := attempt.Origin()
 		if explicitPreviousResponseID(payload) != "" && origin.Generation != 0 && origin.Generation != lease.generation {
@@ -571,26 +554,6 @@ func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *h
 	}
 
 	return lease, nil
-}
-
-func clonePayloadMap(payload map[string]any) map[string]any {
-	if payload == nil {
-		return nil
-	}
-	clone := make(map[string]any, len(payload))
-	for key, value := range payload {
-		clone[key] = value
-	}
-	return clone
-}
-
-func restorePayloadMap(payload, original map[string]any) {
-	for key := range payload {
-		delete(payload, key)
-	}
-	for key, value := range original {
-		payload[key] = value
-	}
 }
 
 func (e *WebSocketExecutor) acquire(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header) (*webSocketLease, error) {
@@ -1071,12 +1034,6 @@ func toWebSocketURL(rawURL string) (string, error) {
 	return u.String(), nil
 }
 
-type webSocketReconnectRequiredError struct{}
-
-func (e *webSocketReconnectRequiredError) Error() string {
-	return "websocket session context changed; reconnect and send full context"
-}
-
 func prepareWebSocketPayloadForLease(payload map[string]any, lease *webSocketLease) error {
 	if explicitID := explicitPreviousResponseID(payload); explicitID != "" {
 		if lease == nil || lease.pooled == nil || !lease.reused {
@@ -1104,7 +1061,7 @@ func prepareWebSocketPayloadForLease(payload map[string]any, lease *webSocketLea
 	if !ok {
 		return nil
 	}
-	if !lease.native && (lease.owner == nil || rawMessagesSize(fullInput) <= lease.owner.maxRetainedInput) {
+	if lease.owner == nil || rawMessagesSize(fullInput) <= lease.owner.maxRetainedInput {
 		lease.nextFullInput = fullInput
 	}
 
@@ -1112,22 +1069,15 @@ func prepareWebSocketPayloadForLease(payload map[string]any, lease *webSocketLea
 	if !lease.reused || previousResponseID == "" {
 		return nil
 	}
-	if explicitID := explicitPreviousResponseID(payload); explicitID != "" {
-		if explicitID != previousResponseID {
-			return &webSocketReconnectRequiredError{}
-		}
-
-		// Native WebSocket clients send only the new input together with the
-		// response ID returned on this connection. Preserve that delta as-is.
-		return nil
-	}
 	if len(previousInput) == 0 {
 		return nil
 	}
 
 	suffix, ok := inputSuffix(previousInput, fullInput)
-	if !ok || len(suffix) == 0 || suffixStartsWithResponseOutput(suffix) {
-		return &webSocketReconnectRequiredError{}
+	if !ok || suffixStartsWithResponseOutput(suffix) {
+		// This is independent of the retained turn. Use the full input on
+		// the existing socket without adding a previous_response_id.
+		return nil
 	}
 
 	payload["input"] = suffix
