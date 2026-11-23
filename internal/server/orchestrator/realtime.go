@@ -216,7 +216,19 @@ func (s *RealtimeService) ReleaseRealtimeProbe(target *RealtimeTarget) {
 }
 
 func (s *RealtimeService) RecordRealtimeSuccess(ctx context.Context, target *RealtimeTarget) {
-	if s.modelCircuitBreaker == nil || target == nil || !target.CircuitBreakerEnabled || target.Channel == nil {
+	s.RecordRealtimeSuccessAt(ctx, target, time.Now())
+}
+
+func (s *RealtimeService) RecordRealtimeSuccessAt(ctx context.Context, target *RealtimeTarget, started time.Time) {
+	if target == nil || target.Channel == nil {
+		return
+	}
+	if s.Channels != nil {
+		perf := newRealtimePerformanceRecord(target, started)
+		perf.MarkSuccess()
+		s.Channels.RecordRealtimePerformance(ctx, perf)
+	}
+	if s.modelCircuitBreaker == nil || !target.CircuitBreakerEnabled {
 		return
 	}
 	s.ReleaseRealtimeProbe(target)
@@ -224,12 +236,31 @@ func (s *RealtimeService) RecordRealtimeSuccess(ctx context.Context, target *Rea
 }
 
 func (s *RealtimeService) RecordRealtimeFailure(ctx context.Context, target *RealtimeTarget) {
-	if s.modelCircuitBreaker == nil || target == nil || !target.CircuitBreakerEnabled || target.Channel == nil {
+	s.RecordRealtimeFailureAt(ctx, target, time.Now())
+}
+
+func (s *RealtimeService) RecordRealtimeFailureAt(ctx context.Context, target *RealtimeTarget, started time.Time) {
+	if target == nil || target.Channel == nil {
+		return
+	}
+	if s.Channels != nil {
+		perf := newRealtimePerformanceRecord(target, started)
+		perf.MarkFailed(0)
+		s.Channels.RecordRealtimePerformance(ctx, perf)
+	}
+	if s.modelCircuitBreaker == nil || !target.CircuitBreakerEnabled {
 		return
 	}
 	wasProbe := target.CircuitBreakerProbe
 	s.ReleaseRealtimeProbe(target)
 	s.modelCircuitBreaker.RecordError(ctx, target.Channel.ID, target.RoutingModel, wasProbe)
+}
+
+func newRealtimePerformanceRecord(target *RealtimeTarget, started time.Time) *biz.PerformanceRecord {
+	if started.IsZero() {
+		started = time.Now()
+	}
+	return &biz.PerformanceRecord{ChannelID: target.Channel.ID, StartTime: started}
 }
 
 func (s *RealtimeService) realtimeCandidateRoutes(ctx context.Context, candidate *ChannelModelsCandidate, native, translation bool) []realtimeCandidateRoute {
@@ -1036,10 +1067,10 @@ func (c *RealtimeConversation) finishResponse(data []byte, id string) error {
 	response.auditFinalized = true
 	switch status {
 	case request.StatusCompleted:
-		c.service.RecordRealtimeSuccess(billingCtx, c.target)
+		c.service.RecordRealtimeSuccessAt(billingCtx, c.target, response.started)
 		c.circuitBreakerFailureRecorded = false
 	case request.StatusFailed:
-		c.service.RecordRealtimeFailure(billingCtx, c.target)
+		c.service.RecordRealtimeFailureAt(billingCtx, c.target, response.started)
 		c.circuitBreakerFailureRecorded = true
 	}
 	return nil
@@ -1277,7 +1308,7 @@ func (c *RealtimeConversation) RecordSessionEnd(result error) {
 	code, reason := rt.CloseStatus(result)
 	c.closeStats = &realtimeCloseStats{time.Since(c.started).Milliseconds(), code, reason, rt.IsAbnormal(result)}
 	if reason == "upstream_unavailable" && !c.circuitBreakerFailureRecorded {
-		c.service.RecordRealtimeFailure(context.WithoutCancel(c.ctx), c.target)
+		c.service.RecordRealtimeFailureAt(context.WithoutCancel(c.ctx), c.target, c.started)
 	}
 }
 

@@ -73,6 +73,27 @@ func TestRealtimeCircuitBreakerRecordsUpstreamFailuresAndSuccesses(t *testing.T)
 	require.Equal(t, biz.StateClosed, stats.State)
 }
 
+func TestRealtimeOutcomesFeedLoadBalancerMetrics(t *testing.T) {
+	ctx, db := setupTest(t)
+	channels := newTestChannelServiceForChannels(db)
+	service := &RealtimeService{Channels: channels}
+	start := time.Now().Add(-250 * time.Millisecond)
+	target := &RealtimeTarget{Channel: &biz.Channel{Channel: &ent.Channel{ID: 18}}}
+
+	service.RecordRealtimeFailureAt(ctx, target, start)
+	metrics, err := channels.GetChannelMetrics(ctx, target.Channel.ID)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, metrics.FailureCount)
+	require.EqualValues(t, 1, metrics.ConsecutiveFailures)
+
+	service.RecordRealtimeSuccessAt(ctx, target, time.Now().Add(-500*time.Millisecond))
+	metrics, err = channels.GetChannelMetrics(ctx, target.Channel.ID)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, metrics.SuccessCount)
+	require.Zero(t, metrics.ConsecutiveFailures)
+	require.Greater(t, metrics.NonStreamingLatencyEWMA, float64(0), "turn latency must feed the adaptive load balancer")
+}
+
 func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {
 	ctx, db := setupTest(t)
 	project := db.Project.Create().SetName("route-project").SaveX(ctx)

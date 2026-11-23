@@ -495,7 +495,7 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 				evaluateRealtimeAPIKeyFailure(ctx, h.service.Channels, target, upstreamStatus, failureMessage)
 			}
 			if !errors.Is(setup.DialErr, context.Canceled) {
-				h.service.RecordRealtimeFailure(ctx, target)
+				h.service.RecordRealtimeFailureAt(ctx, target, attemptStarted)
 			}
 			release()
 			h.recordConnectionFailure(ctx, target, errorCode, message, attemptStarted)

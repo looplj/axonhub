@@ -25,7 +25,6 @@ export function isRealtimeQuickModel(model: string): boolean {
 }
 
 export const OPENAI_REALTIME_HOST = 'wss://api.openai.com';
-export const DEFAULT_QWEN_REALTIME_HOST = 'wss://llm-<workspace-id>.cn-beijing.maas.aliyuncs.com';
 export const DEFAULT_REALTIME_HANDSHAKE_TIMEOUT_MS = 15000;
 const qwenRealtimeHostPattern = /^wss:\/\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:cn-beijing|ap-southeast-1)\.maas\.aliyuncs\.com\/?$/i;
 
@@ -39,7 +38,7 @@ export function getRealtimeClientEventsPerSecondInputValue(limit: number | null 
 
 export function getChannelBaseURLInputValue(format: string, channelBaseURL: string | null | undefined, qwenRealtimeHost: string): string {
   if (format === 'openai/realtime-ws') return qwenRealtimeHost && !qwenRealtimeHostPattern.test(qwenRealtimeHost) ? qwenRealtimeHost : OPENAI_REALTIME_HOST;
-  if (format === 'qwen/realtime-ws') return qwenRealtimeHostPattern.test(qwenRealtimeHost) ? qwenRealtimeHost : DEFAULT_QWEN_REALTIME_HOST;
+  if (format === 'qwen/realtime-ws') return qwenRealtimeHost;
   return channelBaseURL ?? '';
 }
 
