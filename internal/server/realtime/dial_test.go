@@ -7,7 +7,10 @@ package realtime
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -40,4 +43,24 @@ func TestHandshakeErrorRetainsDeadlineCauseWithoutExposingIt(t *testing.T) {
 	err := &HandshakeError{Status: 0, Cause: context.DeadlineExceeded}
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	require.NotContains(t, err.Error(), "context deadline exceeded")
+}
+
+func TestHandshakeFailureReasonPreservesProviderKeywordsWithoutExposingCredentials(t *testing.T) {
+	providerKey := "sk-provider-secret-value"
+	body := `{"error":{"code":"invalid_api_key","message":"Invalid API key: ` + providerKey + `"}}`
+	response := &http.Response{Body: io.NopCloser(strings.NewReader(body))}
+
+	reason := handshakeFailureReason(response, providerKey)
+	require.Contains(t, reason, "invalid_api_key")
+	require.Contains(t, reason, "Invalid API key")
+	require.NotContains(t, reason, providerKey)
+	require.LessOrEqual(t, len([]rune(reason)), maxHandshakeFailureReasonRunes)
+}
+
+func TestHandshakeFailureReasonTruncatesProviderText(t *testing.T) {
+	response := &http.Response{Body: io.NopCloser(strings.NewReader(strings.Repeat("provider failure ", 100)))}
+
+	reason := handshakeFailureReason(response, "")
+	require.Contains(t, reason, "provider failure")
+	require.LessOrEqual(t, len([]rune(reason)), maxHandshakeFailureReasonRunes)
 }

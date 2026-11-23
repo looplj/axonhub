@@ -54,13 +54,14 @@ func TestRealtimeHandshakeFailureAppliesAutoDisableToSelectedChannelKey(t *testi
 	contexts.WithChannelAPIKey(ctx, "selected-provider-key")
 	recorder := &realtimeAPIKeyFailureRecorder{}
 	target := &orchestrator.RealtimeTarget{Channel: &biz.Channel{Channel: &ent.Channel{ID: 17}}}
+	handshake := &rt.HandshakeError{Status: http.StatusUnauthorized, FailureReason: "invalid_api_key: provider rejected the credential"}
 
-	evaluateRealtimeAPIKeyFailure(ctx, recorder, target, http.StatusUnauthorized, "upstream handshake rejected")
+	evaluateRealtimeAPIKeyFailure(ctx, recorder, target, http.StatusUnauthorized, realtimeAPIKeyFailureMessage(handshake, "upstream handshake rejected"))
 
 	require.Equal(t, 17, recorder.channelID)
 	require.Equal(t, "selected-provider-key", recorder.apiKey)
 	require.Equal(t, http.StatusUnauthorized, recorder.status)
-	require.Equal(t, "upstream handshake rejected", recorder.message)
+	require.Equal(t, "invalid_api_key: provider rejected the credential", recorder.message)
 }
 
 func TestRealtimeReconcileBoundaryRejectsNonOwner(t *testing.T) {

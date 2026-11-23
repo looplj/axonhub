@@ -491,7 +491,8 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 				upstreamStatus = handshake.Status
 			}
 			if upstreamStatus > 0 {
-				evaluateRealtimeAPIKeyFailure(ctx, h.service.Channels, target, upstreamStatus, message)
+				failureMessage := realtimeAPIKeyFailureMessage(setup.DialErr, message)
+				evaluateRealtimeAPIKeyFailure(ctx, h.service.Channels, target, upstreamStatus, failureMessage)
 			}
 			if !errors.Is(setup.DialErr, context.Canceled) {
 				h.service.RecordRealtimeFailure(ctx, target)
@@ -628,6 +629,13 @@ func evaluateRealtimeAPIKeyFailure(ctx context.Context, channels realtimeAPIKeyF
 		return
 	}
 	channels.EvaluateAPIKeyRulesForFailure(ctx, target.Channel.ID, key, status, message)
+}
+
+func realtimeAPIKeyFailureMessage(err error, fallback string) string {
+	if handshake, ok := errors.AsType[*rt.HandshakeError](err); ok && handshake.FailureReason != "" {
+		return handshake.FailureReason
+	}
+	return fallback
 }
 
 func realtimeClientLabel(r *http.Request) string {

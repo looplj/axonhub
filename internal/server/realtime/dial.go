@@ -14,14 +14,21 @@ package realtime
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
+	"slices"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/gorilla/websocket"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -69,6 +76,7 @@ func Dial(ctx context.Context, target, key string, proxy *httpclient.ProxyConfig
 		headers.Set("Openai-Safety-Identifier", safetyIdentifier[0])
 	}
 	conn, response, err := d.DialContext(ctx, target, headers)
+	failureReason := handshakeFailureReason(response, key)
 	if response != nil && response.Body != nil {
 		response.Body.Close()
 	}
@@ -77,7 +85,7 @@ func Dial(ctx context.Context, target, key string, proxy *httpclient.ProxyConfig
 		if response != nil {
 			status = response.StatusCode
 		}
-		return nil, &HandshakeError{Status: status, Cause: err}
+		return nil, &HandshakeError{Status: status, FailureReason: failureReason, Cause: err}
 	}
 	return conn, nil
 }
@@ -132,8 +140,9 @@ func (SecureDialer) Connect(ctx context.Context, target, key string, proxy *http
 
 // HandshakeError retains the HTTP status and a safe cause, never provider headers/body or URLs.
 type HandshakeError struct {
-	Status int
-	Cause  error
+	Status        int
+	FailureReason string
+	Cause         error
 }
 
 func (e *HandshakeError) Error() string {
@@ -144,3 +153,60 @@ func (e *HandshakeError) Error() string {
 }
 
 func (e *HandshakeError) Unwrap() error { return e.Cause }
+
+const (
+	maxHandshakeFailureBodyBytes   = 8 << 10
+	maxHandshakeFailureReasonRunes = 256
+)
+
+var (
+	handshakeSecretAssignment = regexp.MustCompile(`(?i)\b(authorization|api[_ -]?key|token|secret)\b(\s*[:=]\s*)([^,\s;"'}]+)`)
+	handshakeBearerCredential = regexp.MustCompile(`(?i)\bBearer\s+[A-Za-z0-9._~+/-]+=*`)
+	handshakeAPIKeyPattern    = regexp.MustCompile(`\b(?:sk|rk|pk)-[A-Za-z0-9_-]{12,}\b`)
+	handshakeBase64Pattern    = regexp.MustCompile(`[A-Za-z0-9+/=_-]{48,}`)
+)
+
+// handshakeFailureReason retains only bounded error fields for internal API
+// key auto-disable matching. HandshakeError.Error and logs remain generic.
+func handshakeFailureReason(response *http.Response, apiKey string) string {
+	if response == nil || response.Body == nil {
+		return ""
+	}
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxHandshakeFailureBodyBytes))
+	if err != nil || len(body) == 0 {
+		return ""
+	}
+
+	parts := make([]string, 0, 2)
+	for _, path := range []string{"error.code", "error.message", "code", "message"} {
+		value := strings.TrimSpace(gjson.GetBytes(body, path).String())
+		if value != "" && !slices.Contains(parts, value) {
+			parts = append(parts, value)
+		}
+	}
+	if len(parts) == 0 && !json.Valid(body) {
+		parts = append(parts, string(body))
+	}
+	return sanitizeHandshakeFailureReason(strings.Join(parts, ": "), apiKey)
+}
+
+func sanitizeHandshakeFailureReason(reason, apiKey string) string {
+	if apiKey != "" {
+		reason = strings.ReplaceAll(reason, apiKey, "[redacted]")
+	}
+	reason = handshakeSecretAssignment.ReplaceAllString(reason, "$1$2[redacted]")
+	reason = handshakeBearerCredential.ReplaceAllString(reason, "Bearer [redacted]")
+	reason = handshakeAPIKeyPattern.ReplaceAllString(reason, "[redacted]")
+	reason = handshakeBase64Pattern.ReplaceAllString(reason, "[redacted]")
+	reason = strings.Map(func(char rune) rune {
+		if unicode.IsControl(char) {
+			return ' '
+		}
+		return char
+	}, reason)
+	runes := []rune(strings.Join(strings.Fields(reason), " "))
+	if len(runes) > maxHandshakeFailureReasonRunes {
+		runes = runes[:maxHandshakeFailureReasonRunes]
+	}
+	return string(runes)
+}
