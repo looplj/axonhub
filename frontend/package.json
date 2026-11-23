@@ -61,7 +61,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.14.26",
     "@vvo/tzdb": "^6.204.0",
-    "@xyflow/react": "^12.12.1",
+    "@xyflow/react": "^13.0.2",
     "ai": "^7.0.172",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
