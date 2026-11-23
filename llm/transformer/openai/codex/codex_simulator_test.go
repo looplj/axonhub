@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -67,6 +68,47 @@ func TestCodexOutbound_MinimalIdentityHeaders(t *testing.T) {
 	assert.Equal(t, "Bearer "+accessToken, finalReq.Header.Get("Authorization"))
 	assert.Equal(t, "legacy-conversation", finalReq.Header.Get("Conversation_id"))
 	assert.Equal(t, "9.9.9", finalReq.Header.Get("Version"))
+}
+
+func TestCodexOutbound_GuardianHeaders(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		baseURL      string
+		accessToken  string
+		model        string
+		wantGuardian bool
+	}{
+		{name: "subscription review", accessToken: testAccessTokenWithAccountID(t), model: AutoReviewModel, wantGuardian: true},
+		{name: "subscription chat", accessToken: testAccessTokenWithAccountID(t), model: "gpt-6-luna"},
+		{name: "API key", accessToken: "sk-test", model: AutoReviewModel},
+		{name: "compatible relay", baseURL: "https://relay.example/v1", accessToken: testAccessTokenWithAccountID(t), model: AutoReviewModel},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			outbound, err := NewOutboundTransformer(Params{
+				BaseURL: tc.baseURL,
+				TokenProvider: staticTokenGetter{
+					creds: &oauth.OAuthCredentials{AccessToken: tc.accessToken},
+				},
+			})
+			require.NoError(t, err)
+
+			sim := simulator.NewSimulator(openai.NewInboundTransformer(), outbound)
+			body := `{"model":"` + tc.model + `","messages":[{"role":"user","content":"Review this action."}]}`
+			req, err := http.NewRequest(http.MethodPost, "http://localhost:8090/v1/chat/completions", strings.NewReader(body))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			finalReq, err := sim.Simulate(context.Background(), req)
+			require.NoError(t, err)
+			if tc.wantGuardian {
+				assert.Equal(t, "reviewer", finalReq.Header.Get("X-Codex-Guardian"))
+				assert.Equal(t, "guardian", finalReq.Header.Get("X-Openai-Subagent"))
+			} else {
+				assert.Empty(t, finalReq.Header.Get("X-Codex-Guardian"))
+				assert.Empty(t, finalReq.Header.Get("X-Openai-Subagent"))
+			}
+		})
+	}
 }
 
 // TestCodexOutbound_AllowsInboundOriginatorOverride pins the identity override
