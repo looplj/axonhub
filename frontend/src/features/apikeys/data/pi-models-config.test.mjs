@@ -219,3 +219,9 @@ test('serialized config sorts keys and ends with a newline', () => {
   ]);
   assert.equal(JSON.parse(text).providers.axonhub.models[0].id, 'qwen3.8-flash');
 });
+
+test('Pi omits the cost block when an imported reference price is missing', () => {
+  const model = buildModel({ modelID: 'partial', card: { cost: { input: 1, output: 3, cacheRead: 0, cacheWrite: 0 } } });
+  model.missingReferencePrices = ['cacheWrite'];
+  assert.equal(buildConfig([model]).providers.axonhub.models[0].cost, undefined);
+});

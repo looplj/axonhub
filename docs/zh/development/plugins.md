@@ -8,6 +8,7 @@ AxonHub 插件是一个 `.axplugin` 压缩包。Owner 在「插件」页（`/plu
 
 - **事件。** 导出 `onEvent`，并在 `events` 里声明下面 8 种开放事件中的若干种。
 - **请求钩子。** `onRequest` 每个请求调用一次，位于配额检查、模型权限检查、模型映射和选路之前。`onAttempt` 在每次匹配的上游尝试时接收目标协议的 JSON body，位于协议转换、pass-through 和 body 适配之后，渠道 override 之前。`onAttempt` 的改写只作用于这一次尝试。
+- **服务端中间件。** `server.middleware` 在网关 API Key 鉴权后、解析 thread 和 trace 前执行。
 - **页面。** `ui.pages` 的每一项是侧栏入口，也是一整页 iframe。
 - **插件 KV。** `ctx.kv` 和页面上的 GraphQL KV 字段读写同一批记录。键属于这一次安装。
 - **宿主代发的请求。** `plugin.js` 里用 `ctx.fetch`，页面里用 `axonhub.fetch`。目标必须匹配已授予的 `network` 规则。
@@ -105,7 +106,7 @@ export function onEvent(ctx, event) {
 
 ```text
 manifest.json
-plugin.js          可选；声明了 events 或 hooks 时必须有
+plugin.js          可选；声明了 events、hooks 或 server.middleware 时必须有
 ui/**              html、js、css、svg、png、woff2
 ```
 
@@ -151,14 +152,16 @@ go run -C cmd/pack-plugin . ../../plugins/examples/<name>
 | `pluginApiVersion` | 是 | `1` |
 | `permissions` | 否 | 取下面的权限名。省略为 `[]` |
 | `network` | 否 | 最多 32 条。省略为 `[]` |
+| `tasks` | 否 | 见下文的定时任务 |
 | `events` | 否 | 取上面 8 种事件名。非空时必须 `export function onEvent` |
 | `hooks.request` | 否 | 对象：enabled 必填；true 时 requestTypes 必须非空且导出 onRequest；false 保留配置但不执行 |
 | `hooks.attempt` | 否 | 对象：enabled 必填；true 时 apiFormats 必须非空且导出 onAttempt；false 保留配置但不执行 |
+| `server.middleware` | 否 | `{ "handler": "namedExport" }` 对象数组，按声明顺序执行。每个 handler 必须是 `plugin.js` 中不同的命名函数导出 |
 | `configSchema` | 否 | JSON Schema 对象，见下文 |
 | `ui.pages` | 否 | 侧栏页面，见下文 |
 | `ui.actions` | 否 | 全局工具栏操作，点击打开插件弹窗 |
 
-已开放的权限：`read_channels`、`read_requests`、`read_dashboard`、`read_api_keys`、`read_projects`、`read_settings`、`write_channels`、`webhook`。出站 URL 写在 `network`。`read_plugins` 和 `write_plugins` 是用户 scope，不是插件权限。KV 不占用权限。
+已开放的权限：`read_channels`、`read_requests`、`read_dashboard`、`read_api_keys`、`read_projects`、`read_settings`、`write_channels`、`webhook`、`sql`。出站 URL 写在 `network`。`read_plugins` 和 `write_plugins` 是用户 scope，不是插件权限。KV 不占用权限。
 
 一条 `network` 规则要么是精确的 `https` URL，要么是 `{ "regex": "^https://api\\.example\\.com/v1/items/[0-9]+$" }`。精确 URL 必须带 path，不能有 userinfo、query 或 fragment，并且只匹配这条 path。正则对去掉 query 和 fragment 后的 URL 做全匹配，最长 256 个字符。实际请求仍可以带 query。宿主不跟随重定向；301、302、303、307、308 会使 `ctx.fetch` 和 `axonhub.fetch` 以 `INVALID_STATE` 拒绝 Promise。
 
@@ -245,6 +248,81 @@ pass-through 会覆盖 onRequest 的非 model 改写，宿主记录 overriddenBy
 
 ctx.request 使用 camelCase：projectId、apiKeyId、model、requestType、apiFormat，值来自进入中间件时；Playground 的 apiKeyId 为 null。ctx.attempt 仅在 onAttempt 提供 channel（id、name、type）、实际 model 和出站 apiFormat，不含凭证。body 不一定含 model；从 ctx.attempt.model 读取实际模型。插件无法通过此接口修改 URL、方法、HTTP 头或凭证。
 
+## 定时任务与动态 SQL
+
+manifest 可声明定时任务和 `sql` 权限。下面展示这两个字段及其 JS 入口。
+
+```json
+{
+  "permissions": ["sql"],
+  "tasks": {
+    "daily-count": {
+      "schedule": { "cron": "0 2 * * *", "timezone": "Asia/Shanghai" }
+    }
+  }
+}
+```
+
+```js
+export function onTask(ctx, run) {
+  if (run.key !== "daily-count") return;
+  const end = run.scheduledAt ?? new Date().toISOString();
+  const start = new Date(Date.parse(end) - 86_400_000).toISOString();
+  const placeholder = ctx.sql.dialect === "postgres" ? "$1" : "?";
+  const { rows } = ctx.sql.query(
+    "SELECT COUNT(*) AS total FROM requests WHERE created_at >= " + placeholder,
+    [start]
+  );
+  ctx.log.info("Request count", { total: rows[0][0] });
+}
+```
+
+### 定时任务
+
+一个插件最多声明 16 个任务。`tasks` 的对象键是任务标识。`schedule` 需要五段 `cron`，并可指定 IANA `timezone`（默认 UTC）。宿主调用 `onTask(ctx, { key, runId, trigger, scheduledAt })`。`trigger` 为 `scheduled` 或 `manual`，手动执行时 `scheduledAt` 为 `null`。
+
+在插件详情中可查看下次触发和最近 20 次执行结果。Owner 可以暂停自动触发、修改时间或立即执行。多个实例共用数据库领取记录。同一计划时刻最多领取一次，错过的分钟和上次执行尚未结束的触发会跳过。任务最多运行 30 秒。实例退出后的未完成执行会显示为「结果未知」。
+
+多副本部署请在所有实例升级后安装声明 `tasks` 的插件。
+
+### 动态 SQL
+
+Owner 授予 `sql` 后，`plugin.js` 可以使用 AxonHub **主数据库应用账号的全部 SQL 权限**，包括查询、写入和 DDL。它可以访问该账号可见的凭证和元数据。Owner 负责配置有此授权的插件，宿主在每次执行前复核当前启用状态和授权。
+
+`ctx.sql.query(statement, params?)` 返回 `{ columns, rows }`，每行是按列顺序排列的数组。`ctx.sql.exec(statement, params?)` 返回 `{ rowsAffected }`。两个方法共享同一个授权，接受运行时生成的 SQL 文本。数字、字符串、布尔值和 `null` 可作为绑定参数。超出 JS 安全整数范围的结果以十进制字符串返回，二进制结果以 Base64 返回。
+
+SQL 使用当前数据库方言及原生参数占位符。每次调用最多执行 10 秒，查询最多返回 1,000 行和 1 MiB。每次调用独立获取数据库连接，事务需要在同一次调用内完成。
+
+## 服务端中间件
+
+`server.middleware` 在网关 API Key 鉴权后、解析 thread 和 trace 前执行。OpenAI、Anthropic、Gemini、Codex 网关路由和 WebSocket 握手共用该入口。启用的插件按优先级执行，同一个插件内按 manifest 顺序执行。
+
+```json
+{
+  "server": {
+    "middleware": [{ "handler": "resolveSessionTrace" }]
+  }
+}
+```
+
+```js
+export function resolveSessionTrace(ctx, request) {
+  const sessionId = request.headers["x-deepseek-harness-session-id"]?.[0]?.trim()
+  if (sessionId) return { context: { axonhub: { traceId: sessionId } } }
+}
+```
+
+每个条目通过 `handler(ctx, request)` 调用 `plugin.js` 中的命名导出，可以使用 async 函数。请求快照包含 `method`、`path`、`headers`（小写头名映射到字符串数组），以及 `projectId` 和 `apiKeyId`（数字或 `null`）。路径省略 query。宿主过滤凭证头，请求体留给后续 API handler。
+
+返回 `undefined` 表示继续，也可以返回包含下列字段的对象。
+
+- `headers` 可包含 `set`（头名映射到非空字符串数组）和 `remove`（头名数组）。头名大小写不敏感，宿主先删除再替换，并保护凭证、转发和传输相关请求头。后续 handler 可读取修改后的值。
+- `context` 把命名空间映射到 JSON 对象。插件可以在自己的插件 ID 下写任意 JSON 字段，也可以在 `axonhub` 下提供 `threadId`、`traceId` 候选值。宿主去掉 ID 的首尾空白，限制为 255 字节并拒绝控制字符。插件自己的命名空间按字段合并，后写的值整体替换前值。宿主对每个 ID 采用首个非空候选值。显式追踪头优先，trace 的内置客户端识别也优先于候选值。之后的中间件和 LLM 钩子可以通过 `ctx.requestContext` 读取已提交的数据。
+
+宿主在应用前校验每次返回。单次结果和累积 context 各有 64 KiB 限制。整条链共享 25 ms 预算，包括等待 VM。抛错、Promise 拒绝、非法返回或超时会丢弃本次修改，预算耗尽后用已生效的修改继续处理请求。插件可以调用 `ctx.reject(status, message)` 结束请求，宿主返回 400、403 或 429 的网关 JSON 错误。中间件 handler 的 `ctx.state` 随本次调用结束而释放，跨钩子传递的数据通过返回的 `context` 提交。
+
+插件变更提交后刷新 handler 列表。已经获取快照的请求在该快照上完成中间件阶段，包括执行期间发生升级或停用的情况。
+
 ## ctx
 
 使用本次调用传入的 `ctx`。把 `ctx` 或其方法存进模块级绑定，下一次调用也不能拿来用。
@@ -256,11 +334,12 @@ ctx.request 使用 camelCase：projectId、apiKeyId、model、requestType、apiF
 | `ctx.kv.get` / `set` / `delete` / `list` | 本次安装的 KV。值是 UTF-8 字符串，最大 256 KiB。namespace 和 key 匹配 `^[A-Za-z0-9_.:-]{1,128}$`，namespace 默认 `default`。一次调用最多写 10 次，同一插件每分钟最多写 60 次。键不存在或已过期时 `get` 返回 `null`。`ttlSeconds` 为 `0` 或省略表示不过期。升级保留这些记录；删除后用同一个 id 再安装会从空存储开始 |
 | `ctx.fetch(url, init)` | 宿主代发的 HTTPS。返回 `{ status, headers, body }` 的 Promise。普通非 2xx 响应也会 resolve，由脚本看 `status`；301/302/303/307/308 会以 `INVALID_STATE` reject，不跟随重定向。没有全局 `fetch` |
 | `ctx.request` | 上面的请求元数据 |
+| `ctx.requestContext` | 已提交的服务端中间件元数据，存在时可读 |
 | `ctx.attempt` | 仅 `onAttempt` |
-| `ctx.state` | 本次请求、本插件的 JSON 对象。同一请求里的下一个钩子会看到已提交的对象，即使换了一台 VM |
-| `ctx.reject(status, message)` | 仅 `onRequest` |
+| `ctx.state` | 本次请求、本插件的 JSON 对象。`onRequest` 和 `onAttempt` 共享已提交的状态，即使换了一台 VM |
+| `ctx.reject(status, message)` | `onRequest` 和服务端中间件 |
 
-`ctx.state` 初始为 `{}`。钩子成功返回时提交，包括返回 `undefined`。抛错、超时、非法返回或 `ctx.reject` 会丢掉这次对 state 的修改。已经写入的 KV 不会撤回。
+`ctx.state` 初始为 `{}`。LLM 请求和尝试钩子成功返回时提交，包括返回 `undefined`。抛错、超时、非法返回或 `ctx.reject` 会丢掉这次对 state 的修改。已经写入的 KV 不会撤回。
 
 下面三项只在 `onEvent` 里提供：
 
@@ -532,15 +611,15 @@ Owner 启用插件时，授予的是 `permissions` 的子集和 `network` 的子
 
 ## 发布
 
-索引地址是 [https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json](https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json)。AxonHub 每次按这个 URL 拉取，所以改索引不用发新版本。示例插件不在市场里。
+AxonHub 读取[社区插件索引](https://raw.githubusercontent.com/looplj/axonhub-plugins/main/registry.json)。索引可以独立于 AxonHub 版本更新。开发示例放在 AxonHub 仓库。
 
-把 zip 发布到你自己的 HTTPS 地址，例如 GitHub Release。sha256 是 zip 原始字节的 64 位小写十六进制：
+需要集中打包和发版时，向 [axonhub-plugins](https://github.com/looplj/axonhub-plugins) 的 `plugins/` 提交源码。如果插件在独立仓库维护，把 zip 发布到 HTTPS 地址，例如 GitHub Release。对 zip 原始字节计算 `sha256`，使用 64 位小写十六进制：
 
 ```bash
 shasum -a 256 temperature-cap-1.0.0.axplugin
 ```
 
-要让它出现在市场里，向本仓库提交 PR，在 `plugins` 数组里加上一条插件。`versions` 里每一项都要有 `version`、`url`、`sha256` 和 `axonhubVersion`：
+要收录独立维护的插件，向 [axonhub-plugins](https://github.com/looplj/axonhub-plugins) 提交 PR，在 `external-plugins.json` 的 `plugins` 数组里添加条目。`versions` 里每一项都要有 `version`、`url`、`sha256` 和 `axonhubVersion`：
 
 ```json
 {
@@ -558,7 +637,7 @@ shasum -a 256 temperature-cap-1.0.0.axplugin
 }
 ```
 
-Hub 会核对下载字节和 `sha256`。没有发布者签名。
+AxonHub 根据索引核对下载包的 SHA-256、插件 ID 和版本。Owner 在启用时授予权限和网络访问。
 
 ## 示例
 
@@ -569,6 +648,7 @@ Hub 会核对下载字节和 `sha256`。没有发布者签名。
 | [Failover Guard](../../../plugins/examples/failover-guard/README.md) | `onEvent` 使用 `ctx.counter`、`ctx.axonhub.channels.disable` 和 `ctx.webhook.send` |
 | [Star 历史](../../../plugins/examples/star-history/README.md) | 页面通过 `axonhub.fetch` 访问已授予的 `network` 规则 |
 | [Temperature Cap](../../../plugins/examples/temperature-cap/README.md) | `onRequest` 按配置返回带 `temperature` 的完整请求 |
+| [DeepSeek Harness Session Trace](../../../plugins/examples/dsh-session-trace/README.md) | 用服务端中间件根据会话请求头提供 trace ID |
 
 ## 限制
 
@@ -578,4 +658,4 @@ Hub 会核对下载字节和 `sha256`。没有发布者签名。
 - `plugin.js` 最大 1 MiB。
 - `onEvent`、`onRequest`、`onAttempt` 单次调用 10 秒超时，已 `await` 的 `ctx.fetch` 算在里面。
 - 脚本出错时 fail-open：保持上一个请求，HTTP 状态不变。事件投递被丢掉。
-- 插件借不到 VM 时，请求返回 429 `plugin_overloaded`，并且不会发往上游。过载不会跳过这个钩子。
+- LLM 请求或尝试钩子借不到 VM 时，请求返回 429 `plugin_overloaded`，并且不会发往上游。服务端中间件使用上文的整条链预算。

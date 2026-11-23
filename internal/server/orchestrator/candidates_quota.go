@@ -252,6 +252,9 @@ func (s *QuotaRoutingSelector) Select(ctx context.Context, req *llm.Request) ([]
 	}
 
 	preferred, lastResort := s.gate.Filter(ctx, candidates, req, 0)
+	if pinned, remaining := extractStickyCandidate(preferred, guardianReviewParentChannelID(ctx)); pinned != nil {
+		preferred = append([]*ChannelModelsCandidate{pinned}, remaining...)
+	}
 	if len(lastResort) == 0 {
 		return preferred, nil
 	}

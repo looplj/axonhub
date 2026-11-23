@@ -67,10 +67,10 @@ func TestConvertModelToOpenAIExtended_CompleteData(t *testing.T) {
 	assert.Equal(t, 8192, result.ContextLength)
 	assert.Equal(t, 4096, result.MaxOutputTokens)
 	assert.NotNil(t, result.Pricing)
-	assert.Equal(t, 0.03, result.Pricing.Input)
-	assert.Equal(t, 0.06, result.Pricing.Output)
-	assert.Equal(t, 0.015, result.Pricing.CacheRead)
-	assert.Equal(t, 0.03, result.Pricing.CacheWrite)
+	assert.Equal(t, 0.03, *result.Pricing.Input)
+	assert.Equal(t, 0.06, *result.Pricing.Output)
+	assert.Equal(t, 0.015, *result.Pricing.CacheRead)
+	assert.Equal(t, 0.03, *result.Pricing.CacheWrite)
 	assert.Equal(t, "per_1m_tokens", result.Pricing.Unit)
 	assert.Equal(t, "USD", result.Pricing.Currency)
 }
@@ -91,4 +91,12 @@ func TestConvertModelToOpenAIExtended_NilRemark(t *testing.T) {
 	assert.Equal(t, "", result.Description)
 	assert.Nil(t, result.Capabilities)
 	assert.Nil(t, result.Pricing)
+}
+
+func TestConvertModelToOpenAIExtended_MissingPriceAndKnownZero(t *testing.T) {
+	result := convertModelToOpenAIExtended(&ent.Model{ModelCard: &objects.ModelCard{CatalogPrices: map[string]objects.CatalogPrice{"input": {Missing: true}}}}, nil)
+	assert.Nil(t, result.Pricing.Input)
+	if assert.NotNil(t, result.Pricing.Output) {
+		assert.Zero(t, *result.Pricing.Output)
+	}
 }

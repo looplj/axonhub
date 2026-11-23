@@ -66,6 +66,7 @@ var pluginPermissionGates = []permissionGate{
 	{name: "read_settings", open: true},
 	{name: "write_channels", open: true},
 	{name: "webhook", open: true},
+	{name: permSQL, open: true},
 	{name: "fetch", message: errFetchNotEnabled},
 }
 
@@ -146,6 +147,9 @@ func ValidateManifest(manifest *objects.PluginManifest, axonhubVersion string) e
 	if err := checkEvents(manifest.Events); err != nil {
 		return err
 	}
+	if err := validateTasks(manifest.Tasks); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -166,10 +170,29 @@ func DiffManifest(old, next *objects.PluginManifest) ManifestDiff {
 		Permissions: addedStrings(next.Permissions, old.Permissions),
 		Network:     addedStrings(next.NetworkGrants(), old.NetworkGrants()),
 		Events:      addedStrings(next.Events, old.Events),
-		Hooks:       addedHooks(old.Hooks, next.Hooks),
+		Hooks:       slices.Concat(addedHooks(old.Hooks, next.Hooks), addedServerMiddleware(old.Server, next.Server), changedTasks(old.Tasks, next.Tasks)),
 		Pages:       addedStrings(pageKeys(next.UI), pageKeys(old.UI)),
 		Actions:     addedActions(old.UI, next.UI),
 	}
+}
+
+func addedServerMiddleware(old, next *objects.PluginServerSpec) []string {
+	if next == nil {
+		return nil
+	}
+	existing := make(map[string]struct{})
+	if old != nil {
+		for _, entry := range old.Middleware {
+			existing[entry.Handler] = struct{}{}
+		}
+	}
+	var added []string
+	for _, entry := range next.Middleware {
+		if _, ok := existing[entry.Handler]; !ok {
+			added = append(added, "server.middleware: "+entry.Handler)
+		}
+	}
+	return added
 }
 
 // ConvergePermissions applies the upgrade grant rule.

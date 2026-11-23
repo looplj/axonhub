@@ -146,6 +146,46 @@ func (r *mutationResolver) DeletePlugin(ctx context.Context, id objects.GUID) (b
 	return true, nil
 }
 
+// UpdatePluginTask is the resolver for the updatePluginTask field.
+func (r *mutationResolver) UpdatePluginTask(ctx context.Context, id objects.GUID, key string, paused bool, cron *string, timezone *string) (*PluginTaskState, error) {
+	if err := requirePluginOwner(ctx); err != nil {
+		return nil, err
+	}
+	manager, err := r.pluginManagerOrErr()
+	if err != nil {
+		return nil, err
+	}
+	rowID, err := pluginRowID(id)
+	if err != nil {
+		return nil, err
+	}
+	state, err := manager.UpdateTask(ctx, rowID, key, paused, cron, timezone)
+	if err != nil {
+		return nil, err
+	}
+	return presentPluginTask(state), nil
+}
+
+// RunPluginTask is the resolver for the runPluginTask field.
+func (r *mutationResolver) RunPluginTask(ctx context.Context, id objects.GUID, key string) (*PluginTaskExecution, error) {
+	if err := requirePluginOwner(ctx); err != nil {
+		return nil, err
+	}
+	manager, err := r.pluginManagerOrErr()
+	if err != nil {
+		return nil, err
+	}
+	rowID, err := pluginRowID(id)
+	if err != nil {
+		return nil, err
+	}
+	run, err := manager.RunTask(ctx, rowID, key)
+	if err != nil {
+		return nil, err
+	}
+	return presentPluginTaskRun(run), nil
+}
+
 // SetPluginKv is the resolver for the setPluginKV field.
 func (r *mutationResolver) SetPluginKv(ctx context.Context, namespace *string, key string, value string, ttlSeconds *int) (*plugin.KVEntry, error) {
 	call, err := pluginCallFromContext(ctx)
@@ -229,6 +269,28 @@ func (r *queryResolver) PluginMarket(ctx context.Context) ([]*plugin.MarketEntry
 		return nil, err
 	}
 	return manager.MarketCatalog(ctx)
+}
+
+// PluginTasks is the resolver for the pluginTasks field.
+func (r *queryResolver) PluginTasks(ctx context.Context, id objects.GUID) ([]*PluginTaskState, error) {
+	if err := requirePluginRead(ctx); err != nil {
+		return nil, err
+	}
+	manager, err := r.pluginManagerOrErr()
+	if err != nil {
+		return nil, err
+	}
+	rowID, err := pluginRowID(id)
+	if err != nil {
+		return nil, err
+	}
+	states, err := manager.ListTasks(ctx, rowID)
+	if err != nil {
+		return nil, err
+	}
+	return lo.Map(states, func(state plugin.TaskState, _ int) *PluginTaskState {
+		return presentPluginTask(state)
+	}), nil
 }
 
 // PluginKv is the resolver for the pluginKV field.

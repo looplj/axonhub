@@ -8,6 +8,7 @@ An AxonHub plugin is a `.axplugin` zip. An owner uploads it under **Plugins** (`
 
 - **Events.** Export `onEvent` and list any of the eight open events in `events`.
 - **Request hooks.** `onRequest` runs once per request, before quota enforcement, model permission checks, model mapping, and routing. `onAttempt` receives the target protocol JSON body on each matching attempt, after protocol conversion, pass-through, and body adaptation, before channel overrides. A change from `onAttempt` applies only to that attempt.
+- **Server middleware.** `server.middleware` handles gateway HTTP requests after API key authentication and before thread and trace resolution.
 - **Pages.** Each `ui.pages` entry is a sidebar item and a full-page iframe.
 - **Plugin KV.** `ctx.kv` and the page GraphQL KV fields read and write the same rows. Keys belong to this installation.
 - **Host-proxied fetch.** `ctx.fetch` in `plugin.js` and `axonhub.fetch` in a page send HTTP through the host. The URL must match a granted `network` rule.
@@ -105,7 +106,7 @@ A `.axplugin` file is a zip:
 
 ```text
 manifest.json
-plugin.js          optional; required when events or hooks are declared
+plugin.js          optional; required when events, hooks, or server.middleware are declared
 ui/**              html, js, css, svg, png, woff2
 ```
 
@@ -151,14 +152,16 @@ Fields use camelCase. A field that is not open is rejected at install and is not
 | `pluginApiVersion` | yes | `1` |
 | `permissions` | no | Names from the list below. Omitted means `[]` |
 | `network` | no | At most 32 rules. Omitted means `[]` |
+| `tasks` | No | See scheduled tasks below |
 | `events` | no | Names from the eight events above. A non-empty list requires `export function onEvent` |
 | `hooks.request` | no | Object: enabled is required; true requires non-empty requestTypes and an onRequest export; false keeps configuration without running it |
 | `hooks.attempt` | no | Object: enabled is required; true requires non-empty apiFormats and an onAttempt export; false keeps configuration without running it |
+| `server.middleware` | no | Array of `{ "handler": "namedExport" }` objects, in execution order. Each handler must be a distinct function exported from `plugin.js` |
 | `configSchema` | no | JSON Schema object, described below |
 | `ui.pages` | no | Sidebar pages, described below |
 | `ui.actions` | no | Global toolbar actions that open plugin dialogs |
 
-Open permissions: `read_channels`, `read_requests`, `read_dashboard`, `read_api_keys`, `read_projects`, `read_settings`, `write_channels`, `webhook`. Outbound URLs go in `network`. `read_plugins` and `write_plugins` are user scopes, not plugin permissions. KV is not a permission.
+Open permissions: `read_channels`, `read_requests`, `read_dashboard`, `read_api_keys`, `read_projects`, `read_settings`, `write_channels`, `webhook`, `sql`. Outbound URLs go in `network`. `read_plugins` and `write_plugins` are user scopes, not plugin permissions. KV is not a permission.
 
 A `network` entry is either an exact `https` URL or `{ "regex": "^https://api\\.example\\.com/v1/items/[0-9]+$" }`. An exact URL includes a path and no userinfo, query, or fragment, and it matches that path only. A regex is a full match, at most 256 characters, against the URL with query and fragment removed. The request may still carry a query. Redirects are not followed: statuses 301, 302, 303, 307, and 308 reject both `ctx.fetch` and `axonhub.fetch` Promises with `INVALID_STATE`.
 
@@ -245,6 +248,79 @@ Pass-through can overwrite non-model edits from onRequest, recorded in overridde
 
 ctx.request uses camelCase: projectId, apiKeyId, model, requestType, and apiFormat, captured at middleware entry; Playground uses a null apiKeyId. ctx.attempt exists only on onAttempt and includes channel (id, name, type), the actual model, and outbound apiFormat, with no credentials. The body need not contain model; read ctx.attempt.model instead. This interface does not expose URL, method, HTTP header, or credential edits.
 
+## Scheduled tasks and dynamic SQL
+
+A manifest can declare scheduled tasks and the `sql` permission. This example shows the two fields and their JavaScript entry point.
+
+```json
+{
+  "permissions": ["sql"],
+  "tasks": {
+    "daily-count": {
+      "schedule": { "cron": "0 2 * * *", "timezone": "Asia/Shanghai" }
+    }
+  }
+}
+```
+
+```js
+export function onTask(ctx, run) {
+  if (run.key !== "daily-count") return;
+  const end = run.scheduledAt ?? new Date().toISOString();
+  const start = new Date(Date.parse(end) - 86_400_000).toISOString();
+  const placeholder = ctx.sql.dialect === "postgres" ? "$1" : "?";
+  const { rows } = ctx.sql.query(
+    "SELECT COUNT(*) AS total FROM requests WHERE created_at >= " + placeholder,
+    [start]
+  );
+  ctx.log.info("Request count", { total: rows[0][0] });
+}
+```
+
+### Scheduled tasks
+
+A plugin can declare up to 16 tasks, keyed by task ID. Each `schedule` requires a five-field `cron` expression and accepts an optional IANA `timezone` (UTC by default). The host calls `onTask(ctx, { key, runId, trigger, scheduledAt })`. The trigger is `scheduled` or `manual`. Manual runs receive `null` for `scheduledAt`.
+
+The plugin details show the next trigger and the last 20 runs. Owners can pause automatic triggers, change the schedule, and run a task on demand. Instances share the database claim record. The scheduler claims a slot at most once and skips missed minutes or ticks while an earlier run is active. A task has a 30-second deadline. Unfinished runs show an unknown outcome after the instance exits and its lease expires.
+
+Upgrade every replica before installing a plugin that declares `tasks`.
+
+### Dynamic SQL
+
+An Owner can grant `sql` to give `plugin.js` **all SQL privileges of the AxonHub primary database account**, including reads, writes, and DDL. This includes access to credentials and metadata visible to that account. Owner access is required to configure a plugin with this grant. The host checks the current activation status and grant before each call.
+
+`ctx.sql.query(statement, params?)` returns `{ columns, rows }`, with rows represented by arrays in column order. `ctx.sql.exec(statement, params?)` returns `{ rowsAffected }`. Both methods use the same grant and accept SQL generated at runtime. Bound values can be numbers, strings, booleans, or null. Integers beyond JavaScript’s safe range are decimal strings, and binary values are Base64 strings.
+
+Use the database dialect and its native placeholders. Calls have a 10-second deadline, and query results are limited to 1,000 rows and 1 MiB. Each call obtains its own connection. Complete any transaction within one call.
+
+## Server middleware
+
+```json
+{
+  "server": {
+    "middleware": [{ "handler": "resolveSessionTrace" }]
+  }
+}
+```
+
+```js
+export function resolveSessionTrace(ctx, request) {
+  const sessionId = request.headers["x-deepseek-harness-session-id"]?.[0]?.trim()
+  if (sessionId) return { context: { axonhub: { traceId: sessionId } } }
+}
+```
+
+Enabled handlers run in plugin priority order, then in manifest order within each plugin. The same gateway entry point covers OpenAI, Anthropic, Gemini, Codex, and WebSocket handshakes. Each handler receives `handler(ctx, request)`. The request snapshot contains `method`, `path`, `headers` (lowercase keys and string arrays), and `projectId` and `apiKeyId` (numbers or `null`). The path excludes the query. The host filters credential headers and leaves the body for the API handler.
+
+Return `undefined` to continue, or an object with either of these fields:
+
+- `headers` accepts `set` (header names to non-empty string arrays) and `remove` (an array of names). Names are case-insensitive. The host applies removals before replacements and protects credential, forwarding, and transport headers. Later handlers see the updated values.
+- `context` maps namespaces to JSON objects. Write arbitrary JSON fields under your plugin ID, or supply `threadId` and `traceId` candidates under `axonhub`. IDs are trimmed, limited to 255 bytes, and cannot contain control characters. Your namespace merges by field, with later writes replacing the entire field. The host keeps the first non-empty candidate for each ID. Thread and trace resolution prefer explicit headers, and trace resolution also checks built-in client detection before the candidate. Later server handlers and LLM hooks can read the committed metadata through `ctx.requestContext` when present.
+
+The host validates each result before applying it. Each result and the accumulated context have a 64 KiB limit. All handlers share a 25 ms budget, including VM acquisition. A throw, a rejected promise, an invalid result, or a timeout discards that handler's changes. When the budget expires, the request proceeds with the changes already applied. Call `ctx.reject(status, message)` with 400, 403, or 429 to terminate the request with a gateway JSON error. Handler-local `ctx.state` is discarded when the handler returns. Use the returned `context` to pass data to later hooks.
+
+The running handler list is refreshed after plugin writes commit. A request that has acquired a plugin snapshot finishes this stage on that snapshot, including when the plugin is upgraded or disabled during execution.
+
 ## ctx
 
 Use the `ctx` argument of the current call. Saving `ctx` or its methods on a module binding does not make them work on a later call.
@@ -256,11 +332,12 @@ Use the `ctx` argument of the current call. Saving `ctx` or its methods on a mod
 | `ctx.kv.get` / `set` / `delete` / `list` | This installation's KV. Values are UTF-8 strings of at most 256 KiB. A namespace or key matches `^[A-Za-z0-9_.:-]{1,128}$`; namespace defaults to `default`. One call may write 10 times, and one plugin may write 60 times per minute. `get` returns `null` when the key is missing or expired. `ttlSeconds` of `0` or omitted does not expire. Upgrade keeps the rows; installing the same id again after delete starts empty |
 | `ctx.fetch(url, init)` | Host-proxied HTTPS. Returns a promise of `{ status, headers, body }`. Ordinary non-2xx responses resolve; the script reads `status`. Redirect statuses 301/302/303/307/308 reject with `INVALID_STATE` and are not followed. There is no global `fetch` |
 | `ctx.request` | Request metadata, above |
+| `ctx.requestContext` | Committed server middleware metadata, when present |
 | `ctx.attempt` | `onAttempt` only |
-| `ctx.state` | JSON object for this request and this plugin. The next hook in the same request sees the committed object, including on another VM |
-| `ctx.reject(status, message)` | `onRequest` only |
+| `ctx.state` | JSON object for this request and plugin. `onRequest` and `onAttempt` share committed state, including across VMs |
+| `ctx.reject(status, message)` | `onRequest` and server middleware |
 
-`ctx.state` starts as `{}`. It is committed when the hook returns successfully, including `undefined`. A throw, a timeout, an illegal return, or `ctx.reject` drops this call's state edits. A KV write stays written.
+`ctx.state` starts as `{}`. The LLM request and attempt hooks commit it when the hook returns successfully, including `undefined`. A throw, a timeout, an illegal return, or `ctx.reject` drops this call's state edits. A KV write stays written.
 
 These three are present only on `onEvent`:
 
@@ -532,15 +609,15 @@ The owner enables a plugin with a subset of `permissions` and a subset of `netwo
 
 ## Publishing
 
-The index URL is [https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json](https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json). AxonHub fetches that URL, so changing the index does not require an AxonHub release. The example plugins are not listed in the market.
+AxonHub reads the [community plugin index](https://raw.githubusercontent.com/looplj/axonhub-plugins/main/registry.json). The index updates independently of AxonHub releases. Development examples live in the AxonHub repository.
 
-Publish the zip on your own HTTPS URL, such as a GitHub Release. `sha256` is 64 lowercase hex characters of the raw zip bytes:
+To submit plugin source for centralized packaging and release, open a pull request under `plugins/` in [axonhub-plugins](https://github.com/looplj/axonhub-plugins). If you maintain your plugin in a separate repository, publish the zip at an HTTPS URL, such as a GitHub Release. Compute `sha256` as 64 lowercase hex characters of the raw zip bytes:
 
 ```bash
 shasum -a 256 temperature-cap-1.0.0.axplugin
 ```
 
-To list it, open a pull request that adds one plugin object to the `plugins` array. Each `versions` item needs `version`, `url`, `sha256`, and `axonhubVersion`:
+To list a plugin maintained separately, open a pull request in [axonhub-plugins](https://github.com/looplj/axonhub-plugins) that adds a plugin object to the `plugins` array in `external-plugins.json`. Each `versions` item needs `version`, `url`, `sha256`, and `axonhubVersion`:
 
 ```json
 {
@@ -558,7 +635,7 @@ To list it, open a pull request that adds one plugin object to the `plugins` arr
 }
 ```
 
-The hub checks the downloaded bytes against `sha256`. There is no publisher signature.
+AxonHub uses the index to verify the downloaded package's SHA-256, plugin ID and version. The owner grants permissions and network access when enabling a plugin.
 
 ## Examples
 
@@ -569,6 +646,7 @@ The hub checks the downloaded bytes against `sha256`. There is no publisher sign
 | [Failover Guard](../../../plugins/examples/failover-guard/README.md) | `onEvent` with `ctx.counter`, `ctx.axonhub.channels.disable`, and `ctx.webhook.send` |
 | [Star history](../../../plugins/examples/star-history/README.md) | A page calling `axonhub.fetch` against granted `network` rules |
 | [Temperature Cap](../../../plugins/examples/temperature-cap/README.md) | `onRequest` returning the request with `temperature` set from config |
+| [DeepSeek Harness Session Trace](../../../plugins/examples/dsh-session-trace/README.md) | Server middleware supplying a trace ID from a client session header |
 
 ## Limits
 
@@ -578,4 +656,4 @@ Authors run into these limits first:
 - `plugin.js` is at most 1 MiB.
 - An `onEvent`, `onRequest`, or `onAttempt` call times out after 10 seconds, including an awaited `ctx.fetch`.
 - A script error fails open. The previous request is kept and the HTTP status stays unchanged. The event delivery is dropped.
-- When the plugin cannot borrow a VM, the request returns 429 `plugin_overloaded` and is not sent upstream. That overload does not skip the hook.
+- When an LLM request or attempt hook cannot borrow a VM, the request returns 429 `plugin_overloaded` and is not sent upstream. Server middleware uses the shared stage budget described above.

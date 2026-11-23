@@ -33,11 +33,22 @@ const priceItemCodes = ['prompt_tokens', 'completion_tokens', 'prompt_cached_tok
 const pricingModes = ['flat_fee', 'usage_per_unit', 'usage_tiered', 'usage_volume'] as const;
 const promptWriteCacheVariantCodes = ['five_min', 'one_hour'] as const;
 
-// Default exchange rate applied when filling prices from the model library.
-// Library prices are in USD/MTok; 7.14 (exactly 50/7) matches the official
-// CNY prices (deepseek-chat 0.14/0.28/0.0028 -> CNY 1 / 2 / 0.02).
-// Not persisted: the dialog resets to the default on every open.
-const DEFAULT_EXCHANGE_RATE = 7.14;
+// Original USD-to-CNY fallback for prices from the model library.
+const FALLBACK_EXCHANGE_RATE = 7.14;
+const EXCHANGE_RATE_STORAGE_KEY = 'channels-model-price-default-exchange-rate';
+
+function isValidDefaultExchangeRate(rate: unknown): rate is number {
+  return typeof rate === 'number' && Number.isFinite(rate) && rate > 0;
+}
+
+function readDefaultExchangeRate(): number {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(EXCHANGE_RATE_STORAGE_KEY) ?? 'null');
+    return isValidDefaultExchangeRate(stored) ? stored : FALLBACK_EXCHANGE_RATE;
+  } catch {
+    return FALLBACK_EXCHANGE_RATE;
+  }
+}
 
 const createPriceFormSchema = (t: (key: string) => string) =>
   z
@@ -741,7 +752,7 @@ export function ChannelsModelPriceDialog() {
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [selectedModelId, setSelectedModelId] = useState<string>('');
   const [multiplier, setMultiplier] = useState<number>(1);
-  const [exchangeRate, setExchangeRate] = useState<number>(DEFAULT_EXCHANGE_RATE);
+  const [exchangeRate, setExchangeRate] = useState<number>(FALLBACK_EXCHANGE_RATE);
 
   useEffect(() => {
     if (!isOpen || !providersData) return;
@@ -751,13 +762,21 @@ export function ChannelsModelPriceDialog() {
     setMultiplier(1);
   }, [defaultProviderId, isOpen, providersData]);
 
-  // Reset the exchange rate only when the dialog opens. A separate effect keeps
-  // late-arriving provider data from overwriting a rate the user already typed.
+  // Read once per open so a late catalog response preserves the user's current input.
   useEffect(() => {
     if (isOpen) {
-      setExchangeRate(DEFAULT_EXCHANGE_RATE);
+      setExchangeRate(readDefaultExchangeRate());
     }
   }, [isOpen]);
+
+  function saveDefaultExchangeRate() {
+    try {
+      localStorage.setItem(EXCHANGE_RATE_STORAGE_KEY, JSON.stringify(exchangeRate));
+      toast.success(t('price.apply.defaultExchangeRateSaved', { rate: exchangeRate }));
+    } catch {
+      toast.error(t('price.apply.defaultExchangeRateSaveFailed'));
+    }
+  }
 
   const providerModels = useMemo(() => {
     if (!selectedProviderId || !providersData) return [];
@@ -1180,8 +1199,8 @@ export function ChannelsModelPriceDialog() {
             <Card className='mb-4 max-h-[15vh] shrink-0 overflow-y-auto md:max-h-none md:overflow-visible'>
               <CardContent className='pt-0 md:pt-4'>
                 <div className='text-muted-foreground mb-3 text-xs'>{t('price.apply.usdHint')}</div>
-                <div className='grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_80px_80px_auto] md:items-end'>
-                  <div className='min-w-0'>
+                <div className='grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_80px_auto_auto] md:items-end'>
+                  <div className='min-w-0' data-testid='price-provider'>
                     <FormLabel className='text-sm'>{t('price.apply.provider')}</FormLabel>
                     <AutoCompleteSelect
                       selectedValue={selectedProviderId}
@@ -1223,15 +1242,31 @@ export function ChannelsModelPriceDialog() {
                     />
                   </div>
                   <div className='min-w-0'>
-                    <FormLabel className='text-sm'>{t('price.apply.exchangeRate')}</FormLabel>
-                    <Input
-                      type='number'
-                      value={exchangeRate}
-                      onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
-                      className='h-8'
-                      step='any'
-                      min='0'
-                    />
+                    <FormLabel htmlFor='channel-price-exchange-rate' className='text-sm'>
+                      {t('price.apply.exchangeRate')}
+                    </FormLabel>
+                    <div className='flex items-center gap-1'>
+                      <Input
+                        id='channel-price-exchange-rate'
+                        data-testid='price-exchange-rate'
+                        type='number'
+                        value={exchangeRate}
+                        onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
+                        className='h-8 md:w-20'
+                        step='any'
+                        min='0'
+                      />
+                      <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        data-testid='price-set-default-exchange-rate'
+                        disabled={!isValidDefaultExchangeRate(exchangeRate)}
+                        onClick={saveDefaultExchangeRate}
+                      >
+                        {t('price.apply.setDefaultExchangeRate')}
+                      </Button>
+                    </div>
                   </div>
                   <div className='flex gap-2'>
                     <Button

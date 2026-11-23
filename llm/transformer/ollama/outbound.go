@@ -500,21 +500,24 @@ func (t *OutboundTransformer) transformStreamChunk(_ context.Context, event *htt
 					ToolCalls:        toolCalls,
 				},
 				FinishReason: func() *string {
-					if len(toolCalls) > 0 {
+					if !ollamaResp.Done {
+						return nil
+					}
+
+					// Ollama reports done_reason "stop" even when the stream carried
+					// tool calls (possibly in an earlier chunk), so use the counter.
+					if *toolCallOffset > 0 {
 						reason := "tool_calls"
 						return &reason
 					}
 
-					if ollamaResp.Done && ollamaResp.DoneReason != "" {
+					if ollamaResp.DoneReason != "" {
 						return &ollamaResp.DoneReason
 					}
 
-					if ollamaResp.Done {
-						reason := "stop"
-						return &reason
-					}
+					reason := "stop"
 
-					return nil
+					return &reason
 				}(),
 			},
 		},

@@ -54,7 +54,9 @@ var (
 		"permissions":      {},
 		"network":          {},
 		"events":           {},
+		"tasks":            {},
 		"hooks":            {},
+		"server":           {},
 		"configSchema":     {},
 		"ui":               {},
 		"providers":        {},
@@ -110,23 +112,43 @@ var (
 // Closed fields are recorded as presence flags so a later check can reject
 // them with a dedicated error. Their structure is intentionally not defined.
 type PluginManifest struct {
-	SchemaVersion       int                 `json:"schemaVersion,omitempty"`
-	SchemaVersionSet    bool                `json:"-"`
-	ID                  string              `json:"id,omitempty"`
-	Name                string              `json:"name,omitempty"`
-	Version             string              `json:"version,omitempty"`
-	Description         string              `json:"description,omitempty"`
-	AxonhubVersion      string              `json:"axonhubVersion,omitempty"`
-	PluginAPIVersion    int                 `json:"pluginApiVersion,omitempty"`
-	PluginAPIVersionSet bool                `json:"-"`
-	Permissions         []string            `json:"permissions,omitempty"`
-	Network             []PluginNetworkRule `json:"network,omitempty"`
-	Events              []string            `json:"events,omitempty"`
-	EventsPresent       bool                `json:"-"`
-	Hooks               *PluginHooksSpec    `json:"hooks,omitempty"`
-	ConfigSchema        *PluginConfigSchema `json:"configSchema,omitempty"`
-	UI                  *PluginUI           `json:"ui,omitempty"`
-	ProvidersPresent    bool                `json:"-"`
+	SchemaVersion       int                       `json:"schemaVersion,omitempty"`
+	SchemaVersionSet    bool                      `json:"-"`
+	ID                  string                    `json:"id,omitempty"`
+	Name                string                    `json:"name,omitempty"`
+	Version             string                    `json:"version,omitempty"`
+	Description         string                    `json:"description,omitempty"`
+	AxonhubVersion      string                    `json:"axonhubVersion,omitempty"`
+	PluginAPIVersion    int                       `json:"pluginApiVersion,omitempty"`
+	PluginAPIVersionSet bool                      `json:"-"`
+	Permissions         []string                  `json:"permissions,omitempty"`
+	Network             []PluginNetworkRule       `json:"network,omitempty"`
+	Events              []string                  `json:"events,omitempty"`
+	EventsPresent       bool                      `json:"-"`
+	Tasks               map[string]PluginTaskSpec `json:"tasks,omitempty"`
+	Hooks               *PluginHooksSpec          `json:"hooks,omitempty"`
+	Server              *PluginServerSpec         `json:"server,omitempty"`
+	ConfigSchema        *PluginConfigSchema       `json:"configSchema,omitempty"`
+	UI                  *PluginUI                 `json:"ui,omitempty"`
+	ProvidersPresent    bool                      `json:"-"`
+}
+
+type PluginTaskSpec struct {
+	Schedule PluginScheduleSpec `json:"schedule"`
+}
+
+type PluginScheduleSpec struct {
+	Cron     string `json:"cron"`
+	Timezone string `json:"timezone,omitempty"`
+}
+
+// PluginServerSpec declares extensions to the gateway HTTP request pipeline.
+type PluginServerSpec struct {
+	Middleware []PluginServerMiddleware `json:"middleware,omitempty"`
+}
+
+type PluginServerMiddleware struct {
+	Handler string `json:"handler"`
 }
 
 // PluginNetworkRule is one manifest.network entry.
@@ -297,6 +319,18 @@ func (m *PluginManifest) Validate() error {
 	if m.UI != nil {
 		if err := m.UI.Validate(); err != nil {
 			return err
+		}
+	}
+	if m.Server != nil {
+		seen := make(map[string]struct{}, len(m.Server.Middleware))
+		for i, entry := range m.Server.Middleware {
+			if entry.Handler == "" || strings.TrimSpace(entry.Handler) != entry.Handler || entry.Handler == "default" {
+				return fmt.Errorf("server.middleware[%d].handler must be a non-empty named export", i)
+			}
+			if _, ok := seen[entry.Handler]; ok {
+				return fmt.Errorf("server.middleware contains duplicate handler %q", entry.Handler)
+			}
+			seen[entry.Handler] = struct{}{}
 		}
 	}
 	if err := m.validateNetwork(); err != nil {
@@ -824,12 +858,26 @@ func (m *PluginManifest) UnmarshalJSON(data []byte) error {
 	if _, ok := obj["providers"]; ok {
 		m.ProvidersPresent = true
 	}
+	m.Tasks = nil
+	if raw, ok := obj["tasks"]; ok {
+		m.Tasks, err = decodePluginTasks(raw)
+		if err != nil {
+			return err
+		}
+	}
 	if raw, ok := obj["hooks"]; ok {
 		var hooks PluginHooksSpec
 		if err := json.Unmarshal(raw, &hooks); err != nil {
 			return err
 		}
 		m.Hooks = &hooks
+	}
+	if raw, ok := obj["server"]; ok {
+		server, err := decodePluginServer(raw)
+		if err != nil {
+			return err
+		}
+		m.Server = server
 	}
 	if raw, ok := obj["configSchema"]; ok {
 		var schema PluginConfigSchema
@@ -846,6 +894,94 @@ func (m *PluginManifest) UnmarshalJSON(data []byte) error {
 		m.UI = &ui
 	}
 	return nil
+}
+
+func decodePluginTasks(raw json.RawMessage) (map[string]PluginTaskSpec, error) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	start, err := decoder.Token()
+	if err != nil || start != json.Delim('{') {
+		return nil, objectRequired("tasks")
+	}
+	tasks := make(map[string]PluginTaskSpec)
+	for decoder.More() {
+		token, err := decoder.Token()
+		key, ok := token.(string)
+		if err != nil || !ok {
+			return nil, objectRequired("tasks")
+		}
+		if _, exists := tasks[key]; exists {
+			return nil, fmt.Errorf("task key %q is duplicated", key)
+		}
+		taskPath := "tasks." + key
+		var rawTask json.RawMessage
+		if err := decoder.Decode(&rawTask); err != nil {
+			return nil, objectRequired(taskPath)
+		}
+		task, err := decodeObject(rawTask, taskPath)
+		if err != nil {
+			return nil, err
+		}
+		if err := rejectUnknownFields(task, map[string]struct{}{"schedule": {}}, taskPath); err != nil {
+			return nil, err
+		}
+		schedulePath := taskPath + ".schedule"
+		schedule, err := decodeObject(task["schedule"], schedulePath)
+		if err != nil {
+			return nil, err
+		}
+		if err := rejectUnknownFields(schedule, map[string]struct{}{"cron": {}, "timezone": {}}, schedulePath); err != nil {
+			return nil, err
+		}
+		cron, err := decodeJSONString(schedule["cron"], schedulePath+".cron")
+		if err != nil {
+			return nil, err
+		}
+		var timezone string
+		if raw, ok := schedule["timezone"]; ok {
+			timezone, err = decodeJSONString(raw, schedulePath+".timezone")
+			if err != nil {
+				return nil, err
+			}
+		}
+		tasks[key] = PluginTaskSpec{Schedule: PluginScheduleSpec{Cron: cron, Timezone: timezone}}
+	}
+	if end, err := decoder.Token(); err != nil || end != json.Delim('}') {
+		return nil, objectRequired("tasks")
+	}
+	return tasks, nil
+}
+
+func decodePluginServer(raw json.RawMessage) (*PluginServerSpec, error) {
+	obj, err := decodeObject(raw, "server")
+	if err != nil {
+		return nil, err
+	}
+	if err := rejectUnknownFields(obj, map[string]struct{}{"middleware": {}}, "server"); err != nil {
+		return nil, err
+	}
+	server := &PluginServerSpec{}
+	if raw, ok := obj["middleware"]; ok {
+		var entries []json.RawMessage
+		if err := json.Unmarshal(raw, &entries); err != nil || entries == nil {
+			return nil, errors.New("server.middleware must be an array")
+		}
+		for i, entry := range entries {
+			prefix := fmt.Sprintf("server.middleware[%d]", i)
+			fields, err := decodeObject(entry, prefix)
+			if err != nil {
+				return nil, err
+			}
+			if err := rejectUnknownFields(fields, map[string]struct{}{"handler": {}}, prefix); err != nil {
+				return nil, err
+			}
+			handler, err := decodeJSONString(fields["handler"], prefix+".handler")
+			if err != nil {
+				return nil, err
+			}
+			server.Middleware = append(server.Middleware, PluginServerMiddleware{Handler: handler})
+		}
+	}
+	return server, nil
 }
 
 // UnmarshalJSON decodes hooks and records unopened response fields without parsing them.

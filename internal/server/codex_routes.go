@@ -13,6 +13,7 @@ func registerCodexRoutes(server *Server, handlers Handlers, services Services) {
 		middleware.WithIPBlocklist(services.SystemService),
 		handlers.CodexCompatibility.Enabled,
 		middleware.WithStrictAPIKeyConfig(services.AuthService, nil),
+		middleware.WithServerPluginMiddleware(services.PluginManager),
 		middleware.WithSource(request.SourceAPI),
 		middleware.WithThread(server.Config.Trace, services.ThreadService),
 		middleware.WithTrace(server.Config.Trace, services.TraceService),

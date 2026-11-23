@@ -94,6 +94,13 @@ func TestPluginGraphql(t *testing.T) {
 	require.Equal(t, http.StatusOK, code, raw)
 	require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, payload), raw)
 
+	for _, mutation := range []string{
+		`mutation { applyCatalogImport(scope:{channels:true,providers:[],ignorePrefix:false},revision:"",selections:[]){status} }`,
+	} {
+		code, payload, raw = fx.postPlugin(fx.ownerToken, pluginPagesID, mutation)
+		require.Equal(t, http.StatusOK, code, raw)
+		require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, payload), raw)
+	}
 	code, payload, raw = fx.postPlugin(fx.ownerToken, pluginPagesID, `mutation { updateAutoBackupSettings(input: {enabled: false}) }`)
 	require.Equal(t, http.StatusOK, code, raw)
 	require.Contains(t, graphqlErrorMessage(t, payload), "owner", raw)
@@ -548,6 +555,7 @@ func pluginEndpointZip(t *testing.T, id string, permissions []string, withPage b
 // covered by scope, direct-user, or resource ownership checks.
 var pluginMutationFieldSnapshot = []string{
 	"addUserToProject",
+	"applyCatalogImport",
 	"applyChannelOverrideTemplate",
 	"archiveThread",
 	"archiveTrace",
@@ -629,6 +637,7 @@ var pluginMutationFieldSnapshot = []string{
 	"retainThread",
 	"retainTrace",
 	"rotateAPIKey",
+	"runPluginTask",
 	"saveChannelEndpoints",
 	"saveChannelModelPrices",
 	"saveProxyPreset",
@@ -666,6 +675,7 @@ var pluginMutationFieldSnapshot = []string{
 	"updateMyPassword",
 	"updatePassThroughSettings",
 	"updatePluginSettings",
+	"updatePluginTask",
 	"updateProject",
 	"updateProjectProfiles",
 	"updateProjectStatus",

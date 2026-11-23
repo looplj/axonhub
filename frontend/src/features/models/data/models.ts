@@ -3,7 +3,7 @@ import { graphqlRequest } from '@/gql/graphql';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
-import { Model, ModelConnection, CreateModelInput, UpdateModelInput, modelConnectionSchema, modelSchema } from './schema';
+import { ModelConnection, CreateModelInput, UpdateModelInput, modelConnectionSchema, referencePriceFields, type ReferencePriceField } from './schema';
 
 const MODELS_QUERY = `
   query GetModels(
@@ -20,6 +20,8 @@ const MODELS_QUERY = `
           id
           createdAt
           updatedAt
+          editVersion
+          missingReferencePrices
           developer
           modelID
           icon
@@ -137,105 +139,9 @@ const MODELS_QUERY = `
 `;
 
 const CREATE_MODEL_MUTATION = `
-  mutation CreateModel($input: CreateModelInput!) {
-    createModel(input: $input) {
+  mutation CreateModel($input: CreateModelInput!, $editedPrices: [ManualPriceEdit!]) {
+    createModel(input: $input, editedPrices: $editedPrices) {
       id
-      createdAt
-      updatedAt
-      developer
-      modelID
-      icon
-      type
-      name
-      group
-      modelCard {
-        reasoning {
-          supported
-          default
-        }
-        reasoningEfforts
-        toolCall
-        temperature
-        modalities {
-          input
-          output
-        }
-        vision
-        cost {
-          input
-          output
-          cacheRead
-          cacheWrite
-        }
-        limit {
-          context
-          output
-        }
-        knowledge
-        releaseDate
-        lastUpdated
-      }
-      settings {
-        disableDeveloperSettingsInheritance
-        loadBalancerStrategy
-        traceStickyMode
-        associations {
-          type
-          priority
-          disabled
-          when {
-            enabled
-            condition {
-              type
-              logic
-              field
-              operator
-              value
-              conditions {
-                type
-                logic
-                field
-                operator
-                value
-                conditions {
-                  type
-                  logic
-                  field
-                  operator
-                  value
-                }
-              }
-            }
-          }
-          channelModel {
-            channelId
-            modelId
-          }
-          channelRegex {
-            channelId
-            pattern
-          }
-          regex {
-            pattern
-            exclude {
-              channelNamePattern
-              channelIds
-              channelTags
-            }
-          }
-          modelId {
-            modelId
-            exclude {
-              channelNamePattern
-              channelIds
-              channelTags
-            }
-          }
-        }
-      }
-      status
-      remark
-      associatedChannelCount
     }
   }
 `;
@@ -244,206 +150,14 @@ const BULK_CREATE_MODELS_MUTATION = `
   mutation BulkCreateModels($inputs: [CreateModelInput!]!) {
     bulkCreateModels(inputs: $inputs) {
       id
-      createdAt
-      updatedAt
-      developer
-      modelID
-      icon
-      type
-      name
-      group
-      modelCard {
-        reasoning {
-          supported
-          default
-        }
-        reasoningEfforts
-        toolCall
-        temperature
-        modalities {
-          input
-          output
-        }
-        vision
-        cost {
-          input
-          output
-          cacheRead
-          cacheWrite
-        }
-        limit {
-          context
-          output
-        }
-        knowledge
-        releaseDate
-        lastUpdated
-      }
-      settings {
-        disableDeveloperSettingsInheritance
-        loadBalancerStrategy
-        traceStickyMode
-        associations {
-          type
-          priority
-          disabled
-          when {
-            enabled
-            condition {
-              type
-              logic
-              field
-              operator
-              value
-              conditions {
-                type
-                logic
-                field
-                operator
-                value
-                conditions {
-                  type
-                  logic
-                  field
-                  operator
-                  value
-                }
-              }
-            }
-          }
-          channelModel {
-            channelId
-            modelId
-          }
-          channelRegex {
-            channelId
-            pattern
-          }
-          regex {
-            pattern
-            exclude {
-              channelNamePattern
-              channelIds
-              channelTags
-            }
-          }
-          modelId {
-            modelId
-            exclude {
-              channelNamePattern
-              channelIds
-              channelTags
-            }
-          }
-        }
-      }
-      status
-      remark
-      associatedChannelCount
     }
   }
 `;
 
 const UPDATE_MODEL_MUTATION = `
-  mutation UpdateModel($id: ID!, $input: UpdateModelInput!) {
-    updateModel(id: $id, input: $input) {
+  mutation UpdateModel($id: ID!, $input: UpdateModelInput!, $editedPrices: [ManualPriceEdit!], $expectedVersion: String) {
+    updateModel(id: $id, input: $input, editedPrices: $editedPrices, expectedVersion: $expectedVersion) {
       id
-      createdAt
-      updatedAt
-      developer
-      modelID
-      icon
-      type
-      name
-      group
-      modelCard {
-        reasoning {
-          supported
-          default
-        }
-        reasoningEfforts
-        toolCall
-        temperature
-        modalities {
-          input
-          output
-        }
-        vision
-        cost {
-          input
-          output
-          cacheRead
-          cacheWrite
-        }
-        limit {
-          context
-          output
-        }
-        knowledge
-        releaseDate
-        lastUpdated
-      }
-      settings {
-        disableDeveloperSettingsInheritance
-        loadBalancerStrategy
-        traceStickyMode
-        associations {
-          type
-          priority
-          disabled
-          when {
-            enabled
-            condition {
-              type
-              logic
-              field
-              operator
-              value
-              conditions {
-                type
-                logic
-                field
-                operator
-                value
-                conditions {
-                  type
-                  logic
-                  field
-                  operator
-                  value
-                }
-              }
-            }
-          }
-          channelModel {
-            channelId
-            modelId
-          }
-          channelRegex {
-            channelId
-            pattern
-          }
-          regex {
-            pattern
-            exclude {
-              channelNamePattern
-              channelIds
-              channelTags
-            }
-          }
-          modelId {
-            modelId
-            exclude {
-              channelNamePattern
-              channelIds
-              channelTags
-            }
-          }
-        }
-      }
-      status
-      remark
-      associatedChannelCount
     }
   }
 `;
@@ -528,8 +242,8 @@ export function useCreateModel() {
 
   return useMutation({
     mutationFn: async (input: CreateModelInput) => {
-      const data = await graphqlRequest<{ createModel: Model }>(CREATE_MODEL_MUTATION, { input });
-      return modelSchema.parse(data.createModel);
+      const editedPrices = referencePriceFields.filter((field) => input.modelCard.cost?.[field] == null).map((field) => ({ field, missing: true }));
+      await graphqlRequest(CREATE_MODEL_MUTATION, { input, editedPrices });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['models'] });
@@ -548,8 +262,7 @@ export function useBulkCreateModels() {
 
   return useMutation({
     mutationFn: async (inputs: CreateModelInput[]) => {
-      const data = await graphqlRequest<{ bulkCreateModels: Model[] }>(BULK_CREATE_MODELS_MUTATION, { inputs });
-      return data.bulkCreateModels.map((model) => modelSchema.parse(model));
+      await graphqlRequest(BULK_CREATE_MODELS_MUTATION, { inputs });
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['models'] });
@@ -567,9 +280,8 @@ export function useUpdateModel() {
   const { handleError } = useErrorHandler();
 
   return useMutation({
-    mutationFn: async ({ id, input }: { id: string; input: UpdateModelInput }) => {
-      const data = await graphqlRequest<{ updateModel: Model }>(UPDATE_MODEL_MUTATION, { id, input });
-      return modelSchema.parse(data.updateModel);
+    mutationFn: async (variables: { id: string; input: UpdateModelInput; editedPrices?: { field: ReferencePriceField; missing: boolean }[]; expectedVersion?: string }) => {
+      await graphqlRequest(UPDATE_MODEL_MUTATION, variables);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['models'] });

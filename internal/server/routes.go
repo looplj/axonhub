@@ -225,10 +225,12 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 
 	registerCodexRoutes(server, handlers, services)
 
+	serverPluginMiddleware := middleware.WithServerPluginMiddleware(services.PluginManager)
 	apiMiddlewares := []gin.HandlerFunc{
 		middleware.WithStreamIdleTimeout(server.Config.LLMStreamIdleTimeout),
 		middleware.WithIPBlocklist(services.SystemService),
 		middleware.WithAPIKeyConfig(services.AuthService, nil),
+		serverPluginMiddleware,
 		middleware.WithSource(request.SourceAPI),
 		middleware.WithThread(server.Config.Trace, services.ThreadService),
 		middleware.WithTrace(server.Config.Trace, services.TraceService),
@@ -311,6 +313,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithStreamIdleTimeout(server.Config.LLMStreamIdleTimeout),
 			middleware.WithIPBlocklist(services.SystemService),
 			middleware.WithGeminiKeyAuth(services.AuthService),
+			serverPluginMiddleware,
 			middleware.WithSource(request.SourceAPI),
 			middleware.WithThread(server.Config.Trace, services.ThreadService),
 			middleware.WithTrace(server.Config.Trace, services.TraceService),
@@ -324,6 +327,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			middleware.WithStreamIdleTimeout(server.Config.LLMStreamIdleTimeout),
 			middleware.WithIPBlocklist(services.SystemService),
 			middleware.WithGeminiKeyAuth(services.AuthService),
+			serverPluginMiddleware,
 			middleware.WithSource(request.SourceAPI),
 			middleware.WithThread(server.Config.Trace, services.ThreadService),
 			middleware.WithTrace(server.Config.Trace, services.TraceService),

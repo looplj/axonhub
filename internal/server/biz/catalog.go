@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -17,6 +18,8 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+var errCatalogInvalidated = errors.New("catalog invalidated during load")
 
 const (
 	catalogSourceUpstream = "upstream"
@@ -39,19 +42,21 @@ var catalogExtraModelsJSON []byte
 
 // CatalogSnapshot is the catalog payload served to the admin UI.
 type CatalogSnapshot struct {
-	Data      objects.JSONRawMessage `json:"data"`
-	FetchedAt *time.Time             `json:"fetched_at,omitempty"`
-	Source    string                 `json:"source"`
-	Filtered  bool                   `json:"filtered"`
+	Data        objects.JSONRawMessage `json:"data"`
+	FetchedAt   *time.Time             `json:"fetched_at,omitempty"`
+	Source      string                 `json:"source"`
+	Filtered    bool                   `json:"filtered"`
+	upstreamURL string
 }
 
 // catalogPayload is a finished JSON payload. Only encoded bytes are retained:
 // the upstream catalog decoded into maps costs ~4x its JSON size and is all
 // pointers the GC has to scan.
 type catalogPayload struct {
-	data      []byte
-	fetchedAt time.Time
-	source    string
+	data        []byte
+	fetchedAt   time.Time
+	source      string
+	upstreamURL string
 }
 
 type heldCatalog struct {
@@ -66,11 +71,13 @@ type CatalogService struct {
 	system     *SystemService
 	httpClient *httpclient.HttpClient
 
-	mu         sync.Mutex
-	filtered   heldCatalog
-	unfiltered heldCatalog
-	holdTTL    time.Duration
-	sf         singleflight.Group
+	mu          sync.Mutex
+	filtered    heldCatalog
+	unfiltered  heldCatalog
+	generation  uint64
+	upstreamURL string // Effective mirror for this cache generation.
+	holdTTL     time.Duration
+	sf          singleflight.Group
 }
 
 func NewCatalogService(system *SystemService, httpClient *httpclient.HttpClient) *CatalogService {
@@ -82,12 +89,31 @@ func NewCatalogService(system *SystemService, httpClient *httpclient.HttpClient)
 }
 
 func (s *CatalogService) Snapshot(ctx context.Context, filtered bool) (CatalogSnapshot, error) {
-	payload, err := s.ensure(ctx, filtered)
-	if err != nil {
-		return CatalogSnapshot{}, err
-	}
+	// The public catalog query finishes warming the cache even if its caller leaves.
+	return s.snapshot(context.WithoutCancel(ctx), filtered, false)
+}
 
-	return snapshotFromPayload(payload, filtered), nil
+// A fresh snapshot joins an in-flight fetch but never returns a previously held result.
+func (s *CatalogService) snapshot(ctx context.Context, filtered, fresh bool) (CatalogSnapshot, error) {
+	for {
+		payload, err := s.ensure(ctx, filtered, fresh)
+		if ctx.Err() != nil {
+			return CatalogSnapshot{}, ctx.Err()
+		}
+		if errors.Is(err, errCatalogInvalidated) {
+			continue
+		}
+		if err != nil {
+			return CatalogSnapshot{}, err
+		}
+		return snapshotFromPayload(payload, filtered), nil
+	}
+}
+
+// InvalidateAfterCommit keeps a concurrent reader from refilling the cache
+// from the previous URL while a settings update is still uncommitted.
+func (s *CatalogService) InvalidateAfterCommit(ctx context.Context) {
+	runAfterCommit(ctx, func(context.Context) { s.Invalidate() })
 }
 
 // Invalidate releases both held variants so the next request refetches, e.g.
@@ -96,57 +122,92 @@ func (s *CatalogService) Invalidate() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.invalidateLocked()
+}
+
+func (s *CatalogService) invalidateLocked() {
+	s.generation++
 	s.filtered.clear()
 	s.unfiltered.clear()
 }
 
-func (s *CatalogService) ensure(ctx context.Context, filtered bool) (*catalogPayload, error) {
-	if held := s.held(filtered); held != nil {
-		return held, nil
-	}
-
-	key := "catalog-unfiltered"
-	if filtered {
-		key = "catalog-filtered"
-	}
-
-	value, err, _ := s.sf.Do(key, func() (any, error) {
-		if held := s.held(filtered); held != nil {
-			return held, nil
-		}
-
-		data, source, err := s.load(ctx, filtered)
+// A transaction reads the effective URL on the primary and bypasses the system settings caches.
+func (s *CatalogService) currentUpstreamURL(ctx context.Context) (string, error) {
+	var url string
+	err := s.system.RunInTransaction(ctx, func(ctx context.Context) error {
+		settings, err := s.system.CatalogSettings(ctx)
 		if err != nil {
-			return nil, err
+			return err
 		}
-
-		return s.hold(filtered, data, source), nil
+		url = settings.EffectiveUpstreamURL()
+		return nil
 	})
+	return url, err
+}
+
+func (s *CatalogService) ensure(ctx context.Context, filtered, fresh bool) (*catalogPayload, error) {
+	s.mu.Lock()
+	generation := s.generation
+	s.mu.Unlock()
+
+	settingsCtx, cancel := context.WithTimeout(ctx, catalogFetchTimeout)
+	upstreamURL, err := s.currentUpstreamURL(settingsCtx)
+	cancel()
 	if err != nil {
 		return nil, err
 	}
 
-	payload, ok := value.(*catalogPayload)
-	if !ok || payload == nil {
-		return nil, fmt.Errorf("catalog load returned no payload")
+	s.mu.Lock()
+	if generation != s.generation {
+		s.mu.Unlock()
+		return nil, errCatalogInvalidated
 	}
+	if s.upstreamURL != upstreamURL {
+		s.invalidateLocked()
+		s.upstreamURL = upstreamURL
+		generation = s.generation
+	}
+	held := s.slot(filtered).payload
+	s.mu.Unlock()
+	if held != nil && !fresh {
+		return held, nil
+	}
+	key := fmt.Sprintf("%t/%d", filtered, generation)
+	result := s.sf.DoChan(key, func() (any, error) {
+		data, source, err := s.load(context.WithoutCancel(ctx), filtered, upstreamURL)
+		if err != nil {
+			return nil, err
+		}
 
-	return payload, nil
+		payload := s.hold(filtered, data, source, upstreamURL, generation)
+		if payload == nil {
+			return nil, errCatalogInvalidated
+		}
+		return payload, nil
+	})
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case res := <-result:
+		if res.Err != nil {
+			return nil, res.Err
+		}
+		payload, ok := res.Val.(*catalogPayload)
+		if !ok || payload == nil {
+			return nil, fmt.Errorf("catalog load returned no payload")
+		}
+		return payload, nil
+	}
 }
 
 // load fetches the upstream catalog and falls back to the bundled one when the
 // fetch or filtering fails. The fallback is held for the same TTL so an
 // unreachable upstream is not retried on every request.
-func (s *CatalogService) load(ctx context.Context, filtered bool) ([]byte, string, error) {
-	// Callers share this load through singleflight, so one caller going away
-	// must not turn the shared result into a held fallback.
-	ctx = context.WithoutCancel(ctx)
-	settings := s.system.CatalogSettingsOrDefault(ctx)
-
+func (s *CatalogService) load(ctx context.Context, filtered bool, upstreamURL string) ([]byte, string, error) {
 	fetchCtx, cancel := context.WithTimeout(ctx, catalogFetchTimeout)
 	defer cancel()
 
-	body, err := s.fetchUpstream(fetchCtx, settings.EffectiveUpstreamURL())
+	body, err := s.fetchUpstream(fetchCtx, upstreamURL)
 	if err == nil {
 		if !filtered {
 			return body, catalogSourceUpstream, nil
@@ -253,10 +314,11 @@ func snapshotFromPayload(payload *catalogPayload, filtered bool) CatalogSnapshot
 	}
 
 	return CatalogSnapshot{
-		Data:      objects.JSONRawMessage(payload.data),
-		FetchedAt: &fetchedAt,
-		Source:    source,
-		Filtered:  filtered,
+		Data:        objects.JSONRawMessage(payload.data),
+		FetchedAt:   &fetchedAt,
+		Source:      source,
+		Filtered:    filtered,
+		upstreamURL: payload.upstreamURL,
 	}
 }
 
@@ -268,24 +330,22 @@ func (s *CatalogService) slot(filtered bool) *heldCatalog {
 	return &s.unfiltered
 }
 
-func (s *CatalogService) held(filtered bool) *catalogPayload {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return s.slot(filtered).payload
-}
-
 // hold keeps the payload for holdTTL, then releases it.
-func (s *CatalogService) hold(filtered bool, data []byte, source string) *catalogPayload {
+func (s *CatalogService) hold(filtered bool, data []byte, source, upstreamURL string, generation uint64) *catalogPayload {
 	payload := &catalogPayload{
-		data:      data,
-		fetchedAt: time.Now().UTC(),
-		source:    source,
+		data:        data,
+		fetchedAt:   time.Now().UTC(),
+		source:      source,
+		upstreamURL: upstreamURL,
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// A fetch started before a mirror change may finish after its replacement.
+	if s.generation != generation {
+		return nil
+	}
 	slot := s.slot(filtered)
 	slot.clear()
 	slot.payload = payload

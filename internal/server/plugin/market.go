@@ -22,8 +22,8 @@ import (
 
 const (
 	// MarketIndexURL is the only plugin market index. It is not configurable.
-	// The file lives in this repository, so publishing an entry does not require an AxonHub release.
-	MarketIndexURL = "https://raw.githubusercontent.com/looplj/axonhub/unstable/plugins/registry.json"
+	// The axonhub-plugins repository publishes the index independently of AxonHub releases.
+	MarketIndexURL = "https://raw.githubusercontent.com/looplj/axonhub-plugins/main/registry.json"
 
 	marketIndexMaxBytes = 1 << 20
 	marketIndexTTL      = 5 * time.Minute

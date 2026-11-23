@@ -3,7 +3,10 @@ package gql
 import (
 	"testing"
 
+	"github.com/99designs/gqlgen/graphql"
+	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2/ast"
+	"github.com/vektah/gqlparser/v2/parser"
 )
 
 func mutationOp(name string, fields ...string) *ast.OperationDefinition {
@@ -59,6 +62,11 @@ func TestSkipGraphqlTransaction(t *testing.T) {
 			wantSkip: true,
 		},
 		{
+			name:     "manual plugin schedules claim before runtime starts",
+			op:       mutationOp("RunWithAnyName", "runPluginTask"),
+			wantSkip: true,
+		},
+		{
 			name:     "syncChannelModels uses the enclosing transaction",
 			op:       mutationOp("UpdateModels", "syncChannelModels"),
 			wantSkip: false,
@@ -76,9 +84,28 @@ func TestSkipGraphqlTransaction(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := skipGraphqlTransaction(tc.op); got != tc.wantSkip {
+			if got := skipGraphqlTransaction(&graphql.OperationContext{Operation: tc.op}); got != tc.wantSkip {
 				t.Fatalf("skipGraphqlTransaction(%s) = %v, want %v", tc.op.Name, got, tc.wantSkip)
 			}
 		})
+	}
+}
+
+func TestCatalogImportFragmentTransactions(t *testing.T) {
+	for _, test := range []struct {
+		fields  string
+		enabled bool
+		skip    bool
+	}{
+		{"applied: applyCatalogImport", true, true},
+		{"... on Mutation { applyCatalogImport }", true, true},
+		{"...Import @include(if:$enabled)", true, true},
+		{"...Import @include(if:$enabled)", false, false},
+		{"applyCatalogImport @skip(if:$enabled) updateModel", true, false},
+	} {
+		doc, err := parser.ParseQuery(&ast.Source{Input: "mutation Test($enabled:Boolean!) { " + test.fields + " } fragment Import on Mutation { applyCatalogImport }"})
+		require.NoError(t, err)
+		oc := &graphql.OperationContext{Doc: doc, Operation: doc.Operations[0], Variables: map[string]any{"enabled": test.enabled}}
+		require.Equal(t, test.skip, skipGraphqlTransaction(oc), test.fields)
 	}
 }

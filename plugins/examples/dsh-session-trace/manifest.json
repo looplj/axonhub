@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "example.dsh-session-trace",
+  "name": "DeepSeek Harness Session Trace",
+  "version": "1.0.0",
+  "description": "Groups DeepSeek Harness requests by their session header.",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "server": {
+    "middleware": [
+      { "handler": "resolveSessionTrace" }
+    ]
+  }
+}

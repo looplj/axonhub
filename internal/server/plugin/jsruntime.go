@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	pluginEntry = "plugin.js"
+	pluginEntry      = "plugin.js"
+	pluginTaskExport = "onTask"
 
 	// pluginTopLevelTimeout bounds top-level execution during install checks.
 	pluginTopLevelTimeout = time.Second
@@ -66,11 +67,19 @@ func requiredExports(manifest *objects.PluginManifest) []string {
 	if len(manifest.Events) > 0 {
 		required = append(required, "onEvent")
 	}
+	if len(manifest.Tasks) > 0 {
+		required = append(required, pluginTaskExport)
+	}
 	if manifest.Hooks != nil && manifest.Hooks.Request.IsEnabled() {
 		required = append(required, "onRequest")
 	}
 	if manifest.Hooks != nil && manifest.Hooks.Attempt.IsEnabled() {
 		required = append(required, "onAttempt")
+	}
+	if manifest.Server != nil {
+		for _, entry := range manifest.Server.Middleware {
+			required = append(required, entry.Handler)
+		}
 	}
 	return required
 }

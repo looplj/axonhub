@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -82,6 +83,14 @@ func HasScope(ctx context.Context, requiredScope scopes.ScopeSlug) bool {
 	default:
 		return false
 	}
+}
+
+// RequireSystemUserScope checks a site-wide user grant, including delegated user restrictions.
+func RequireSystemUserScope(ctx context.Context, scope scopes.ScopeSlug) error {
+	if !scopes.UserHasScope(ctx, scope) {
+		return xerrors.ForbiddenError(fmt.Sprintf("permission denied: requires %s scope", scope))
+	}
+	return nil
 }
 
 func RequireScope(ctx context.Context, requiredScope scopes.ScopeSlug) error {

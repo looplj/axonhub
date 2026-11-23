@@ -125,6 +125,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 	processCtx := ctx
 	var abortUpstream context.CancelFunc
 	if evaluator != nil {
+		ctx = orchestrator.WithSafeguardsParent(ctx)
 		processCtx, abortUpstream = context.WithCancel(ctx)
 		defer abortUpstream()
 	}

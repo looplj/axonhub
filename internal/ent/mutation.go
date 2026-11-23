@@ -23,6 +23,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/plugin"
+	"github.com/looplj/axonhub/internal/ent/pluginschedule"
+	"github.com/looplj/axonhub/internal/ent/pluginschedulerun"
 	"github.com/looplj/axonhub/internal/ent/pluginstorage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -65,6 +67,8 @@ const (
 	TypeModel                    = "Model"
 	TypeOIDCIdentity             = "OIDCIdentity"
 	TypePlugin                   = "Plugin"
+	TypePluginSchedule           = "PluginSchedule"
+	TypePluginScheduleRun        = "PluginScheduleRun"
 	TypePluginStorage            = "PluginStorage"
 	TypeProject                  = "Project"
 	TypePrompt                   = "Prompt"
@@ -13379,6 +13383,1464 @@ func (m *PluginMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *PluginMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Plugin edge %s", name)
+}
+
+// PluginScheduleMutation represents an operation that mutates the PluginSchedule nodes in the graph.
+type PluginScheduleMutation struct {
+	config
+	op                 Op
+	typ                string
+	id                 *int
+	installation_id    *int
+	addinstallation_id *int
+	key                *string
+	override_cron      *string
+	override_timezone  *string
+	paused             *bool
+	last_slot          *int64
+	addlast_slot       *int64
+	active_run_id      *int
+	addactive_run_id   *int
+	lease_until        *int64
+	addlease_until     *int64
+	clearedFields      map[string]struct{}
+	done               bool
+	oldValue           func(context.Context) (*PluginSchedule, error)
+	predicates         []predicate.PluginSchedule
+}
+
+var _ ent.Mutation = (*PluginScheduleMutation)(nil)
+
+// pluginscheduleOption allows management of the mutation configuration using functional options.
+type pluginscheduleOption func(*PluginScheduleMutation)
+
+// newPluginScheduleMutation creates new mutation for the PluginSchedule entity.
+func newPluginScheduleMutation(c config, op Op, opts ...pluginscheduleOption) *PluginScheduleMutation {
+	m := &PluginScheduleMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePluginSchedule,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPluginScheduleID sets the ID field of the mutation.
+func withPluginScheduleID(id int) pluginscheduleOption {
+	return func(m *PluginScheduleMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *PluginSchedule
+		)
+		m.oldValue = func(ctx context.Context) (*PluginSchedule, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().PluginSchedule.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPluginSchedule sets the old PluginSchedule of the mutation.
+func withPluginSchedule(node *PluginSchedule) pluginscheduleOption {
+	return func(m *PluginScheduleMutation) {
+		m.oldValue = func(context.Context) (*PluginSchedule, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PluginScheduleMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PluginScheduleMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PluginScheduleMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PluginScheduleMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().PluginSchedule.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetInstallationID sets the "installation_id" field.
+func (m *PluginScheduleMutation) SetInstallationID(i int) {
+	m.installation_id = &i
+	m.addinstallation_id = nil
+}
+
+// InstallationID returns the value of the "installation_id" field in the mutation.
+func (m *PluginScheduleMutation) InstallationID() (r int, exists bool) {
+	v := m.installation_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInstallationID returns the old "installation_id" field's value of the PluginSchedule entity.
+// If the PluginSchedule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleMutation) OldInstallationID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInstallationID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInstallationID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInstallationID: %w", err)
+	}
+	return oldValue.InstallationID, nil
+}
+
+// AddInstallationID adds i to the "installation_id" field.
+func (m *PluginScheduleMutation) AddInstallationID(i int) {
+	if m.addinstallation_id != nil {
+		*m.addinstallation_id += i
+	} else {
+		m.addinstallation_id = &i
+	}
+}
+
+// AddedInstallationID returns the value that was added to the "installation_id" field in this mutation.
+func (m *PluginScheduleMutation) AddedInstallationID() (r int, exists bool) {
+	v := m.addinstallation_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetInstallationID resets all changes to the "installation_id" field.
+func (m *PluginScheduleMutation) ResetInstallationID() {
+	m.installation_id = nil
+	m.addinstallation_id = nil
+}
+
+// SetKey sets the "key" field.
+func (m *PluginScheduleMutation) SetKey(s string) {
+	m.key = &s
+}
+
+// Key returns the value of the "key" field in the mutation.
+func (m *PluginScheduleMutation) Key() (r string, exists bool) {
+	v := m.key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKey returns the old "key" field's value of the PluginSchedule entity.
+// If the PluginSchedule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleMutation) OldKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKey: %w", err)
+	}
+	return oldValue.Key, nil
+}
+
+// ResetKey resets all changes to the "key" field.
+func (m *PluginScheduleMutation) ResetKey() {
+	m.key = nil
+}
+
+// SetOverrideCron sets the "override_cron" field.
+func (m *PluginScheduleMutation) SetOverrideCron(s string) {
+	m.override_cron = &s
+}
+
+// OverrideCron returns the value of the "override_cron" field in the mutation.
+func (m *PluginScheduleMutation) OverrideCron() (r string, exists bool) {
+	v := m.override_cron
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOverrideCron returns the old "override_cron" field's value of the PluginSchedule entity.
+// If the PluginSchedule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleMutation) OldOverrideCron(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOverrideCron is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOverrideCron requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOverrideCron: %w", err)
+	}
+	return oldValue.OverrideCron, nil
+}
+
+// ResetOverrideCron resets all changes to the "override_cron" field.
+func (m *PluginScheduleMutation) ResetOverrideCron() {
+	m.override_cron = nil
+}
+
+// SetOverrideTimezone sets the "override_timezone" field.
+func (m *PluginScheduleMutation) SetOverrideTimezone(s string) {
+	m.override_timezone = &s
+}
+
+// OverrideTimezone returns the value of the "override_timezone" field in the mutation.
+func (m *PluginScheduleMutation) OverrideTimezone() (r string, exists bool) {
+	v := m.override_timezone
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOverrideTimezone returns the old "override_timezone" field's value of the PluginSchedule entity.
+// If the PluginSchedule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleMutation) OldOverrideTimezone(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOverrideTimezone is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOverrideTimezone requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOverrideTimezone: %w", err)
+	}
+	return oldValue.OverrideTimezone, nil
+}
+
+// ResetOverrideTimezone resets all changes to the "override_timezone" field.
+func (m *PluginScheduleMutation) ResetOverrideTimezone() {
+	m.override_timezone = nil
+}
+
+// SetPaused sets the "paused" field.
+func (m *PluginScheduleMutation) SetPaused(b bool) {
+	m.paused = &b
+}
+
+// Paused returns the value of the "paused" field in the mutation.
+func (m *PluginScheduleMutation) Paused() (r bool, exists bool) {
+	v := m.paused
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPaused returns the old "paused" field's value of the PluginSchedule entity.
+// If the PluginSchedule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleMutation) OldPaused(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPaused is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPaused requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPaused: %w", err)
+	}
+	return oldValue.Paused, nil
+}
+
+// ResetPaused resets all changes to the "paused" field.
+func (m *PluginScheduleMutation) ResetPaused() {
+	m.paused = nil
+}
+
+// SetLastSlot sets the "last_slot" field.
+func (m *PluginScheduleMutation) SetLastSlot(i int64) {
+	m.last_slot = &i
+	m.addlast_slot = nil
+}
+
+// LastSlot returns the value of the "last_slot" field in the mutation.
+func (m *PluginScheduleMutation) LastSlot() (r int64, exists bool) {
+	v := m.last_slot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastSlot returns the old "last_slot" field's value of the PluginSchedule entity.
+// If the PluginSchedule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleMutation) OldLastSlot(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastSlot is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastSlot requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastSlot: %w", err)
+	}
+	return oldValue.LastSlot, nil
+}
+
+// AddLastSlot adds i to the "last_slot" field.
+func (m *PluginScheduleMutation) AddLastSlot(i int64) {
+	if m.addlast_slot != nil {
+		*m.addlast_slot += i
+	} else {
+		m.addlast_slot = &i
+	}
+}
+
+// AddedLastSlot returns the value that was added to the "last_slot" field in this mutation.
+func (m *PluginScheduleMutation) AddedLastSlot() (r int64, exists bool) {
+	v := m.addlast_slot
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLastSlot resets all changes to the "last_slot" field.
+func (m *PluginScheduleMutation) ResetLastSlot() {
+	m.last_slot = nil
+	m.addlast_slot = nil
+}
+
+// SetActiveRunID sets the "active_run_id" field.
+func (m *PluginScheduleMutation) SetActiveRunID(i int) {
+	m.active_run_id = &i
+	m.addactive_run_id = nil
+}
+
+// ActiveRunID returns the value of the "active_run_id" field in the mutation.
+func (m *PluginScheduleMutation) ActiveRunID() (r int, exists bool) {
+	v := m.active_run_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldActiveRunID returns the old "active_run_id" field's value of the PluginSchedule entity.
+// If the PluginSchedule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleMutation) OldActiveRunID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldActiveRunID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldActiveRunID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldActiveRunID: %w", err)
+	}
+	return oldValue.ActiveRunID, nil
+}
+
+// AddActiveRunID adds i to the "active_run_id" field.
+func (m *PluginScheduleMutation) AddActiveRunID(i int) {
+	if m.addactive_run_id != nil {
+		*m.addactive_run_id += i
+	} else {
+		m.addactive_run_id = &i
+	}
+}
+
+// AddedActiveRunID returns the value that was added to the "active_run_id" field in this mutation.
+func (m *PluginScheduleMutation) AddedActiveRunID() (r int, exists bool) {
+	v := m.addactive_run_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetActiveRunID resets all changes to the "active_run_id" field.
+func (m *PluginScheduleMutation) ResetActiveRunID() {
+	m.active_run_id = nil
+	m.addactive_run_id = nil
+}
+
+// SetLeaseUntil sets the "lease_until" field.
+func (m *PluginScheduleMutation) SetLeaseUntil(i int64) {
+	m.lease_until = &i
+	m.addlease_until = nil
+}
+
+// LeaseUntil returns the value of the "lease_until" field in the mutation.
+func (m *PluginScheduleMutation) LeaseUntil() (r int64, exists bool) {
+	v := m.lease_until
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLeaseUntil returns the old "lease_until" field's value of the PluginSchedule entity.
+// If the PluginSchedule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleMutation) OldLeaseUntil(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLeaseUntil is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLeaseUntil requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLeaseUntil: %w", err)
+	}
+	return oldValue.LeaseUntil, nil
+}
+
+// AddLeaseUntil adds i to the "lease_until" field.
+func (m *PluginScheduleMutation) AddLeaseUntil(i int64) {
+	if m.addlease_until != nil {
+		*m.addlease_until += i
+	} else {
+		m.addlease_until = &i
+	}
+}
+
+// AddedLeaseUntil returns the value that was added to the "lease_until" field in this mutation.
+func (m *PluginScheduleMutation) AddedLeaseUntil() (r int64, exists bool) {
+	v := m.addlease_until
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLeaseUntil resets all changes to the "lease_until" field.
+func (m *PluginScheduleMutation) ResetLeaseUntil() {
+	m.lease_until = nil
+	m.addlease_until = nil
+}
+
+// Where appends a list predicates to the PluginScheduleMutation builder.
+func (m *PluginScheduleMutation) Where(ps ...predicate.PluginSchedule) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PluginScheduleMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PluginScheduleMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.PluginSchedule, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PluginScheduleMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PluginScheduleMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (PluginSchedule).
+func (m *PluginScheduleMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PluginScheduleMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.installation_id != nil {
+		fields = append(fields, pluginschedule.FieldInstallationID)
+	}
+	if m.key != nil {
+		fields = append(fields, pluginschedule.FieldKey)
+	}
+	if m.override_cron != nil {
+		fields = append(fields, pluginschedule.FieldOverrideCron)
+	}
+	if m.override_timezone != nil {
+		fields = append(fields, pluginschedule.FieldOverrideTimezone)
+	}
+	if m.paused != nil {
+		fields = append(fields, pluginschedule.FieldPaused)
+	}
+	if m.last_slot != nil {
+		fields = append(fields, pluginschedule.FieldLastSlot)
+	}
+	if m.active_run_id != nil {
+		fields = append(fields, pluginschedule.FieldActiveRunID)
+	}
+	if m.lease_until != nil {
+		fields = append(fields, pluginschedule.FieldLeaseUntil)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PluginScheduleMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case pluginschedule.FieldInstallationID:
+		return m.InstallationID()
+	case pluginschedule.FieldKey:
+		return m.Key()
+	case pluginschedule.FieldOverrideCron:
+		return m.OverrideCron()
+	case pluginschedule.FieldOverrideTimezone:
+		return m.OverrideTimezone()
+	case pluginschedule.FieldPaused:
+		return m.Paused()
+	case pluginschedule.FieldLastSlot:
+		return m.LastSlot()
+	case pluginschedule.FieldActiveRunID:
+		return m.ActiveRunID()
+	case pluginschedule.FieldLeaseUntil:
+		return m.LeaseUntil()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PluginScheduleMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case pluginschedule.FieldInstallationID:
+		return m.OldInstallationID(ctx)
+	case pluginschedule.FieldKey:
+		return m.OldKey(ctx)
+	case pluginschedule.FieldOverrideCron:
+		return m.OldOverrideCron(ctx)
+	case pluginschedule.FieldOverrideTimezone:
+		return m.OldOverrideTimezone(ctx)
+	case pluginschedule.FieldPaused:
+		return m.OldPaused(ctx)
+	case pluginschedule.FieldLastSlot:
+		return m.OldLastSlot(ctx)
+	case pluginschedule.FieldActiveRunID:
+		return m.OldActiveRunID(ctx)
+	case pluginschedule.FieldLeaseUntil:
+		return m.OldLeaseUntil(ctx)
+	}
+	return nil, fmt.Errorf("unknown PluginSchedule field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PluginScheduleMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case pluginschedule.FieldInstallationID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInstallationID(v)
+		return nil
+	case pluginschedule.FieldKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKey(v)
+		return nil
+	case pluginschedule.FieldOverrideCron:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOverrideCron(v)
+		return nil
+	case pluginschedule.FieldOverrideTimezone:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOverrideTimezone(v)
+		return nil
+	case pluginschedule.FieldPaused:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPaused(v)
+		return nil
+	case pluginschedule.FieldLastSlot:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastSlot(v)
+		return nil
+	case pluginschedule.FieldActiveRunID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetActiveRunID(v)
+		return nil
+	case pluginschedule.FieldLeaseUntil:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLeaseUntil(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PluginSchedule field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PluginScheduleMutation) AddedFields() []string {
+	var fields []string
+	if m.addinstallation_id != nil {
+		fields = append(fields, pluginschedule.FieldInstallationID)
+	}
+	if m.addlast_slot != nil {
+		fields = append(fields, pluginschedule.FieldLastSlot)
+	}
+	if m.addactive_run_id != nil {
+		fields = append(fields, pluginschedule.FieldActiveRunID)
+	}
+	if m.addlease_until != nil {
+		fields = append(fields, pluginschedule.FieldLeaseUntil)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PluginScheduleMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case pluginschedule.FieldInstallationID:
+		return m.AddedInstallationID()
+	case pluginschedule.FieldLastSlot:
+		return m.AddedLastSlot()
+	case pluginschedule.FieldActiveRunID:
+		return m.AddedActiveRunID()
+	case pluginschedule.FieldLeaseUntil:
+		return m.AddedLeaseUntil()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PluginScheduleMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case pluginschedule.FieldInstallationID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddInstallationID(v)
+		return nil
+	case pluginschedule.FieldLastSlot:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLastSlot(v)
+		return nil
+	case pluginschedule.FieldActiveRunID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddActiveRunID(v)
+		return nil
+	case pluginschedule.FieldLeaseUntil:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLeaseUntil(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PluginSchedule numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PluginScheduleMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PluginScheduleMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PluginScheduleMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown PluginSchedule nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PluginScheduleMutation) ResetField(name string) error {
+	switch name {
+	case pluginschedule.FieldInstallationID:
+		m.ResetInstallationID()
+		return nil
+	case pluginschedule.FieldKey:
+		m.ResetKey()
+		return nil
+	case pluginschedule.FieldOverrideCron:
+		m.ResetOverrideCron()
+		return nil
+	case pluginschedule.FieldOverrideTimezone:
+		m.ResetOverrideTimezone()
+		return nil
+	case pluginschedule.FieldPaused:
+		m.ResetPaused()
+		return nil
+	case pluginschedule.FieldLastSlot:
+		m.ResetLastSlot()
+		return nil
+	case pluginschedule.FieldActiveRunID:
+		m.ResetActiveRunID()
+		return nil
+	case pluginschedule.FieldLeaseUntil:
+		m.ResetLeaseUntil()
+		return nil
+	}
+	return fmt.Errorf("unknown PluginSchedule field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PluginScheduleMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PluginScheduleMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PluginScheduleMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PluginScheduleMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PluginScheduleMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PluginScheduleMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PluginScheduleMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown PluginSchedule unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PluginScheduleMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown PluginSchedule edge %s", name)
+}
+
+// PluginScheduleRunMutation represents an operation that mutates the PluginScheduleRun nodes in the graph.
+type PluginScheduleRunMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int
+	schedule_id    *int
+	addschedule_id *int
+	scheduled_at   *time.Time
+	started_at     *time.Time
+	finished_at    *time.Time
+	status         *string
+	clearedFields  map[string]struct{}
+	done           bool
+	oldValue       func(context.Context) (*PluginScheduleRun, error)
+	predicates     []predicate.PluginScheduleRun
+}
+
+var _ ent.Mutation = (*PluginScheduleRunMutation)(nil)
+
+// pluginschedulerunOption allows management of the mutation configuration using functional options.
+type pluginschedulerunOption func(*PluginScheduleRunMutation)
+
+// newPluginScheduleRunMutation creates new mutation for the PluginScheduleRun entity.
+func newPluginScheduleRunMutation(c config, op Op, opts ...pluginschedulerunOption) *PluginScheduleRunMutation {
+	m := &PluginScheduleRunMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePluginScheduleRun,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPluginScheduleRunID sets the ID field of the mutation.
+func withPluginScheduleRunID(id int) pluginschedulerunOption {
+	return func(m *PluginScheduleRunMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *PluginScheduleRun
+		)
+		m.oldValue = func(ctx context.Context) (*PluginScheduleRun, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().PluginScheduleRun.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPluginScheduleRun sets the old PluginScheduleRun of the mutation.
+func withPluginScheduleRun(node *PluginScheduleRun) pluginschedulerunOption {
+	return func(m *PluginScheduleRunMutation) {
+		m.oldValue = func(context.Context) (*PluginScheduleRun, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PluginScheduleRunMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PluginScheduleRunMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PluginScheduleRunMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PluginScheduleRunMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().PluginScheduleRun.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetScheduleID sets the "schedule_id" field.
+func (m *PluginScheduleRunMutation) SetScheduleID(i int) {
+	m.schedule_id = &i
+	m.addschedule_id = nil
+}
+
+// ScheduleID returns the value of the "schedule_id" field in the mutation.
+func (m *PluginScheduleRunMutation) ScheduleID() (r int, exists bool) {
+	v := m.schedule_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScheduleID returns the old "schedule_id" field's value of the PluginScheduleRun entity.
+// If the PluginScheduleRun object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleRunMutation) OldScheduleID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldScheduleID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldScheduleID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScheduleID: %w", err)
+	}
+	return oldValue.ScheduleID, nil
+}
+
+// AddScheduleID adds i to the "schedule_id" field.
+func (m *PluginScheduleRunMutation) AddScheduleID(i int) {
+	if m.addschedule_id != nil {
+		*m.addschedule_id += i
+	} else {
+		m.addschedule_id = &i
+	}
+}
+
+// AddedScheduleID returns the value that was added to the "schedule_id" field in this mutation.
+func (m *PluginScheduleRunMutation) AddedScheduleID() (r int, exists bool) {
+	v := m.addschedule_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetScheduleID resets all changes to the "schedule_id" field.
+func (m *PluginScheduleRunMutation) ResetScheduleID() {
+	m.schedule_id = nil
+	m.addschedule_id = nil
+}
+
+// SetScheduledAt sets the "scheduled_at" field.
+func (m *PluginScheduleRunMutation) SetScheduledAt(t time.Time) {
+	m.scheduled_at = &t
+}
+
+// ScheduledAt returns the value of the "scheduled_at" field in the mutation.
+func (m *PluginScheduleRunMutation) ScheduledAt() (r time.Time, exists bool) {
+	v := m.scheduled_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScheduledAt returns the old "scheduled_at" field's value of the PluginScheduleRun entity.
+// If the PluginScheduleRun object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleRunMutation) OldScheduledAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldScheduledAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldScheduledAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScheduledAt: %w", err)
+	}
+	return oldValue.ScheduledAt, nil
+}
+
+// ClearScheduledAt clears the value of the "scheduled_at" field.
+func (m *PluginScheduleRunMutation) ClearScheduledAt() {
+	m.scheduled_at = nil
+	m.clearedFields[pluginschedulerun.FieldScheduledAt] = struct{}{}
+}
+
+// ScheduledAtCleared returns if the "scheduled_at" field was cleared in this mutation.
+func (m *PluginScheduleRunMutation) ScheduledAtCleared() bool {
+	_, ok := m.clearedFields[pluginschedulerun.FieldScheduledAt]
+	return ok
+}
+
+// ResetScheduledAt resets all changes to the "scheduled_at" field.
+func (m *PluginScheduleRunMutation) ResetScheduledAt() {
+	m.scheduled_at = nil
+	delete(m.clearedFields, pluginschedulerun.FieldScheduledAt)
+}
+
+// SetStartedAt sets the "started_at" field.
+func (m *PluginScheduleRunMutation) SetStartedAt(t time.Time) {
+	m.started_at = &t
+}
+
+// StartedAt returns the value of the "started_at" field in the mutation.
+func (m *PluginScheduleRunMutation) StartedAt() (r time.Time, exists bool) {
+	v := m.started_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStartedAt returns the old "started_at" field's value of the PluginScheduleRun entity.
+// If the PluginScheduleRun object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleRunMutation) OldStartedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStartedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStartedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStartedAt: %w", err)
+	}
+	return oldValue.StartedAt, nil
+}
+
+// ResetStartedAt resets all changes to the "started_at" field.
+func (m *PluginScheduleRunMutation) ResetStartedAt() {
+	m.started_at = nil
+}
+
+// SetFinishedAt sets the "finished_at" field.
+func (m *PluginScheduleRunMutation) SetFinishedAt(t time.Time) {
+	m.finished_at = &t
+}
+
+// FinishedAt returns the value of the "finished_at" field in the mutation.
+func (m *PluginScheduleRunMutation) FinishedAt() (r time.Time, exists bool) {
+	v := m.finished_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFinishedAt returns the old "finished_at" field's value of the PluginScheduleRun entity.
+// If the PluginScheduleRun object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleRunMutation) OldFinishedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFinishedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFinishedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFinishedAt: %w", err)
+	}
+	return oldValue.FinishedAt, nil
+}
+
+// ClearFinishedAt clears the value of the "finished_at" field.
+func (m *PluginScheduleRunMutation) ClearFinishedAt() {
+	m.finished_at = nil
+	m.clearedFields[pluginschedulerun.FieldFinishedAt] = struct{}{}
+}
+
+// FinishedAtCleared returns if the "finished_at" field was cleared in this mutation.
+func (m *PluginScheduleRunMutation) FinishedAtCleared() bool {
+	_, ok := m.clearedFields[pluginschedulerun.FieldFinishedAt]
+	return ok
+}
+
+// ResetFinishedAt resets all changes to the "finished_at" field.
+func (m *PluginScheduleRunMutation) ResetFinishedAt() {
+	m.finished_at = nil
+	delete(m.clearedFields, pluginschedulerun.FieldFinishedAt)
+}
+
+// SetStatus sets the "status" field.
+func (m *PluginScheduleRunMutation) SetStatus(s string) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *PluginScheduleRunMutation) Status() (r string, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the PluginScheduleRun entity.
+// If the PluginScheduleRun object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PluginScheduleRunMutation) OldStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *PluginScheduleRunMutation) ResetStatus() {
+	m.status = nil
+}
+
+// Where appends a list predicates to the PluginScheduleRunMutation builder.
+func (m *PluginScheduleRunMutation) Where(ps ...predicate.PluginScheduleRun) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PluginScheduleRunMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PluginScheduleRunMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.PluginScheduleRun, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PluginScheduleRunMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PluginScheduleRunMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (PluginScheduleRun).
+func (m *PluginScheduleRunMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PluginScheduleRunMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.schedule_id != nil {
+		fields = append(fields, pluginschedulerun.FieldScheduleID)
+	}
+	if m.scheduled_at != nil {
+		fields = append(fields, pluginschedulerun.FieldScheduledAt)
+	}
+	if m.started_at != nil {
+		fields = append(fields, pluginschedulerun.FieldStartedAt)
+	}
+	if m.finished_at != nil {
+		fields = append(fields, pluginschedulerun.FieldFinishedAt)
+	}
+	if m.status != nil {
+		fields = append(fields, pluginschedulerun.FieldStatus)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PluginScheduleRunMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case pluginschedulerun.FieldScheduleID:
+		return m.ScheduleID()
+	case pluginschedulerun.FieldScheduledAt:
+		return m.ScheduledAt()
+	case pluginschedulerun.FieldStartedAt:
+		return m.StartedAt()
+	case pluginschedulerun.FieldFinishedAt:
+		return m.FinishedAt()
+	case pluginschedulerun.FieldStatus:
+		return m.Status()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PluginScheduleRunMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case pluginschedulerun.FieldScheduleID:
+		return m.OldScheduleID(ctx)
+	case pluginschedulerun.FieldScheduledAt:
+		return m.OldScheduledAt(ctx)
+	case pluginschedulerun.FieldStartedAt:
+		return m.OldStartedAt(ctx)
+	case pluginschedulerun.FieldFinishedAt:
+		return m.OldFinishedAt(ctx)
+	case pluginschedulerun.FieldStatus:
+		return m.OldStatus(ctx)
+	}
+	return nil, fmt.Errorf("unknown PluginScheduleRun field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PluginScheduleRunMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case pluginschedulerun.FieldScheduleID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScheduleID(v)
+		return nil
+	case pluginschedulerun.FieldScheduledAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScheduledAt(v)
+		return nil
+	case pluginschedulerun.FieldStartedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStartedAt(v)
+		return nil
+	case pluginschedulerun.FieldFinishedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFinishedAt(v)
+		return nil
+	case pluginschedulerun.FieldStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PluginScheduleRun field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PluginScheduleRunMutation) AddedFields() []string {
+	var fields []string
+	if m.addschedule_id != nil {
+		fields = append(fields, pluginschedulerun.FieldScheduleID)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PluginScheduleRunMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case pluginschedulerun.FieldScheduleID:
+		return m.AddedScheduleID()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PluginScheduleRunMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case pluginschedulerun.FieldScheduleID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddScheduleID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PluginScheduleRun numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PluginScheduleRunMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(pluginschedulerun.FieldScheduledAt) {
+		fields = append(fields, pluginschedulerun.FieldScheduledAt)
+	}
+	if m.FieldCleared(pluginschedulerun.FieldFinishedAt) {
+		fields = append(fields, pluginschedulerun.FieldFinishedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PluginScheduleRunMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PluginScheduleRunMutation) ClearField(name string) error {
+	switch name {
+	case pluginschedulerun.FieldScheduledAt:
+		m.ClearScheduledAt()
+		return nil
+	case pluginschedulerun.FieldFinishedAt:
+		m.ClearFinishedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown PluginScheduleRun nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PluginScheduleRunMutation) ResetField(name string) error {
+	switch name {
+	case pluginschedulerun.FieldScheduleID:
+		m.ResetScheduleID()
+		return nil
+	case pluginschedulerun.FieldScheduledAt:
+		m.ResetScheduledAt()
+		return nil
+	case pluginschedulerun.FieldStartedAt:
+		m.ResetStartedAt()
+		return nil
+	case pluginschedulerun.FieldFinishedAt:
+		m.ResetFinishedAt()
+		return nil
+	case pluginschedulerun.FieldStatus:
+		m.ResetStatus()
+		return nil
+	}
+	return fmt.Errorf("unknown PluginScheduleRun field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PluginScheduleRunMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PluginScheduleRunMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PluginScheduleRunMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PluginScheduleRunMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PluginScheduleRunMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PluginScheduleRunMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PluginScheduleRunMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown PluginScheduleRun unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PluginScheduleRunMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown PluginScheduleRun edge %s", name)
 }
 
 // PluginStorageMutation represents an operation that mutates the PluginStorage nodes in the graph.

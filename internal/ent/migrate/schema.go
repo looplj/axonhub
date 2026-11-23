@@ -430,6 +430,58 @@ var (
 			},
 		},
 	}
+	// PluginSchedulesColumns holds the columns for the "plugin_schedules" table.
+	PluginSchedulesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "installation_id", Type: field.TypeInt},
+		{Name: "key", Type: field.TypeString, Size: 32},
+		{Name: "override_cron", Type: field.TypeString, Size: 128, Default: ""},
+		{Name: "override_timezone", Type: field.TypeString, Size: 64, Default: ""},
+		{Name: "paused", Type: field.TypeBool, Default: false},
+		{Name: "last_slot", Type: field.TypeInt64, Default: 0},
+		{Name: "active_run_id", Type: field.TypeInt, Default: 0},
+		{Name: "lease_until", Type: field.TypeInt64, Default: 0},
+	}
+	// PluginSchedulesTable holds the schema information for the "plugin_schedules" table.
+	PluginSchedulesTable = &schema.Table{
+		Name:       "plugin_schedules",
+		Columns:    PluginSchedulesColumns,
+		PrimaryKey: []*schema.Column{PluginSchedulesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "plugin_schedules_by_installation_key",
+				Unique:  true,
+				Columns: []*schema.Column{PluginSchedulesColumns[1], PluginSchedulesColumns[2]},
+			},
+		},
+	}
+	// PluginScheduleRunsColumns holds the columns for the "plugin_schedule_runs" table.
+	PluginScheduleRunsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "schedule_id", Type: field.TypeInt},
+		{Name: "scheduled_at", Type: field.TypeTime, Nullable: true},
+		{Name: "started_at", Type: field.TypeTime},
+		{Name: "finished_at", Type: field.TypeTime, Nullable: true},
+		{Name: "status", Type: field.TypeString, Size: 16},
+	}
+	// PluginScheduleRunsTable holds the schema information for the "plugin_schedule_runs" table.
+	PluginScheduleRunsTable = &schema.Table{
+		Name:       "plugin_schedule_runs",
+		Columns:    PluginScheduleRunsColumns,
+		PrimaryKey: []*schema.Column{PluginScheduleRunsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "plugin_schedule_runs_by_schedule_slot",
+				Unique:  true,
+				Columns: []*schema.Column{PluginScheduleRunsColumns[1], PluginScheduleRunsColumns[2]},
+			},
+			{
+				Name:    "plugin_schedule_runs_by_schedule_id",
+				Unique:  false,
+				Columns: []*schema.Column{PluginScheduleRunsColumns[1], PluginScheduleRunsColumns[0]},
+			},
+		},
+	}
 	// PluginStoragesColumns holds the columns for the "plugin_storages" table.
 	PluginStoragesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -1207,6 +1259,8 @@ var (
 		ModelsTable,
 		OidcIdentitiesTable,
 		PluginsTable,
+		PluginSchedulesTable,
+		PluginScheduleRunsTable,
 		PluginStoragesTable,
 		ProjectsTable,
 		PromptsTable,

@@ -113,7 +113,8 @@ function buildPiProviderModel(model: Model): PiProviderModel | undefined {
   if (thinkingLevelMap) entry.thinkingLevelMap = thinkingLevelMap;
   if (card?.limit && card.limit.context > 0) entry.contextWindow = card.limit.context;
   if (card?.limit && card.limit.output > 0) entry.maxTokens = card.limit.output;
-  if (hasCost && cost) {
+  // Pi requires all four prices if a cost block is present.
+  if (hasCost && cost && !model.missingReferencePrices?.length) {
     entry.cost = {
       input: cost.input,
       output: cost.output,
