@@ -325,3 +325,28 @@ func TestAggregateStreamChunksKeepsToolCallsFromAllChunks(t *testing.T) {
 	require.Equal(t, "get_time", calls[1].Function.Name)
 	require.NotEqual(t, calls[0].ID, calls[1].ID)
 }
+
+func TestTransformRequestMapsSeedAndPenalties(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL: "http://localhost:11434",
+	})
+	require.NoError(t, err)
+
+	req, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model:            "qwen3.5:4b-q4_K_M",
+		Messages:         []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}},
+		Seed:             lo.ToPtr(int64(42)),
+		FrequencyPenalty: lo.ToPtr(0.5),
+		PresencePenalty:  lo.ToPtr(0.25),
+	})
+	require.NoError(t, err)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(req.Body, &body))
+
+	opts, ok := body["options"].(map[string]any)
+	require.True(t, ok, "options must be present")
+	require.EqualValues(t, 42, opts["seed"])
+	require.EqualValues(t, 0.5, opts["frequency_penalty"])
+	require.EqualValues(t, 0.25, opts["presence_penalty"])
+}
