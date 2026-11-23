@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reset watch</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <main>
+      <header class="mast">
+        <div>
+          <p id="lead"></p>
+          <p id="clock" class="muted"></p>
+        </div>
+        <button id="refresh" type="button"></button>
+      </header>
+      <div id="products" class="tabs" role="tablist"></div>
+      <p id="access" class="note" hidden></p>
+      <p id="banner" class="banner" role="status" hidden></p>
+      <p id="status" class="status" role="status"></p>
+      <div id="content" hidden></div>
+    </main>
+    <script crossorigin="anonymous" src="../../_axonhub/bridge.js"></script>
+    <script type="module" crossorigin="anonymous" src="./app.js"></script>
+  </body>
+</html>

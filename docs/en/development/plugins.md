@@ -669,15 +669,17 @@ The owner enables a plugin with a subset of `permissions` and a subset of `netwo
 
 ## Publishing
 
-AxonHub reads the [community plugin index](https://raw.githubusercontent.com/looplj/axonhub-plugins/main/registry.json). The index updates independently of AxonHub releases. Development examples live in the AxonHub repository.
+AxonHub reads the [community plugin index](https://raw.githubusercontent.com/looplj/axonhub-plugins/main/registry.json). The index updates independently of AxonHub releases.
 
-To submit plugin source for centralized packaging and release, open a pull request under `plugins/` in [axonhub-plugins](https://github.com/looplj/axonhub-plugins). If you maintain your plugin in a separate repository, publish the zip at an HTTPS URL, such as a GitHub Release. Compute `sha256` as 64 lowercase hex characters of the raw zip bytes:
+For centralized packaging and release, submit the source under [`plugins/community/`](../../../plugins/community/) in AxonHub and bump the plugin version in `manifest.json`. After the change merges to `unstable`, AxonHub sends a `community-plugins` event to [axonhub-plugins](https://github.com/looplj/axonhub-plugins) with that commit SHA. The workflow there checks out the commit, packages new versions, creates tags and GitHub Releases, and updates the market index.
+
+If you maintain your plugin in a separate repository, publish the zip at an HTTPS URL, such as a GitHub Release. Compute `sha256` as 64 lowercase hex characters of the raw zip bytes:
 
 ```bash
 shasum -a 256 temperature-cap-1.0.0.axplugin
 ```
 
-To list a plugin maintained separately, open a pull request in [axonhub-plugins](https://github.com/looplj/axonhub-plugins) that adds a plugin object to the `plugins` array in `external-plugins.json`. Each `versions` item needs `version`, `url`, `sha256`, and `axonhubVersion`:
+To list a plugin maintained separately, open a pull request in [axonhub-plugins](https://github.com/looplj/axonhub-plugins) that adds a plugin object to the `plugins` array in `external-plugins.json`. Merging it to `main` rewrites the index from that file. Each `versions` item needs `version`, `url`, `sha256`, and `axonhubVersion`:
 
 ```json
 {

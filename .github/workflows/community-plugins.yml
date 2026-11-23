@@ -1,0 +1,59 @@
+name: Community plugins
+
+on:
+  pull_request:
+    paths:
+      - plugins/community/**
+      - .github/workflows/community-plugins.yml
+  push:
+    branches:
+      - unstable
+    paths:
+      - plugins/community/**
+      - .github/workflows/community-plugins.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: community-plugins-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Test community plugins
+        shell: bash
+        run: |
+          tests=()
+          while IFS= read -r -d '' file; do
+            tests+=("$file")
+          done < <(find plugins/community -name '*.test.mjs' -print0 | sort -z)
+          if [ "${#tests[@]}" -eq 0 ]; then
+            echo "No community plugin tests found" >&2
+            exit 1
+          fi
+          node --test "${tests[@]}"
+
+  dispatch:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/unstable'
+    runs-on: ubuntu-latest
+    steps:
+      # GITHUB_TOKEN cannot create a dispatch in another repository.
+      # AXONHUB_PLUGINS_TOKEN needs contents write on looplj/axonhub-plugins.
+      - name: Dispatch community plugin publication
+        env:
+          GH_TOKEN: ${{ secrets.AXONHUB_PLUGINS_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          payload=$(printf '{"event_type":"community-plugins","client_payload":{"sha":"%s"}}' "$SHA")
+          gh api repos/looplj/axonhub-plugins/dispatches --method POST --input - <<<"$payload"

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Live requests</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <main id="app">
+      <header class="header">
+        <div class="heading">
+          <h1 id="title">Live requests</h1>
+          <p class="updated"><span id="tick" class="tick" aria-hidden="true"></span><span id="updated"></span></p>
+        </div>
+        <div class="controls">
+          <label class="filter">
+            <span id="filter-label" class="sr-only">Client</span>
+            <select id="client-filter"></select>
+          </label>
+          <label class="filter window">
+            <span id="window-label" class="sr-only">Window</span>
+            <select id="window"></select>
+          </label>
+          <label class="filter limit">
+            <span id="limit-label" class="sr-only">Rows</span>
+            <select id="limit"></select>
+          </label>
+          <label class="filter refresh">
+            <span id="refresh-label" class="sr-only">Refresh</span>
+            <select id="refresh"></select>
+          </label>
+        </div>
+      </header>
+      <p id="hint" class="hint" role="status" hidden></p>
+      <p id="status" class="status" role="status" hidden></p>
+      <div id="stats-block" class="stats-block" hidden>
+        <p id="sample-note" class="sample-note"></p>
+        <section id="counts" class="stats"></section>
+        <p id="stats-hint" class="sample-note"></p>
+      </div>
+      <p id="overview-note" class="sample-note overview-note" role="status" hidden></p>
+      <section id="focus-bar" class="focus-bar" hidden>
+        <span id="focus-tag" class="focus-tag"></span>
+        <p id="summary" class="summary"></p>
+        <button id="clear-selection" class="clear-selection" type="button">Back to live</button>
+      </section>
+      <div id="stage-scroll" class="panel stage-scroll">
+        <div id="stage" class="stage" hidden>
+          <svg id="wires" class="wires" role="group" aria-label="Request tracks"></svg>
+          <div id="col-clients" class="col"></div>
+          <div id="col-keys" class="col"></div>
+          <div id="col-hub" class="col col-hub"></div>
+          <div id="col-channels" class="col"></div>
+        </div>
+      </div>
+      <section id="log-panel" class="panel log-panel" hidden>
+        <div class="panel-head">
+          <h2 id="log-title"></h2>
+          <span id="log-hint" class="panel-hint"></span>
+        </div>
+        <div id="log-wrap" class="log-wrap"></div>
+      </section>
+      <div id="empty" class="panel empty" hidden>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12h4l2.5-6 5 12 2.5-6h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p id="empty-text"></p>
+      </div>
+    </main>
+    <script crossorigin="anonymous" src="../../_axonhub/bridge.js"></script>
+    <script type="module" crossorigin="anonymous" src="./app.js"></script>
+  </body>
+</html>

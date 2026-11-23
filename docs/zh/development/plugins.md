@@ -662,15 +662,17 @@ Owner 启用插件时，授予的是 `permissions` 的子集和 `network` 的子
 
 ## 发布
 
-AxonHub 读取[社区插件索引](https://raw.githubusercontent.com/looplj/axonhub-plugins/main/registry.json)。索引可以独立于 AxonHub 版本更新。开发示例放在 AxonHub 仓库。
+AxonHub 读取[社区插件索引](https://raw.githubusercontent.com/looplj/axonhub-plugins/main/registry.json)。索引可以独立于 AxonHub 版本更新。
 
-需要集中打包和发版时，向 [axonhub-plugins](https://github.com/looplj/axonhub-plugins) 的 `plugins/` 提交源码。如果插件在独立仓库维护，把 zip 发布到 HTTPS 地址，例如 GitHub Release。对 zip 原始字节计算 `sha256`，使用 64 位小写十六进制：
+需要集中打包和发版时，向 AxonHub 的 [`plugins/community/`](../../../plugins/community/) 提交源码，在 `manifest.json` 中递增插件版本。合并到 `unstable` 后，AxonHub 向 [axonhub-plugins](https://github.com/looplj/axonhub-plugins) 发送 `community-plugins` 事件，带上这个提交的 SHA。那边的 workflow 检出该提交，为新版本打包、创建 tag 和 GitHub Release，并更新市场索引。
+
+如果插件在独立仓库维护，把 zip 发布到 HTTPS 地址，例如 GitHub Release。对 zip 原始字节计算 `sha256`，使用 64 位小写十六进制：
 
 ```bash
 shasum -a 256 temperature-cap-1.0.0.axplugin
 ```
 
-要收录独立维护的插件，向 [axonhub-plugins](https://github.com/looplj/axonhub-plugins) 提交 PR，在 `external-plugins.json` 的 `plugins` 数组里添加条目。`versions` 里每一项都要有 `version`、`url`、`sha256` 和 `axonhubVersion`：
+要收录独立维护的插件，向 [axonhub-plugins](https://github.com/looplj/axonhub-plugins) 提交 PR，在 `external-plugins.json` 的 `plugins` 数组里添加条目。合并到 `main` 后，索引会按这份登记重写。`versions` 里每一项都要有 `version`、`url`、`sha256` 和 `axonhubVersion`：
 
 ```json
 {
