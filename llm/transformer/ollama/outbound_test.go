@@ -50,6 +50,44 @@ func TestTransformRequestPreservesImageURLParts(t *testing.T) {
 	require.Equal(t, []string{"Zm9v"}, got.Messages[0].Images)
 }
 
+func TestTransformRequestMapsOutputLimitToNumPredict(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL: "http://localhost:11434",
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name                string
+		maxTokens           *int64
+		maxCompletionTokens *int64
+		want                int
+	}{
+		{name: "max_tokens", maxTokens: lo.ToPtr(int64(64)), want: 64},
+		{name: "max_completion_tokens", maxCompletionTokens: lo.ToPtr(int64(64)), want: 64},
+		{name: "max_tokens wins", maxTokens: lo.ToPtr(int64(32)), maxCompletionTokens: lo.ToPtr(int64(64)), want: 32},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := transformer.TransformRequest(context.Background(), &llm.Request{
+				Model:               "qwen3",
+				MaxTokens:           tt.maxTokens,
+				MaxCompletionTokens: tt.maxCompletionTokens,
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+				},
+			})
+			require.NoError(t, err)
+
+			var got ChatRequest
+			require.NoError(t, json.Unmarshal(req.Body, &got))
+			require.NotNil(t, got.Options)
+			require.NotNil(t, got.Options.NumPredict)
+			require.Equal(t, tt.want, *got.Options.NumPredict)
+		})
+	}
+}
+
 func TestTransformRequestWithTools(t *testing.T) {
 	transformer, err := NewOutboundTransformerWithConfig(&Config{
 		BaseURL: "http://localhost:11434",
