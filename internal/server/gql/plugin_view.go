@@ -9,6 +9,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/scopes"
@@ -48,6 +49,23 @@ func requirePluginOwner(ctx context.Context) error {
 		return ErrNotOwner
 	}
 	return nil
+}
+
+func presentPluginTask(state plugin.TaskState) *PluginTaskState {
+	runs := make([]*PluginTaskExecution, 0, len(state.Runs))
+	for _, run := range state.Runs {
+		runs = append(runs, presentPluginTaskRun(run))
+	}
+	return &PluginTaskState{
+		Key: state.Key, Cron: state.Cron, Timezone: state.Timezone, Overridden: state.Overridden,
+		Paused: state.Paused, NextRunAt: state.NextRunAt, Runs: runs,
+	}
+}
+
+func presentPluginTaskRun(run *ent.PluginScheduleRun) *PluginTaskExecution {
+	return &PluginTaskExecution{
+		ID: run.ID, ScheduledAt: run.ScheduledAt, StartedAt: run.StartedAt, FinishedAt: run.FinishedAt, Status: run.Status,
+	}
 }
 
 func pluginRowID(id objects.GUID) (int, error) {

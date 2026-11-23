@@ -1197,6 +1197,7 @@ type ComplexityRoot struct {
 		RetainThread                          func(childComplexity int, id objects.GUID) int
 		RetainTrace                           func(childComplexity int, id objects.GUID) int
 		RotateAPIKey                          func(childComplexity int, id objects.GUID) int
+		RunPluginTask                         func(childComplexity int, id objects.GUID, key string) int
 		SaveChannelEndpoints                  func(childComplexity int, input biz.SaveChannelEndpointsInput) int
 		SaveChannelModelPrices                func(childComplexity int, channelID objects.GUID, input []*biz.SaveChannelModelPriceInput) int
 		SaveProxyPreset                       func(childComplexity int, input biz.ProxyPreset) int
@@ -1234,6 +1235,7 @@ type ComplexityRoot struct {
 		UpdateMyPassword                      func(childComplexity int, input UpdateMyPasswordInput) int
 		UpdatePassThroughSettings             func(childComplexity int, input UpdatePassThroughSettingsInput) int
 		UpdatePluginSettings                  func(childComplexity int, id objects.GUID, priority int, config map[string]any) int
+		UpdatePluginTask                      func(childComplexity int, id objects.GUID, key string, paused bool, cron *string, timezone *string) int
 		UpdateProject                         func(childComplexity int, id objects.GUID, input ent.UpdateProjectInput) int
 		UpdateProjectProfiles                 func(childComplexity int, id objects.GUID, input objects.ProjectProfiles) int
 		UpdateProjectStatus                   func(childComplexity int, id objects.GUID, status project.Status) int
@@ -1429,6 +1431,24 @@ type ComplexityRoot struct {
 		ProtectedDrops          func(childComplexity int) int
 		Reason                  func(childComplexity int) int
 		Status                  func(childComplexity int) int
+	}
+
+	PluginTaskExecution struct {
+		FinishedAt  func(childComplexity int) int
+		ID          func(childComplexity int) int
+		ScheduledAt func(childComplexity int) int
+		StartedAt   func(childComplexity int) int
+		Status      func(childComplexity int) int
+	}
+
+	PluginTaskState struct {
+		Cron       func(childComplexity int) int
+		Key        func(childComplexity int) int
+		NextRunAt  func(childComplexity int) int
+		Overridden func(childComplexity int) int
+		Paused     func(childComplexity int) int
+		Runs       func(childComplexity int) int
+		Timezone   func(childComplexity int) int
 	}
 
 	PluginUIAction struct {
@@ -1725,6 +1745,7 @@ type ComplexityRoot struct {
 		PluginKv                        func(childComplexity int, namespace *string, key string) int
 		PluginMarket                    func(childComplexity int) int
 		PluginRuntimeStatuses           func(childComplexity int) int
+		PluginTasks                     func(childComplexity int, id objects.GUID) int
 		PluginUIEntries                 func(childComplexity int) int
 		Plugins                         func(childComplexity int) int
 		PreviewChannelModelEntries      func(childComplexity int, input ChannelModelPreviewInput) int
@@ -2697,6 +2718,8 @@ type MutationResolver interface {
 	DisablePlugin(ctx context.Context, id objects.GUID) (*plugin.InstalledPlugin, error)
 	UpdatePluginSettings(ctx context.Context, id objects.GUID, priority int, config map[string]any) (*plugin.InstalledPlugin, error)
 	DeletePlugin(ctx context.Context, id objects.GUID) (bool, error)
+	UpdatePluginTask(ctx context.Context, id objects.GUID, key string, paused bool, cron *string, timezone *string) (*PluginTaskState, error)
+	RunPluginTask(ctx context.Context, id objects.GUID, key string) (*PluginTaskExecution, error)
 	SetPluginKv(ctx context.Context, namespace *string, key string, value string, ttlSeconds *int) (*plugin.KVEntry, error)
 	DeletePluginKv(ctx context.Context, namespace *string, key string) (bool, error)
 	CreatePluginUISession(ctx context.Context, pluginID string, entry string) (*plugin.UISession, error)
@@ -2820,6 +2843,7 @@ type QueryResolver interface {
 	PluginRuntimeStatuses(ctx context.Context) ([]*plugin.RuntimeStatusView, error)
 	PluginCountersArePerInstance(ctx context.Context) (bool, error)
 	PluginMarket(ctx context.Context) ([]*plugin.MarketEntry, error)
+	PluginTasks(ctx context.Context, id objects.GUID) ([]*PluginTaskState, error)
 	PluginKv(ctx context.Context, namespace *string, key string) (*plugin.KVEntry, error)
 	PluginKVList(ctx context.Context, namespace *string, prefix *string, first *int, after *string) (*plugin.KVPage, error)
 	PluginUIEntries(ctx context.Context) (*plugin.UIEntries, error)
@@ -7617,6 +7641,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RotateAPIKey(childComplexity, args["id"].(objects.GUID)), true
+	case "Mutation.runPluginTask":
+		if e.complexity.Mutation.RunPluginTask == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_runPluginTask_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RunPluginTask(childComplexity, args["id"].(objects.GUID), args["key"].(string)), true
 	case "Mutation.saveChannelEndpoints":
 		if e.complexity.Mutation.SaveChannelEndpoints == nil {
 			break
@@ -8019,6 +8054,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdatePluginSettings(childComplexity, args["id"].(objects.GUID), args["priority"].(int), args["config"].(map[string]any)), true
+	case "Mutation.updatePluginTask":
+		if e.complexity.Mutation.UpdatePluginTask == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updatePluginTask_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdatePluginTask(childComplexity, args["id"].(objects.GUID), args["key"].(string), args["paused"].(bool), args["cron"].(*string), args["timezone"].(*string)), true
 	case "Mutation.updateProject":
 		if e.complexity.Mutation.UpdateProject == nil {
 			break
@@ -8930,6 +8976,80 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PluginRuntimeStatus.Status(childComplexity), true
+
+	case "PluginTaskExecution.finishedAt":
+		if e.complexity.PluginTaskExecution.FinishedAt == nil {
+			break
+		}
+
+		return e.complexity.PluginTaskExecution.FinishedAt(childComplexity), true
+	case "PluginTaskExecution.id":
+		if e.complexity.PluginTaskExecution.ID == nil {
+			break
+		}
+
+		return e.complexity.PluginTaskExecution.ID(childComplexity), true
+	case "PluginTaskExecution.scheduledAt":
+		if e.complexity.PluginTaskExecution.ScheduledAt == nil {
+			break
+		}
+
+		return e.complexity.PluginTaskExecution.ScheduledAt(childComplexity), true
+	case "PluginTaskExecution.startedAt":
+		if e.complexity.PluginTaskExecution.StartedAt == nil {
+			break
+		}
+
+		return e.complexity.PluginTaskExecution.StartedAt(childComplexity), true
+	case "PluginTaskExecution.status":
+		if e.complexity.PluginTaskExecution.Status == nil {
+			break
+		}
+
+		return e.complexity.PluginTaskExecution.Status(childComplexity), true
+
+	case "PluginTaskState.cron":
+		if e.complexity.PluginTaskState.Cron == nil {
+			break
+		}
+
+		return e.complexity.PluginTaskState.Cron(childComplexity), true
+	case "PluginTaskState.key":
+		if e.complexity.PluginTaskState.Key == nil {
+			break
+		}
+
+		return e.complexity.PluginTaskState.Key(childComplexity), true
+	case "PluginTaskState.nextRunAt":
+		if e.complexity.PluginTaskState.NextRunAt == nil {
+			break
+		}
+
+		return e.complexity.PluginTaskState.NextRunAt(childComplexity), true
+	case "PluginTaskState.overridden":
+		if e.complexity.PluginTaskState.Overridden == nil {
+			break
+		}
+
+		return e.complexity.PluginTaskState.Overridden(childComplexity), true
+	case "PluginTaskState.paused":
+		if e.complexity.PluginTaskState.Paused == nil {
+			break
+		}
+
+		return e.complexity.PluginTaskState.Paused(childComplexity), true
+	case "PluginTaskState.runs":
+		if e.complexity.PluginTaskState.Runs == nil {
+			break
+		}
+
+		return e.complexity.PluginTaskState.Runs(childComplexity), true
+	case "PluginTaskState.timezone":
+		if e.complexity.PluginTaskState.Timezone == nil {
+			break
+		}
+
+		return e.complexity.PluginTaskState.Timezone(childComplexity), true
 
 	case "PluginUIAction.effect":
 		if e.complexity.PluginUIAction.Effect == nil {
@@ -10306,6 +10426,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.PluginRuntimeStatuses(childComplexity), true
+	case "Query.pluginTasks":
+		if e.complexity.Query.PluginTasks == nil {
+			break
+		}
+
+		args, err := ec.field_Query_pluginTasks_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.PluginTasks(childComplexity, args["id"].(objects.GUID)), true
 	case "Query.pluginUIEntries":
 		if e.complexity.Query.PluginUIEntries == nil {
 			break
@@ -15115,6 +15246,22 @@ func (ec *executionContext) field_Mutation_rotateAPIKey_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_runPluginTask_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "key", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["key"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_saveChannelEndpoints_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -15628,6 +15775,37 @@ func (ec *executionContext) field_Mutation_updatePluginSettings_args(ctx context
 		return nil, err
 	}
 	args["config"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updatePluginTask_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "key", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["key"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "paused", ec.unmarshalNBoolean2bool)
+	if err != nil {
+		return nil, err
+	}
+	args["paused"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "cron", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["cron"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "timezone", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timezone"] = arg4
 	return args, nil
 }
 
@@ -16801,6 +16979,17 @@ func (ec *executionContext) field_Query_pluginKV_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["key"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_pluginTasks_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -44786,6 +44975,116 @@ func (ec *executionContext) fieldContext_Mutation_deletePlugin(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updatePluginTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updatePluginTask,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdatePluginTask(ctx, fc.Args["id"].(objects.GUID), fc.Args["key"].(string), fc.Args["paused"].(bool), fc.Args["cron"].(*string), fc.Args["timezone"].(*string))
+		},
+		nil,
+		ec.marshalNPluginTaskState2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskState,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updatePluginTask(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_PluginTaskState_key(ctx, field)
+			case "cron":
+				return ec.fieldContext_PluginTaskState_cron(ctx, field)
+			case "timezone":
+				return ec.fieldContext_PluginTaskState_timezone(ctx, field)
+			case "overridden":
+				return ec.fieldContext_PluginTaskState_overridden(ctx, field)
+			case "paused":
+				return ec.fieldContext_PluginTaskState_paused(ctx, field)
+			case "nextRunAt":
+				return ec.fieldContext_PluginTaskState_nextRunAt(ctx, field)
+			case "runs":
+				return ec.fieldContext_PluginTaskState_runs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PluginTaskState", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updatePluginTask_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_runPluginTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_runPluginTask,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().RunPluginTask(ctx, fc.Args["id"].(objects.GUID), fc.Args["key"].(string))
+		},
+		nil,
+		ec.marshalNPluginTaskExecution2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskExecution,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_runPluginTask(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_PluginTaskExecution_id(ctx, field)
+			case "scheduledAt":
+				return ec.fieldContext_PluginTaskExecution_scheduledAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_PluginTaskExecution_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_PluginTaskExecution_finishedAt(ctx, field)
+			case "status":
+				return ec.fieldContext_PluginTaskExecution_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PluginTaskExecution", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_runPluginTask_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_setPluginKV(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -48210,6 +48509,366 @@ func (ec *executionContext) fieldContext_PluginRuntimeStatus_overriddenByPassThr
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginTaskExecution_id(ctx context.Context, field graphql.CollectedField, obj *PluginTaskExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginTaskExecution_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginTaskExecution_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginTaskExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginTaskExecution_scheduledAt(ctx context.Context, field graphql.CollectedField, obj *PluginTaskExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginTaskExecution_scheduledAt,
+		func(ctx context.Context) (any, error) {
+			return obj.ScheduledAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginTaskExecution_scheduledAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginTaskExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginTaskExecution_startedAt(ctx context.Context, field graphql.CollectedField, obj *PluginTaskExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginTaskExecution_startedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.StartedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginTaskExecution_startedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginTaskExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginTaskExecution_finishedAt(ctx context.Context, field graphql.CollectedField, obj *PluginTaskExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginTaskExecution_finishedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.FinishedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginTaskExecution_finishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginTaskExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginTaskExecution_status(ctx context.Context, field graphql.CollectedField, obj *PluginTaskExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginTaskExecution_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginTaskExecution_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginTaskExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginTaskState_key(ctx context.Context, field graphql.CollectedField, obj *PluginTaskState) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginTaskState_key,
+		func(ctx context.Context) (any, error) {
+			return obj.Key, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginTaskState_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginTaskState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginTaskState_cron(ctx context.Context, field graphql.CollectedField, obj *PluginTaskState) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginTaskState_cron,
+		func(ctx context.Context) (any, error) {
+			return obj.Cron, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginTaskState_cron(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginTaskState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginTaskState_timezone(ctx context.Context, field graphql.CollectedField, obj *PluginTaskState) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginTaskState_timezone,
+		func(ctx context.Context) (any, error) {
+			return obj.Timezone, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginTaskState_timezone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginTaskState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginTaskState_overridden(ctx context.Context, field graphql.CollectedField, obj *PluginTaskState) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginTaskState_overridden,
+		func(ctx context.Context) (any, error) {
+			return obj.Overridden, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginTaskState_overridden(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginTaskState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginTaskState_paused(ctx context.Context, field graphql.CollectedField, obj *PluginTaskState) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginTaskState_paused,
+		func(ctx context.Context) (any, error) {
+			return obj.Paused, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginTaskState_paused(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginTaskState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginTaskState_nextRunAt(ctx context.Context, field graphql.CollectedField, obj *PluginTaskState) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginTaskState_nextRunAt,
+		func(ctx context.Context) (any, error) {
+			return obj.NextRunAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginTaskState_nextRunAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginTaskState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginTaskState_runs(ctx context.Context, field graphql.CollectedField, obj *PluginTaskState) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginTaskState_runs,
+		func(ctx context.Context) (any, error) {
+			return obj.Runs, nil
+		},
+		nil,
+		ec.marshalNPluginTaskExecution2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskExecutionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginTaskState_runs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginTaskState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_PluginTaskExecution_id(ctx, field)
+			case "scheduledAt":
+				return ec.fieldContext_PluginTaskExecution_scheduledAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_PluginTaskExecution_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_PluginTaskExecution_finishedAt(ctx, field)
+			case "status":
+				return ec.fieldContext_PluginTaskExecution_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PluginTaskExecution", field.Name)
 		},
 	}
 	return fc, nil
@@ -57097,6 +57756,63 @@ func (ec *executionContext) fieldContext_Query_pluginMarket(_ context.Context, f
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PluginMarketEntry", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_pluginTasks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_pluginTasks,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().PluginTasks(ctx, fc.Args["id"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNPluginTaskState2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskStateᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_pluginTasks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_PluginTaskState_key(ctx, field)
+			case "cron":
+				return ec.fieldContext_PluginTaskState_cron(ctx, field)
+			case "timezone":
+				return ec.fieldContext_PluginTaskState_timezone(ctx, field)
+			case "overridden":
+				return ec.fieldContext_PluginTaskState_overridden(ctx, field)
+			case "paused":
+				return ec.fieldContext_PluginTaskState_paused(ctx, field)
+			case "nextRunAt":
+				return ec.fieldContext_PluginTaskState_nextRunAt(ctx, field)
+			case "runs":
+				return ec.fieldContext_PluginTaskState_runs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PluginTaskState", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_pluginTasks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -111454,6 +112170,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updatePluginTask":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updatePluginTask(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "runPluginTask":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_runPluginTask(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setPluginKV":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setPluginKV(ctx, field)
@@ -112729,6 +113459,125 @@ func (ec *executionContext) _PluginRuntimeStatus(ctx context.Context, sel ast.Se
 			}
 		case "overriddenByPassThrough":
 			out.Values[i] = ec._PluginRuntimeStatus_overriddenByPassThrough(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var pluginTaskExecutionImplementors = []string{"PluginTaskExecution"}
+
+func (ec *executionContext) _PluginTaskExecution(ctx context.Context, sel ast.SelectionSet, obj *PluginTaskExecution) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pluginTaskExecutionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PluginTaskExecution")
+		case "id":
+			out.Values[i] = ec._PluginTaskExecution_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "scheduledAt":
+			out.Values[i] = ec._PluginTaskExecution_scheduledAt(ctx, field, obj)
+		case "startedAt":
+			out.Values[i] = ec._PluginTaskExecution_startedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "finishedAt":
+			out.Values[i] = ec._PluginTaskExecution_finishedAt(ctx, field, obj)
+		case "status":
+			out.Values[i] = ec._PluginTaskExecution_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var pluginTaskStateImplementors = []string{"PluginTaskState"}
+
+func (ec *executionContext) _PluginTaskState(ctx context.Context, sel ast.SelectionSet, obj *PluginTaskState) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pluginTaskStateImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PluginTaskState")
+		case "key":
+			out.Values[i] = ec._PluginTaskState_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cron":
+			out.Values[i] = ec._PluginTaskState_cron(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "timezone":
+			out.Values[i] = ec._PluginTaskState_timezone(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "overridden":
+			out.Values[i] = ec._PluginTaskState_overridden(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "paused":
+			out.Values[i] = ec._PluginTaskState_paused(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nextRunAt":
+			out.Values[i] = ec._PluginTaskState_nextRunAt(ctx, field, obj)
+		case "runs":
+			out.Values[i] = ec._PluginTaskState_runs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -117126,6 +117975,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_pluginMarket(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "pluginTasks":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_pluginTasks(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -129474,6 +130345,122 @@ func (ec *executionContext) marshalNPluginRuntimeStatus2ᚖgithubᚗcomᚋlooplj
 		return graphql.Null
 	}
 	return ec._PluginRuntimeStatus(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPluginTaskExecution2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskExecution(ctx context.Context, sel ast.SelectionSet, v PluginTaskExecution) graphql.Marshaler {
+	return ec._PluginTaskExecution(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPluginTaskExecution2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskExecutionᚄ(ctx context.Context, sel ast.SelectionSet, v []*PluginTaskExecution) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPluginTaskExecution2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskExecution(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPluginTaskExecution2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskExecution(ctx context.Context, sel ast.SelectionSet, v *PluginTaskExecution) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PluginTaskExecution(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPluginTaskState2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskState(ctx context.Context, sel ast.SelectionSet, v PluginTaskState) graphql.Marshaler {
+	return ec._PluginTaskState(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPluginTaskState2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskStateᚄ(ctx context.Context, sel ast.SelectionSet, v []*PluginTaskState) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPluginTaskState2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskState(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPluginTaskState2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐPluginTaskState(ctx context.Context, sel ast.SelectionSet, v *PluginTaskState) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PluginTaskState(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPluginUIAction2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋpluginᚐUIActionᚄ(ctx context.Context, sel ast.SelectionSet, v []*plugin.UIAction) graphql.Marshaler {

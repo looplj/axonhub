@@ -152,6 +152,7 @@ Fields use camelCase. A field that is not open is rejected at install and is not
 | `pluginApiVersion` | yes | `1` |
 | `permissions` | no | Names from the list below. Omitted means `[]` |
 | `network` | no | At most 32 rules. Omitted means `[]` |
+| `tasks` | No | See scheduled tasks below |
 | `events` | no | Names from the eight events above. A non-empty list requires `export function onEvent` |
 | `hooks.request` | no | Object: enabled is required; true requires non-empty requestTypes and an onRequest export; false keeps configuration without running it |
 | `hooks.attempt` | no | Object: enabled is required; true requires non-empty apiFormats and an onAttempt export; false keeps configuration without running it |
@@ -160,7 +161,7 @@ Fields use camelCase. A field that is not open is rejected at install and is not
 | `ui.pages` | no | Sidebar pages, described below |
 | `ui.actions` | no | Global toolbar actions that open plugin dialogs |
 
-Open permissions: `read_channels`, `read_requests`, `read_dashboard`, `read_api_keys`, `read_projects`, `read_settings`, `write_channels`, `webhook`. Outbound URLs go in `network`. `read_plugins` and `write_plugins` are user scopes, not plugin permissions. KV is not a permission.
+Open permissions: `read_channels`, `read_requests`, `read_dashboard`, `read_api_keys`, `read_projects`, `read_settings`, `write_channels`, `webhook`, `sql`. Outbound URLs go in `network`. `read_plugins` and `write_plugins` are user scopes, not plugin permissions. KV is not a permission.
 
 A `network` entry is either an exact `https` URL or `{ "regex": "^https://api\\.example\\.com/v1/items/[0-9]+$" }`. An exact URL includes a path and no userinfo, query, or fragment, and it matches that path only. A regex is a full match, at most 256 characters, against the URL with query and fragment removed. The request may still carry a query. Redirects are not followed: statuses 301, 302, 303, 307, and 308 reject both `ctx.fetch` and `axonhub.fetch` Promises with `INVALID_STATE`.
 
@@ -246,6 +247,51 @@ Plugins run in ascending priority; new installations default to 100. Each attemp
 Pass-through can overwrite non-model edits from onRequest, recorded in overriddenByPassThrough and a warning. onAttempt runs after pass-through, so its replace/patch takes effect. Channel overrides run next and win on matching fields. Editing a pass-through body with attempt does not require disabling pass-through.
 
 ctx.request uses camelCase: projectId, apiKeyId, model, requestType, and apiFormat, captured at middleware entry; Playground uses a null apiKeyId. ctx.attempt exists only on onAttempt and includes channel (id, name, type), the actual model, and outbound apiFormat, with no credentials. The body need not contain model; read ctx.attempt.model instead. This interface does not expose URL, method, HTTP header, or credential edits.
+
+## Scheduled tasks and dynamic SQL
+
+A manifest can declare scheduled tasks and the `sql` permission. This example shows the two fields and their JavaScript entry point.
+
+```json
+{
+  "permissions": ["sql"],
+  "tasks": {
+    "daily-count": {
+      "schedule": { "cron": "0 2 * * *", "timezone": "Asia/Shanghai" }
+    }
+  }
+}
+```
+
+```js
+export function onTask(ctx, run) {
+  if (run.key !== "daily-count") return;
+  const end = run.scheduledAt ?? new Date().toISOString();
+  const start = new Date(Date.parse(end) - 86_400_000).toISOString();
+  const placeholder = ctx.sql.dialect === "postgres" ? "$1" : "?";
+  const { rows } = ctx.sql.query(
+    "SELECT COUNT(*) AS total FROM requests WHERE created_at >= " + placeholder,
+    [start]
+  );
+  ctx.log.info("Request count", { total: rows[0][0] });
+}
+```
+
+### Scheduled tasks
+
+A plugin can declare up to 16 tasks, keyed by task ID. Each `schedule` requires a five-field `cron` expression and accepts an optional IANA `timezone` (UTC by default). The host calls `onTask(ctx, { key, runId, trigger, scheduledAt })`. The trigger is `scheduled` or `manual`. Manual runs receive `null` for `scheduledAt`.
+
+The plugin details show the next trigger and the last 20 runs. Owners can pause automatic triggers, change the schedule, and run a task on demand. Instances share the database claim record. The scheduler claims a slot at most once and skips missed minutes or ticks while an earlier run is active. A task has a 30-second deadline. Unfinished runs show an unknown outcome after the instance exits and its lease expires.
+
+Upgrade every replica before installing a plugin that declares `tasks`.
+
+### Dynamic SQL
+
+An Owner can grant `sql` to give `plugin.js` **all SQL privileges of the AxonHub primary database account**, including reads, writes, and DDL. This includes access to credentials and metadata visible to that account. Owner access is required to configure a plugin with this grant. The host checks the current activation status and grant before each call.
+
+`ctx.sql.query(statement, params?)` returns `{ columns, rows }`, with rows represented by arrays in column order. `ctx.sql.exec(statement, params?)` returns `{ rowsAffected }`. Both methods use the same grant and accept SQL generated at runtime. Bound values can be numbers, strings, booleans, or null. Integers beyond JavaScript’s safe range are decimal strings, and binary values are Base64 strings.
+
+Use the database dialect and its native placeholders. Calls have a 10-second deadline, and query results are limited to 1,000 rows and 1 MiB. Each call obtains its own connection. Complete any transaction within one call.
 
 ## Server middleware
 

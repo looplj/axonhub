@@ -61,6 +61,7 @@ type InvokeRequest struct {
 	AllowReject    bool
 
 	serverMiddleware   bool
+	backgroundTask     bool
 	requestContextJSON json.RawMessage
 }
 
@@ -133,7 +134,7 @@ func (m *Manager) Invoke(ctx context.Context, req InvokeRequest) (InvokeResult, 
 
 	exec := m.execFor(req.InstallationID)
 	circuit := &exec.circuit
-	if req.serverMiddleware {
+	if req.serverMiddleware || req.backgroundTask {
 		circuit = exec.serverCircuit(req.Export)
 	}
 	if circuit.rejectCall(m.nowCall()) {
@@ -159,6 +160,7 @@ func (m *Manager) Invoke(ctx context.Context, req InvokeRequest) (InvokeResult, 
 	result, callErr, discard := m.callExport(ctx, vm, callExportInput{
 		pluginID:           loaded.PluginID,
 		installationID:     req.InstallationID,
+		packageSHA:         loaded.PackageSHA256,
 		export:             req.Export,
 		args:               req.Args,
 		state:              state,
@@ -192,6 +194,7 @@ func (m *Manager) Invoke(ctx context.Context, req InvokeRequest) (InvokeResult, 
 type callExportInput struct {
 	pluginID           string
 	installationID     int
+	packageSHA         string
 	export             string
 	args               json.RawMessage
 	state              json.RawMessage
@@ -218,6 +221,7 @@ func (m *Manager) callExport(ctx context.Context, vm *pluginVM, in callExportInp
 		cancelIO:       cancelIO,
 		pluginID:       in.pluginID,
 		installationID: in.installationID,
+		packageSHA:     in.packageSHA,
 		export:         in.export,
 		alive:          true,
 		granted:        permissionSet(in.granted),

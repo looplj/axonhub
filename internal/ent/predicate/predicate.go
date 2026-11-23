@@ -42,6 +42,12 @@ type OIDCIdentity func(*sql.Selector)
 // Plugin is the predicate function for plugin builders.
 type Plugin func(*sql.Selector)
 
+// PluginSchedule is the predicate function for pluginschedule builders.
+type PluginSchedule func(*sql.Selector)
+
+// PluginScheduleRun is the predicate function for pluginschedulerun builders.
+type PluginScheduleRun func(*sql.Selector)
+
 // PluginStorage is the predicate function for pluginstorage builders.
 type PluginStorage func(*sql.Selector)
 

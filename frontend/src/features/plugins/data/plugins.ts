@@ -309,6 +309,7 @@ export function useInstallPlugin() {
     }) => installPlugin(file, grantedPermissions, grantedNetwork),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
+      queryClient.invalidateQueries({ queryKey: ['pluginTasks'] });
       queryClient.invalidateQueries({ queryKey: ['pluginMarket'] });
       queryClient.invalidateQueries({ queryKey: ['pluginUIEntries'] });
       queryClient.invalidateQueries({ queryKey: ['plugin-ui-session'] });
@@ -346,6 +347,7 @@ export function useInstallPluginFromMarket() {
       }).then((data) => data.installPluginFromMarket),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
+      queryClient.invalidateQueries({ queryKey: ['pluginTasks'] });
       queryClient.invalidateQueries({ queryKey: ['pluginMarket'] });
       queryClient.invalidateQueries({ queryKey: ['pluginUIEntries'] });
       queryClient.invalidateQueries({ queryKey: ['plugin-ui-session'] });
@@ -367,6 +369,7 @@ export function useEnablePlugin() {
     }) => graphqlRequest<{ enablePlugin: Plugin }>(ENABLE_PLUGIN_MUTATION, { id, grantedPermissions, grantedNetwork }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
+      queryClient.invalidateQueries({ queryKey: ['pluginTasks'] });
       queryClient.invalidateQueries({ queryKey: ['pluginMarket'] });
       queryClient.invalidateQueries({ queryKey: ['pluginUIEntries'] });
       queryClient.invalidateQueries({ queryKey: ['plugin-ui-session'] });
@@ -383,6 +386,7 @@ export function useDisablePlugin() {
     mutationFn: (id: string) => graphqlRequest<{ disablePlugin: Plugin }>(DISABLE_PLUGIN_MUTATION, { id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
+      queryClient.invalidateQueries({ queryKey: ['pluginTasks'] });
       queryClient.invalidateQueries({ queryKey: ['pluginUIEntries'] });
       queryClient.invalidateQueries({ queryKey: ['plugin-ui-session'] });
       toast.success(i18n.t('plugins.actions.disabled'));
@@ -416,6 +420,7 @@ export function useDeletePlugin() {
     mutationFn: (id: string) => graphqlRequest<{ deletePlugin: boolean }>(DELETE_PLUGIN_MUTATION, { id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
+      queryClient.invalidateQueries({ queryKey: ['pluginTasks'] });
       queryClient.invalidateQueries({ queryKey: ['pluginMarket'] });
       queryClient.invalidateQueries({ queryKey: ['pluginUIEntries'] });
       queryClient.invalidateQueries({ queryKey: ['plugin-ui-session'] });
@@ -424,5 +429,79 @@ export function useDeletePlugin() {
     onError: (error: Error) => {
       toast.error(error.message || i18n.t('plugins.actions.failed'));
     },
+  });
+}
+
+const PLUGIN_TASK_EXECUTION_FIELDS = 'id scheduledAt startedAt finishedAt status';
+
+const PLUGIN_TASK_FIELDS = `
+  key cron timezone overridden paused nextRunAt
+  runs { ${PLUGIN_TASK_EXECUTION_FIELDS} }
+`;
+
+const PLUGIN_TASKS_QUERY = `
+  query PluginTasks($id: ID!) {
+    pluginTasks(id: $id) { ${PLUGIN_TASK_FIELDS} }
+  }
+`;
+
+const UPDATE_PLUGIN_TASK_MUTATION = `
+  mutation UpdatePluginTask($id: ID!, $key: String!, $paused: Boolean!, $cron: String, $timezone: String) {
+    updatePluginTask(id: $id, key: $key, paused: $paused, cron: $cron, timezone: $timezone) {
+      ${PLUGIN_TASK_FIELDS}
+    }
+  }
+`;
+
+const RUN_PLUGIN_TASK_MUTATION = `
+  mutation RunPluginTask($id: ID!, $key: String!) {
+    runPluginTask(id: $id, key: $key) { ${PLUGIN_TASK_EXECUTION_FIELDS} }
+  }
+`;
+
+export interface PluginTaskExecution {
+  id: number;
+  scheduledAt?: string | null;
+  startedAt: string;
+  finishedAt?: string | null;
+  status: string;
+}
+
+export interface PluginTask {
+  key: string;
+  cron: string;
+  timezone: string;
+  overridden: boolean;
+  paused: boolean;
+  nextRunAt?: string | null;
+  runs: PluginTaskExecution[];
+}
+
+export function usePluginTasks(id?: string, poll = true) {
+  return useQuery({
+    queryKey: ['pluginTasks', id],
+    enabled: Boolean(id),
+    queryFn: async () =>
+      (await graphqlRequest<{ pluginTasks: PluginTask[] }>(PLUGIN_TASKS_QUERY, { id })).pluginTasks,
+    refetchInterval: (query) => (poll && query.state.data?.length ? 5000 : false),
+  });
+}
+
+export function useUpdatePluginTask(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { key: string; paused: boolean; cron?: string; timezone?: string }) =>
+      graphqlRequest<{ updatePluginTask: PluginTask }>(UPDATE_PLUGIN_TASK_MUTATION, { id, ...input }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pluginTasks', id] }),
+    onError: (error: Error) => toast.error(error.message || i18n.t('plugins.actions.failed')),
+  });
+}
+
+export function useRunPluginTask(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) => graphqlRequest<{ runPluginTask: PluginTaskExecution }>(RUN_PLUGIN_TASK_MUTATION, { id, key }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['pluginTasks', id] }),
+    onError: (error: Error) => toast.error(error.message || i18n.t('plugins.actions.failed')),
   });
 }

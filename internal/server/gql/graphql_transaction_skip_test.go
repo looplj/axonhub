@@ -62,6 +62,11 @@ func TestSkipGraphqlTransaction(t *testing.T) {
 			wantSkip: true,
 		},
 		{
+			name:     "manual plugin schedules claim before runtime starts",
+			op:       mutationOp("RunWithAnyName", "runPluginTask"),
+			wantSkip: true,
+		},
+		{
 			name:     "syncChannelModels uses the enclosing transaction",
 			op:       mutationOp("UpdateModels", "syncChannelModels"),
 			wantSkip: false,

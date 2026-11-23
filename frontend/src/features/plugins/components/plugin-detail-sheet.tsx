@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import type { Plugin } from '../data/plugins';
 import { PluginConfigForm } from './plugin-config-form';
+import { PluginTasks } from './plugin-tasks';
 import { PluginAvatar, PluginStatus } from './plugin-visuals';
 
 interface PluginDetailSheetProps {
@@ -103,8 +104,10 @@ export function PluginDetailSheet({ plugin, canWrite, canManage, onEditPermissio
                   </div>
                 </Section>
 
+                {!plugin.builtin && <PluginTasks plugin={plugin} canManage={canManage} />}
+
                 <Section title={t('plugins.config.title')}>
-                  {canWrite ? (
+                  {canWrite && (canManage || !plugin.grantedPermissions.includes('sql')) ? (
                     <PluginConfigForm plugin={plugin} />
                   ) : (
                     <div className='divide-y rounded-xl border'>

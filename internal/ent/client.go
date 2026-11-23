@@ -27,6 +27,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/plugin"
+	"github.com/looplj/axonhub/internal/ent/pluginschedule"
+	"github.com/looplj/axonhub/internal/ent/pluginschedulerun"
 	"github.com/looplj/axonhub/internal/ent/pluginstorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -75,6 +77,10 @@ type Client struct {
 	OIDCIdentity *OIDCIdentityClient
 	// Plugin is the client for interacting with the Plugin builders.
 	Plugin *PluginClient
+	// PluginSchedule is the client for interacting with the PluginSchedule builders.
+	PluginSchedule *PluginScheduleClient
+	// PluginScheduleRun is the client for interacting with the PluginScheduleRun builders.
+	PluginScheduleRun *PluginScheduleRunClient
 	// PluginStorage is the client for interacting with the PluginStorage builders.
 	PluginStorage *PluginStorageClient
 	// Project is the client for interacting with the Project builders.
@@ -134,6 +140,8 @@ func (c *Client) init() {
 	c.Model = NewModelClient(c.config)
 	c.OIDCIdentity = NewOIDCIdentityClient(c.config)
 	c.Plugin = NewPluginClient(c.config)
+	c.PluginSchedule = NewPluginScheduleClient(c.config)
+	c.PluginScheduleRun = NewPluginScheduleRunClient(c.config)
 	c.PluginStorage = NewPluginStorageClient(c.config)
 	c.Project = NewProjectClient(c.config)
 	c.Prompt = NewPromptClient(c.config)
@@ -255,6 +263,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Model:                    NewModelClient(cfg),
 		OIDCIdentity:             NewOIDCIdentityClient(cfg),
 		Plugin:                   NewPluginClient(cfg),
+		PluginSchedule:           NewPluginScheduleClient(cfg),
+		PluginScheduleRun:        NewPluginScheduleRunClient(cfg),
 		PluginStorage:            NewPluginStorageClient(cfg),
 		Project:                  NewProjectClient(cfg),
 		Prompt:                   NewPromptClient(cfg),
@@ -303,6 +313,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Model:                    NewModelClient(cfg),
 		OIDCIdentity:             NewOIDCIdentityClient(cfg),
 		Plugin:                   NewPluginClient(cfg),
+		PluginSchedule:           NewPluginScheduleClient(cfg),
+		PluginScheduleRun:        NewPluginScheduleRunClient(cfg),
 		PluginStorage:            NewPluginStorageClient(cfg),
 		Project:                  NewProjectClient(cfg),
 		Prompt:                   NewPromptClient(cfg),
@@ -352,10 +364,10 @@ func (c *Client) Use(hooks ...Hook) {
 		c.APIKey, c.APIKeyProfileTemplate, c.Channel, c.ChannelModelPrice,
 		c.ChannelModelPriceVersion, c.ChannelOverrideTemplate, c.ChannelProbe,
 		c.DataStorage, c.Invitation, c.Model, c.OIDCIdentity, c.Plugin,
-		c.PluginStorage, c.Project, c.Prompt, c.PromptProtectionRule,
-		c.ProviderQuotaStatus, c.Request, c.RequestBodyChunk, c.RequestBodyChunkRef,
-		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
-		c.UserProject, c.UserRole,
+		c.PluginSchedule, c.PluginScheduleRun, c.PluginStorage, c.Project, c.Prompt,
+		c.PromptProtectionRule, c.ProviderQuotaStatus, c.Request, c.RequestBodyChunk,
+		c.RequestBodyChunkRef, c.RequestExecution, c.Role, c.System, c.Thread, c.Trace,
+		c.UsageLog, c.User, c.UserProject, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -368,10 +380,10 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.APIKey, c.APIKeyProfileTemplate, c.Channel, c.ChannelModelPrice,
 		c.ChannelModelPriceVersion, c.ChannelOverrideTemplate, c.ChannelProbe,
 		c.DataStorage, c.Invitation, c.Model, c.OIDCIdentity, c.Plugin,
-		c.PluginStorage, c.Project, c.Prompt, c.PromptProtectionRule,
-		c.ProviderQuotaStatus, c.Request, c.RequestBodyChunk, c.RequestBodyChunkRef,
-		c.RequestExecution, c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User,
-		c.UserProject, c.UserRole,
+		c.PluginSchedule, c.PluginScheduleRun, c.PluginStorage, c.Project, c.Prompt,
+		c.PromptProtectionRule, c.ProviderQuotaStatus, c.Request, c.RequestBodyChunk,
+		c.RequestBodyChunkRef, c.RequestExecution, c.Role, c.System, c.Thread, c.Trace,
+		c.UsageLog, c.User, c.UserProject, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -404,6 +416,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.OIDCIdentity.mutate(ctx, m)
 	case *PluginMutation:
 		return c.Plugin.mutate(ctx, m)
+	case *PluginScheduleMutation:
+		return c.PluginSchedule.mutate(ctx, m)
+	case *PluginScheduleRunMutation:
+		return c.PluginScheduleRun.mutate(ctx, m)
 	case *PluginStorageMutation:
 		return c.PluginStorage.mutate(ctx, m)
 	case *ProjectMutation:
@@ -2361,6 +2377,274 @@ func (c *PluginClient) mutate(ctx context.Context, m *PluginMutation) (Value, er
 		return (&PluginDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Plugin mutation op: %q", m.Op())
+	}
+}
+
+// PluginScheduleClient is a client for the PluginSchedule schema.
+type PluginScheduleClient struct {
+	config
+}
+
+// NewPluginScheduleClient returns a client for the PluginSchedule from the given config.
+func NewPluginScheduleClient(c config) *PluginScheduleClient {
+	return &PluginScheduleClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `pluginschedule.Hooks(f(g(h())))`.
+func (c *PluginScheduleClient) Use(hooks ...Hook) {
+	c.hooks.PluginSchedule = append(c.hooks.PluginSchedule, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `pluginschedule.Intercept(f(g(h())))`.
+func (c *PluginScheduleClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PluginSchedule = append(c.inters.PluginSchedule, interceptors...)
+}
+
+// Create returns a builder for creating a PluginSchedule entity.
+func (c *PluginScheduleClient) Create() *PluginScheduleCreate {
+	mutation := newPluginScheduleMutation(c.config, OpCreate)
+	return &PluginScheduleCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PluginSchedule entities.
+func (c *PluginScheduleClient) CreateBulk(builders ...*PluginScheduleCreate) *PluginScheduleCreateBulk {
+	return &PluginScheduleCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PluginScheduleClient) MapCreateBulk(slice any, setFunc func(*PluginScheduleCreate, int)) *PluginScheduleCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PluginScheduleCreateBulk{err: fmt.Errorf("calling to PluginScheduleClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PluginScheduleCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PluginScheduleCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PluginSchedule.
+func (c *PluginScheduleClient) Update() *PluginScheduleUpdate {
+	mutation := newPluginScheduleMutation(c.config, OpUpdate)
+	return &PluginScheduleUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PluginScheduleClient) UpdateOne(_m *PluginSchedule) *PluginScheduleUpdateOne {
+	mutation := newPluginScheduleMutation(c.config, OpUpdateOne, withPluginSchedule(_m))
+	return &PluginScheduleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PluginScheduleClient) UpdateOneID(id int) *PluginScheduleUpdateOne {
+	mutation := newPluginScheduleMutation(c.config, OpUpdateOne, withPluginScheduleID(id))
+	return &PluginScheduleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PluginSchedule.
+func (c *PluginScheduleClient) Delete() *PluginScheduleDelete {
+	mutation := newPluginScheduleMutation(c.config, OpDelete)
+	return &PluginScheduleDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PluginScheduleClient) DeleteOne(_m *PluginSchedule) *PluginScheduleDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PluginScheduleClient) DeleteOneID(id int) *PluginScheduleDeleteOne {
+	builder := c.Delete().Where(pluginschedule.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PluginScheduleDeleteOne{builder}
+}
+
+// Query returns a query builder for PluginSchedule.
+func (c *PluginScheduleClient) Query() *PluginScheduleQuery {
+	return &PluginScheduleQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePluginSchedule},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PluginSchedule entity by its id.
+func (c *PluginScheduleClient) Get(ctx context.Context, id int) (*PluginSchedule, error) {
+	return c.Query().Where(pluginschedule.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PluginScheduleClient) GetX(ctx context.Context, id int) *PluginSchedule {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PluginScheduleClient) Hooks() []Hook {
+	hooks := c.hooks.PluginSchedule
+	return append(hooks[:len(hooks):len(hooks)], pluginschedule.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *PluginScheduleClient) Interceptors() []Interceptor {
+	return c.inters.PluginSchedule
+}
+
+func (c *PluginScheduleClient) mutate(ctx context.Context, m *PluginScheduleMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PluginScheduleCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PluginScheduleUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PluginScheduleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PluginScheduleDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PluginSchedule mutation op: %q", m.Op())
+	}
+}
+
+// PluginScheduleRunClient is a client for the PluginScheduleRun schema.
+type PluginScheduleRunClient struct {
+	config
+}
+
+// NewPluginScheduleRunClient returns a client for the PluginScheduleRun from the given config.
+func NewPluginScheduleRunClient(c config) *PluginScheduleRunClient {
+	return &PluginScheduleRunClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `pluginschedulerun.Hooks(f(g(h())))`.
+func (c *PluginScheduleRunClient) Use(hooks ...Hook) {
+	c.hooks.PluginScheduleRun = append(c.hooks.PluginScheduleRun, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `pluginschedulerun.Intercept(f(g(h())))`.
+func (c *PluginScheduleRunClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PluginScheduleRun = append(c.inters.PluginScheduleRun, interceptors...)
+}
+
+// Create returns a builder for creating a PluginScheduleRun entity.
+func (c *PluginScheduleRunClient) Create() *PluginScheduleRunCreate {
+	mutation := newPluginScheduleRunMutation(c.config, OpCreate)
+	return &PluginScheduleRunCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PluginScheduleRun entities.
+func (c *PluginScheduleRunClient) CreateBulk(builders ...*PluginScheduleRunCreate) *PluginScheduleRunCreateBulk {
+	return &PluginScheduleRunCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PluginScheduleRunClient) MapCreateBulk(slice any, setFunc func(*PluginScheduleRunCreate, int)) *PluginScheduleRunCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PluginScheduleRunCreateBulk{err: fmt.Errorf("calling to PluginScheduleRunClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PluginScheduleRunCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PluginScheduleRunCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PluginScheduleRun.
+func (c *PluginScheduleRunClient) Update() *PluginScheduleRunUpdate {
+	mutation := newPluginScheduleRunMutation(c.config, OpUpdate)
+	return &PluginScheduleRunUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PluginScheduleRunClient) UpdateOne(_m *PluginScheduleRun) *PluginScheduleRunUpdateOne {
+	mutation := newPluginScheduleRunMutation(c.config, OpUpdateOne, withPluginScheduleRun(_m))
+	return &PluginScheduleRunUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PluginScheduleRunClient) UpdateOneID(id int) *PluginScheduleRunUpdateOne {
+	mutation := newPluginScheduleRunMutation(c.config, OpUpdateOne, withPluginScheduleRunID(id))
+	return &PluginScheduleRunUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PluginScheduleRun.
+func (c *PluginScheduleRunClient) Delete() *PluginScheduleRunDelete {
+	mutation := newPluginScheduleRunMutation(c.config, OpDelete)
+	return &PluginScheduleRunDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PluginScheduleRunClient) DeleteOne(_m *PluginScheduleRun) *PluginScheduleRunDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PluginScheduleRunClient) DeleteOneID(id int) *PluginScheduleRunDeleteOne {
+	builder := c.Delete().Where(pluginschedulerun.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PluginScheduleRunDeleteOne{builder}
+}
+
+// Query returns a query builder for PluginScheduleRun.
+func (c *PluginScheduleRunClient) Query() *PluginScheduleRunQuery {
+	return &PluginScheduleRunQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePluginScheduleRun},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PluginScheduleRun entity by its id.
+func (c *PluginScheduleRunClient) Get(ctx context.Context, id int) (*PluginScheduleRun, error) {
+	return c.Query().Where(pluginschedulerun.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PluginScheduleRunClient) GetX(ctx context.Context, id int) *PluginScheduleRun {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PluginScheduleRunClient) Hooks() []Hook {
+	hooks := c.hooks.PluginScheduleRun
+	return append(hooks[:len(hooks):len(hooks)], pluginschedulerun.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *PluginScheduleRunClient) Interceptors() []Interceptor {
+	return c.inters.PluginScheduleRun
+}
+
+func (c *PluginScheduleRunClient) mutate(ctx context.Context, m *PluginScheduleRunMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PluginScheduleRunCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PluginScheduleRunUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PluginScheduleRunUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PluginScheduleRunDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PluginScheduleRun mutation op: %q", m.Op())
 	}
 }
 
@@ -5468,17 +5752,17 @@ type (
 	hooks struct {
 		APIKey, APIKeyProfileTemplate, Channel, ChannelModelPrice,
 		ChannelModelPriceVersion, ChannelOverrideTemplate, ChannelProbe, DataStorage,
-		Invitation, Model, OIDCIdentity, Plugin, PluginStorage, Project, Prompt,
-		PromptProtectionRule, ProviderQuotaStatus, Request, RequestBodyChunk,
-		RequestBodyChunkRef, RequestExecution, Role, System, Thread, Trace, UsageLog,
-		User, UserProject, UserRole []ent.Hook
+		Invitation, Model, OIDCIdentity, Plugin, PluginSchedule, PluginScheduleRun,
+		PluginStorage, Project, Prompt, PromptProtectionRule, ProviderQuotaStatus,
+		Request, RequestBodyChunk, RequestBodyChunkRef, RequestExecution, Role, System,
+		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Hook
 	}
 	inters struct {
 		APIKey, APIKeyProfileTemplate, Channel, ChannelModelPrice,
 		ChannelModelPriceVersion, ChannelOverrideTemplate, ChannelProbe, DataStorage,
-		Invitation, Model, OIDCIdentity, Plugin, PluginStorage, Project, Prompt,
-		PromptProtectionRule, ProviderQuotaStatus, Request, RequestBodyChunk,
-		RequestBodyChunkRef, RequestExecution, Role, System, Thread, Trace, UsageLog,
-		User, UserProject, UserRole []ent.Interceptor
+		Invitation, Model, OIDCIdentity, Plugin, PluginSchedule, PluginScheduleRun,
+		PluginStorage, Project, Prompt, PromptProtectionRule, ProviderQuotaStatus,
+		Request, RequestBodyChunk, RequestBodyChunkRef, RequestExecution, Role, System,
+		Thread, Trace, UsageLog, User, UserProject, UserRole []ent.Interceptor
 	}
 )

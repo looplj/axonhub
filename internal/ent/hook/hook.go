@@ -153,6 +153,30 @@ func (f PluginFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PluginMutation", m)
 }
 
+// The PluginScheduleFunc type is an adapter to allow the use of ordinary
+// function as PluginSchedule mutator.
+type PluginScheduleFunc func(context.Context, *ent.PluginScheduleMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PluginScheduleFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PluginScheduleMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PluginScheduleMutation", m)
+}
+
+// The PluginScheduleRunFunc type is an adapter to allow the use of ordinary
+// function as PluginScheduleRun mutator.
+type PluginScheduleRunFunc func(context.Context, *ent.PluginScheduleRunMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PluginScheduleRunFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PluginScheduleRunMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PluginScheduleRunMutation", m)
+}
+
 // The PluginStorageFunc type is an adapter to allow the use of ordinary
 // function as PluginStorage mutator.
 type PluginStorageFunc func(context.Context, *ent.PluginStorageMutation) (ent.Value, error)

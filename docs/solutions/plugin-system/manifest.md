@@ -67,6 +67,7 @@ Go 类型是 `internal/objects/plugin.go` 的 `PluginManifest`。插件能看到
 | `ui.pages[].key`                      | 是   | `^[a-z0-9][a-z0-9-]{0,31}$`，在该插件内唯一                                                                                                              | [页面](pages.md) 路由                            | T-01   |
 | `ui.pages[].entry`                    | 是   | 包内 `ui/` 下存在的 `.html`                                                                                                                              | [页面](pages.md) iframe                          | T-01   |
 | `ui.pages[].title`                    | 是   | 非空字符串，或语言 → 非空标题的对象，见 [title](#title)                                                                                                  | [页面](pages.md) 侧栏                            | T-01   |
+| `tasks` | 否 | 按任务 key 声明，最多 16 项。`schedule` 内含五段 `cron` 和可选 IANA `timezone`。非空时要求导出 `onTask` | 插件定时任务 | 已开放 |
 | `events`                              | 否   | 只能取 [events.md](events.md#5-事件) 里当前开放的 8 种；非空时要求导出 `onEvent`。开放前出现：`events are not enabled`。旧 WebHook 的 4 个事件名暂不接受 | [事件](events.md)                                | T-12   |
 | `hooks.request` | 否 | 对象；enabled 必填。true 时 requestTypes 必须非空且导出 onRequest；false 不调度 | [请求钩子](request.md) | T-13 |
 | `hooks.attempt` | 否 | 对象；enabled 必填。true 时 apiFormats 必须非空且导出 onAttempt；false 不调度 | [请求钩子](request.md) | T-13 |
@@ -153,9 +154,10 @@ request 对象只允许 enabled、requestTypes；attempt 只允许 enabled、api
 
 1. `events` 非空 → 导出 `onEvent`。
 2. `hooks.request.enabled` 为 `true` → 导出 `onRequest(ctx, request)`；`hooks.attempt.enabled` 为 `true` → 导出 `onAttempt(ctx, body)`。事件导出统一为 `onEvent(ctx, event)`。
-3. 上述导出都是函数。允许 async。顶层 `await` 拒绝。
+3. `tasks` 非空 → 导出 `onTask(ctx, run)`。
+4. 上述导出都是函数。允许 async。顶层 `await` 拒绝。
 
-非空 events 或任一 enabled=true 的请求钩子要求包内有 plugin.js；全部禁用的 hooks 不单独要求后端脚本。
+非空 events、非空 tasks 或任一 enabled=true 的请求钩子要求包内有 plugin.js；全部禁用的 hooks 不单独要求后端脚本。
 
 ## 5. 权限词表
 
@@ -164,6 +166,7 @@ request 对象只允许 enabled、requestTypes；attempt 只允许 enabled、api
 | `read_channels`、`read_requests`、`read_dashboard`、`read_api_keys`、`read_projects`、`read_settings` | `internal/scopes` | 宿主 API 读接口；页面 GraphQL 上限                                                                                                                      | T-01   |
 | `write_channels`                                                                                      | `internal/scopes` | 宿主 API 的渠道和凭证启停；进入页面 GraphQL 上限，页面因此能执行全部渠道 mutation 并读取凭证明文。授权对话框高亮，见 [pages.md](pages.md#10-风险与妥协) | T-01   |
 | `webhook`                                                                                             | 插件专用          | `ctx.webhook.send` 使用已配置的 WebHook 目标                                                                                                            | T-01   |
+| `sql` | 插件专用 | `ctx.sql.query`、`ctx.sql.exec` 使用 AxonHub 主数据库应用账号的完整 SQL 权限 | 已开放 |
 | `fetch`                                                                                               | 插件专用          | 出现即拒绝：`fetch is not enabled`。出站目标写在 `network`，不使用这个权限名                                                                             | 未排期 |
 
 - manifest 的 `permissions` 只声明插件想要什么。Owner 启用时勾选，勾选项必须是声明的子集，写入 `plugins.granted_permissions`。宿主 API 和页面 GraphQL 查的是这一列。`network` 另存为 `granted_network`，规则相同：勾选项必须是声明的子集，未提交时取旧授权与新声明的交集。
@@ -178,6 +181,7 @@ request 对象只允许 enabled、requestTypes；attempt 只允许 enabled、api
 | ------------- | ------------------------------------ |
 | `permissions` | 集合差                               |
 | `network`     | 集合差。精确 URL 按字符串，正则按 `regex` 原文 |
+| `tasks`   | 新增任务 key、Cron 或时区变更 |
 | `events`      | 集合差                               |
 | `hooks` | 新启用的钩子，或任一 requestTypes/apiFormats 新增匹配项；禁用配置只保存、不调度，启用时再走确认 |
 | `ui.pages`    | 按 `key` 的集合差                    |

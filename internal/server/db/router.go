@@ -2,23 +2,28 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 )
 
 // routerDriver wraps two dialect.Driver instances (master and replica).
 // See: https://entgo.io/docs/faq/#how-to-configure-two-or-more-db-to-separate-read-and-write
 type routerDriver struct {
-	master  dialect.Driver
+	master  *entsql.Driver
 	replica dialect.Driver
 }
 
-func newRouterDriver(master, replica dialect.Driver) *routerDriver {
+func newRouterDriver(master *entsql.Driver, replica dialect.Driver) *routerDriver {
 	return &routerDriver{master: master, replica: replica}
 }
 
 func (d *routerDriver) Dialect() string { return d.master.Dialect() }
+
+// DB exposes the primary pool for operations that need a dedicated connection.
+func (d *routerDriver) DB() *sql.DB { return d.master.DB() }
 
 func (d *routerDriver) Exec(ctx context.Context, query string, args, v any) error {
 	return d.master.Exec(ctx, query, args, v)

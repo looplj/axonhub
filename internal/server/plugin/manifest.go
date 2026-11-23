@@ -66,6 +66,7 @@ var pluginPermissionGates = []permissionGate{
 	{name: "read_settings", open: true},
 	{name: "write_channels", open: true},
 	{name: "webhook", open: true},
+	{name: permSQL, open: true},
 	{name: "fetch", message: errFetchNotEnabled},
 }
 
@@ -146,6 +147,9 @@ func ValidateManifest(manifest *objects.PluginManifest, axonhubVersion string) e
 	if err := checkEvents(manifest.Events); err != nil {
 		return err
 	}
+	if err := validateTasks(manifest.Tasks); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -166,7 +170,7 @@ func DiffManifest(old, next *objects.PluginManifest) ManifestDiff {
 		Permissions: addedStrings(next.Permissions, old.Permissions),
 		Network:     addedStrings(next.NetworkGrants(), old.NetworkGrants()),
 		Events:      addedStrings(next.Events, old.Events),
-		Hooks:       append(addedHooks(old.Hooks, next.Hooks), addedServerMiddleware(old.Server, next.Server)...),
+		Hooks:       slices.Concat(addedHooks(old.Hooks, next.Hooks), addedServerMiddleware(old.Server, next.Server), changedTasks(old.Tasks, next.Tasks)),
 		Pages:       addedStrings(pageKeys(next.UI), pageKeys(old.UI)),
 		Actions:     addedActions(old.UI, next.UI),
 	}

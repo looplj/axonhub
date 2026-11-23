@@ -227,6 +227,7 @@ export default function PluginsManagement({ tab, onTabChange }: PluginsManagemen
         onOpenChange={(open) => !open && flow.cancel()}
         mode={flow.grant?.mode ?? 'install'}
         pluginID={flow.grant?.plugin.pluginID ?? ''}
+        installationID={flow.grant?.plugin.id}
         pluginName={flow.grant ? flow.grant.plugin.name || flow.grant.plugin.pluginID : ''}
         manifestHooks={flow.grant?.plugin.manifestHooks}
         permissions={flow.grant?.plugin.manifestPermissions ?? []}

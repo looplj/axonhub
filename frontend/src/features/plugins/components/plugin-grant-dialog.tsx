@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import type { Plugin, PluginUpgradePreview } from '../data/plugins';
+import { usePluginTasks, type Plugin, type PluginUpgradePreview } from '../data/plugins';
 import type { PluginGrantMode } from '../hooks/use-plugin-grant-flow';
 import { PluginAvatar } from './plugin-visuals';
 
@@ -26,6 +26,7 @@ interface PluginGrantDialogProps {
   mode: PluginGrantMode;
   pluginID: string;
   pluginName: string;
+  installationID?: string;
   manifestHooks?: Plugin['manifestHooks'];
   permissions: string[];
   network: string[];
@@ -60,6 +61,7 @@ export function PluginGrantDialog({
   mode,
   pluginID,
   pluginName,
+  installationID,
   manifestHooks,
   permissions,
   network,
@@ -70,6 +72,7 @@ export function PluginGrantDialog({
   onConfirm,
 }: PluginGrantDialogProps) {
   const { t } = useTranslation();
+  const { data: tasks } = usePluginTasks(open && mode === 'install' ? installationID : undefined, false);
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedNetwork, setSelectedNetwork] = useState<string[]>([]);
   const wasOpen = useRef(false);
@@ -96,6 +99,7 @@ export function PluginGrantDialog({
   const newPermissions = new Set(showPreview ? (preview.permissions ?? []) : []);
   const newNetwork = new Set(showPreview ? (preview.network ?? []) : []);
   const hasWrite = permissions.some((permission) => permission.startsWith('write_'));
+  const hasSQL = permissions.includes('sql');
   const otherAdditions = showPreview
     ? [
         { label: t('plugins.grant.addedEvents'), items: preview.events ?? [] },
@@ -155,10 +159,22 @@ export function PluginGrantDialog({
             </div>
           )}
 
-          {(hasWrite || network.length > 0) && (
+          {!!tasks?.length && (
+            <div className='space-y-2 rounded-lg border p-3 text-sm'>
+              <p className='font-medium'>{t('plugins.tasks.title')}</p>
+              {tasks.map((task) => (
+                <p key={task.key} className='font-mono text-xs'>
+                  {task.key} · {task.cron} · {task.timezone}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {(hasSQL || hasWrite || network.length > 0) && (
             <Alert variant='destructive'>
               <IconAlertTriangle />
               <AlertDescription>
+                {hasSQL && <p>{t('plugins.grant.sqlWarning')}</p>}
                 {hasWrite && <p>{t('plugins.grant.writeWarning')}</p>}
                 {network.length > 0 && <p>{t('plugins.grant.networkWarning')}</p>}
               </AlertDescription>
@@ -181,11 +197,11 @@ export function PluginGrantDialog({
                   id={inputID}
                   checked={selected.includes(permission)}
                   disabled={pending}
-                  danger={writePermission}
+                  danger={writePermission || permission === 'sql'}
                   isNew={newPermissions.has(permission)}
                   onCheckedChange={(checked) => setSelected((current) => toggle(current, permission, checked))}
                   label={permission}
-                  hint={writePermission ? t('plugins.grant.writeAccess') : undefined}
+                  hint={permission === 'sql' ? t('plugins.grant.sqlAccess') : writePermission ? t('plugins.grant.writeAccess') : undefined}
                 />
               );
             })}

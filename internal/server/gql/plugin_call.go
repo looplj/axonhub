@@ -118,6 +118,7 @@ func activePluginUI(manager *plugin.Manager, manifestID string) *plugin.LoadedPl
 func pluginCallCeiling(granted []string) []string {
 	blocked := map[string]struct{}{
 		"webhook":                        {},
+		"sql":                            {},
 		string(scopes.ScopeReadPlugins):  {},
 		string(scopes.ScopeWritePlugins): {},
 	}

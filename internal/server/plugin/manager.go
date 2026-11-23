@@ -36,6 +36,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/pkg/xredis"
+	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/events"
 )
@@ -199,6 +200,13 @@ type Manager struct {
 	// Tests set it so a timeout case does not wait the full budget.
 	hookTimeout time.Duration
 
+	scanningTasks atomic.Bool
+	sqlSlots      chan struct{}
+	taskSlots     chan struct{}
+	taskMu        sync.Mutex
+	taskRuns      map[int]pluginTaskRun
+	tasksStopped  bool
+
 	stopOnce sync.Once
 	stopErr  error
 }
@@ -270,6 +278,9 @@ func newManager(params ManagerParams, cfg managerConfig) (*Manager, error) {
 		writes:          newPluginWriteLimiter(),
 		channels:        params.Channels,
 		webhooks:        params.Webhooks,
+		sqlSlots:        make(chan struct{}, pluginSQLConcurrency),
+		taskSlots:       make(chan struct{}, scheduleWorkers),
+		taskRuns:        make(map[int]pluginTaskRun),
 	}
 	manager.callsCond = sync.NewCond(&manager.callsMu)
 	if manager.countersUseRedis() {
@@ -345,6 +356,7 @@ func (m *Manager) Stop(ctx context.Context) error {
 }
 
 func (m *Manager) stop(ctx context.Context) error {
+	m.cancelTasks(nil, true)
 	m.callsMu.Lock()
 	m.stopping = true
 	m.serverMiddleware.Store(nil)
@@ -573,6 +585,11 @@ func (m *Manager) insertPlugin(ctx context.Context, zip []byte, pkg *Package, su
 			return err
 		}
 		row.Package = nil
+		if len(pkg.Manifest.Tasks) > 0 {
+			if err := m.syncTasks(txCtx, row.ID, pkg.Manifest.Tasks); err != nil {
+				return err
+			}
+		}
 		saved = row
 		return nil
 	})
@@ -625,6 +642,11 @@ func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip [
 			return err
 		}
 		updated.Package = nil
+		if len(row.Manifest.Tasks) > 0 || len(pkg.Manifest.Tasks) > 0 {
+			if err := m.syncTasks(txCtx, row.ID, pkg.Manifest.Tasks); err != nil {
+				return err
+			}
+		}
 		saved = updated
 		return nil
 	})
@@ -691,11 +713,15 @@ func (m *Manager) Disable(ctx context.Context, id int) error {
 // UpdateSettings validates config against the stored schema and saves priority and config.
 // An enabled plugin must keep every required field set; a disabled one may save partial config.
 func (m *Manager) UpdateSettings(ctx context.Context, id int, priority int, config map[string]any) error {
+	isOwner := scopes.IsDirectOwner(ctx)
 	ctx = authz.WithSystemBypass(ctx, pluginBypassReason)
 	err := m.runInTx(ctx, func(txCtx context.Context) error {
 		row, err := m.oneRecord(txCtx, id)
 		if err != nil {
 			return err
+		}
+		if slices.Contains(row.Granted, permSQL) && !isOwner {
+			return xerrors.ForbiddenError("only the Owner can configure a plugin with sql access")
 		}
 		config = keepSecretValues(row.Manifest.ConfigSchema, row.Config, config)
 		if err := validateStoredConfig(row.Manifest.ConfigSchema, config); err != nil {
@@ -734,6 +760,11 @@ func (m *Manager) Delete(ctx context.Context, id int) error {
 		}
 		if err := m.KVDeleteInstallation(txCtx, row.PluginID, row.ID); err != nil {
 			return err
+		}
+		if len(row.Manifest.Tasks) > 0 {
+			if err := m.syncTasks(txCtx, row.ID, nil); err != nil {
+				return err
+			}
 		}
 		return m.client(txCtx).Plugin.DeleteOneID(id).Exec(txCtx)
 	})
@@ -825,6 +856,7 @@ func (m *Manager) onSwap(old, next *Generation) {
 		}
 	}
 	m.callsMu.Unlock()
+	m.cancelTasks(next, false)
 	if old != nil && old != next {
 		m.retire(old)
 	}

@@ -3,6 +3,7 @@ extend type Query {
   pluginRuntimeStatuses: [PluginRuntimeStatus!]!
   pluginCountersArePerInstance: Boolean!
   pluginMarket: [PluginMarketEntry!]!
+  pluginTasks(id: ID!): [PluginTaskState!]!
 }
 
 extend type Mutation {
@@ -12,6 +13,26 @@ extend type Mutation {
   disablePlugin(id: ID!): Plugin!
   updatePluginSettings(id: ID!, priority: Int!, config: Map!): Plugin!
   deletePlugin(id: ID!): Boolean!
+  updatePluginTask(id: ID!, key: String!, paused: Boolean!, cron: String, timezone: String): PluginTaskState!
+  runPluginTask(id: ID!, key: String!): PluginTaskExecution!
+}
+
+type PluginTaskState {
+  key: String!
+  cron: String!
+  timezone: String!
+  overridden: Boolean!
+  paused: Boolean!
+  nextRunAt: Time
+  runs: [PluginTaskExecution!]!
+}
+
+type PluginTaskExecution {
+  id: Int!
+  scheduledAt: Time
+  startedAt: Time!
+  finishedAt: Time
+  status: String!
 }
 
 type Plugin {

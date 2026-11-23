@@ -774,3 +774,36 @@ func propertiesOf(t *testing.T, manifest map[string]any) map[string]any {
 	require.True(t, ok)
 	return properties
 }
+
+func TestManifestTaskContract(t *testing.T) {
+	parse := func(fields string) (*objects.PluginManifest, error) {
+		raw := strings.TrimSuffix(strings.TrimSpace(validManifestJSON), "}") + "," + fields + "}"
+		return ParseManifest([]byte(raw), "v1.0.0")
+	}
+	manifest, err := parse(`"tasks":{"report":{"schedule":{"cron":"0 2 * * *","timezone":"Asia/Shanghai"}}}`)
+	require.NoError(t, err)
+	require.Equal(t, "0 2 * * *", manifest.Tasks["report"].Schedule.Cron)
+	require.ErrorContains(t, ValidateExports(manifest, map[string]ExportFunc{}), "export onTask")
+	require.NoError(t, ValidateExports(manifest, map[string]ExportFunc{"onTask": {Function: true}}))
+
+	for _, tt := range []struct {
+		name, fields, errorText string
+	}{
+		{"unknown top-level field", `"schedules":[]`, "unknown field schedules"},
+		{"array", `"tasks":[]`, "tasks must be an object"},
+		{"duplicate key", `"tasks":{"report":{"schedule":{"cron":"0 2 * * *"}},"report":{"schedule":{"cron":"0 3 * * *"}}}`, "duplicated"},
+		{"invalid key", `"tasks":{"Bad Key":{"schedule":{"cron":"0 2 * * *"}}}`, "task key"},
+		{"missing schedule", `"tasks":{"report":{}}`, "tasks.report.schedule must be an object"},
+		{"invalid cron", `"tasks":{"report":{"schedule":{"cron":"0 2"}}}`, "cron must contain five fields"},
+		{"unknown schedule field", `"tasks":{"report":{"schedule":{"cron":"0 2 * * *","interval":60}}}`, "unknown field tasks.report.schedule.interval"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := parse(tt.fields)
+			require.ErrorContains(t, err, tt.errorText)
+		})
+	}
+
+	next, err := parse(`"tasks":{"report":{"schedule":{"cron":"0 3 * * *","timezone":"Asia/Shanghai"}}}`)
+	require.NoError(t, err)
+	require.Equal(t, []string{"tasks: report (0 3 * * * Asia/Shanghai)"}, DiffManifest(manifest, next).Hooks)
+}
