@@ -661,7 +661,8 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     // Every model protocol must reference an endpoint that exists after this save.
     // The backend validates against resolved endpoints (type defaults + custom), so
     // the check here must include the default endpoints too.
-    const savedFormats = getModelProtocolValidationFormats(defaultEndpoints, savedEndpoints, channel.settings?.realtime);
+    const modelProtocolValidationDefaults = realtimeDefaultEndpoint && !isCodexChannel ? channel.defaultEndpoints ?? [] : defaultEndpoints;
+    const savedFormats = getModelProtocolValidationFormats(modelProtocolValidationDefaults, savedEndpoints, channel.settings?.realtime);
     const invalidProtocolFormat = modelProtocols.find((mp) => mp.enabled !== false && mp.apiFormats.some((f) => !savedFormats.has(f)));
     if (invalidProtocolFormat) {
       setError(t('channels.endpoints.modelProtocols.formatsRequired'));

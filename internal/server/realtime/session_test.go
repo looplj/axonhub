@@ -268,6 +268,11 @@ func TestSessionClientPingCountsAsIdleActivity(t *testing.T) {
 	pingsDone := make(chan struct{})
 	go func() {
 		defer close(pingsDone)
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				t.Errorf("client ping sender panicked: %v", recovered)
+			}
+		}()
 		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
 		for {

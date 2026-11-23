@@ -834,7 +834,6 @@ func (c *RealtimeConversation) reserveClientInput(kind, eventID string, key *ent
 		reservation := c.committedInputs[0]
 		c.committedInputs = slices.Delete(c.committedInputs, 0, 1)
 		reservation.createEventID = eventID
-		reservation.reservationOrder = c.nextReservationOrder()
 		c.pendingResponses = append(c.pendingResponses, reservation)
 		return nil
 	}

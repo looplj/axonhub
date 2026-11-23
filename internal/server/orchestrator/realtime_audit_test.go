@@ -407,6 +407,26 @@ func TestRealtimeResponseReservationsKeepAudioClearOrder(t *testing.T) {
 	require.Same(t, after, c.responses["explicit-after"])
 }
 
+func TestManualResponseCreatePreservesCommittedAudioOrder(t *testing.T) {
+	firstCommit := &realtimeResponse{reservationOrder: 1}
+	secondCommit := &realtimeResponse{reservationOrder: 2}
+	c := &RealtimeConversation{
+		reservationOrder: 2,
+		committedInputs:  []*realtimeResponse{firstCommit, secondCommit},
+		responses:        map[string]*realtimeResponse{},
+	}
+
+	c.mu.Lock()
+	err := c.reserveClientInput("response.create", "manual-create", nil)
+	c.mu.Unlock()
+	require.NoError(t, err)
+	require.Equal(t, 1, firstCommit.reservationOrder, "assigning a create must not reorder the audio it consumes")
+
+	require.NoError(t, c.admitResponse("response-1"))
+	require.Same(t, firstCommit, c.responses["response-1"])
+	require.Equal(t, []*realtimeResponse{secondCommit}, c.committedInputs)
+}
+
 func TestServerVadCommitKeepsPreClearTurnAheadOfPostClearCreate(t *testing.T) {
 	ctx, db := setupTest(t)
 	project := db.Project.Create().SetName("vad-clear-order").SaveX(ctx)
