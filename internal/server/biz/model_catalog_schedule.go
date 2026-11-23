@@ -93,7 +93,7 @@ func (svc *ModelService) readCatalogCheck(ctx context.Context) (*CatalogCheckSta
 	value, err := svc.systemService.getSystemValue(ctx, catalogCheckSettingsKey)
 	if err == nil {
 		if err = json.Unmarshal([]byte(value), &settings); err != nil {
-			return nil, "", err
+			return nil, "", fmt.Errorf("decode catalog check settings: %w", err)
 		}
 	} else if !ent.IsNotFound(err) {
 		return nil, "", err
@@ -102,7 +102,7 @@ func (svc *ModelService) readCatalogCheck(ctx context.Context) (*CatalogCheckSta
 	value, err = svc.systemService.getSystemValue(ctx, catalogCheckResultKey)
 	if err == nil {
 		if err = json.Unmarshal([]byte(value), &state.catalogCheckResult); err != nil {
-			return nil, "", err
+			return nil, "", fmt.Errorf("decode catalog check result: %w", err)
 		}
 	} else if !ent.IsNotFound(err) {
 		return nil, "", err

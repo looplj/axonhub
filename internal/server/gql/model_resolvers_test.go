@@ -2,6 +2,9 @@ package gql
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/99designs/gqlgen/client"
@@ -17,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestQueryModels_ProjectAPIKeyManagerCanReadModels(t *testing.T) {
@@ -139,6 +143,42 @@ func TestCreateModelReferencePricesGraphQL(t *testing.T) {
 	err := api.Post(create, &response, client.Var("input", input), client.Var("edits", []map[string]any{{"field": "typo", "missing": true}}))
 	require.Error(t, err)
 	require.Equal(t, 2, db.Model.Query().CountX(authz.WithTestBypass(t.Context())))
+}
+
+func TestCatalogImportLegacyScope(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"providers":{"dev":{"models":[{"id":"example"}]}}}`)
+	}))
+	t.Cleanup(upstream.Close)
+	db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	t.Cleanup(func() { _ = db.Close() })
+	system := biz.NewSystemService(biz.SystemServiceParams{Ent: db, CacheConfig: xcache.Config{Mode: xcache.ModeMemory}})
+	require.NoError(t, system.SetCatalogSettings(authz.WithTestBypass(t.Context()), biz.CatalogSettings{UpstreamURL: upstream.URL}))
+	catalog := biz.NewCatalogService(system, httpclient.NewHttpClientWithClient(upstream.Client()))
+	models := biz.NewModelService(biz.ModelServiceParams{Ent: db, Catalog: catalog, SystemService: system})
+	srv := NewGraphqlHandlers(Dependencies{Ent: db, ModelService: models})
+	ctx := contexts.WithUser(authz.NewUserContext(t.Context(), 1), &ent.User{ID: 1, IsOwner: true})
+	api := client.New(srv.Graphql, func(r *client.Request) { r.HTTP = r.HTTP.WithContext(ctx) })
+
+	scope := map[string]any{"providers": []string{"dev"}, "channels": false, "ignorePrefix": false}
+	const preview = `query($scope:CatalogImportScope!){catalogImportPreview(scope:$scope){revision rows{modelID}}}`
+	var result struct{ CatalogImportPreview biz.CatalogImportPreview }
+	require.NoError(t, api.Post(preview, &result, client.Var("scope", scope)))
+	require.Len(t, result.CatalogImportPreview.Rows, 1)
+	require.Equal(t, "example", result.CatalogImportPreview.Rows[0].ModelID)
+	const apply = `mutation($scope:CatalogImportScope!,$rev:String!){applyCatalogImport(scope:$scope,revision:$rev,selections:[{
+		modelID:"example",members:[{id:"example",identity:""}],routes:[],version:"",identity:"",name:"Example",
+		developer:"dev",provider:"",sourceModelID:"",type:"chat",prices:[] }]){status}}`
+	var applied struct{ ApplyCatalogImport []biz.CatalogImportOutcome }
+	require.NoError(t, api.Post(apply, &applied, client.Var("scope", scope), client.Var("rev", result.CatalogImportPreview.Revision)))
+	require.Len(t, applied.ApplyCatalogImport, 1)
+	require.Equal(t, biz.CatalogApplied, applied.ApplyCatalogImport[0].Status)
+
+	for tracked, wantRows := range map[bool]int{false: 1, true: 0} {
+		scope["tracked"] = tracked
+		require.NoError(t, api.Post(preview, &result, client.Var("scope", scope)))
+		require.Len(t, result.CatalogImportPreview.Rows, wantRows)
+	}
 }
 
 func TestCatalogCheckSitePermissionsAndValidation(t *testing.T) {

@@ -77378,6 +77378,10 @@ func (ec *executionContext) unmarshalInputCatalogImportScope(ctx context.Context
 		asMap[k] = v
 	}
 
+	if _, present := asMap["tracked"]; !present {
+		asMap["tracked"] = false
+	}
+
 	fieldsInOrder := [...]string{"channels", "providers", "ignorePrefix", "tracked"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]

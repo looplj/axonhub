@@ -34,8 +34,16 @@ export function CatalogSchedule({
   const check = useCheckCatalogNow();
   const { data } = useProvidersData();
   const error = save.error ?? check.error;
-  const formatTime = (value: string | null) =>
-    value ? new Date(value).toLocaleString(i18n.language, { timeZone: status.settings.timezone || undefined, timeZoneName: 'short' }) : '—';
+  const formatTime = (value: string | null) => {
+    if (!value) return '—';
+    const date = new Date(value);
+    try {
+      return date.toLocaleString(i18n.language, { timeZone: status.settings.timezone || undefined, timeZoneName: 'short' });
+    } catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+      return date.toLocaleString(i18n.language, { timeZone: 'UTC' }) + ' UTC';
+    }
+  };
   const providerOptions = [...new Set([...Object.keys(data.providers), ...draft.providers])]
     .sort()
     .filter((id) => id.toLowerCase().includes(search.toLowerCase()));
@@ -79,7 +87,7 @@ export function CatalogSchedule({
         <div className='flex flex-wrap gap-3'>
           <label>
             {t('models.import.time')}
-            <Input type='time' value={draft.time} onChange={(e) => setDraft({ ...draft, time: e.target.value })} />
+            <Input data-testid='catalog-check-time' type='time' value={draft.time} onChange={(e) => setDraft({ ...draft, time: e.target.value })} />
           </label>
           <label>
             {t('models.import.timezone')}

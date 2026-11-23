@@ -18,6 +18,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -453,24 +454,68 @@ func TestCatalogCheckScopeUnion(t *testing.T) {
 	require.ElementsMatch(t, expected, offers(CatalogImportScope{Channels: true, Tracked: true, Providers: []string{"moonshot"}}))
 }
 
-func TestCatalogCheckAcrossInstances(t *testing.T) {
-	f := catalogFixture(t)
+func (f *importFixture) peer() *ModelService {
 	secondSystem := NewSystemService(SystemServiceParams{Ent: f.db, CacheConfig: xcache.Config{Mode: xcache.ModeMemory}})
 	secondCatalog := NewCatalogService(secondSystem, f.svc.catalog.httpClient)
-	second := NewModelService(ModelServiceParams{Ent: f.db, Catalog: secondCatalog, SystemService: secondSystem})
+	return NewModelService(ModelServiceParams{Ent: f.db, Catalog: secondCatalog, SystemService: secondSystem})
+}
+
+func TestCatalogCheckAcrossInstances(t *testing.T) {
+	f := catalogFixture(t)
+	second := f.peer()
+	provider := CatalogImportScope{Providers: []string{"moonshot-ai"}}
+	p := f.preview(t, provider)
+	require.Equal(t, []string{"applied"}, f.apply(t, provider, p, selection(t, p, "kimi-k3")))
+	watch := CatalogImportScope{Tracked: true}
+	p, err := second.CatalogImportPreview(f.ctx, watch)
+	require.NoError(t, err)
+	require.Empty(t, p.Rows)
+
+	f.body.Store(strings.Replace(testCatalog, `"input":3`, `"input":4`, 1))
 	firstRun, err := f.svc.CheckModelCatalog(f.ctx)
 	require.NoError(t, err)
 	cached, err := second.CatalogCheckStatus(f.ctx)
 	require.NoError(t, err)
 	require.Equal(t, firstRun.LastSuccess, cached.LastSuccess)
-	_, err = f.svc.CheckModelCatalog(f.ctx)
+	require.Equal(t, 1, cached.Changed)
+	f.body.Store(strings.Replace(testCatalog, `"input":3`, `"input":5`, 1))
+	p, err = second.CatalogImportPreview(f.ctx, watch)
 	require.NoError(t, err)
+	require.Len(t, p.Rows, 1)
+	require.True(t, p.Rows[0].Changed)
+	require.Equal(t, 5.0, *p.Rows[0].Preferred.rate("input").Base)
 	before := f.requests.Load()
 	f.body.Store("unavailable")
 	now, err := second.CheckModelCatalog(f.ctx)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), f.requests.Load()-before)
 	require.True(t, now.Failed)
+}
+
+func TestCatalogScheduledCheckClaimsMinuteOnce(t *testing.T) {
+	f := catalogFixture(t)
+	now := time.Date(2026, 11, 23, 8, 30, 0, 0, time.UTC)
+	_, err := f.svc.SaveCatalogCheckSettings(f.ctx, CatalogCheckSettings{Enabled: true, Time: "08:30", Timezone: "UTC"})
+	require.NoError(t, err)
+	start := make(chan struct{})
+	before := f.requests.Load()
+	var wg sync.WaitGroup
+	var errs [2]error
+	for i, svc := range []*ModelService{f.svc, f.peer()} {
+		wg.Go(func() {
+			<-start
+			_, errs[i] = svc.checkModelCatalog(f.ctx, now, true)
+		})
+	}
+	close(start)
+	wg.Wait()
+	for _, err := range errs {
+		require.NoError(t, err)
+	}
+	require.EqualValues(t, 1, f.requests.Load()-before)
+	state, err := f.svc.CatalogCheckStatus(f.ctx)
+	require.NoError(t, err)
+	require.NotNil(t, state.LastSuccess)
 }
 
 func TestCatalogImportConcurrentEdit(t *testing.T) {

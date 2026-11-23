@@ -113,12 +113,12 @@ const previewQuery = `query CatalogImportPreview($scope: CatalogImportScope!) {
 }`;
 export function useCatalogPreview(scope: ImportScope, enabled: boolean) {
   return useQuery({
-    queryKey: ['catalog-import', scope],
+    queryKey: ['catalog-import', enabled ? scope : null],
     enabled,
     queryFn: async ({ signal }) =>
       (await graphqlRequest<{ catalogImportPreview: CatalogPreview }>(previewQuery, { scope }, undefined, { signal })).catalogImportPreview,
     refetchOnWindowFocus: false,
-    staleTime: 60_000,
+    staleTime: scope.tracked ? 0 : 60_000,
   });
 }
 export function useCatalogApply() {

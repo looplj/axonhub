@@ -302,8 +302,12 @@ export function ModelsCatalogImport() {
   const canImport = hasSystemScope('write_channels');
   const [showSchedule, setIsSchedule] = useState(false);
   const isSchedule = !canImport || showSchedule;
-  const preview = useCatalogPreview(scope, !isSchedule);
-  const data = preview.data;
+  const needsSettings = scope.tracked && !schedule;
+  const preview = useCatalogPreview(scope, !isSchedule && !needsSettings);
+  // A watched review starts with this visit's response, even if the query already has cached rows.
+  const waitingForReview = scope.tracked && !preview.isFetchedAfterMount;
+  const data = waitingForReview ? undefined : preview.data;
+  const previewRequest = needsSettings ? status : preview;
   const refreshingAfterError = apply.isError && preview.fetchStatus !== 'idle';
   return (
     <Dialog
@@ -394,16 +398,16 @@ export function ModelsCatalogImport() {
                 {t('models.import.unknownResult')} {apply.error.message}
               </p>
             )}
-            {(preview.isPending || apply.isPending || refreshingAfterError) && <p>{t('common.loading')}</p>}
-            {preview.error && (
+            {!previewRequest.error && (preview.isPending || waitingForReview || apply.isPending || refreshingAfterError) && <p>{t('common.loading')}</p>}
+            {previewRequest.error && (
               <div role='alert'>
-                {preview.error.message}
-                <Button data-testid='catalog-import-reload' variant='outline' size='sm' onClick={() => preview.refetch()}>
+                {previewRequest.error.message}
+                <Button data-testid='catalog-import-reload' variant='outline' size='sm' onClick={() => previewRequest.refetch()}>
                   {t('models.import.preview')}
                 </Button>
               </div>
             )}
-            {data && !preview.error && !refreshingAfterError && (
+            {data && !previewRequest.error && !refreshingAfterError && (
               <>
                 <p className='text-muted-foreground text-xs break-all'>
                   {t('models.import.' + (data.source === 'fallback' ? 'fallback' : 'source'))} · {data.upstreamURL}

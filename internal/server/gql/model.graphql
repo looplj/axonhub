@@ -259,7 +259,7 @@ input CatalogImportScope {
   channels: Boolean!
   providers: [String!]!
   ignorePrefix: Boolean!
-  tracked: Boolean!
+  tracked: Boolean! = false
 }
 
 type CatalogImportTier {

@@ -231,7 +231,7 @@ test('only the schedule dialog and the channel editor badge poll for check statu
     if (operationName === 'CatalogCheckStatus') {
       statusReads++;
       const catalogCheckStatus = {
-        settings: { enabled: false, time: '08:30', timezone: 'UTC', providers: [], ignorePrefix: false },
+        settings: { enabled: false, time: '08:30', timezone: 'Test/Unsupported', providers: [], ignorePrefix: false },
         lastAttempt: null, lastSuccess: '2026-01-01T00:00:00Z', nextCheck: null, failed: false, available: 2, changed: 1,
       };
       return route.fulfill({ json: { data: { catalogCheckStatus } } });
@@ -253,7 +253,8 @@ test('only the schedule dialog and the channel editor badge poll for check statu
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('button', { name: /Check now|立即检查/i })).toHaveCount(0);
   await expect(dialog.getByRole('heading', { name: 'Update checks' })).toBeVisible();
-  await expect(dialog.locator('input[type=time]')).toBeDisabled();
+  await expect(dialog.getByTestId('catalog-check-time')).toBeDisabled();
+  await expect(dialog.getByText(/UTC$/)).toBeVisible();
   expect(statusReads).toBeGreaterThan(0);
   const openReads = statusReads;
   await page.clock.fastForward(61_000);
@@ -267,7 +268,9 @@ test('only the schedule dialog and the channel editor badge poll for check statu
   await page.reload();
   await open.click();
   await expect(dialog.getByRole('heading', { name: '检查更新' })).toBeVisible();
-  await expect(dialog.locator('input[type=time]')).toBeEnabled();
+  await expect(dialog.getByTestId('catalog-check-time')).toBeEnabled();
+  await expect(dialog.getByLabel(/站点时区/)).toHaveValue('Test/Unsupported');
+  await dialog.getByLabel(/站点时区/).fill('Asia/Shanghai');
   expect(importReads).toBe(0);
 
   scopes = ['read_channels', 'write_channels'];
@@ -276,6 +279,65 @@ test('only the schedule dialog and the channel editor badge poll for check statu
   const badgeReads = statusReads;
   await page.clock.fastForward(61_000);
   await expect.poll(() => statusReads).toBeGreaterThan(badgeReads);
+});
+
+test('watched candidates refresh on entry and keep the current draft across status polls', async ({ page }) => {
+  let watchReads = 0;
+  let available = 1;
+  let releaseSettings!: () => void;
+  const settingsReady = new Promise<void>((resolve) => { releaseSettings = resolve; });
+  let release!: () => void;
+  const secondEntry = new Promise<void>((resolve) => { release = resolve; });
+  await page.route('**/admin/graphql', async (route) => {
+    const { operationName, variables } = route.request().postDataJSON();
+    if (operationName === 'CatalogCheckStatus') {
+      await settingsReady;
+      const catalogCheckStatus = {
+        settings: { enabled: true, time: '08:30', timezone: 'UTC', providers: ['dev'], ignorePrefix: false },
+        lastSuccess: '2026-01-0' + available + 'T08:30:00Z', available, changed: 0, failed: false,
+      };
+      return route.fulfill({ json: { data: { catalogCheckStatus } } });
+    }
+    if (operationName !== 'CatalogImportPreview') return route.fallback();
+    const rows = [];
+    if (variables.scope.tracked) {
+      expect(variables.scope.providers).toEqual(['dev']);
+      if (++watchReads === 2) await secondEntry;
+      const id = 'model-' + watchReads;
+      rows.push({ modelID: id, name: id, members: [{ id, identity: '' }], routes: [], offers: [], prices: [], version: '' });
+    }
+    const preview = { rows, providers: ['dev'], source: 'upstream', upstreamURL: 'example', revision: 'same' };
+    return route.fulfill({ json: { data: { catalogImportPreview: preview } } });
+  });
+  await page.clock.install();
+  await gotoAndEnsureAuth(page, '/models');
+  const open = page.getByTestId('catalog-import-open');
+  await open.click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: /Model source|模型来源/ }).selectOption('watch');
+  await expect(dialog.getByTestId('catalog-import-rows')).toHaveCount(0);
+  releaseSettings();
+  await expect(dialog.getByTestId('catalog-import-expand-model-1')).toBeVisible();
+  await dialog.getByRole('button', { name: /Update checks|检查更新/ }).click();
+  await dialog.getByRole('button', { name: /Review candidates|预览检查范围/ }).click();
+  await expect.poll(() => watchReads).toBe(2);
+  await expect(dialog.getByTestId('catalog-import-rows')).toHaveCount(0);
+  release();
+  await dialog.getByTestId('catalog-import-expand-model-2').click();
+  const name = dialog.getByRole('textbox', { name: /^(Name|名称)$/ });
+  await name.fill('Reviewed name');
+  const selected = dialog.getByRole('checkbox', { name: 'model-2', exact: true });
+  await selected.check();
+  available = 2;
+  await page.clock.fastForward(61_000);
+  await expect(open).toContainText('2');
+  await expect(name).toHaveValue('Reviewed name');
+  await expect(selected).toBeChecked();
+  expect(watchReads).toBe(2);
+  await page.keyboard.press('Escape');
+  await open.click();
+  await dialog.getByRole('combobox', { name: /Model source|模型来源/ }).selectOption('watch');
+  await expect(dialog.getByTestId('catalog-import-expand-model-3')).toBeVisible();
 });
 
 test('a lost apply response requires a refreshed preview before retrying', async ({ page }) => {
