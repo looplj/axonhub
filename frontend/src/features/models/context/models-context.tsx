@@ -4,6 +4,7 @@ import { Model } from '../data/schema';
 type DialogType =
   | 'create'
   | 'batchCreate'
+  | 'catalogImport'
   | 'edit'
   | 'delete'
   | 'archive'

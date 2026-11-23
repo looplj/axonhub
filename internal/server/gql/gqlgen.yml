@@ -73,6 +73,14 @@ converters:
 
 # This section declares type mapping between the GraphQL and Go type systems.
 models:
+  ReferencePriceField:
+    model: github.com/looplj/axonhub/internal/server/biz.ReferencePriceField
+  CatalogImportStatus:
+    model: github.com/looplj/axonhub/internal/server/biz.CatalogImportStatus
+  CatalogPriceAction:
+    model: github.com/looplj/axonhub/internal/server/biz.CatalogPriceAction
+  CatalogImportMemberInput:
+    model: github.com/looplj/axonhub/internal/server/biz.CatalogImportMember
   CodexCatalogVersion:
     model:
       - github.com/looplj/axonhub/internal/server/biz.CodexCatalogVersion

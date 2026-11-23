@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -19,14 +20,35 @@ import (
 	"github.com/samber/lo"
 )
 
+// EditVersion is the resolver for the editVersion field.
+func (r *modelResolver) EditVersion(ctx context.Context, obj *ent.Model) (string, error) {
+	// Ent creates return the input timestamp, which may be more precise than the stored value.
+	if root := graphql.GetRootFieldContext(ctx); root != nil && (root.Field.Name == "createModel" || root.Field.Name == "bulkCreateModels") {
+		err := r.modelService.RunInTransaction(ctx, func(ctx context.Context) error {
+			var err error
+			obj, err = ent.FromContext(ctx).Model.Get(ctx, obj.ID)
+			return err
+		})
+		if err != nil {
+			return "", err
+		}
+	}
+	return biz.ModelEditVersion(obj)
+}
+
+// MissingReferencePrices is the resolver for the missingReferencePrices field.
+func (r *modelResolver) MissingReferencePrices(ctx context.Context, obj *ent.Model) ([]string, error) {
+	return biz.MissingReferencePrices(obj.ModelCard), nil
+}
+
 // AssociatedChannelCount is the resolver for the associatedChannelCount field.
 func (r *modelResolver) AssociatedChannelCount(ctx context.Context, obj *ent.Model) (int, error) {
 	return r.modelService.CountModelAssociatedChannels(ctx, obj)
 }
 
 // CreateModel is the resolver for the createModel field.
-func (r *mutationResolver) CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error) {
-	return r.modelService.CreateModel(ctx, input)
+func (r *mutationResolver) CreateModel(ctx context.Context, input ent.CreateModelInput, editedPrices []*biz.ManualPriceEdit) (*ent.Model, error) {
+	return r.modelService.CreateModelWithPriceEdits(ctx, input, lo.FromSlicePtr(editedPrices))
 }
 
 // BulkCreateModels is the resolver for the bulkCreateModels field.
@@ -35,8 +57,8 @@ func (r *mutationResolver) BulkCreateModels(ctx context.Context, inputs []*ent.C
 }
 
 // UpdateModel is the resolver for the updateModel field.
-func (r *mutationResolver) UpdateModel(ctx context.Context, id objects.GUID, input ent.UpdateModelInput) (*ent.Model, error) {
-	return r.modelService.UpdateModel(ctx, id.ID, &input)
+func (r *mutationResolver) UpdateModel(ctx context.Context, id objects.GUID, input ent.UpdateModelInput, editedPrices []*biz.ManualPriceEdit, expectedVersion *string) (*ent.Model, error) {
+	return r.modelService.UpdateModelWithPriceEdits(ctx, id.ID, &input, lo.FromSlicePtr(editedPrices), expectedVersion)
 }
 
 // DeleteModel is the resolver for the deleteModel field.
@@ -100,6 +122,15 @@ func (r *mutationResolver) BulkDeleteModels(ctx context.Context, ids []*objects.
 	}
 
 	return true, nil
+}
+
+// ApplyCatalogImport is the resolver for the applyCatalogImport field.
+func (r *mutationResolver) ApplyCatalogImport(ctx context.Context, scope biz.CatalogImportScope, revision string, selections []*biz.CatalogImportSelection) ([]*biz.CatalogImportOutcome, error) {
+	if err := authz.RequireSystemUserScope(ctx, scopes.ScopeWriteChannels); err != nil {
+		return nil, err
+	}
+	results, err := r.modelService.ApplyCatalogImport(authz.WithScopeDecision(ctx, scopes.ScopeWriteChannels), scope, revision, lo.FromSlicePtr(selections))
+	return lo.ToSlicePtr(results), err
 }
 
 // PreviewChannelModelEntries is the resolver for the previewChannelModelEntries field.
@@ -211,4 +242,12 @@ func (r *queryResolver) QueryModelChannelConnections(ctx context.Context, associ
 // QueryUnassociatedChannels is the resolver for the queryUnassociatedChannels field.
 func (r *queryResolver) QueryUnassociatedChannels(ctx context.Context) ([]*biz.UnassociatedChannel, error) {
 	return r.modelService.QueryUnassociatedChannels(ctx)
+}
+
+// CatalogImportPreview is the resolver for the catalogImportPreview field.
+func (r *queryResolver) CatalogImportPreview(ctx context.Context, scope biz.CatalogImportScope) (*biz.CatalogImportPreview, error) {
+	if err := authz.RequireSystemUserScope(ctx, scopes.ScopeWriteChannels); err != nil {
+		return nil, err
+	}
+	return r.modelService.CatalogImportPreview(authz.WithScopeDecision(ctx, scopes.ScopeWriteChannels), scope)
 }

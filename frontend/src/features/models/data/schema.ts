@@ -26,6 +26,8 @@ export const modelCostSchema = z.object({
   cacheWrite: z.number().optional(),
 });
 export type ModelCost = z.infer<typeof modelCostSchema>;
+export const referencePriceFields = modelCostSchema.keyof().options;
+export type ReferencePriceField = keyof ModelCost;
 
 export const modelLimitSchema = z.object({
   context: z.number(),
@@ -149,6 +151,8 @@ export const modelSchema = z.object({
   id: z.string(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
+  editVersion: z.string().optional(),
+  missingReferencePrices: z.array(z.string()).optional(),
   developer: z.string(),
   modelID: z.string(),
   type: modelTypeSchema,
@@ -163,6 +167,8 @@ export const modelSchema = z.object({
 });
 export type Model = z.infer<typeof modelSchema>;
 
+const editableCardSchema = modelCardSchema.extend({ cost: modelCostSchema.partial().optional() });
+
 export const createModelInputSchema = z.object({
   developer: z.string().min(1, 'Developer is required'),
   modelID: z.string().min(1, 'Model ID is required'),
@@ -170,7 +176,7 @@ export const createModelInputSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   icon: z.string().min(1, 'Icon is required'),
   group: z.string().min(1, 'Group is required'),
-  modelCard: modelCardSchema,
+  modelCard: editableCardSchema,
   settings: modelSettingsSchema.optional(),
   status: modelStatusSchema.optional(),
   remark: z.string().optional(),
@@ -184,7 +190,7 @@ export const updateModelInputSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
   icon: z.string().min(1, 'Icon is required').optional(),
   group: z.string().min(1, 'Group is required').optional(),
-  modelCard: modelCardSchema.optional(),
+  modelCard: editableCardSchema.optional(),
   settings: modelSettingsSchema.optional(),
   status: modelStatusSchema.optional(),
   remark: z.string().optional().nullable(),

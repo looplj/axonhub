@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/99designs/gqlgen/client"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -100,4 +101,42 @@ func TestQueryModels_ProjectAPIKeyManagerCanReadModels(t *testing.T) {
 	ctxWithoutProject = contexts.WithUser(ctxWithoutProject, userWithEdges)
 	_, err = resolver.QueryModels(ctxWithoutProject, QueryModelsInput{})
 	require.Error(t, err)
+}
+
+func TestCreateModelReferencePricesGraphQL(t *testing.T) {
+	db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	t.Cleanup(func() { _ = db.Close() })
+	srv := NewGraphqlHandlers(Dependencies{Ent: db, ModelService: biz.NewModelService(biz.ModelServiceParams{Ent: db})})
+	api := client.New(srv.Graphql, func(r *client.Request) { r.HTTP = r.HTTP.WithContext(authz.WithTestBypass(r.HTTP.Context())) })
+	const create = `mutation Create($input: CreateModelInput!, $edits: [ManualPriceEdit!]) {
+		createModel(input:$input, editedPrices:$edits) { missingReferencePrices modelCard { cost { input output } } }
+	}`
+	input := map[string]any{
+		"developer": "dev", "name": "Manual", "modelID": "manual", "icon": "dev", "group": "dev",
+		"modelCard": map[string]any{"cost": map[string]float64{"input": 3, "output": 0}},
+		"settings":  map[string]any{"associations": []any{}},
+	}
+	var response struct {
+		CreateModel struct {
+			MissingReferencePrices []string
+			ModelCard              struct {
+				Cost struct{ Input, Output float64 }
+			}
+		}
+	}
+	edits := []map[string]any{{"field": "cacheRead", "missing": true}, {"field": "cacheWrite", "missing": true}}
+	require.NoError(t, api.Post(create, &response, client.Var("input", input), client.Var("edits", edits)))
+	require.ElementsMatch(t, []string{"cacheRead", "cacheWrite"}, response.CreateModel.MissingReferencePrices)
+	require.Equal(t, 3.0, response.CreateModel.ModelCard.Cost.Input)
+	require.Zero(t, response.CreateModel.ModelCard.Cost.Output)
+	stored := db.Model.Query().OnlyX(authz.WithTestBypass(t.Context()))
+	require.Nil(t, stored.ModelCard.ReferencePrice("cacheWrite"))
+	require.Equal(t, 0.0, *stored.ModelCard.ReferencePrice("output"))
+	input["modelID"], input["name"] = "legacy", "Legacy"
+	require.NoError(t, api.Post(create, &response, client.Var("input", input)))
+	require.Empty(t, response.CreateModel.MissingReferencePrices)
+	input["modelID"], input["name"] = "invalid", "Invalid"
+	err := api.Post(create, &response, client.Var("input", input), client.Var("edits", []map[string]any{{"field": "typo", "missing": true}}))
+	require.Error(t, err)
+	require.Equal(t, 2, db.Model.Query().CountX(authz.WithTestBypass(t.Context())))
 }
