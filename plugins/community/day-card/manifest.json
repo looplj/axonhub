@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "local.day-card",
+  "name": "每日用量卡",
+  "version": "0.1.0",
+  "description": "移植自 magpie 的每日用量卡。把一天的用量画成小票：费用、连续天数、每把 API Key 及其模型。数字用服务端聚合，不拉取用量明细。",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "permissions": ["read_dashboard", "read_settings", "read_requests"],
+  "ui": {
+    "pages": [
+      {
+        "key": "day",
+        "entry": "ui/day/index.html",
+        "title": { "en": "Day card", "zh-CN": "每日用量卡" }
+      }
+    ]
+  }
+}

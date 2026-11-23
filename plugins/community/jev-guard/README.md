@@ -1,0 +1,85 @@
+# Jev 请求审查
+
+AxonHub 插件。在 `onRequest(ctx, request)` 里调用 [Jev](https://docs.typesafe.ai/primitives/noul)（TypeSafe 的 System One 判别模型），按配置里的分类判断这段文本。判断发生在配额、模型权限、模型映射和选路之前，拦截不会打到上游。
+
+钩子声明是 `hooks.request: { enabled, requestTypes }`，范围覆盖全部请求类型。放行不返回对象，宿主保留原请求；返回对象会按 replace 整份替换。拦截用 `ctx.reject(403, message)`。
+
+Jev 不生成回复。一次 `POST https://api.typesafe.ai/v1/systemone` 对同一段文本并行回答每条分类，每题返回 0 到 1 的概率。达到拦截阈值就返回 403。
+
+## 决策
+
+| 结果 | 条件 | 行为 |
+| --- | --- | --- |
+| 放行 | 每条分类都低于拦截阈值 | 不返回对象，原请求继续。不写记录 |
+| 拦截 | 任一分类达到拦截阈值 | `403`，写入拦截记录。多条同时达到时取得分最高的一条 |
+| 检查失败 | 没有 Key、网络失败、响应无法解析 | 默认放行。打开「检查失败时拦截」后返回 `403` |
+
+默认拦截阈值 `0.70`。分类是字符串数组，设置页显示为可增删的列表。每行格式：
+
+```text
+名称 | 问题 | 符合时 | 不符合时
+```
+
+只写一句话时，这句话同时作为名称和 403 原因，判断标准用内置的「是否在索要」。清空列表后不再检查。未保存过这个字段时使用内置六类。一次最多取前 32 条。
+
+| 默认名称 | 判断的是 |
+| --- | --- |
+| sexual content involving a minor | 是否在索要涉及未成年人的性内容 |
+| sexual content | 是否在索要露骨性内容 |
+| jailbreak | 是否在要求模型忽略规则或扮演没有安全规则的 AI |
+| violent or criminal assistance | 是否在索要暴力、武器或严重犯罪的可执行帮助 |
+| scam or phishing | 是否在索要诈骗、钓鱼或冒充盗号的可执行帮助 |
+| harassment or hate | 是否在要求按身份攻击或骚扰某个人或群体 |
+
+问题按「是否在索要」来写，而不是「是否提到」。普通说明、新闻、医疗信息、安全教育和虚构创作不应因为话题敏感被拦下。自伤不在默认分类里，避免把求助拦成 403。
+
+送去判断的文本来自对话、压缩输入、重排序查询和文档、图像/视频/补全/语音提示、嵌入字符串、审核输入，以及 System One 的 `state`、Decisions 的 `input`。转写和翻译只看可选的 `prompt`。图片、音频字节和 alpha search 的原始 body 不在公开请求里，不会上传。超长文本保留开头四分之一和结尾，中间标成 `[truncated]`，总长最多 8000 字符。
+
+## 目录
+
+```text
+manifest.json
+plugin.js
+lib/screen.js
+ui/guard/
+```
+
+## 打包
+
+按 [插件目录说明](../../README.md) 安装打包器，然后在 AxonHub 仓库根目录运行：
+
+```sh
+pack-plugin plugins/community/jev-guard -o /tmp/jev-guard.axplugin
+```
+
+在 AxonHub 的 PR 中递增 `manifest.json` 版本。合并到 `unstable` 后，AxonHub 向 [axonhub-plugins](https://github.com/looplj/axonhub-plugins) 发送事件，由那边检出这个提交并打包发布。
+
+在本目录运行 `node --test *.test.mjs` 可执行插件测试。
+
+## 安装
+
+1. Owner 打开「插件」›「插件管理」（`/plugins`），上传 `jev-guard.axplugin`。
+2. 启用时授予 `https://api.typesafe.ai/v1/systemone`。不授予的话，请求发不出去。
+3. 先保存 TypeSafe API Key，再启用。`apiKey` 是必填项，空着时启用会被拒绝。Key 在 [console.typesafe.ai](https://console.typesafe.ai) 创建。停用期间可以先不填；启用后不能把 Key 清空。
+4. 侧栏「插件」分组里的「请求审查」页只列出拦截。可以单条删除，也可以清空。
+
+## 验收
+
+用 Playground 或任意已接入的客户端发聊天请求。
+
+- 普通问题（例如解释 HTTPS、写一份食谱）应原样到达上游，审查页没有新记录。
+- 要求模型忽略自身规则、扮演没有安全限制的角色，应返回 `403`，正文为 `Jev Guard blocked this request: jailbreak`，审查页出现一条 jailbreak 记录。
+- 明确索要色情内容，应返回 `403`，原因是 sexual content。
+- 在分类里加一行「是否在索要自制炸药的步骤」并保存后，明确索要该步骤应返回 `403`，原因是这行文字。
+- 不填 API Key 就点启用，应被拒绝，提示缺少必填配置 `apiKey`。填上 Key 后才能启用。
+
+渠道是否开启 pass-through 不影响拦截，因为钩子返回的是拒绝，不是改写字段。
+
+## 限制
+
+- 平台还没有响应钩子，模型已经生成的内容不会再过一遍 Jev。
+- 脚本抛错或超过 10 秒时，宿主按 fail-open 放行。只有插件自己捕获到的检查失败，才会遵守「检查失败时拦截」。
+- 针对分类器的对抗文本可能把概率拉低。这是 Jev 文档里写明的限制，本插件是入口过滤，不是唯一边界。
+- 同一次对话里更早的消息也会送去判断。前面已经出现的违规内容，会让后面的普通续写同样被拦下。
+- 每次有文本的请求都会调用一次 Jev，按 TypeSafe 的价格计费。短于「最短文本」的请求不调用。
+- 审查页只保留拦截，默认 20 条，摘要最多 180 字。写入受宿主每分钟 60 次限制；写满后这次拦截仍然生效，只是页面上可能缺记录。升级前写入的复核记录不再显示。

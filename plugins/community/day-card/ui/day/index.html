@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day card</title>
+<link rel="stylesheet" href="./style.css">
+<script src="./fonts.js"></script>
+<script src="./view.js"></script>
+<script src="./backgrounds.js"></script>
+</head>
+<body>
+<header>
+  <div class="days">
+    <button type="button" class="step" id="prev" aria-label="Previous day" data-t-label="prev"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></button>
+    <div class="pick">
+      <button type="button" id="date" aria-haspopup="listbox" aria-expanded="false"><span id="date-text"></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4.5 6.5 3.5 3.5 3.5-3.5"/></svg></button>
+      <ul id="menu" role="listbox" hidden></ul>
+    </div>
+    <button type="button" class="step" id="next" aria-label="Next day" data-t-label="next"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg></button>
+    <button type="button" id="today" data-t="today">Today</button>
+  </div>
+  <div class="share">
+    <div class="bgpick">
+      <button type="button" id="bg" aria-haspopup="dialog" aria-expanded="false"><canvas id="bg-chip" aria-hidden="true"></canvas><span data-t="background">Background</span></button>
+      <div id="bg-pop" role="dialog" data-t-label="background" hidden>
+        <div id="bg-grid" role="radiogroup" data-t-label="background"></div>
+        <label class="slider"><span data-t="padding">Padding</span><input type="range" id="pad" min="24" max="160" step="4"></label>
+        <label class="slider photo-only"><span data-t="blur">Blur</span><input type="range" id="blur" min="0" max="20" step="1"></label>
+        <label class="slider photo-only"><span data-t="dim">Dim</span><input type="range" id="dim" min="0" max="60" step="1"></label>
+        <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden>
+      </div>
+    </div>
+    <button type="button" id="copy" data-t="copy" disabled>Copy image</button>
+    <button type="button" id="save" data-t="save" disabled>Save PNG</button>
+  </div>
+</header>
+<p class="status" id="status" role="status"></p>
+<main><canvas id="card"></canvas></main>
+<script crossorigin="anonymous" src="../../_axonhub/bridge.js"></script>
+<script type="module" crossorigin="anonymous" src="./app.js"></script>
+</body>
+</html>
