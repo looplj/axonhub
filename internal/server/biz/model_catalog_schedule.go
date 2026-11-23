@@ -43,9 +43,10 @@ type CatalogCheckSettings struct {
 }
 
 type CatalogCheckStatus struct {
+	catalogCheckResult
+
 	Settings  CatalogCheckSettings
 	NextCheck *time.Time
-	catalogCheckResult
 }
 
 type catalogCheckResult struct {
