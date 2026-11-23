@@ -202,6 +202,9 @@ func skipGraphqlTransaction(oc *graphql.OperationContext) bool {
 		switch f.Name {
 		case "bulkImportChannels", "applyCatalogImport", "checkProviderQuotas", "resetChannelQuotaNow":
 			return true
+		case "runPluginTask":
+			// The schedule claim commits before JavaScript runs on its own connections.
+			return true
 		}
 	}
 	return false

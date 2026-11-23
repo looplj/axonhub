@@ -412,6 +412,24 @@ type PassThroughSettings struct {
 	Enabled bool `json:"enabled"`
 }
 
+type PluginTaskExecution struct {
+	ID          int        `json:"id"`
+	ScheduledAt *time.Time `json:"scheduledAt,omitempty"`
+	StartedAt   time.Time  `json:"startedAt"`
+	FinishedAt  *time.Time `json:"finishedAt,omitempty"`
+	Status      string     `json:"status"`
+}
+
+type PluginTaskState struct {
+	Key        string                 `json:"key"`
+	Cron       string                 `json:"cron"`
+	Timezone   string                 `json:"timezone"`
+	Overridden bool                   `json:"overridden"`
+	Paused     bool                   `json:"paused"`
+	NextRunAt  *time.Time             `json:"nextRunAt,omitempty"`
+	Runs       []*PluginTaskExecution `json:"runs"`
+}
+
 type PromptProtectionRulePreviewInput struct {
 	Pattern  string                            `json:"pattern"`
 	TestText string                            `json:"testText"`

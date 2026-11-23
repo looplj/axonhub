@@ -26,6 +26,7 @@ export function onRequest(ctx, req) {
 | 导出 | manifest 声明 | 调用时机 | 当前方案范围 |
 |------|---------------|----------|--------------|
 | `onEvent(ctx, event)` | 非空 `events` | 收到订阅的业务事件，例如 `request.failover` | 事件扩展点 |
+| `onTask(ctx, run)` | 非空 `tasks` | 到达任务的 Cron 时刻或 Owner 手动执行 | [定时任务](../../zh/development/plugins.md#定时任务与动态-sql) |
 | `onRequest(ctx, req)` | `hooks.request.enabled: true` + `requestTypes` | 每个请求一次，模型权限检查、模型映射和选路之前 | 请求扩展点 |
 | `onAttempt(ctx, body)` | `hooks.attempt.enabled: true` + `apiFormats` | 每次匹配的上游尝试；协议转换及 pass-through 后，渠道 override 前 | 请求扩展点 |
 | `onResponse(ctx, res)` | `hooks.response: true` | 成功的非流式响应 | 未开放，见响应篇 |
@@ -68,6 +69,7 @@ pass-through 只可能覆盖 onRequest 除 model 外的改写，onAttempt 在其
 | `ctx.config` | 按 manifest schema 保存的本插件配置；页面拿到的是去掉 secret 的单独配置视图 |
 | `ctx.log.info/warn/error` | 记录插件日志，不应记录密钥或完整请求内容 |
 | `ctx.kv.get/set/delete/list` | 插件持久数据；事件与请求插件共用，按本次安装 ID 隔离 |
+| `ctx.sql.query/exec` | `sql` 授权提供 AxonHub 主数据库应用账号的全部 SQL 权限，语句可在运行时生成。 |
 | `ctx.fetch` | 宿主代发的外部请求，只到达已授权的路径或正则。见 [出站请求](#出站请求)。`onEvent`、`onRequest`、`onAttempt` 都可 `await` |
 | `ctx.request` | 请求钩子的请求元数据：`projectId`、`apiKeyId`、客户端 `model`、`requestType`、`apiFormat`；playground 的 `apiKeyId` 为 null |
 | `ctx.attempt` | `onAttempt` 的当前渠道、实际模型和上游格式 |

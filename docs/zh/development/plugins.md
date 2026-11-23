@@ -152,6 +152,7 @@ go run -C cmd/pack-plugin . ../../plugins/examples/<name>
 | `pluginApiVersion` | 是 | `1` |
 | `permissions` | 否 | 取下面的权限名。省略为 `[]` |
 | `network` | 否 | 最多 32 条。省略为 `[]` |
+| `tasks` | 否 | 见下文的定时任务 |
 | `events` | 否 | 取上面 8 种事件名。非空时必须 `export function onEvent` |
 | `hooks.request` | 否 | 对象：enabled 必填；true 时 requestTypes 必须非空且导出 onRequest；false 保留配置但不执行 |
 | `hooks.attempt` | 否 | 对象：enabled 必填；true 时 apiFormats 必须非空且导出 onAttempt；false 保留配置但不执行 |
@@ -160,7 +161,7 @@ go run -C cmd/pack-plugin . ../../plugins/examples/<name>
 | `ui.pages` | 否 | 侧栏页面，见下文 |
 | `ui.actions` | 否 | 全局工具栏操作，点击打开插件弹窗 |
 
-已开放的权限：`read_channels`、`read_requests`、`read_dashboard`、`read_api_keys`、`read_projects`、`read_settings`、`write_channels`、`webhook`。出站 URL 写在 `network`。`read_plugins` 和 `write_plugins` 是用户 scope，不是插件权限。KV 不占用权限。
+已开放的权限：`read_channels`、`read_requests`、`read_dashboard`、`read_api_keys`、`read_projects`、`read_settings`、`write_channels`、`webhook`、`sql`。出站 URL 写在 `network`。`read_plugins` 和 `write_plugins` 是用户 scope，不是插件权限。KV 不占用权限。
 
 一条 `network` 规则要么是精确的 `https` URL，要么是 `{ "regex": "^https://api\\.example\\.com/v1/items/[0-9]+$" }`。精确 URL 必须带 path，不能有 userinfo、query 或 fragment，并且只匹配这条 path。正则对去掉 query 和 fragment 后的 URL 做全匹配，最长 256 个字符。实际请求仍可以带 query。宿主不跟随重定向；301、302、303、307、308 会使 `ctx.fetch` 和 `axonhub.fetch` 以 `INVALID_STATE` 拒绝 Promise。
 
@@ -246,6 +247,51 @@ export function onAttempt(ctx, body) {
 pass-through 会覆盖 onRequest 的非 model 改写，宿主记录 overriddenByPassThrough 和 Warn。onAttempt 在 pass-through 后运行，其 replace/patch 正常生效；随后渠道 override 同字段优先。使用 attempt 修改透传 body 不需要关闭 pass-through。
 
 ctx.request 使用 camelCase：projectId、apiKeyId、model、requestType、apiFormat，值来自进入中间件时；Playground 的 apiKeyId 为 null。ctx.attempt 仅在 onAttempt 提供 channel（id、name、type）、实际 model 和出站 apiFormat，不含凭证。body 不一定含 model；从 ctx.attempt.model 读取实际模型。插件无法通过此接口修改 URL、方法、HTTP 头或凭证。
+
+## 定时任务与动态 SQL
+
+manifest 可声明定时任务和 `sql` 权限。下面展示这两个字段及其 JS 入口。
+
+```json
+{
+  "permissions": ["sql"],
+  "tasks": {
+    "daily-count": {
+      "schedule": { "cron": "0 2 * * *", "timezone": "Asia/Shanghai" }
+    }
+  }
+}
+```
+
+```js
+export function onTask(ctx, run) {
+  if (run.key !== "daily-count") return;
+  const end = run.scheduledAt ?? new Date().toISOString();
+  const start = new Date(Date.parse(end) - 86_400_000).toISOString();
+  const placeholder = ctx.sql.dialect === "postgres" ? "$1" : "?";
+  const { rows } = ctx.sql.query(
+    "SELECT COUNT(*) AS total FROM requests WHERE created_at >= " + placeholder,
+    [start]
+  );
+  ctx.log.info("Request count", { total: rows[0][0] });
+}
+```
+
+### 定时任务
+
+一个插件最多声明 16 个任务。`tasks` 的对象键是任务标识。`schedule` 需要五段 `cron`，并可指定 IANA `timezone`（默认 UTC）。宿主调用 `onTask(ctx, { key, runId, trigger, scheduledAt })`。`trigger` 为 `scheduled` 或 `manual`，手动执行时 `scheduledAt` 为 `null`。
+
+在插件详情中可查看下次触发和最近 20 次执行结果。Owner 可以暂停自动触发、修改时间或立即执行。多个实例共用数据库领取记录。同一计划时刻最多领取一次，错过的分钟和上次执行尚未结束的触发会跳过。任务最多运行 30 秒。实例退出后的未完成执行会显示为「结果未知」。
+
+多副本部署请在所有实例升级后安装声明 `tasks` 的插件。
+
+### 动态 SQL
+
+Owner 授予 `sql` 后，`plugin.js` 可以使用 AxonHub **主数据库应用账号的全部 SQL 权限**，包括查询、写入和 DDL。它可以访问该账号可见的凭证和元数据。Owner 负责配置有此授权的插件，宿主在每次执行前复核当前启用状态和授权。
+
+`ctx.sql.query(statement, params?)` 返回 `{ columns, rows }`，每行是按列顺序排列的数组。`ctx.sql.exec(statement, params?)` 返回 `{ rowsAffected }`。两个方法共享同一个授权，接受运行时生成的 SQL 文本。数字、字符串、布尔值和 `null` 可作为绑定参数。超出 JS 安全整数范围的结果以十进制字符串返回，二进制结果以 Base64 返回。
+
+SQL 使用当前数据库方言及原生参数占位符。每次调用最多执行 10 秒，查询最多返回 1,000 行和 1 MiB。每次调用独立获取数据库连接，事务需要在同一次调用内完成。
 
 ## 服务端中间件
 

@@ -17,6 +17,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/oidcidentity"
 	"github.com/looplj/axonhub/internal/ent/plugin"
+	"github.com/looplj/axonhub/internal/ent/pluginschedule"
+	"github.com/looplj/axonhub/internal/ent/pluginschedulerun"
 	"github.com/looplj/axonhub/internal/ent/pluginstorage"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -577,6 +579,100 @@ func init() {
 	pluginDescConfig := pluginFields[11].Descriptor()
 	// plugin.DefaultConfig holds the default value on creation for the config field.
 	plugin.DefaultConfig = pluginDescConfig.Default.(map[string]interface{})
+	pluginschedule.Policy = privacy.NewPolicies(schema.PluginSchedule{})
+	pluginschedule.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := pluginschedule.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	pluginscheduleFields := schema.PluginSchedule{}.Fields()
+	_ = pluginscheduleFields
+	// pluginscheduleDescInstallationID is the schema descriptor for installation_id field.
+	pluginscheduleDescInstallationID := pluginscheduleFields[0].Descriptor()
+	// pluginschedule.InstallationIDValidator is a validator for the "installation_id" field. It is called by the builders before save.
+	pluginschedule.InstallationIDValidator = pluginscheduleDescInstallationID.Validators[0].(func(int) error)
+	// pluginscheduleDescKey is the schema descriptor for key field.
+	pluginscheduleDescKey := pluginscheduleFields[1].Descriptor()
+	// pluginschedule.KeyValidator is a validator for the "key" field. It is called by the builders before save.
+	pluginschedule.KeyValidator = func() func(string) error {
+		validators := pluginscheduleDescKey.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(key string) error {
+			for _, fn := range fns {
+				if err := fn(key); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// pluginscheduleDescOverrideCron is the schema descriptor for override_cron field.
+	pluginscheduleDescOverrideCron := pluginscheduleFields[2].Descriptor()
+	// pluginschedule.DefaultOverrideCron holds the default value on creation for the override_cron field.
+	pluginschedule.DefaultOverrideCron = pluginscheduleDescOverrideCron.Default.(string)
+	// pluginschedule.OverrideCronValidator is a validator for the "override_cron" field. It is called by the builders before save.
+	pluginschedule.OverrideCronValidator = pluginscheduleDescOverrideCron.Validators[0].(func(string) error)
+	// pluginscheduleDescOverrideTimezone is the schema descriptor for override_timezone field.
+	pluginscheduleDescOverrideTimezone := pluginscheduleFields[3].Descriptor()
+	// pluginschedule.DefaultOverrideTimezone holds the default value on creation for the override_timezone field.
+	pluginschedule.DefaultOverrideTimezone = pluginscheduleDescOverrideTimezone.Default.(string)
+	// pluginschedule.OverrideTimezoneValidator is a validator for the "override_timezone" field. It is called by the builders before save.
+	pluginschedule.OverrideTimezoneValidator = pluginscheduleDescOverrideTimezone.Validators[0].(func(string) error)
+	// pluginscheduleDescPaused is the schema descriptor for paused field.
+	pluginscheduleDescPaused := pluginscheduleFields[4].Descriptor()
+	// pluginschedule.DefaultPaused holds the default value on creation for the paused field.
+	pluginschedule.DefaultPaused = pluginscheduleDescPaused.Default.(bool)
+	// pluginscheduleDescLastSlot is the schema descriptor for last_slot field.
+	pluginscheduleDescLastSlot := pluginscheduleFields[5].Descriptor()
+	// pluginschedule.DefaultLastSlot holds the default value on creation for the last_slot field.
+	pluginschedule.DefaultLastSlot = pluginscheduleDescLastSlot.Default.(int64)
+	// pluginscheduleDescActiveRunID is the schema descriptor for active_run_id field.
+	pluginscheduleDescActiveRunID := pluginscheduleFields[6].Descriptor()
+	// pluginschedule.DefaultActiveRunID holds the default value on creation for the active_run_id field.
+	pluginschedule.DefaultActiveRunID = pluginscheduleDescActiveRunID.Default.(int)
+	// pluginscheduleDescLeaseUntil is the schema descriptor for lease_until field.
+	pluginscheduleDescLeaseUntil := pluginscheduleFields[7].Descriptor()
+	// pluginschedule.DefaultLeaseUntil holds the default value on creation for the lease_until field.
+	pluginschedule.DefaultLeaseUntil = pluginscheduleDescLeaseUntil.Default.(int64)
+	pluginschedulerun.Policy = privacy.NewPolicies(schema.PluginScheduleRun{})
+	pluginschedulerun.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := pluginschedulerun.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	pluginschedulerunFields := schema.PluginScheduleRun{}.Fields()
+	_ = pluginschedulerunFields
+	// pluginschedulerunDescScheduleID is the schema descriptor for schedule_id field.
+	pluginschedulerunDescScheduleID := pluginschedulerunFields[0].Descriptor()
+	// pluginschedulerun.ScheduleIDValidator is a validator for the "schedule_id" field. It is called by the builders before save.
+	pluginschedulerun.ScheduleIDValidator = pluginschedulerunDescScheduleID.Validators[0].(func(int) error)
+	// pluginschedulerunDescStatus is the schema descriptor for status field.
+	pluginschedulerunDescStatus := pluginschedulerunFields[4].Descriptor()
+	// pluginschedulerun.StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	pluginschedulerun.StatusValidator = func() func(string) error {
+		validators := pluginschedulerunDescStatus.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(status string) error {
+			for _, fn := range fns {
+				if err := fn(status); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
 	pluginstorageMixin := schema.PluginStorage{}.Mixin()
 	pluginstorage.Policy = privacy.NewPolicies(schema.PluginStorage{})
 	pluginstorage.Hooks[0] = func(next ent.Mutator) ent.Mutator {

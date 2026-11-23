@@ -399,6 +399,54 @@ func (f PluginMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.PluginMutation", m)
 }
 
+// The PluginScheduleQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type PluginScheduleQueryRuleFunc func(context.Context, *ent.PluginScheduleQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f PluginScheduleQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.PluginScheduleQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.PluginScheduleQuery", q)
+}
+
+// The PluginScheduleMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type PluginScheduleMutationRuleFunc func(context.Context, *ent.PluginScheduleMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f PluginScheduleMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.PluginScheduleMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.PluginScheduleMutation", m)
+}
+
+// The PluginScheduleRunQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type PluginScheduleRunQueryRuleFunc func(context.Context, *ent.PluginScheduleRunQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f PluginScheduleRunQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.PluginScheduleRunQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.PluginScheduleRunQuery", q)
+}
+
+// The PluginScheduleRunMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type PluginScheduleRunMutationRuleFunc func(context.Context, *ent.PluginScheduleRunMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f PluginScheduleRunMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.PluginScheduleRunMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.PluginScheduleRunMutation", m)
+}
+
 // The PluginStorageQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type PluginStorageQueryRuleFunc func(context.Context, *ent.PluginStorageQuery) error
@@ -866,6 +914,10 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.PluginQuery:
 		return q.Filter(), nil
+	case *ent.PluginScheduleQuery:
+		return q.Filter(), nil
+	case *ent.PluginScheduleRunQuery:
+		return q.Filter(), nil
 	case *ent.PluginStorageQuery:
 		return q.Filter(), nil
 	case *ent.ProjectQuery:
@@ -930,6 +982,10 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	case *ent.OIDCIdentityMutation:
 		return m.Filter(), nil
 	case *ent.PluginMutation:
+		return m.Filter(), nil
+	case *ent.PluginScheduleMutation:
+		return m.Filter(), nil
+	case *ent.PluginScheduleRunMutation:
 		return m.Filter(), nil
 	case *ent.PluginStorageMutation:
 		return m.Filter(), nil
