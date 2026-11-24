@@ -1555,7 +1555,8 @@ func TestWebSocketExecutorAnswersUpstreamPingWhileIdle(t *testing.T) {
 	require.Equal(t, int32(1), upgrades.Load())
 }
 
-func TestWebSocketExecutorAnswersPingAfterQueuingResponseFrame(t *testing.T) {
+func TestWebSocketExecutorAnswersPingAfterQueuingSmallFrames(t *testing.T) {
+	const frames = 64
 	pingResult := make(chan error, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := websocket.Accept(w, r, nil)
@@ -1569,10 +1570,12 @@ func TestWebSocketExecutorAnswersPingAfterQueuingResponseFrame(t *testing.T) {
 			return
 		}
 		conn.CloseRead(ctx)
-		if !assert.NoError(t, wsjson.Write(ctx, conn, map[string]any{
-			"type": "response.output_text.delta", "delta": "hello",
-		})) {
-			return
+		for range frames {
+			if !assert.NoError(t, wsjson.Write(ctx, conn, map[string]any{
+				"type": "response.output_text.delta", "delta": "hello",
+			})) {
+				return
+			}
 		}
 		err = conn.Ping(ctx)
 		pingResult <- err
@@ -1600,8 +1603,10 @@ func TestWebSocketExecutorAnswersPingAfterQueuingResponseFrame(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatal("upstream ping did not complete")
 	}
-	require.True(t, stream.Next())
-	require.Equal(t, "response.output_text.delta", stream.Current().Type)
+	for range frames {
+		require.True(t, stream.Next())
+		require.Equal(t, "response.output_text.delta", stream.Current().Type)
+	}
 	require.True(t, stream.Next())
 	require.Equal(t, "response.completed", stream.Current().Type)
 	require.False(t, stream.Next())
@@ -1794,38 +1799,57 @@ func TestWebSocketExecutorRetriesOnlyIndependentTurnsOnPreSendClose(t *testing.T
 	}
 }
 
-func TestWebSocketReceiverDrainsQueueBeforeOverflowError(t *testing.T) {
+func TestWebSocketReceiverDrainsQueueBeforeSlowConsumerError(t *testing.T) {
 	receiver := &webSocketReceiver{done: make(chan struct{})}
 	target, err := receiver.attach()
 	require.NoError(t, err)
-	for i := range maxQueuedWebSocketFrames {
-		require.NoError(t, receiver.enqueue([]byte{byte(i)}))
-	}
+	fullFrame := make([]byte, maxQueuedWebSocketBytes-webSocketFrameOverhead)
+	require.NoError(t, receiver.enqueue(fullFrame))
+
 	receiver.err = receiver.enqueue([]byte("overflow"))
-	require.ErrorContains(t, receiver.err, "response queue limit exceeded")
+	require.ErrorContains(t, receiver.err, "timed out waiting for space")
 	close(receiver.done)
 
-	for i := range maxQueuedWebSocketFrames {
-		message, err := receiver.next(t.Context(), target)
-		require.NoError(t, err)
-		require.Equal(t, []byte{byte(i)}, message)
-	}
+	message, err := receiver.next(t.Context(), target)
+	require.NoError(t, err)
+	require.Len(t, message, len(fullFrame))
 	_, err = receiver.next(t.Context(), target)
 	require.ErrorIs(t, err, receiver.err)
 	require.Zero(t, target.queuedBytes)
 }
 
-func TestWebSocketReceiverCapsQueuedBytes(t *testing.T) {
+func TestWebSocketReceiverResumesWhenQueueDrains(t *testing.T) {
 	receiver := &webSocketReceiver{done: make(chan struct{})}
 	target, err := receiver.attach()
 	require.NoError(t, err)
-	require.NoError(t, receiver.enqueue(make([]byte, maxQueuedWebSocketBytes)))
-	require.ErrorContains(t, receiver.enqueue([]byte{1}), "response queue limit exceeded")
+	fullFrame := make([]byte, maxQueuedWebSocketBytes-webSocketFrameOverhead)
+	require.NoError(t, receiver.enqueue(fullFrame))
+
+	result := make(chan error, 1)
+	go func() {
+		result <- receiver.enqueue([]byte("next"))
+	}()
+	select {
+	case err := <-result:
+		t.Fatalf("enqueue returned while the queue was full: %v", err)
+	case <-time.After(20 * time.Millisecond):
+	}
 
 	message, err := receiver.next(t.Context(), target)
 	require.NoError(t, err)
-	require.Len(t, message, maxQueuedWebSocketBytes)
-	require.NoError(t, receiver.enqueue([]byte{1}))
+	require.Len(t, message, len(fullFrame))
+	require.NoError(t, <-result)
+
+	message, err = receiver.next(t.Context(), target)
+	require.NoError(t, err)
+	require.Equal(t, []byte("next"), message)
+}
+
+func TestWebSocketReceiverRejectsOversizedFrame(t *testing.T) {
+	receiver := &webSocketReceiver{done: make(chan struct{})}
+	_, err := receiver.attach()
+	require.NoError(t, err)
+	require.ErrorContains(t, receiver.enqueue(make([]byte, maxQueuedWebSocketBytes)), "exceeds response queue byte limit")
 }
 
 // A reused session that dies without a close frame must also surface the failure

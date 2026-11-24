@@ -12,14 +12,20 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"sync"
+	"time"
 
 	"github.com/coder/websocket"
 )
 
 const (
-	maxQueuedWebSocketFrames = 32
-	maxQueuedWebSocketBytes  = 16 << 20
+	maxQueuedWebSocketBytes = 16 << 20
+	// Charge small frames for the queue's slice headers and allocation overhead.
+	webSocketFrameOverhead = 64
+	// Reads cannot process control frames during backpressure. Keep the wait
+	// short while allowing the consumer to drain an ordinary burst.
+	webSocketQueueWait = time.Second
 )
 
 type webSocketReadTarget struct {
@@ -27,13 +33,15 @@ type webSocketReadTarget struct {
 	messages    [][]byte
 	queuedBytes int
 	ready       chan struct{}
+	space       chan struct{}
 	detached    chan struct{}
 }
 
 type webSocketReceiver struct {
-	conn *websocket.Conn
-	done chan struct{}
-	once sync.Once
+	conn     *websocket.Conn
+	stopping chan struct{}
+	done     chan struct{}
+	once     sync.Once
 
 	mu     sync.Mutex
 	target *webSocketReadTarget
@@ -44,8 +52,9 @@ type webSocketReceiver struct {
 
 func newWebSocketReceiver(conn *websocket.Conn, onExit func()) *webSocketReceiver {
 	reader := &webSocketReceiver{
-		conn: conn,
-		done: make(chan struct{}),
+		conn:     conn,
+		stopping: make(chan struct{}),
+		done:     make(chan struct{}),
 	}
 
 	go reader.receive(onExit)
@@ -81,23 +90,57 @@ func (r *webSocketReceiver) receive(onExit func()) {
 }
 
 func (r *webSocketReceiver) enqueue(message []byte) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	size := cap(message) + webSocketFrameOverhead
+	if size > maxQueuedWebSocketBytes {
+		return fmt.Errorf("upstream WebSocket frame exceeds response queue byte limit")
+	}
 
+	r.mu.Lock()
 	target := r.target
 	if target == nil {
+		r.mu.Unlock()
 		return fmt.Errorf("unexpected upstream WebSocket message with no active request")
 	}
-	if len(target.messages) >= maxQueuedWebSocketFrames || len(message) > maxQueuedWebSocketBytes-target.queuedBytes {
-		return fmt.Errorf("upstream WebSocket response queue limit exceeded")
+	queued := target.tryEnqueue(message, size)
+	r.mu.Unlock()
+	if queued {
+		return nil
 	}
-	target.messages = append(target.messages, message)
-	target.queuedBytes += len(message)
+
+	wait := time.NewTimer(webSocketQueueWait)
+	defer wait.Stop()
+	for {
+		select {
+		case <-target.space:
+			r.mu.Lock()
+			active := r.target == target
+			queued = active && target.tryEnqueue(message, size)
+			r.mu.Unlock()
+			if !active || queued {
+				return nil
+			}
+		case <-target.detached:
+			return nil
+		case <-r.stopping:
+			return net.ErrClosed
+		case <-wait.C:
+			return fmt.Errorf("timed out waiting for space in upstream WebSocket response queue")
+		}
+	}
+}
+
+// tryEnqueue is called with the receiver mutex held.
+func (t *webSocketReadTarget) tryEnqueue(message []byte, size int) bool {
+	if size > maxQueuedWebSocketBytes-t.queuedBytes {
+		return false
+	}
+	t.messages = append(t.messages, message)
+	t.queuedBytes += size
 	select {
-	case target.ready <- struct{}{}:
+	case t.ready <- struct{}{}:
 	default:
 	}
-	return nil
+	return true
 }
 
 func (r *webSocketReceiver) dequeue(target *webSocketReadTarget) ([]byte, bool) {
@@ -110,7 +153,11 @@ func (r *webSocketReceiver) dequeue(target *webSocketReadTarget) ([]byte, bool) 
 	message := target.messages[0]
 	target.messages[0] = nil
 	target.messages = target.messages[1:]
-	target.queuedBytes -= len(message)
+	target.queuedBytes -= cap(message) + webSocketFrameOverhead
+	select {
+	case target.space <- struct{}{}:
+	default:
+	}
 	return message, true
 }
 
@@ -130,7 +177,11 @@ func (r *webSocketReceiver) attach() (*webSocketReadTarget, error) {
 	if r.ended() {
 		return nil, r.err
 	}
-	target := &webSocketReadTarget{ready: make(chan struct{}, 1), detached: make(chan struct{})}
+	target := &webSocketReadTarget{
+		ready:    make(chan struct{}, 1),
+		space:    make(chan struct{}, 1),
+		detached: make(chan struct{}),
+	}
 	r.target = target
 	return target, nil
 }
@@ -170,6 +221,7 @@ func (r *webSocketReceiver) next(ctx context.Context, target *webSocketReadTarge
 
 func (r *webSocketReceiver) close() {
 	r.once.Do(func() {
+		close(r.stopping)
 		_ = r.conn.CloseNow()
 	})
 }
