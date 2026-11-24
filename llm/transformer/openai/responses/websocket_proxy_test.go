@@ -34,6 +34,7 @@ func TestWebSocketDialProxyReadActivity(t *testing.T) {
 		secureProxy   bool
 		securePeer    bool
 		activeConnect bool
+		silentConnect bool
 		framing       string
 	}{
 		{name: "http/ws"},
@@ -44,6 +45,10 @@ func TestWebSocketDialProxyReadActivity(t *testing.T) {
 		{name: "https/ws-active-connect", secureProxy: true, activeConnect: true},
 		{name: "http/wss-active-connect", securePeer: true, activeConnect: true},
 		{name: "https/wss-active-connect", secureProxy: true, securePeer: true, activeConnect: true},
+		{name: "http/ws-silent-connect", silentConnect: true},
+		{name: "https/ws-silent-connect", secureProxy: true, silentConnect: true},
+		{name: "http/wss-silent-connect", securePeer: true, silentConnect: true},
+		{name: "https/wss-silent-connect", secureProxy: true, securePeer: true, silentConnect: true},
 		{name: "http/ws-content-length", framing: "Content-Length: 1\r\n"},
 		{name: "https/ws-content-length", secureProxy: true, framing: "Content-Length: 1\r\n"},
 		{name: "http/ws-chunked", framing: "Transfer-Encoding: chunked\r\n"},
@@ -111,6 +116,14 @@ func TestWebSocketDialProxyReadActivity(t *testing.T) {
 						}
 					}
 				}
+				if test.silentConnect {
+					deadline, _ := ctx.Deadline()
+					if !assertCoderPeer(t, client.SetReadDeadline(deadline)) {
+						return
+					}
+					_, _ = io.Copy(io.Discard, client)
+					return
+				}
 				if _, err := io.WriteString(client, "\r\n"); !assertCoderPeer(t, err) {
 					return
 				}
@@ -150,10 +163,15 @@ func TestWebSocketDialProxyReadActivity(t *testing.T) {
 			require.NoError(t, err)
 			headers := http.Header{"Authorization": {"Bearer upstream-token"}}
 			dialCtx := ctx
-			if test.activeConnect {
+			if test.activeConnect || test.silentConnect {
 				dialCtx = httpclient.WithStreamIdleTimeout(ctx, 500*time.Millisecond)
 			}
 			conn, observer, err := executor.dial(dialCtx, &httpclient.Request{}, wsURL, headers)
+			if test.silentConnect {
+				require.ErrorIs(t, err, httpclient.ErrStreamIdleTimeout)
+				require.Nil(t, conn)
+				return
+			}
 			require.NoError(t, err)
 			defer conn.CloseNow()
 			require.NotNil(t, observer, "proxy tunnels must preserve the raw read activity observer")
