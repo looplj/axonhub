@@ -1370,6 +1370,12 @@ type ComplexityRoot struct {
 		Version             func(childComplexity int) int
 	}
 
+	PluginCatalogCheckSummary struct {
+		Available     func(childComplexity int) int
+		Changed       func(childComplexity int) int
+		LastSuccessAt func(childComplexity int) int
+	}
+
 	PluginConfigField struct {
 		DefaultJSON func(childComplexity int) int
 		Description func(childComplexity int) int
@@ -1743,6 +1749,7 @@ type ComplexityRoot struct {
 		OidcIdentities                  func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.OIDCIdentityOrder, where *ent.OIDCIdentityWhereInput) int
 		OnboardingInfo                  func(childComplexity int) int
 		PassThroughSettings             func(childComplexity int) int
+		PluginCatalogCheckSummary       func(childComplexity int) int
 		PluginCountersArePerInstance    func(childComplexity int) int
 		PluginKVList                    func(childComplexity int, namespace *string, prefix *string, first *int, after *string) int
 		PluginKv                        func(childComplexity int, namespace *string, key string) int
@@ -2843,6 +2850,7 @@ type QueryResolver interface {
 	AnalyticsOverview(ctx context.Context, filter *AnalyticsFilter) (*AnalyticsOverview, error)
 	AnalyticsDailyStats(ctx context.Context, filter *AnalyticsFilter) ([]*AnalyticsDailyStat, error)
 	AnalyticsDimensionStats(ctx context.Context, filter *AnalyticsFilter, dimension string) ([]*AnalyticsDimensionStat, error)
+	PluginCatalogCheckSummary(ctx context.Context) (*plugin.CatalogCheckSummary, error)
 	Plugins(ctx context.Context) ([]*plugin.InstalledPlugin, error)
 	PluginRuntimeStatuses(ctx context.Context) ([]*plugin.RuntimeStatusView, error)
 	PluginCountersArePerInstance(ctx context.Context) (bool, error)
@@ -8761,6 +8769,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Plugin.Version(childComplexity), true
 
+	case "PluginCatalogCheckSummary.available":
+		if e.complexity.PluginCatalogCheckSummary.Available == nil {
+			break
+		}
+
+		return e.complexity.PluginCatalogCheckSummary.Available(childComplexity), true
+	case "PluginCatalogCheckSummary.changed":
+		if e.complexity.PluginCatalogCheckSummary.Changed == nil {
+			break
+		}
+
+		return e.complexity.PluginCatalogCheckSummary.Changed(childComplexity), true
+	case "PluginCatalogCheckSummary.lastSuccessAt":
+		if e.complexity.PluginCatalogCheckSummary.LastSuccessAt == nil {
+			break
+		}
+
+		return e.complexity.PluginCatalogCheckSummary.LastSuccessAt(childComplexity), true
+
 	case "PluginConfigField.defaultJSON":
 		if e.complexity.PluginConfigField.DefaultJSON == nil {
 			break
@@ -10413,6 +10440,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.PassThroughSettings(childComplexity), true
+	case "Query.pluginCatalogCheckSummary":
+		if e.complexity.Query.PluginCatalogCheckSummary == nil {
+			break
+		}
+
+		return e.complexity.Query.PluginCatalogCheckSummary(childComplexity), true
 	case "Query.pluginCountersArePerInstance":
 		if e.complexity.Query.PluginCountersArePerInstance == nil {
 			break
@@ -47459,6 +47492,93 @@ func (ec *executionContext) fieldContext_Plugin_runtimeError(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _PluginCatalogCheckSummary_lastSuccessAt(ctx context.Context, field graphql.CollectedField, obj *plugin.CatalogCheckSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginCatalogCheckSummary_lastSuccessAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LastSuccessAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginCatalogCheckSummary_lastSuccessAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginCatalogCheckSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginCatalogCheckSummary_available(ctx context.Context, field graphql.CollectedField, obj *plugin.CatalogCheckSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginCatalogCheckSummary_available,
+		func(ctx context.Context) (any, error) {
+			return obj.Available, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginCatalogCheckSummary_available(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginCatalogCheckSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginCatalogCheckSummary_changed(ctx context.Context, field graphql.CollectedField, obj *plugin.CatalogCheckSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginCatalogCheckSummary_changed,
+		func(ctx context.Context) (any, error) {
+			return obj.Changed, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginCatalogCheckSummary_changed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginCatalogCheckSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PluginConfigField_name(ctx context.Context, field graphql.CollectedField, obj *plugin.ConfigField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -57728,6 +57848,43 @@ func (ec *executionContext) fieldContext_Query_analyticsDimensionStats(ctx conte
 	if fc.Args, err = ec.field_Query_analyticsDimensionStats_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_pluginCatalogCheckSummary(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_pluginCatalogCheckSummary,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().PluginCatalogCheckSummary(ctx)
+		},
+		nil,
+		ec.marshalOPluginCatalogCheckSummary2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋpluginᚐCatalogCheckSummary,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_pluginCatalogCheckSummary(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "lastSuccessAt":
+				return ec.fieldContext_PluginCatalogCheckSummary_lastSuccessAt(ctx, field)
+			case "available":
+				return ec.fieldContext_PluginCatalogCheckSummary_available(ctx, field)
+			case "changed":
+				return ec.fieldContext_PluginCatalogCheckSummary_changed(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PluginCatalogCheckSummary", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -113191,6 +113348,55 @@ func (ec *executionContext) _Plugin(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var pluginCatalogCheckSummaryImplementors = []string{"PluginCatalogCheckSummary"}
+
+func (ec *executionContext) _PluginCatalogCheckSummary(ctx context.Context, sel ast.SelectionSet, obj *plugin.CatalogCheckSummary) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pluginCatalogCheckSummaryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PluginCatalogCheckSummary")
+		case "lastSuccessAt":
+			out.Values[i] = ec._PluginCatalogCheckSummary_lastSuccessAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "available":
+			out.Values[i] = ec._PluginCatalogCheckSummary_available(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "changed":
+			out.Values[i] = ec._PluginCatalogCheckSummary_changed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var pluginConfigFieldImplementors = []string{"PluginConfigField"}
 
 func (ec *executionContext) _PluginConfigField(ctx context.Context, sel ast.SelectionSet, obj *plugin.ConfigField) graphql.Marshaler {
@@ -118067,6 +118273,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "pluginCatalogCheckSummary":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_pluginCatalogCheckSummary(ctx, field)
 				return res
 			}
 
@@ -137445,6 +137670,13 @@ func (ec *executionContext) marshalOPlugin2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋ
 		return graphql.Null
 	}
 	return ec._Plugin(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOPluginCatalogCheckSummary2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋpluginᚐCatalogCheckSummary(ctx context.Context, sel ast.SelectionSet, v *plugin.CatalogCheckSummary) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PluginCatalogCheckSummary(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPluginKVEntry2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋpluginᚐKVEntry(ctx context.Context, sel ast.SelectionSet, v *plugin.KVEntry) graphql.Marshaler {

@@ -1,9 +1,16 @@
 extend type Query {
+  pluginCatalogCheckSummary: PluginCatalogCheckSummary
   plugins: [Plugin!]!
   pluginRuntimeStatuses: [PluginRuntimeStatus!]!
   pluginCountersArePerInstance: Boolean!
   pluginMarket: [PluginMarketEntry!]!
   pluginTasks(id: ID!): [PluginTaskState!]!
+}
+
+type PluginCatalogCheckSummary {
+  lastSuccessAt: Time!
+  available: Int!
+  changed: Int!
 }
 
 extend type Mutation {

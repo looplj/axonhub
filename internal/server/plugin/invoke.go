@@ -69,8 +69,9 @@ type InvokeRequest struct {
 // Value is omitted when the export returns undefined.
 // State is the ctx.state to commit.
 type InvokeResult struct {
-	Value json.RawMessage
-	State json.RawMessage
+	catalogCheck *pendingCatalogCheck
+	Value        json.RawMessage
+	State        json.RawMessage
 }
 
 // Invoke borrows a runtime for one call and returns it unless the runtime was interrupted.
@@ -171,6 +172,7 @@ func (m *Manager) Invoke(ctx context.Context, req InvokeRequest) (InvokeResult, 
 		attemptJSON:        req.HostAttempt,
 		requestContextJSON: req.requestContextJSON,
 		allowReject:        req.AllowReject,
+		backgroundTask:     req.backgroundTask,
 	})
 	if callErr != nil {
 		if countsAsCallFailure(callErr) {
@@ -204,6 +206,7 @@ type callExportInput struct {
 	attemptJSON        json.RawMessage
 	requestContextJSON json.RawMessage
 	allowReject        bool
+	backgroundTask     bool
 }
 
 func (m *Manager) callExport(ctx context.Context, vm *pluginVM, in callExportInput) (InvokeResult, error, bool) {
@@ -301,7 +304,7 @@ func (h *hostCall) accept(value moejs.Value) (bool, error) {
 	if err != nil {
 		return h.end(isFatalRuntime(err), callFailed(err))
 	}
-	h.result = InvokeResult{Value: raw, State: state}
+	h.result.Value, h.result.State = raw, state
 	return h.end(false, nil)
 }
 

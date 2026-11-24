@@ -345,6 +345,20 @@ The plugin details show the next trigger and the last 20 runs. Owners can pause 
 
 Upgrade every replica before installing a plugin that declares `tasks`.
 
+### Checking the model catalog
+
+During `onTask`, a plugin with the `read_channels` grant can call `ctx.checkModelCatalog(options)`. The host fetches the site's current upstream catalog and compares it with configured channel models, models offered by the selected providers, and followed reference prices on existing models. Both options are optional. `providers` is a list of catalog provider IDs (default `[]`); `ignorePrefix` applies the manual importer's channel ID matching rules (default `false`).
+
+```js
+export function onTask(ctx) {
+  ctx.checkModelCatalog({ providers: ["openai"], ignorePrefix: false });
+}
+```
+
+The method returns `undefined` and leaves model records and prices untouched. A successful run saves one summary for this installation. A failed fetch (including fallback to the bundled catalog), a failed run, or cancellation preserves the previous successful summary. Multiple followed price changes on a model count as one changed model.
+
+A page in the same installation can query `pluginCatalogCheckSummary { lastSuccessAt available changed }` through `axonhub.graphql`. The field is null until the first successful check. The installation needs `read_channels` and the signed-in user needs site-level `read_settings` or `write_channels` (or Owner access). Uninstalling the plugin clears its summary.
+
 ### Dynamic SQL
 
 An Owner can grant `sql` to give `plugin.js` **all SQL privileges of the AxonHub primary database account**, including reads, writes, and DDL. This includes access to credentials and metadata visible to that account. Owner access is required to configure a plugin with this grant. The host checks the current activation status and grant before each call.

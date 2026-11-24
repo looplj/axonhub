@@ -4,7 +4,7 @@
 //	internal/server/plugin/manager.go
 //	internal/server/plugin/task_manifest.go
 //	internal/server/plugin/invoke.go
-//	internal/ent/schema/plugin_schedule.go
+//	internal/server/plugin/catalog_check_summary.go
 //	internal/server/scheduler/scheduler.go
 //
 // 注意事项:
@@ -329,7 +329,7 @@ func (m *Manager) executeTask(ctx context.Context, installationID int, key strin
 		ScheduledAt *time.Time `json:"scheduledAt"`
 	}{key, run.ID, trigger, run.ScheduledAt}})
 
-	_, invokeErr := m.Invoke(runCtx, InvokeRequest{
+	result, invokeErr := m.Invoke(runCtx, InvokeRequest{
 		InstallationID: loaded.ID, Export: pluginTaskExport, Args: args, Config: loaded.Config,
 		Generation: gen, BorrowWait: time.Second, backgroundTask: true,
 	})
@@ -350,7 +350,7 @@ func (m *Manager) executeTask(ctx context.Context, installationID int, key strin
 	finishCtx, finishCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer finishCancel()
 	finished := time.Now().UTC()
-	err = m.finishTask(finishCtx, run, status, finished)
+	err = m.finishTask(finishCtx, run, status, finished, result.catalogCheck)
 	run.Status, run.FinishedAt = status, &finished
 	return run, err
 }
@@ -423,7 +423,7 @@ func (m *Manager) claimTask(ctx context.Context, installationID int, key string,
 	return run, nil
 }
 
-func (m *Manager) finishTask(ctx context.Context, run *ent.PluginScheduleRun, status string, finished time.Time) error {
+func (m *Manager) finishTask(ctx context.Context, run *ent.PluginScheduleRun, status string, finished time.Time, catalogCheck *pendingCatalogCheck) error {
 	return m.runInTx(ctx, func(ctx context.Context) error {
 		client := m.client(ctx)
 		released, err := client.PluginSchedule.Update().Where(
@@ -431,6 +431,11 @@ func (m *Manager) finishTask(ctx context.Context, run *ent.PluginScheduleRun, st
 		).SetActiveRunID(0).SetLeaseUntil(0).Save(ctx)
 		if err != nil || released == 0 {
 			return err
+		}
+		if status == "succeeded" && catalogCheck != nil {
+			if err := catalogCheck.save(ctx, client, finished); err != nil {
+				return err
+			}
 		}
 		if err := client.PluginScheduleRun.UpdateOneID(run.ID).SetStatus(status).SetFinishedAt(finished).Exec(ctx); err != nil {
 			return err

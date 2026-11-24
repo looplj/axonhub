@@ -168,6 +168,7 @@ type Manager struct {
 	memCounters    *memoryCounters
 	writes         *pluginWriteLimiter
 	channels       *biz.ChannelService
+	models         *biz.ModelService
 	webhooks       *biz.WebhookNotifier
 	dispatcher     *eventDispatcher
 
@@ -233,6 +234,7 @@ type ManagerParams struct {
 	Cache    xcache.Config
 	Bus      *events.Bus
 	Channels *biz.ChannelService
+	Models   *biz.ModelService
 	Webhooks *biz.WebhookNotifier
 }
 
@@ -278,6 +280,7 @@ func newManager(params ManagerParams, cfg managerConfig) (*Manager, error) {
 		execs:           map[int]*pluginExec{},
 		writes:          newPluginWriteLimiter(),
 		channels:        params.Channels,
+		models:          params.Models,
 		webhooks:        params.Webhooks,
 		sqlSlots:        make(chan struct{}, pluginSQLConcurrency),
 		tableDDLSlot:    make(chan struct{}, 1),

@@ -866,6 +866,8 @@ models:
   PluginKVPage:
     model:
       - github.com/looplj/axonhub/internal/server/plugin.KVPage
+  PluginCatalogCheckSummary:
+    model: github.com/looplj/axonhub/internal/server/plugin.CatalogCheckSummary
   PluginKVEntry:
     model:
       - github.com/looplj/axonhub/internal/server/plugin.KVEntry

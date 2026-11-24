@@ -32,6 +32,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/plugin"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 const (
@@ -380,6 +381,7 @@ type pluginEndpointFixture struct {
 	ownerToken     string
 	writerToken    string
 	readerToken    string
+	scopedToken    func(string, []string) string
 	serviceAccount string
 	readerID       int
 	channelID      int
@@ -387,7 +389,7 @@ type pluginEndpointFixture struct {
 	other          *ent.Plugin
 }
 
-func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture {
+func newPluginEndpointFixture(t *testing.T, name string, catalogHTTP ...*http.Client) *pluginEndpointFixture {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
@@ -398,9 +400,18 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 	setupCtx := ent.NewContext(context.Background(), db)
 	setupCtx = authz.WithTestBypass(setupCtx)
 
+	cacheCfg := xcache.Config{Mode: xcache.ModeMemory}
+	systemSvc := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheCfg, Ent: db})
+	var models *biz.ModelService
+	if len(catalogHTTP) != 0 {
+		catalog := biz.NewCatalogService(systemSvc, httpclient.NewHttpClientWithClient(catalogHTTP[0]))
+		require.NoError(t, systemSvc.SetCatalogSettings(setupCtx, biz.CatalogSettings{UpstreamURL: "https://catalog.example.invalid/models"}))
+		models = biz.NewModelService(biz.ModelServiceParams{Ent: db, SystemService: systemSvc, Catalog: catalog})
+	}
 	manager, err := plugin.NewManager(plugin.ManagerParams{
 		Client: db,
 		Cache:  xcache.Config{Mode: xcache.ModeMemory},
+		Models: models,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -453,7 +464,6 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 		SetDefaultTestModel("gpt-4").
 		SaveX(setupCtx)
 
-	cacheCfg := xcache.Config{Mode: xcache.ModeMemory}
 	projectSvc := &biz.ProjectService{
 		ProjectCache: xcache.NewFromConfig[xcache.Entry[ent.Project]](cacheCfg),
 	}
@@ -461,7 +471,6 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 		CacheConfig: cacheCfg, Ent: db, ProjectService: projectSvc, KeyPrefix: "ah",
 	})
 	t.Cleanup(apiKeySvc.Stop)
-	systemSvc := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheCfg, Ent: db})
 	require.NoError(t, systemSvc.SetSecretKey(setupCtx, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))
 	userSvc := biz.NewUserService(biz.UserServiceParams{CacheConfig: cacheCfg, Ent: db, APIKeyService: apiKeySvc})
 	authSvc := biz.NewAuthService(biz.AuthServiceParams{
@@ -515,12 +524,15 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 	require.NoError(t, manager.Enable(setupCtx, pageless.ID, []string{"read_channels"}, nil))
 
 	return &pluginEndpointFixture{
-		db:             db,
-		manager:        manager,
-		handler:        handler,
-		engine:         engine,
-		setupCtx:       setupCtx,
-		ownerToken:     token(owner),
+		db:         db,
+		manager:    manager,
+		handler:    handler,
+		engine:     engine,
+		setupCtx:   setupCtx,
+		ownerToken: token(owner),
+		scopedToken: func(label string, grants []string) string {
+			return token(makeUser(label+"-"+suffix+"@example.com", label, false, grants))
+		},
 		writerToken:    token(writer),
 		readerToken:    token(reader),
 		serviceAccount: serviceKey,
@@ -543,7 +555,7 @@ func (fx *pluginEndpointFixture) postAdmin(token, query string) (int, map[string
 	return fx.post("/admin/graphql", token, query, nil)
 }
 
-func (fx *pluginEndpointFixture) post(path, token, query string, variables map[string]any) (int, map[string]any, string) {
+func (fx *pluginEndpointFixture) post(path, token, query string, variables map[string]any, projectID ...int) (int, map[string]any, string) {
 	body := map[string]any{"query": query}
 	if variables != nil {
 		body["variables"] = variables
@@ -554,6 +566,9 @@ func (fx *pluginEndpointFixture) post(path, token, query string, variables map[s
 	}
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(encoded))
 	req.Header.Set("Content-Type", "application/json")
+	if len(projectID) > 0 {
+		req.Header.Set("X-Project-ID", fmt.Sprintf("gid://axonhub/Project/%d", projectID[0]))
+	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}

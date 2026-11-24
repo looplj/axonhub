@@ -20,9 +20,7 @@ import (
 
 func TestPluginTaskGraphqlFullSQLGrant(t *testing.T) {
 	fx := newPluginEndpointFixture(t, "plugin_task_graphql")
-	var buf bytes.Buffer
-	writer := zip.NewWriter(&buf)
-	for name, contents := range map[string]string{
+	pack := pluginTaskZip(t, map[string]string{
 		"manifest.json": `{
   "schemaVersion": 1,
   "id": "acme.cron",
@@ -38,14 +36,8 @@ func TestPluginTaskGraphqlFullSQLGrant(t *testing.T) {
   ctx.sql.exec("CREATE TABLE IF NOT EXISTS reports_test (id INTEGER)");
   ctx.sql.exec("INSERT INTO reports_test (id) VALUES (?)", [42]);
 }`,
-	} {
-		entry, err := writer.Create(name)
-		require.NoError(t, err)
-		_, err = io.WriteString(entry, contents)
-		require.NoError(t, err)
-	}
-	require.NoError(t, writer.Close())
-	installed, err := fx.manager.Install(fx.setupCtx, buf.Bytes(), nil, nil)
+	})
+	installed, err := fx.manager.Install(fx.setupCtx, pack, nil, nil)
 	require.NoError(t, err)
 	require.NoError(t, fx.manager.Enable(fx.setupCtx, installed.Plugin.ID, []string{"sql"}, nil))
 	require.NoError(t, fx.manager.Enable(fx.setupCtx, fx.pages.ID, nil, nil))
@@ -67,4 +59,18 @@ fragment Run on Mutation { ... on Mutation { runPluginTask(id:%q, key:"report") 
 	_, history, raw := fx.postAdmin(fx.ownerToken, fmt.Sprintf(`query { pluginTasks(id:%q) { key runs { status } } }`, id))
 	require.NotContains(t, history, "errors", raw)
 	require.Contains(t, raw, `"key":"report","runs":[{"status":"succeeded"}]`)
+}
+
+func pluginTaskZip(t *testing.T, files map[string]string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	writer := zip.NewWriter(&buf)
+	for name, contents := range files {
+		entry, err := writer.Create(name)
+		require.NoError(t, err)
+		_, err = io.WriteString(entry, contents)
+		require.NoError(t, err)
+	}
+	require.NoError(t, writer.Close())
+	return buf.Bytes()
 }

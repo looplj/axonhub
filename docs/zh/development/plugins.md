@@ -336,6 +336,20 @@ export function onTask(ctx, run) {
 
 多副本部署请在所有实例升级后安装声明 `tasks` 的插件。
 
+### 检查模型目录
+
+在 `onTask` 中，已获 `read_channels` 授权的插件可以调用 `ctx.checkModelCatalog(options)`。宿主获取站点配置的最新上游目录，检查渠道中已配置的模型、所选服务商的模型，以及已有模型跟随的参考价。两个选项均可省略。`providers` 是目录中的服务商 ID 列表，默认为 `[]`。`ignorePrefix` 沿用手动导入时渠道模型 ID 的匹配规则，默认为 `false`。
+
+```js
+export function onTask(ctx) {
+  ctx.checkModelCatalog({ providers: ["openai"], ignorePrefix: false });
+}
+```
+
+方法返回 `undefined`。检查只读模型和价格。任务成功时保存本次安装最近的一份摘要。上游读取失败（包括回退到内置目录）、任务失败或取消时，保留上次成功摘要。同一个模型有多项跟随价变化，只计一个变价模型。
+
+同一安装的插件页面可通过 `axonhub.graphql` 查询 `pluginCatalogCheckSummary { lastSuccessAt available changed }`。首次成功前返回 `null`。安装需已获 `read_channels` 授权，登录用户需为 Owner 或拥有站点级 `read_settings`、`write_channels` 中的任一权限。卸载插件时清除摘要。
+
 ### 动态 SQL
 
 Owner 授予 `sql` 后，`plugin.js` 可以使用 AxonHub **主数据库应用账号的全部 SQL 权限**，包括查询、写入和 DDL。它可以访问该账号可见的凭证和元数据。Owner 负责配置有此授权的插件，宿主在每次执行前复核当前启用状态和授权。

@@ -7,9 +7,10 @@ type callContextKey struct{}
 // Call is the plugin identity fixed for one page GraphQL request.
 // InstallationID is plugins.id from the row resolved at the start of the request.
 type Call struct {
-	ManifestID     string
-	InstallationID int
-	KVWritable     bool // The caller had write_plugins before delegation.
+	ManifestID            string
+	InstallationID        int
+	KVWritable            bool // The caller had write_plugins before delegation.
+	CanReadCatalogSummary bool // The site-scoped reader role before plugin delegation.
 }
 
 // WithCall stores the plugin call on ctx.

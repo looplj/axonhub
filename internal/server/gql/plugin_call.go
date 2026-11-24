@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -58,6 +59,8 @@ func (h *pluginGraphqlHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		ManifestID:     row.PluginID,
 		InstallationID: row.ID,
 		KVWritable:     scopes.HasSystemScope(user, scopes.ScopeWritePlugins),
+		CanReadCatalogSummary: slices.Contains(granted, string(scopes.ScopeReadChannels)) &&
+			(scopes.HasSystemScope(user, scopes.ScopeWriteChannels) || scopes.HasSystemScope(user, scopes.ScopeReadSettings)),
 	}
 	ctx, err := authz.DelegatePlugin(r.Context(), row.ID, pluginCallCeiling(granted))
 	if err != nil {

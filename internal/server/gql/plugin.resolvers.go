@@ -232,6 +232,15 @@ func (r *mutationResolver) CreatePluginUISession(ctx context.Context, pluginID s
 	return r.createPluginUISession(ctx, pluginID, entry)
 }
 
+// PluginCatalogCheckSummary is the resolver for the pluginCatalogCheckSummary field.
+func (r *queryResolver) PluginCatalogCheckSummary(ctx context.Context) (*plugin.CatalogCheckSummary, error) {
+	manager, err := r.pluginManagerOrErr()
+	if err != nil {
+		return nil, err
+	}
+	return manager.CatalogCheckSummary(ctx)
+}
+
 // Plugins is the resolver for the plugins field.
 func (r *queryResolver) Plugins(ctx context.Context) ([]*plugin.InstalledPlugin, error) {
 	if err := requirePluginRead(ctx); err != nil {

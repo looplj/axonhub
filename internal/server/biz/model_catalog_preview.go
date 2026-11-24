@@ -1,8 +1,9 @@
-// 职责: 比较全局模型与服务商目录，生成手动导入的候选清单。
+// 职责: 比较全局模型与服务商目录，生成手动导入预览和定时检查计数。
 // 关联文件:
 //
 //	internal/server/biz/catalog.go
 //	internal/server/biz/model_catalog_apply.go
+//	internal/server/plugin/hostapi_catalog.go
 //
 // 注意事项:
 //
@@ -15,6 +16,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
@@ -37,9 +39,10 @@ var (
 )
 
 type CatalogImportScope struct {
-	Channels     bool
-	Providers    []string
-	IgnorePrefix bool
+	Channels        bool
+	Providers       []string
+	IgnorePrefix    bool
+	includeFollowed bool
 }
 
 type CatalogImportTier struct {
@@ -368,6 +371,39 @@ func (svc *ModelService) CatalogImportPreview(ctx context.Context, scope Catalog
 	return svc.catalogPreviewFromSnapshot(ctx, scope, snapshot)
 }
 
+// CatalogCheckCounts counts models, even when several followed prices change on one model.
+type CatalogCheckCounts struct {
+	Available int `json:"available"`
+	Changed   int `json:"changed"`
+}
+
+func (svc *ModelService) CheckModelCatalog(ctx context.Context, providers []string, ignorePrefix bool) (CatalogCheckCounts, error) {
+	var counts CatalogCheckCounts
+	snapshot, err := svc.catalog.snapshot(ctx, false, true)
+	if err != nil {
+		return counts, err
+	}
+	if snapshot.Source != catalogSourceUpstream {
+		return counts, errors.New("upstream model catalog unavailable")
+	}
+	scope := CatalogImportScope{Channels: true, Providers: providers, IgnorePrefix: ignorePrefix, includeFollowed: true}
+	err = svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		preview, err := svc.catalogPreviewFromSnapshot(txCtx, scope, snapshot)
+		if err != nil {
+			return err
+		}
+		for _, row := range preview.Rows {
+			if row.Version == "" {
+				counts.Available++
+			} else if row.Changed && !row.Archived {
+				counts.Changed++
+			}
+		}
+		return nil
+	})
+	return counts, err
+}
+
 func catalogChannelRoutes(ctx context.Context, query *ent.ChannelQuery) (map[string][]CatalogImportRoute, error) {
 	channels, err := query.Where(channel.StatusIn(channel.StatusEnabled, channel.StatusDisabled)).
 		Order(ent.Asc(channel.FieldID)).
@@ -444,15 +480,16 @@ func (svc *ModelService) catalogPreviewFromSnapshot(ctx context.Context, scope C
 		}
 	}
 	aliases, mergeTargets := idx.groupModelIDs(allIDs, importedIDs, channelRoutes, scope.IgnorePrefix)
-	// Keep missing followed offers reachable under their existing local model ID.
+	// Checks also cover followed prices outside the channel and provider selections.
 	selectedProviders := lo.Intersect(scope.Providers, idx.providers)
-	if snapshot.Source == catalogSourceUpstream && len(selectedProviders) > 0 {
+	if scope.includeFollowed || (snapshot.Source == catalogSourceUpstream && len(selectedProviders) > 0) {
 		for _, m := range local {
 			if aliases[m.ModelID] != nil || m.Status == model.StatusArchived || m.ModelCard == nil {
 				continue
 			}
 			for _, binding := range m.ModelCard.CatalogPrices {
-				if binding.Follow && slices.Contains(selectedProviders, binding.Provider) && idx.offers[catalogOfferKey{binding.Provider, binding.ModelID}] == nil {
+				offerMissing := idx.offers[catalogOfferKey{binding.Provider, binding.ModelID}] == nil
+				if binding.Follow && (scope.includeFollowed || (offerMissing && slices.Contains(selectedProviders, binding.Provider))) {
 					aliases[m.ModelID] = []string{m.ModelID}
 					break
 				}

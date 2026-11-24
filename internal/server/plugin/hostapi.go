@@ -147,6 +147,11 @@ func (h *hostCall) build(in callExportInput) (moejs.Value, error) {
 	if err := h.attachEventAPI(ctxObj); err != nil {
 		return moejs.Undefined(), err
 	}
+	if in.backgroundTask {
+		if err := defineHostFn(h.rt, ctxObj, "checkModelCatalog", 1, h.checkModelCatalog); err != nil {
+			return moejs.Undefined(), err
+		}
+	}
 	if err := h.attachSQLAPI(ctxObj); err != nil {
 		return moejs.Undefined(), err
 	}

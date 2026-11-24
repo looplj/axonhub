@@ -111,7 +111,7 @@ export function onTask(ctx, run) {
 	duplicate, err = peer.claimTask(ctx, installed.ID, "report", &next, next)
 	require.NoError(t, err)
 	require.Nil(t, duplicate)
-	require.NoError(t, manager.finishTask(ctx, run, "succeeded", slot.Add(30*time.Second)))
+	require.NoError(t, manager.finishTask(ctx, run, "succeeded", slot.Add(30*time.Second), nil))
 
 	// Another tick in the skipped minute cannot reclaim that slot.
 	duplicate, err = peer.claimTask(ctx, installed.ID, "report", &next, next)
@@ -202,7 +202,7 @@ func TestPluginTaskRunSurvivesUpgrade(t *testing.T) {
 	require.NotEqual(t, installed.PackageSha256, upgrade.Plugin.PackageSha256)
 	require.NoError(t, runCtx.Err())
 
-	require.NoError(t, manager.finishTask(ctx, run, "succeeded", time.Now().UTC()))
+	require.NoError(t, manager.finishTask(ctx, run, "succeeded", time.Now().UTC(), nil))
 	next, err := manager.RunTask(ctx, installed.ID, "report")
 	require.NoError(t, err)
 	require.Equal(t, "succeeded", next.Status)
