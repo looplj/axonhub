@@ -1557,6 +1557,104 @@ func TestWebSocketExecutorAnswersUpstreamPingWhileIdle(t *testing.T) {
 	require.Equal(t, int32(1), upgrades.Load())
 }
 
+func TestWebSocketExecutorKeepsConnectionWithQueuedLargeCompletion(t *testing.T) {
+	var upgrades atomic.Int32
+	pingNow := make(chan struct{})
+	pingResult := make(chan error, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrades.Add(1)
+		conn, err := websocket.Accept(w, r, nil)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer conn.CloseNow()
+
+		ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+		defer cancel()
+		var initial map[string]any
+		if !assert.NoError(t, wsjson.Read(ctx, conn, &initial)) {
+			return
+		}
+		if !assert.NoError(t, wsjson.Write(ctx, conn, map[string]any{
+			"type": "response.completed",
+			"response": map[string]any{
+				"id": "resp_large", "status": "completed", "output": []any{},
+			},
+			"padding": strings.Repeat("a", maxQueuedWebSocketBytes),
+		})) {
+			return
+		}
+		go func() {
+			select {
+			case <-pingNow:
+				pingResult <- conn.Ping(ctx)
+			case <-ctx.Done():
+				pingResult <- ctx.Err()
+			}
+		}()
+
+		var continuation map[string]any
+		if !assert.NoError(t, wsjson.Read(ctx, conn, &continuation)) {
+			return
+		}
+		assert.Equal(t, "resp_large", continuation["previous_response_id"])
+		assert.NoError(t, wsjson.Write(ctx, conn, map[string]any{
+			"type": "response.completed",
+			"response": map[string]any{
+				"id": "resp_next", "status": "completed", "output": []any{},
+			},
+		}))
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	defer executor.Close()
+	ctx, cancel := context.WithTimeout(webSocketTestContext(), 8*time.Second)
+	defer cancel()
+	request := httpclient.Request{
+		URL: server.URL,
+		Headers: http.Header{
+			webSocketSessionHeader: []string{"large-completion"},
+		},
+		Body: []byte(`{"model":"gpt-5","input":[{"type":"message","role":"user","content":"hello"}]}`),
+	}
+	first, err := executor.DoStream(ctx, &request)
+	require.NoError(t, err)
+	defer first.Close()
+
+	target := first.(*webSocketStream).lease.readTarget
+	select {
+	case <-target.ready:
+	case <-ctx.Done():
+		t.Fatal("oversized completion was not queued")
+	}
+	// Leave the completion queued beyond the backpressure timeout.
+	time.Sleep(webSocketQueueWait + 50*time.Millisecond)
+	close(pingNow)
+	select {
+	case err := <-pingResult:
+		require.NoError(t, err)
+	case <-ctx.Done():
+		t.Fatal("upstream ping did not complete")
+	}
+
+	require.True(t, first.Next())
+	require.Equal(t, "response.completed", first.Current().Type)
+	require.False(t, first.Next())
+	require.NoError(t, first.Err())
+	require.NoError(t, first.Close())
+
+	request.Body = []byte(`{"model":"gpt-5","previous_response_id":"resp_large","input":[{"type":"message","role":"user","content":"continue"}]}`)
+	second, err := executor.DoStream(ctx, &request)
+	require.NoError(t, err)
+	defer second.Close()
+	require.True(t, second.Next())
+	require.Equal(t, "response.completed", second.Current().Type)
+	require.False(t, second.Next())
+	require.NoError(t, second.Err())
+	require.Equal(t, int32(1), upgrades.Load())
+}
+
 func TestWebSocketExecutorAnswersPingBeforeLargeUploadCompletes(t *testing.T) {
 	const inputSize = 8 * webSocketRequestFragmentSize
 	type uploadResult struct {
@@ -1893,9 +1991,9 @@ func TestWebSocketReceiverDrainsQueueBeforeSlowConsumerError(t *testing.T) {
 	target, err := receiver.attach()
 	require.NoError(t, err)
 	fullFrame := make([]byte, maxQueuedWebSocketBytes-webSocketFrameOverhead)
-	require.NoError(t, receiver.enqueue(fullFrame))
+	require.NoError(t, receiver.enqueue(target, fullFrame))
 
-	receiver.err = receiver.enqueue([]byte("overflow"))
+	receiver.err = receiver.enqueue(target, []byte("overflow"))
 	require.ErrorContains(t, receiver.err, "timed out waiting for upstream WebSocket response queue to drain")
 	close(receiver.done)
 
@@ -1912,11 +2010,11 @@ func TestWebSocketReceiverResumesWhenQueueDrains(t *testing.T) {
 	target, err := receiver.attach()
 	require.NoError(t, err)
 	fullFrame := make([]byte, maxQueuedWebSocketBytes-webSocketFrameOverhead)
-	require.NoError(t, receiver.enqueue(fullFrame))
+	require.NoError(t, receiver.enqueue(target, fullFrame))
 
 	result := make(chan error, 1)
 	go func() {
-		result <- receiver.enqueue([]byte("next"))
+		result <- receiver.enqueue(target, []byte("next"))
 	}()
 	select {
 	case err := <-result:
@@ -1934,19 +2032,26 @@ func TestWebSocketReceiverResumesWhenQueueDrains(t *testing.T) {
 	require.Equal(t, []byte("next"), message)
 }
 
-func TestWebSocketReceiverHandsOffOversizedMessagesInOrder(t *testing.T) {
+func TestWebSocketReceiverDefersReadingNextBodyWhileOversizedMessageIsQueued(t *testing.T) {
 	for _, size := range []int{1, maxQueuedWebSocketBytes + 1} {
 		t.Run(strconv.Itoa(size), func(t *testing.T) {
 			receiver := &webSocketReceiver{done: make(chan struct{})}
 			target, err := receiver.attach()
 			require.NoError(t, err)
-			require.NoError(t, receiver.enqueue([]byte("first")))
+			require.NoError(t, receiver.enqueue(target, []byte("first")))
 
 			// Cover both a large payload and a small one with excess capacity.
 			large := make([]byte, size, maxQueuedWebSocketBytes+1)
 			large[0] = 'x'
-			result := make(chan error, 1)
-			go func() { result <- receiver.enqueue(large) }()
+			require.NoError(t, receiver.enqueue(target, large))
+			nextTarget := make(chan *webSocketReadTarget, 1)
+			go func() {
+				target, err := receiver.targetForMessage()
+				if !assert.NoError(t, err) {
+					return
+				}
+				nextTarget <- target
+			}()
 
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
@@ -1954,8 +2059,8 @@ func TestWebSocketReceiverHandsOffOversizedMessagesInOrder(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, []byte("first"), message)
 			select {
-			case err := <-result:
-				t.Fatalf("receiver returned before handing off the oversized message: %v", err)
+			case <-nextTarget:
+				t.Fatal("reader admitted the next body while an oversized message was pending")
 			default:
 			}
 
@@ -1964,46 +2069,28 @@ func TestWebSocketReceiverHandsOffOversizedMessagesInOrder(t *testing.T) {
 			require.Len(t, message, size)
 			require.Equal(t, byte('x'), message[0])
 			select {
-			case err := <-result:
-				require.NoError(t, err)
+			case ready := <-nextTarget:
+				require.Same(t, target, ready)
 			case <-ctx.Done():
 				t.Fatal("receiver did not resume after the oversized message was consumed")
 			}
-
-			require.NoError(t, receiver.enqueue([]byte("last")))
-			message, err = receiver.next(ctx, target)
-			require.NoError(t, err)
-			require.Equal(t, []byte("last"), message)
 		})
 	}
 }
 
-func TestWebSocketReceiverDiscardsOversizedHandoffOnDetach(t *testing.T) {
+func TestWebSocketReceiverRejectsMessageForReleasedTarget(t *testing.T) {
 	receiver := &webSocketReceiver{done: make(chan struct{})}
 	oldTarget, err := receiver.attach()
 	require.NoError(t, err)
-	result := make(chan error, 1)
-	go func() { result <- receiver.enqueue(make([]byte, maxQueuedWebSocketBytes+1)) }()
-
-	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
-	defer cancel()
-	select {
-	case <-oldTarget.ready:
-	case <-ctx.Done():
-		t.Fatal("oversized message was not queued")
-	}
+	require.NoError(t, receiver.enqueue(oldTarget, make([]byte, maxQueuedWebSocketBytes+1)))
 
 	receiver.detach(oldTarget)
 	newTarget, err := receiver.attach()
 	require.NoError(t, err)
-	select {
-	case err := <-result:
-		require.NoError(t, err)
-	case <-ctx.Done():
-		t.Fatal("detaching the old target did not release the receiver")
-	}
-	require.NoError(t, receiver.enqueue([]byte("new response")))
-	message, err := receiver.next(ctx, newTarget)
+	require.ErrorContains(t, receiver.enqueue(oldTarget, []byte("old response")), "belongs to a released request")
+	require.NoError(t, receiver.enqueue(newTarget, []byte("new response")))
+
+	message, err := receiver.next(t.Context(), newTarget)
 	require.NoError(t, err)
 	require.Equal(t, []byte("new response"), message)
 }

@@ -11,6 +11,7 @@ package responses
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"sync"
@@ -76,35 +77,66 @@ func (r *webSocketReceiver) receive(onExit func()) {
 	}()
 
 	for {
-		_, message, err := r.conn.Read(context.Background())
+		_, body, err := r.conn.Reader(context.Background())
 		if err != nil {
 			r.err = err
 			return
 		}
 
-		if err := r.enqueue(message); err != nil {
+		// Reader handles control frames until the next data message starts.
+		// Defer allocating its body while an oversized message is queued.
+		target, err := r.targetForMessage()
+		if err != nil {
+			r.err = err
+			return
+		}
+		message, err := io.ReadAll(body)
+		if err != nil {
+			r.err = err
+			return
+		}
+		if err := r.enqueue(target, message); err != nil {
 			r.err = err
 			return
 		}
 	}
 }
 
-func (r *webSocketReceiver) enqueue(message []byte) error {
-	size := cap(message) + webSocketFrameOverhead
+func (r *webSocketReceiver) targetForMessage() (*webSocketReadTarget, error) {
 	r.mu.Lock()
 	target := r.target
+	oversizedQueued := target != nil && target.queuedBytes > maxQueuedWebSocketBytes
+	r.mu.Unlock()
 	if target == nil {
+		return nil, fmt.Errorf("unexpected upstream WebSocket message with no active request")
+	}
+	if oversizedQueued {
+		if err := r.waitForQueue(target, func() bool { return len(target.messages) == 0 }); err != nil {
+			return nil, err
+		}
+		select {
+		case <-target.detached:
+			return nil, fmt.Errorf("upstream WebSocket message belongs to a released request")
+		default:
+		}
+	}
+	return target, nil
+}
+
+func (r *webSocketReceiver) enqueue(target *webSocketReadTarget, message []byte) error {
+	size := cap(message) + webSocketFrameOverhead
+	r.mu.Lock()
+	if r.target != target {
 		r.mu.Unlock()
-		return fmt.Errorf("unexpected upstream WebSocket message with no active request")
+		return fmt.Errorf("upstream WebSocket message belongs to a released request")
 	}
 
 	if size > maxQueuedWebSocketBytes {
-		// The budget limits read-ahead, not the size of a single message.
-		// Deliver this message in order and do not read another until it is
-		// consumed. Only the receiver can append to the queue.
+		// Allow one oversized message in FIFO order. If another data message
+		// arrives, targetForMessage waits before reading the new body.
 		target.appendMessage(message, size)
 		r.mu.Unlock()
-		return r.waitForQueue(target, func() bool { return len(target.messages) == 0 })
+		return nil
 	}
 
 	queued := target.tryEnqueue(message, size)
