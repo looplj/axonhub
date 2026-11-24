@@ -30,14 +30,25 @@ func TestWebSocketDialProxyReadActivity(t *testing.T) {
 	const proxyUser, proxyPassword = "proxy-user", "proxy-pass"
 	proxyAuthorization := "Basic " + base64.StdEncoding.EncodeToString([]byte(proxyUser+":"+proxyPassword))
 	for _, test := range []struct {
-		name        string
-		secureProxy bool
-		securePeer  bool
+		name          string
+		secureProxy   bool
+		securePeer    bool
+		activeConnect bool
+		framing       string
 	}{
 		{name: "http/ws"},
 		{name: "http/wss", securePeer: true},
 		{name: "https/ws", secureProxy: true},
 		{name: "https/wss", secureProxy: true, securePeer: true},
+		{name: "http/ws-active-connect", activeConnect: true},
+		{name: "https/ws-active-connect", secureProxy: true, activeConnect: true},
+		{name: "http/wss-active-connect", securePeer: true, activeConnect: true},
+		{name: "https/wss-active-connect", secureProxy: true, securePeer: true, activeConnect: true},
+		{name: "http/ws-content-length", framing: "Content-Length: 1\r\n"},
+		{name: "https/ws-content-length", secureProxy: true, framing: "Content-Length: 1\r\n"},
+		{name: "http/ws-chunked", framing: "Transfer-Encoding: chunked\r\n"},
+		{name: "https/ws-chunked", secureProxy: true, framing: "Transfer-Encoding: chunked\r\n"},
+		{name: "https/wss-chunked", secureProxy: true, securePeer: true, framing: "Transfer-Encoding: chunked\r\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
@@ -82,7 +93,25 @@ func TestWebSocketDialProxyReadActivity(t *testing.T) {
 					return
 				}
 				defer client.Close()
-				if _, err := io.WriteString(client, "HTTP/1.1 200 Connection Established\r\n\r\n"); !assertCoderPeer(t, err) {
+				if _, err := io.WriteString(client, "HTTP/1.1 200 Connection Established\r\n"+test.framing); !assertCoderPeer(t, err) {
+					return
+				}
+				if test.activeConnect {
+					// The handshake exceeds the idle timeout, but every read arrives before it expires.
+					ticker := time.NewTicker(100 * time.Millisecond)
+					defer ticker.Stop()
+					for range 8 {
+						select {
+						case <-ticker.C:
+						case <-ctx.Done():
+							return
+						}
+						if _, err := io.WriteString(client, "X-Proxy-Progress: active\r\n"); err != nil {
+							return
+						}
+					}
+				}
+				if _, err := io.WriteString(client, "\r\n"); !assertCoderPeer(t, err) {
 					return
 				}
 				copied := make(chan struct{})
@@ -120,7 +149,11 @@ func TestWebSocketDialProxyReadActivity(t *testing.T) {
 			wsURL, err := toWebSocketURL(target.URL)
 			require.NoError(t, err)
 			headers := http.Header{"Authorization": {"Bearer upstream-token"}}
-			conn, observer, err := executor.dial(ctx, &httpclient.Request{}, wsURL, headers)
+			dialCtx := ctx
+			if test.activeConnect {
+				dialCtx = httpclient.WithStreamIdleTimeout(ctx, 500*time.Millisecond)
+			}
+			conn, observer, err := executor.dial(dialCtx, &httpclient.Request{}, wsURL, headers)
 			require.NoError(t, err)
 			defer conn.CloseNow()
 			require.NotNil(t, observer, "proxy tunnels must preserve the raw read activity observer")
