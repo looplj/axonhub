@@ -220,20 +220,36 @@ func TestPluginCatalogCheck(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "canceled", stopped.Status)
 	require.Equal(t, want, read(fx.ownerToken))
-	// Cancel after the upsert has executed but before the task transaction commits.
-	publishCtx, stopPublish := context.WithCancel(t.Context())
-	defer stopPublish()
-	fx.db.PluginStorage.Use(func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, mutation ent.Mutation) (ent.Value, error) {
-			value, err := next.Mutate(ctx, mutation)
-			stopPublish()
-			return value, err
+	for _, point := range []string{"after upsert", "at commit"} {
+		t.Run(point, func(t *testing.T) {
+			runCtx, cancelRun := context.WithCancel(t.Context())
+			defer cancelRun()
+			fx.db.PluginStorage.Use(func(next ent.Mutator) ent.Mutator {
+				return ent.MutateFunc(func(ctx context.Context, mutation ent.Mutation) (ent.Value, error) {
+					value, err := next.Mutate(ctx, mutation)
+					if err != nil || runCtx.Err() != nil {
+						return value, err
+					}
+					if point == "at commit" {
+						ent.TxFromContext(ctx).OnCommit(func(next ent.Committer) ent.Committer {
+							return ent.CommitFunc(func(ctx context.Context, tx *ent.Tx) error {
+								cancelRun()
+								return next.Commit(ctx, tx)
+							})
+						})
+					} else {
+						cancelRun()
+					}
+					return value, nil
+				})
+			})
+			run, err := fx.manager.RunTask(runCtx, id, "check")
+			require.NoError(t, err)
+			require.Equal(t, "canceled", run.Status)
+			require.Equal(t, "canceled", fx.db.PluginScheduleRun.GetX(fx.setupCtx, run.ID).Status)
+			require.Equal(t, want, read(fx.ownerToken))
 		})
-	})
-	stopped, err = fx.manager.RunTask(publishCtx, id, "check")
-	require.NoError(t, err)
-	require.Equal(t, "canceled", stopped.Status)
-	require.Equal(t, want, read(fx.ownerToken))
+	}
 	duringFetch <- func() error {
 		cancel()
 		return nil
