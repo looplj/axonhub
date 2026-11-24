@@ -12,20 +12,26 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net"
 	"sync"
 
 	"github.com/coder/websocket"
 )
 
+const (
+	maxQueuedWebSocketFrames = 32
+	maxQueuedWebSocketBytes  = 16 << 20
+)
+
 type webSocketReadTarget struct {
-	messages chan []byte
-	detached chan struct{}
+	// The receiver mutex protects the queue and byte count.
+	messages    [][]byte
+	queuedBytes int
+	ready       chan struct{}
+	detached    chan struct{}
 }
 
 type webSocketReceiver struct {
 	conn *websocket.Conn
-	stop chan struct{}
 	done chan struct{}
 	once sync.Once
 
@@ -39,7 +45,6 @@ type webSocketReceiver struct {
 func newWebSocketReceiver(conn *websocket.Conn, onExit func()) *webSocketReceiver {
 	reader := &webSocketReceiver{
 		conn: conn,
-		stop: make(chan struct{}),
 		done: make(chan struct{}),
 	}
 
@@ -55,6 +60,7 @@ func (r *webSocketReceiver) receive(onExit func()) {
 			slog.Error("websocket receiver panicked", slog.Any("panic", recovered))
 		}
 		close(r.done)
+		r.close()
 		if onExit != nil {
 			onExit()
 		}
@@ -67,23 +73,45 @@ func (r *webSocketReceiver) receive(onExit func()) {
 			return
 		}
 
-		r.mu.Lock()
-		target := r.target
-		r.mu.Unlock()
-
-		if target == nil {
-			r.err = fmt.Errorf("unexpected upstream WebSocket message with no active request")
-			return
-		}
-
-		select {
-		case target.messages <- message:
-		case <-target.detached:
-		case <-r.stop:
-			r.err = net.ErrClosed
+		if err := r.enqueue(message); err != nil {
+			r.err = err
 			return
 		}
 	}
+}
+
+func (r *webSocketReceiver) enqueue(message []byte) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	target := r.target
+	if target == nil {
+		return fmt.Errorf("unexpected upstream WebSocket message with no active request")
+	}
+	if len(target.messages) >= maxQueuedWebSocketFrames || len(message) > maxQueuedWebSocketBytes-target.queuedBytes {
+		return fmt.Errorf("upstream WebSocket response queue limit exceeded")
+	}
+	target.messages = append(target.messages, message)
+	target.queuedBytes += len(message)
+	select {
+	case target.ready <- struct{}{}:
+	default:
+	}
+	return nil
+}
+
+func (r *webSocketReceiver) dequeue(target *webSocketReadTarget) ([]byte, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if len(target.messages) == 0 {
+		return nil, false
+	}
+	message := target.messages[0]
+	target.messages[0] = nil
+	target.messages = target.messages[1:]
+	target.queuedBytes -= len(message)
+	return message, true
 }
 
 func (r *webSocketReceiver) ended() bool {
@@ -102,7 +130,7 @@ func (r *webSocketReceiver) attach() (*webSocketReadTarget, error) {
 	if r.ended() {
 		return nil, r.err
 	}
-	target := &webSocketReadTarget{messages: make(chan []byte), detached: make(chan struct{})}
+	target := &webSocketReadTarget{ready: make(chan struct{}, 1), detached: make(chan struct{})}
 	r.target = target
 	return target, nil
 }
@@ -110,26 +138,38 @@ func (r *webSocketReceiver) attach() (*webSocketReadTarget, error) {
 func (r *webSocketReceiver) detach(target *webSocketReadTarget) {
 	r.mu.Lock()
 	r.target = nil
+	target.messages = nil
+	target.queuedBytes = 0
 	close(target.detached)
 	r.mu.Unlock()
 }
 
 func (r *webSocketReceiver) next(ctx context.Context, target *webSocketReadTarget) ([]byte, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-r.done:
-		return nil, r.err
-	case <-target.detached:
-		return nil, fmt.Errorf("websocket response reader closed")
-	case message := <-target.messages:
-		return message, nil
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if message, ok := r.dequeue(target); ok {
+			return message, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-r.done:
+			// The receiver may have queued a frame after the first dequeue.
+			if message, ok := r.dequeue(target); ok {
+				return message, nil
+			}
+			return nil, r.err
+		case <-target.detached:
+			return nil, fmt.Errorf("websocket response reader closed")
+		case <-target.ready:
+		}
 	}
 }
 
 func (r *webSocketReceiver) close() {
 	r.once.Do(func() {
-		close(r.stop)
 		_ = r.conn.CloseNow()
 	})
 }

@@ -3,6 +3,8 @@ package responses
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/coder/websocket/wsjson"
@@ -27,12 +29,14 @@ func isWebSocketRecoveryEvent(raw []byte) bool {
 	return json.Unmarshal(raw, &event) == nil && (event.Code == "previous_response_not_found" || event.Error.Code == "previous_response_not_found")
 }
 
+var errWebSocketClosedBeforeSend = errors.New("websocket closed before sending response.create")
+
 func (l *webSocketLease) write(ctx context.Context, payload map[string]any) error {
 	if l.pooled != nil {
 		l.pooled.mu.Lock()
 		defer l.pooled.mu.Unlock()
 		if l.pooled.closed || l.pooled.generation != l.generation {
-			return shared.ResponsesRecoveryError()
+			return errWebSocketClosedBeforeSend
 		}
 		if id := explicitPreviousResponseID(payload); id != "" && id != l.pooled.lastResponseID {
 			return shared.ResponsesRecoveryError()
@@ -44,7 +48,7 @@ func (l *webSocketLease) write(ctx context.Context, payload map[string]any) erro
 	var err error
 	l.readTarget, err = l.receiver.attach()
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", errWebSocketClosedBeforeSend, err)
 	}
 	writeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

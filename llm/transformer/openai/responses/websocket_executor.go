@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -385,6 +386,25 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 		headers.Set(webSocketSessionHeader, lane.ID())
 	}
 
+	hasContinuation := explicitPreviousResponseID(payload) != ""
+	stream, err := e.startWebSocketStream(ctx, request, wsURL, headers, payload)
+	if !errors.Is(err, errWebSocketClosedBeforeSend) {
+		return stream, err
+	}
+	if hasContinuation {
+		return nil, shared.ResponsesRecoveryError()
+	}
+
+	// The socket closed before any write. Rebuild from the original request
+	// so a delta derived for the old socket is never reused on the new one.
+	payload, err = buildWebSocketCreatePayload(request.Body)
+	if err != nil {
+		return nil, err
+	}
+	return e.startWebSocketStream(ctx, request, wsURL, headers, payload)
+}
+
+func (e *WebSocketExecutor) startWebSocketStream(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header, payload map[string]any) (streams.Stream[*httpclient.StreamEvent], error) {
 	lease, err := e.acquirePreparedLease(ctx, request, wsURL, headers, payload)
 	if err != nil {
 		if cause := httpclient.StreamContextError(ctx); cause != nil {
@@ -405,10 +425,9 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 	setWebSocketActivity(lease.activityConn, activity)
 
 	if err := lease.write(ctx, payload); err != nil {
-		// A write failure is ambiguous: the upstream may already have accepted and
-		// executed the request. Replaying response.create on a fresh connection is
-		// therefore unsafe, so the dead session is evicted and the error is surfaced
-		// for the caller to decide.
+		// Only a confirmed pre-send close allows reacquisition. A failed write
+		// can mean upstream accepted the request before the error surfaced.
+		setWebSocketActivity(lease.activityConn, nil)
 		lease.release(true)
 
 		if cause := httpclient.StreamContextError(ctx); cause != nil {
