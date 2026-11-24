@@ -76,6 +76,9 @@ type ImageGenerationRequest struct {
 	Height           *int64          `json:"height,omitempty"`
 	Seed             *int64          `json:"seed,omitempty"`
 	PromptOptimizer  *bool           `json:"prompt_optimizer,omitempty"`
+	// Provider-specific image generation controls (for example SenseNova).
+	Watermark    *bool `json:"watermark,omitempty"`
+	PromptExtend *bool `json:"prompt_extend,omitempty"`
 }
 
 type ImageInboundTransformer struct {
@@ -265,6 +268,8 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 		Width:             genReq.Width,
 		Height:            genReq.Height,
 		PromptOptimizer:   genReq.PromptOptimizer,
+		Watermark:         genReq.Watermark,
+		PromptExtend:      genReq.PromptExtend,
 	}
 
 	llmReq := &llm.Request{
@@ -354,6 +359,8 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 		OutputCompression: parseOptionalInt64(formData.Fields["output_compression"]),
 		InputFidelity:     strings.TrimSpace(formData.Fields["input_fidelity"]),
 		PartialImages:     parseOptionalInt64(formData.Fields["partial_images"]),
+		Watermark:         parseOptionalBool(formData.Fields["watermark"]),
+		PromptExtend:      parseOptionalBool(formData.Fields["prompt_extend"]),
 	}
 
 	llmReq := &llm.Request{
@@ -392,6 +399,9 @@ type ImageEditJSONRequest struct {
 	Moderation        string          `json:"moderation,omitempty"`
 	PartialImages     *int64          `json:"partial_images,omitempty"`
 	Stream            bool            `json:"stream,omitempty"`
+	// Provider-specific image edit controls (for example SenseNova).
+	Watermark    *bool `json:"watermark,omitempty"`
+	PromptExtend *bool `json:"prompt_extend,omitempty"`
 }
 
 func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.Request) (*llm.Request, error) {
@@ -468,6 +478,8 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 		OutputCompression: editReq.OutputCompression,
 		InputFidelity:     strings.TrimSpace(editReq.InputFidelity),
 		PartialImages:     editReq.PartialImages,
+		Watermark:         editReq.Watermark,
+		PromptExtend:      editReq.PromptExtend,
 	}
 
 	llmReq := &llm.Request{
@@ -703,6 +715,20 @@ func parseOptionalInt64(s string) *int64 {
 	}
 
 	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return nil
+	}
+
+	return &v
+}
+
+func parseOptionalBool(s string) *bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+
+	v, err := strconv.ParseBool(s)
 	if err != nil {
 		return nil
 	}
