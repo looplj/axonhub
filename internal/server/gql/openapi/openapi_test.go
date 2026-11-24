@@ -695,7 +695,7 @@ func TestOpenAPIResolver_APIKey_ByID(t *testing.T) {
 	got, err := qr.APIKey(ctx, &objects.GUID{Type: ent.TypeAPIKey, ID: fx.targetKey.ID}, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, fx.targetKey.ID, got.ID.ID)
-	require.Equal(t, fx.targetKey.Key, got.Key)
+	require.Empty(t, got.Key)
 	require.Equal(t, fx.targetKey.Name, got.Name)
 	require.NotNil(t, got.Profiles)
 }
@@ -711,9 +711,10 @@ func TestOpenAPIResolver_APIKey_ByKey(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, fx.targetKey.ID, got.ID.ID)
 	require.Equal(t, fx.targetKey.Name, got.Name)
+	require.Empty(t, got.Key)
 }
 
-// The headline use case: resolve a key's id/key/profiles from its name alone.
+// A name resolves key metadata without revealing the credential.
 func TestOpenAPIResolver_APIKey_ByName(t *testing.T) {
 	mr, fx, ctx, _ := setupOpenAPI(t, []string{
 		string(scopes.ScopeReadAPIKeys),
@@ -724,7 +725,7 @@ func TestOpenAPIResolver_APIKey_ByName(t *testing.T) {
 	got, err := qr.APIKey(ctx, nil, nil, lo.ToPtr(fx.targetKey.Name))
 	require.NoError(t, err)
 	require.Equal(t, fx.targetKey.ID, got.ID.ID)
-	require.Equal(t, fx.targetKey.Key, got.Key)
+	require.Empty(t, got.Key)
 	require.Equal(t, fx.targetKey.Name, got.Name)
 	require.NotNil(t, got.Profiles)
 }

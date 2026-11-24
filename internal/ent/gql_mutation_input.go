@@ -1249,52 +1249,6 @@ func (c *RoleUpdateOne) SetInput(i UpdateRoleInput) *RoleUpdateOne {
 	return c
 }
 
-// CreateSystemInput represents a mutation input for creating systems.
-type CreateSystemInput struct {
-	Key   string
-	Value string
-}
-
-// Mutate applies the CreateSystemInput on the SystemMutation builder.
-func (i *CreateSystemInput) Mutate(m *SystemMutation) {
-	m.SetKey(i.Key)
-	m.SetValue(i.Value)
-}
-
-// SetInput applies the change-set in the CreateSystemInput on the SystemCreate builder.
-func (c *SystemCreate) SetInput(i CreateSystemInput) *SystemCreate {
-	i.Mutate(c.Mutation())
-	return c
-}
-
-// UpdateSystemInput represents a mutation input for updating systems.
-type UpdateSystemInput struct {
-	Key   *string
-	Value *string
-}
-
-// Mutate applies the UpdateSystemInput on the SystemMutation builder.
-func (i *UpdateSystemInput) Mutate(m *SystemMutation) {
-	if v := i.Key; v != nil {
-		m.SetKey(*v)
-	}
-	if v := i.Value; v != nil {
-		m.SetValue(*v)
-	}
-}
-
-// SetInput applies the change-set in the UpdateSystemInput on the SystemUpdate builder.
-func (c *SystemUpdate) SetInput(i UpdateSystemInput) *SystemUpdate {
-	i.Mutate(c.Mutation())
-	return c
-}
-
-// SetInput applies the change-set in the UpdateSystemInput on the SystemUpdateOne builder.
-func (c *SystemUpdateOne) SetInput(i UpdateSystemInput) *SystemUpdateOne {
-	i.Mutate(c.Mutation())
-	return c
-}
-
 // CreateThreadInput represents a mutation input for creating threads.
 type CreateThreadInput struct {
 	ThreadID  string

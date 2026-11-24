@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
@@ -401,6 +402,12 @@ func (_q *UserRoleQuery) prepareQuery(ctx context.Context) error {
 			return err
 		}
 		_q.sql = prev
+	}
+	if userrole.Policy == nil {
+		return errors.New("ent: uninitialized userrole.Policy (forgotten import ent/runtime?)")
+	}
+	if err := userrole.Policy.EvalQuery(ctx, _q); err != nil {
+		return err
 	}
 	return nil
 }

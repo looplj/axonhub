@@ -4,10 +4,16 @@ import { Row } from '@tanstack/react-table';
 import { IconUserOff, IconUserCheck, IconEdit, IconSettings, IconArchive, IconCheck, IconRefresh } from '@tabler/icons-react';
 import { BarChart3 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { usePermissions } from '@/hooks/usePermissions';
 import { useAuthStore } from '@/stores/authStore';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { ApiKey } from '../data/schema';
 import { ApiKeyTokenChartDialog } from './api-key-token-chart-dialog';
@@ -116,15 +122,22 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
                   )}
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => handleArchive(apiKey)} className={apiKey.status === 'archived' ? 'text-green-600' : 'text-orange-600'}>
+              <DropdownMenuItem
+                onClick={() => handleArchive(apiKey)}
+                className={apiKey.status === 'archived' ? 'text-green-600' : 'text-orange-600'}
+              >
                 {apiKey.status === 'archived' ? <IconCheck className='mr-2 h-4 w-4' /> : <IconArchive className='mr-2 h-4 w-4' />}
                 {apiKey.status === 'archived' ? t('common.buttons.restore') : t('common.buttons.archive')}
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleRotate(apiKey)}>
-                <IconRefresh className='mr-2 h-4 w-4' />
-                {t('apikeys.dialogs.rotate.title')}
-              </DropdownMenuItem>
+              {apiKey.key && apiKey.type !== 'noauth' && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleRotate(apiKey)}>
+                    <IconRefresh className='mr-2 h-4 w-4' />
+                    {t('apikeys.dialogs.rotate.title')}
+                  </DropdownMenuItem>
+                </>
+              )}
             </>
           )}
         </DropdownMenuContent>

@@ -90,7 +90,6 @@ type ResolverRoot interface {
 	RequestExecution() RequestExecutionResolver
 	Role() RoleResolver
 	Segment() SegmentResolver
-	System() SystemResolver
 	Thread() ThreadResolver
 	Trace() TraceResolver
 	UsageLog() UsageLogResolver
@@ -1778,7 +1777,6 @@ type ComplexityRoot struct {
 		SystemModelSettings             func(childComplexity int) int
 		SystemStatus                    func(childComplexity int) int
 		SystemVersion                   func(childComplexity int) int
-		Systems                         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) int
 		Threads                         func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ThreadOrder, where *ent.ThreadWhereInput) int
 		TokenStats                      func(childComplexity int) int
 		TokenStatsByAPIKey              func(childComplexity int, timeWindow *string) int
@@ -2095,30 +2093,11 @@ type ComplexityRoot struct {
 		SupportedModels           func(childComplexity int) int
 	}
 
-	System struct {
-		CreatedAt func(childComplexity int) int
-		ID        func(childComplexity int) int
-		Key       func(childComplexity int) int
-		UpdatedAt func(childComplexity int) int
-		Value     func(childComplexity int) int
-	}
-
 	SystemChannelSettings struct {
 		AutoSync         func(childComplexity int) int
 		Probe            func(childComplexity int) int
 		TestSystemPrompt func(childComplexity int) int
 		TestUserPrompt   func(childComplexity int) int
-	}
-
-	SystemConnection struct {
-		Edges      func(childComplexity int) int
-		PageInfo   func(childComplexity int) int
-		TotalCount func(childComplexity int) int
-	}
-
-	SystemEdge struct {
-		Cursor func(childComplexity int) int
-		Node   func(childComplexity int) int
 	}
 
 	SystemGeneralSettings struct {
@@ -2515,6 +2494,7 @@ type APIKeyResolver interface {
 
 	UserID(ctx context.Context, obj *ent.APIKey) (*objects.GUID, error)
 	ProjectID(ctx context.Context, obj *ent.APIKey) (*objects.GUID, error)
+	Key(ctx context.Context, obj *ent.APIKey) (string, error)
 
 	User(ctx context.Context, obj *ent.APIKey) (*ent.User, error)
 }
@@ -2769,7 +2749,6 @@ type QueryResolver interface {
 	PromptProtectionRules(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.PromptProtectionRuleOrder, where *ent.PromptProtectionRuleWhereInput) (*ent.PromptProtectionRuleConnection, error)
 	Requests(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestOrder, where *ent.RequestWhereInput) (*ent.RequestConnection, error)
 	Roles(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RoleOrder, where *ent.RoleWhereInput) (*ent.RoleConnection, error)
-	Systems(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) (*ent.SystemConnection, error)
 	Threads(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ThreadOrder, where *ent.ThreadWhereInput) (*ent.ThreadConnection, error)
 	Traces(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) (*ent.TraceConnection, error)
 	UsageLogs(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) (*ent.UsageLogConnection, error)
@@ -2894,9 +2873,6 @@ type RoleResolver interface {
 type SegmentResolver interface {
 	ID(ctx context.Context, obj *biz.Segment) (*objects.GUID, error)
 	ParentID(ctx context.Context, obj *biz.Segment) (*objects.GUID, error)
-}
-type SystemResolver interface {
-	ID(ctx context.Context, obj *ent.System) (*objects.GUID, error)
 }
 type ThreadResolver interface {
 	ID(ctx context.Context, obj *ent.Thread) (*objects.GUID, error)
@@ -10708,17 +10684,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.SystemVersion(childComplexity), true
-	case "Query.systems":
-		if e.complexity.Query.Systems == nil {
-			break
-		}
-
-		args, err := ec.field_Query_systems_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.Systems(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.SystemOrder), args["where"].(*ent.SystemWhereInput)), true
 	case "Query.threads":
 		if e.complexity.Query.Threads == nil {
 			break
@@ -12013,37 +11978,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SyncChannelModelsPayload.SupportedModels(childComplexity), true
 
-	case "System.createdAt":
-		if e.complexity.System.CreatedAt == nil {
-			break
-		}
-
-		return e.complexity.System.CreatedAt(childComplexity), true
-	case "System.id":
-		if e.complexity.System.ID == nil {
-			break
-		}
-
-		return e.complexity.System.ID(childComplexity), true
-	case "System.key":
-		if e.complexity.System.Key == nil {
-			break
-		}
-
-		return e.complexity.System.Key(childComplexity), true
-	case "System.updatedAt":
-		if e.complexity.System.UpdatedAt == nil {
-			break
-		}
-
-		return e.complexity.System.UpdatedAt(childComplexity), true
-	case "System.value":
-		if e.complexity.System.Value == nil {
-			break
-		}
-
-		return e.complexity.System.Value(childComplexity), true
-
 	case "SystemChannelSettings.autoSync":
 		if e.complexity.SystemChannelSettings.AutoSync == nil {
 			break
@@ -12068,38 +12002,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SystemChannelSettings.TestUserPrompt(childComplexity), true
-
-	case "SystemConnection.edges":
-		if e.complexity.SystemConnection.Edges == nil {
-			break
-		}
-
-		return e.complexity.SystemConnection.Edges(childComplexity), true
-	case "SystemConnection.pageInfo":
-		if e.complexity.SystemConnection.PageInfo == nil {
-			break
-		}
-
-		return e.complexity.SystemConnection.PageInfo(childComplexity), true
-	case "SystemConnection.totalCount":
-		if e.complexity.SystemConnection.TotalCount == nil {
-			break
-		}
-
-		return e.complexity.SystemConnection.TotalCount(childComplexity), true
-
-	case "SystemEdge.cursor":
-		if e.complexity.SystemEdge.Cursor == nil {
-			break
-		}
-
-		return e.complexity.SystemEdge.Cursor(childComplexity), true
-	case "SystemEdge.node":
-		if e.complexity.SystemEdge.Node == nil {
-			break
-		}
-
-		return e.complexity.SystemEdge.Node(childComplexity), true
 
 	case "SystemGeneralSettings.currencyCode":
 		if e.complexity.SystemGeneralSettings.CurrencyCode == nil {
@@ -13760,7 +13662,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreatePromptProtectionRuleInput,
 		ec.unmarshalInputCreateRequestInput,
 		ec.unmarshalInputCreateRoleInput,
-		ec.unmarshalInputCreateSystemInput,
 		ec.unmarshalInputCreateThreadInput,
 		ec.unmarshalInputCreateTraceInput,
 		ec.unmarshalInputCreateUsageLogInput,
@@ -13846,8 +13747,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSaveChannelModelPriceInput,
 		ec.unmarshalInputSaveProxyPresetInput,
 		ec.unmarshalInputSignInInput,
-		ec.unmarshalInputSystemOrder,
-		ec.unmarshalInputSystemWhereInput,
 		ec.unmarshalInputTestChannelInput,
 		ec.unmarshalInputThreadOrder,
 		ec.unmarshalInputThreadWhereInput,
@@ -13892,7 +13791,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateStoragePolicyInput,
 		ec.unmarshalInputUpdateSystemChannelSettingsInput,
 		ec.unmarshalInputUpdateSystemGeneralSettingsInput,
-		ec.unmarshalInputUpdateSystemInput,
 		ec.unmarshalInputUpdateSystemModelSettingsInput,
 		ec.unmarshalInputUpdateThreadInput,
 		ec.unmarshalInputUpdateTraceInput,
@@ -17325,42 +17223,6 @@ func (ec *executionContext) field_Query_roles_args(ctx context.Context, rawArgs 
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_systems_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "after", ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor)
-	if err != nil {
-		return nil, err
-	}
-	args["after"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "first", ec.unmarshalOInt2ᚖint)
-	if err != nil {
-		return nil, err
-	}
-	args["first"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "before", ec.unmarshalOCursor2ᚖentgoᚗioᚋcontribᚋentgqlᚐCursor)
-	if err != nil {
-		return nil, err
-	}
-	args["before"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "last", ec.unmarshalOInt2ᚖint)
-	if err != nil {
-		return nil, err
-	}
-	args["last"] = arg3
-	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "orderBy", ec.unmarshalOSystemOrder2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemOrder)
-	if err != nil {
-		return nil, err
-	}
-	args["orderBy"] = arg4
-	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "where", ec.unmarshalOSystemWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemWhereInput)
-	if err != nil {
-		return nil, err
-	}
-	args["where"] = arg5
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_threads_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -18113,7 +17975,7 @@ func (ec *executionContext) _APIKey_key(ctx context.Context, field graphql.Colle
 		field,
 		ec.fieldContext_APIKey_key,
 		func(ctx context.Context) (any, error) {
-			return obj.Key, nil
+			return ec.resolvers.APIKey().Key(ctx, obj)
 		},
 		nil,
 		ec.marshalNString2string,
@@ -18126,8 +17988,8 @@ func (ec *executionContext) fieldContext_APIKey_key(_ context.Context, field gra
 	fc = &graphql.FieldContext{
 		Object:     "APIKey",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -54314,55 +54176,6 @@ func (ec *executionContext) fieldContext_Query_roles(ctx context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_systems(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_systems,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Systems(ctx, fc.Args["after"].(*entgql.Cursor[int]), fc.Args["first"].(*int), fc.Args["before"].(*entgql.Cursor[int]), fc.Args["last"].(*int), fc.Args["orderBy"].(*ent.SystemOrder), fc.Args["where"].(*ent.SystemWhereInput))
-		},
-		nil,
-		ec.marshalNSystemConnection2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemConnection,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_systems(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "edges":
-				return ec.fieldContext_SystemConnection_edges(ctx, field)
-			case "pageInfo":
-				return ec.fieldContext_SystemConnection_pageInfo(ctx, field)
-			case "totalCount":
-				return ec.fieldContext_SystemConnection_totalCount(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type SystemConnection", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_systems_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_threads(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -64474,151 +64287,6 @@ func (ec *executionContext) fieldContext_SyncChannelModelsPayload_codexCatalogSk
 	return fc, nil
 }
 
-func (ec *executionContext) _System_id(ctx context.Context, field graphql.CollectedField, obj *ent.System) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_System_id,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.System().ID(ctx, obj)
-		},
-		nil,
-		ec.marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_System_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "System",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _System_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.System) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_System_createdAt,
-		func(ctx context.Context) (any, error) {
-			return obj.CreatedAt, nil
-		},
-		nil,
-		ec.marshalNTime2timeᚐTime,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_System_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "System",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _System_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.System) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_System_updatedAt,
-		func(ctx context.Context) (any, error) {
-			return obj.UpdatedAt, nil
-		},
-		nil,
-		ec.marshalNTime2timeᚐTime,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_System_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "System",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _System_key(ctx context.Context, field graphql.CollectedField, obj *ent.System) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_System_key,
-		func(ctx context.Context) (any, error) {
-			return obj.Key, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_System_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "System",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _System_value(ctx context.Context, field graphql.CollectedField, obj *ent.System) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_System_value,
-		func(ctx context.Context) (any, error) {
-			return obj.Value, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_System_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "System",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _SystemChannelSettings_probe(ctx context.Context, field graphql.CollectedField, obj *biz.SystemChannelSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -64740,179 +64408,6 @@ func (ec *executionContext) fieldContext_SystemChannelSettings_testUserPrompt(_ 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemConnection_edges(ctx context.Context, field graphql.CollectedField, obj *ent.SystemConnection) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SystemConnection_edges,
-		func(ctx context.Context) (any, error) {
-			return obj.Edges, nil
-		},
-		nil,
-		ec.marshalOSystemEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemEdge,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_SystemConnection_edges(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemConnection",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "node":
-				return ec.fieldContext_SystemEdge_node(ctx, field)
-			case "cursor":
-				return ec.fieldContext_SystemEdge_cursor(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type SystemEdge", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *ent.SystemConnection) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SystemConnection_pageInfo,
-		func(ctx context.Context) (any, error) {
-			return obj.PageInfo, nil
-		},
-		nil,
-		ec.marshalNPageInfo2entgoᚗioᚋcontribᚋentgqlᚐPageInfo,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_SystemConnection_pageInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemConnection",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "hasNextPage":
-				return ec.fieldContext_PageInfo_hasNextPage(ctx, field)
-			case "hasPreviousPage":
-				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
-			case "startCursor":
-				return ec.fieldContext_PageInfo_startCursor(ctx, field)
-			case "endCursor":
-				return ec.fieldContext_PageInfo_endCursor(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemConnection_totalCount(ctx context.Context, field graphql.CollectedField, obj *ent.SystemConnection) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SystemConnection_totalCount,
-		func(ctx context.Context) (any, error) {
-			return obj.TotalCount, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_SystemConnection_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemConnection",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemEdge_node(ctx context.Context, field graphql.CollectedField, obj *ent.SystemEdge) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SystemEdge_node,
-		func(ctx context.Context) (any, error) {
-			return obj.Node, nil
-		},
-		nil,
-		ec.marshalOSystem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystem,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_SystemEdge_node(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemEdge",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_System_id(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_System_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_System_updatedAt(ctx, field)
-			case "key":
-				return ec.fieldContext_System_key(ctx, field)
-			case "value":
-				return ec.fieldContext_System_value(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type System", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *ent.SystemEdge) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SystemEdge_cursor,
-		func(ctx context.Context) (any, error) {
-			return obj.Cursor, nil
-		},
-		nil,
-		ec.marshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_SystemEdge_cursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemEdge",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Cursor does not have child fields")
 		},
 	}
 	return fc, nil
@@ -75563,7 +75058,7 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "userIDIsNil", "userIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "key", "keyNEQ", "keyIn", "keyNotIn", "keyGT", "keyGTE", "keyLT", "keyLTE", "keyContains", "keyHasPrefix", "keyHasSuffix", "keyEqualFold", "keyContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "type", "typeNEQ", "typeIn", "typeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasProject", "hasProjectWith", "hasRequests", "hasRequestsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "userID", "userIDNEQ", "userIDIn", "userIDNotIn", "userIDIsNil", "userIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "type", "typeNEQ", "typeIn", "typeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "hasUser", "hasUserWith", "hasProject", "hasProjectWith", "hasRequests", "hasRequestsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -75893,97 +75388,6 @@ func (ec *executionContext) unmarshalInputAPIKeyWhereInput(ctx context.Context, 
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.ProjectIDNotIn = converted
-		case "key":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Key = data
-		case "keyNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyNEQ = data
-		case "keyIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyIn = data
-		case "keyNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyNotIn = data
-		case "keyGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyGT = data
-		case "keyGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyGTE = data
-		case "keyLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyLT = data
-		case "keyLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyLTE = data
-		case "keyContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyContains = data
-		case "keyHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyHasPrefix = data
-		case "keyHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyHasSuffix = data
-		case "keyEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyEqualFold = data
-		case "keyContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyContainsFold = data
 		case "name":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -82576,40 +81980,6 @@ func (ec *executionContext) unmarshalInputCreateRoleInput(ctx context.Context, o
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.ProjectID = converted
-		}
-	}
-
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputCreateSystemInput(ctx context.Context, obj any) (ent.CreateSystemInput, error) {
-	var it ent.CreateSystemInput
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"key", "value"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "key":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Key = data
-		case "value":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Value = data
 		}
 	}
 
@@ -94417,467 +93787,6 @@ func (ec *executionContext) unmarshalInputSignInInput(ctx context.Context, obj a
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputSystemOrder(ctx context.Context, obj any) (ent.SystemOrder, error) {
-	var it ent.SystemOrder
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	if _, present := asMap["direction"]; !present {
-		asMap["direction"] = "ASC"
-	}
-
-	fieldsInOrder := [...]string{"direction", "field"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "direction":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("direction"))
-			data, err := ec.unmarshalNOrderDirection2entgoᚗioᚋcontribᚋentgqlᚐOrderDirection(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Direction = data
-		case "field":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("field"))
-			data, err := ec.unmarshalNSystemOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemOrderField(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Field = data
-		}
-	}
-
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputSystemWhereInput(ctx context.Context, obj any) (ent.SystemWhereInput, error) {
-	var it ent.SystemWhereInput
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "key", "keyNEQ", "keyIn", "keyNotIn", "keyGT", "keyGTE", "keyLT", "keyLTE", "keyContains", "keyHasPrefix", "keyHasSuffix", "keyEqualFold", "keyContainsFold", "value", "valueNEQ", "valueIn", "valueNotIn", "valueGT", "valueGTE", "valueLT", "valueLTE", "valueContains", "valueHasPrefix", "valueHasSuffix", "valueEqualFold", "valueContainsFold"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "not":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOSystemWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemWhereInput(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Not = data
-		case "and":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOSystemWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemWhereInputᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.And = data
-		case "or":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOSystemWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemWhereInputᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Or = data
-		case "id":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.ID = converted
-		case "idNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNEQ"))
-			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.IDNEQ = converted
-		case "idIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idIn"))
-			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrsToInts(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.IDIn = converted
-		case "idNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idNotIn"))
-			data, err := ec.unmarshalOID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrsToInts(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.IDNotIn = converted
-		case "idGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGT"))
-			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.IDGT = converted
-		case "idGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idGTE"))
-			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.IDGTE = converted
-		case "idLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLT"))
-			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.IDLT = converted
-		case "idLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("idLTE"))
-			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			converted, err := objects.ConvertGUIDPtrToIntPtr(data)
-			if err != nil {
-				return it, graphql.ErrorOnPath(ctx, err)
-			}
-			it.IDLTE = converted
-		case "createdAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CreatedAt = data
-		case "createdAtNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtNEQ"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CreatedAtNEQ = data
-		case "createdAtIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtIn"))
-			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CreatedAtIn = data
-		case "createdAtNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtNotIn"))
-			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CreatedAtNotIn = data
-		case "createdAtGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtGT"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CreatedAtGT = data
-		case "createdAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtGTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CreatedAtGTE = data
-		case "createdAtLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtLT"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CreatedAtLT = data
-		case "createdAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAtLTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CreatedAtLTE = data
-		case "updatedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAt"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.UpdatedAt = data
-		case "updatedAtNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtNEQ"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.UpdatedAtNEQ = data
-		case "updatedAtIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtIn"))
-			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.UpdatedAtIn = data
-		case "updatedAtNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtNotIn"))
-			data, err := ec.unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.UpdatedAtNotIn = data
-		case "updatedAtGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtGT"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.UpdatedAtGT = data
-		case "updatedAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtGTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.UpdatedAtGTE = data
-		case "updatedAtLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtLT"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.UpdatedAtLT = data
-		case "updatedAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updatedAtLTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.UpdatedAtLTE = data
-		case "key":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Key = data
-		case "keyNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyNEQ = data
-		case "keyIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyIn = data
-		case "keyNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyNotIn = data
-		case "keyGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyGT = data
-		case "keyGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyGTE = data
-		case "keyLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyLT = data
-		case "keyLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyLTE = data
-		case "keyContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyContains = data
-		case "keyHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyHasPrefix = data
-		case "keyHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyHasSuffix = data
-		case "keyEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyEqualFold = data
-		case "keyContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.KeyContainsFold = data
-		case "value":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Value = data
-		case "valueNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valueNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ValueNEQ = data
-		case "valueIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valueIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ValueIn = data
-		case "valueNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valueNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ValueNotIn = data
-		case "valueGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valueGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ValueGT = data
-		case "valueGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valueGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ValueGTE = data
-		case "valueLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valueLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ValueLT = data
-		case "valueLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valueLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ValueLTE = data
-		case "valueContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valueContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ValueContains = data
-		case "valueHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valueHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ValueHasPrefix = data
-		case "valueHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valueHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ValueHasSuffix = data
-		case "valueEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valueEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ValueEqualFold = data
-		case "valueContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valueContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ValueContainsFold = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputTestChannelInput(ctx context.Context, obj any) (TestChannelInput, error) {
 	var it TestChannelInput
 	asMap := map[string]any{}
@@ -98444,40 +97353,6 @@ func (ec *executionContext) unmarshalInputUpdateSystemGeneralSettingsInput(ctx c
 				return it, err
 			}
 			it.Timezone = data
-		}
-	}
-
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputUpdateSystemInput(ctx context.Context, obj any) (ent.UpdateSystemInput, error) {
-	var it ent.UpdateSystemInput
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"key", "value"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "key":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Key = data
-		case "value":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Value = data
 		}
 	}
 
@@ -102614,11 +101489,6 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Thread(ctx, sel, obj)
-	case *ent.System:
-		if obj == nil {
-			return graphql.Null
-		}
-		return ec._System(ctx, sel, obj)
 	case *ent.Role:
 		if obj == nil {
 			return graphql.Null
@@ -102840,10 +101710,41 @@ func (ec *executionContext) _APIKey(ctx context.Context, sel ast.SelectionSet, o
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "key":
-			out.Values[i] = ec._APIKey_key(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._APIKey_key(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "name":
 			out.Values[i] = ec._APIKey_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -116454,28 +115355,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "systems":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_systems(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "threads":
 			field := field
 
@@ -121338,96 +120217,6 @@ func (ec *executionContext) _SyncChannelModelsPayload(ctx context.Context, sel a
 	return out
 }
 
-var systemImplementors = []string{"System", "Node"}
-
-func (ec *executionContext) _System(ctx context.Context, sel ast.SelectionSet, obj *ent.System) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, systemImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("System")
-		case "id":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._System_id(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "createdAt":
-			out.Values[i] = ec._System_createdAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "updatedAt":
-			out.Values[i] = ec._System_updatedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "key":
-			out.Values[i] = ec._System_key(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "value":
-			out.Values[i] = ec._System_value(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var systemChannelSettingsImplementors = []string{"SystemChannelSettings"}
 
 func (ec *executionContext) _SystemChannelSettings(ctx context.Context, sel ast.SelectionSet, obj *biz.SystemChannelSettings) graphql.Marshaler {
@@ -121456,93 +120245,6 @@ func (ec *executionContext) _SystemChannelSettings(ctx context.Context, sel ast.
 			}
 		case "testUserPrompt":
 			out.Values[i] = ec._SystemChannelSettings_testUserPrompt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var systemConnectionImplementors = []string{"SystemConnection"}
-
-func (ec *executionContext) _SystemConnection(ctx context.Context, sel ast.SelectionSet, obj *ent.SystemConnection) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, systemConnectionImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("SystemConnection")
-		case "edges":
-			out.Values[i] = ec._SystemConnection_edges(ctx, field, obj)
-		case "pageInfo":
-			out.Values[i] = ec._SystemConnection_pageInfo(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "totalCount":
-			out.Values[i] = ec._SystemConnection_totalCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var systemEdgeImplementors = []string{"SystemEdge"}
-
-func (ec *executionContext) _SystemEdge(ctx context.Context, sel ast.SelectionSet, obj *ent.SystemEdge) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, systemEdgeImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("SystemEdge")
-		case "node":
-			out.Values[i] = ec._SystemEdge_node(ctx, field, obj)
-		case "cursor":
-			out.Values[i] = ec._SystemEdge_cursor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -132357,20 +131059,6 @@ func (ec *executionContext) marshalNSystemChannelSettings2ᚖgithubᚗcomᚋloop
 	return ec._SystemChannelSettings(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNSystemConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemConnection(ctx context.Context, sel ast.SelectionSet, v ent.SystemConnection) graphql.Marshaler {
-	return ec._SystemConnection(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNSystemConnection2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemConnection(ctx context.Context, sel ast.SelectionSet, v *ent.SystemConnection) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._SystemConnection(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalNSystemGeneralSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemGeneralSettings(ctx context.Context, sel ast.SelectionSet, v biz.SystemGeneralSettings) graphql.Marshaler {
 	return ec._SystemGeneralSettings(ctx, sel, &v)
 }
@@ -132399,22 +131087,6 @@ func (ec *executionContext) marshalNSystemModelSettings2ᚖgithubᚗcomᚋlooplj
 	return ec._SystemModelSettings(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNSystemOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemOrderField(ctx context.Context, v any) (*ent.SystemOrderField, error) {
-	var res = new(ent.SystemOrderField)
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNSystemOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemOrderField(ctx context.Context, sel ast.SelectionSet, v *ent.SystemOrderField) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return v
-}
-
 func (ec *executionContext) marshalNSystemStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSystemStatus(ctx context.Context, sel ast.SelectionSet, v SystemStatus) graphql.Marshaler {
 	return ec._SystemStatus(ctx, sel, &v)
 }
@@ -132441,11 +131113,6 @@ func (ec *executionContext) marshalNSystemVersion2ᚖgithubᚗcomᚋloopljᚋaxo
 		return graphql.Null
 	}
 	return ec._SystemVersion(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNSystemWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemWhereInput(ctx context.Context, v any) (*ent.SystemWhereInput, error) {
-	res, err := ec.unmarshalInputSystemWhereInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNTestAPIKeyResult2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐTestAPIKeyResult(ctx context.Context, sel ast.SelectionSet, v TestAPIKeyResult) graphql.Marshaler {
@@ -139580,100 +138247,11 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	return res
 }
 
-func (ec *executionContext) marshalOSystem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystem(ctx context.Context, sel ast.SelectionSet, v *ent.System) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._System(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOSystemEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.SystemEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalOSystemEdge2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemEdge(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	return ret
-}
-
-func (ec *executionContext) marshalOSystemEdge2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemEdge(ctx context.Context, sel ast.SelectionSet, v *ent.SystemEdge) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._SystemEdge(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalOSystemModelSettingOnboarding2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐSystemModelSettingOnboarding(ctx context.Context, sel ast.SelectionSet, v *SystemModelSettingOnboarding) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._SystemModelSettingOnboarding(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOSystemOrder2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemOrder(ctx context.Context, v any) (*ent.SystemOrder, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputSystemOrder(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalOSystemWhereInput2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemWhereInputᚄ(ctx context.Context, v any) ([]*ent.SystemWhereInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]*ent.SystemWhereInput, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNSystemWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemWhereInput(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) unmarshalOSystemWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐSystemWhereInput(ctx context.Context, v any) (*ent.SystemWhereInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputSystemWhereInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOThread2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐThread(ctx context.Context, sel ast.SelectionSet, v *ent.Thread) graphql.Marshaler {

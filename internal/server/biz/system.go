@@ -27,6 +27,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/pkg/xregexp"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
+	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/safeguards"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -48,7 +49,7 @@ const (
 	// SystemKeySecretKey is the key used to store the secret key in the system table.
 	//
 	//nolint:gosec // Not a secret.
-	SystemKeySecretKey = "system_jwt_secret_key"
+	SystemKeySecretKey = scopes.SystemJWTSecretKey
 
 	// SystemKeyBrandName is the key for the brand name.
 	SystemKeyBrandName = "system_brand_name"

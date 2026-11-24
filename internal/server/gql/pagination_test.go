@@ -112,13 +112,6 @@ func TestQueryResolversRequirePagination(t *testing.T) {
 			},
 		},
 		{
-			name: "Systems",
-			fn: func() error {
-				_, err := r.Systems(t.Context(), nil, nil, nil, nil, nil, nil)
-				return err
-			},
-		},
-		{
 			name: "PromptProtectionRules",
 			fn: func() error {
 				_, err := r.PromptProtectionRules(t.Context(), nil, nil, nil, nil, nil, nil)

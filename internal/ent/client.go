@@ -6010,7 +6010,8 @@ func (c *UserRoleClient) QueryRole(_m *UserRole) *RoleQuery {
 
 // Hooks returns the client hooks.
 func (c *UserRoleClient) Hooks() []Hook {
-	return c.hooks.UserRole
+	hooks := c.hooks.UserRole
+	return append(hooks[:len(hooks):len(hooks)], userrole.Hooks[:]...)
 }
 
 // Interceptors returns the client interceptors.

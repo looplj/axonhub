@@ -4,6 +4,9 @@ scalar Time
 
 type APIKey {
   id: ID!
+  """
+  The new credential on creation, or the caller's own credential. Empty for other keys.
+  """
   key: String!
   name: String!
   scopes: [String!]
@@ -148,7 +151,7 @@ extend type Mutation {
 
 extend type Query {
   """
-  Returns an API key's details (id, key, name, scopes, profiles).
+  Returns API key metadata. The key field is empty for other credentials.
   Provide exactly one of id, key, or name; all identify a key, and only keys
   inside the caller's own project are visible (requires the read_api_keys scope).
   """

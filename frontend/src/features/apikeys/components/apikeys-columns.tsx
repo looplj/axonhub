@@ -28,6 +28,10 @@ function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey
     openDialog('view', fullApiKey);
   };
 
+  if (!apiKey) {
+    return <span className='text-muted-foreground'>{t('apikeys.actions.credentialHidden')}</span>;
+  }
+
   return (
     <div className='flex max-w-48 items-center space-x-2'>
       <code className='bg-muted shrink-0 rounded px-2 py-1 font-mono text-sm'>{maskedKey}</code>

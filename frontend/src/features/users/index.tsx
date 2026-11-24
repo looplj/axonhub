@@ -14,7 +14,8 @@ import { useUsers } from './data/users';
 
 function UsersContent() {
   const { t } = useTranslation();
-  const { userPermissions } = usePermissions();
+  const { userPermissions, hasSystemScope } = usePermissions();
+  const canReadRoles = hasSystemScope('read_roles');
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
     pageSizeStorageKey: 'users-table-page-size',
@@ -28,7 +29,7 @@ function UsersContent() {
   const debouncedNameFilter = useDebounce(nameFilter, 300);
 
   // Memoize columns to prevent infinite re-renders
-  const columns = useMemo(() => createColumns(t, userPermissions.canWrite), [t, userPermissions.canWrite]);
+  const columns = useMemo(() => createColumns(t, userPermissions.canWrite, canReadRoles), [t, userPermissions.canWrite, canReadRoles]);
 
   // Build where clause for API filtering
   const whereClause = (() => {

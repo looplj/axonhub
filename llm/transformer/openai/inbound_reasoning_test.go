@@ -261,6 +261,16 @@ func TestIsReasoningSignatureEvent(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "Chunk with signature and reasoning token details - should NOT be skipped",
+			response: &llm.Response{
+				Choices: []llm.Choice{{Delta: &llm.Message{ReasoningSignature: &signature}}},
+				Usage: &llm.Usage{
+					CompletionTokensDetails: &llm.CompletionTokensDetails{ReasoningTokens: 5},
+				},
+			},
+			want: false,
+		},
 	}
 
 	for _, tt := range tests {

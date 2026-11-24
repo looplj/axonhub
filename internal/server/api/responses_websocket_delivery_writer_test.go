@@ -64,8 +64,7 @@ func TestStreamDeliveryWebSocketWriter(t *testing.T) {
 						deadline, ok := writeCtx.Deadline()
 						require.True(t, ok, "message write must have a timeout")
 						require.WithinDuration(t, time.Now().Add(responsesWebSocketWriteTimeout), deadline, time.Second)
-						<-writeCtx.Done()
-						return writeCtx.Err()
+						return context.DeadlineExceeded
 					case "cancel_during_write":
 						cancel()
 					}

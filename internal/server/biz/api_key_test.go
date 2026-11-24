@@ -1552,6 +1552,60 @@ func TestAPIKeyService_NameUniquenessForProjectOwner(t *testing.T) {
 	require.Equal(t, otherName, unchanged.Name)
 }
 
+func TestAPIKeyService_ProjectKeysAreSharedAndPersonalCredentialsArePrivate(t *testing.T) {
+	service, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+	defer service.Stop()
+	base := ent.NewContext(t.Context(), client)
+	setup := authz.WithTestBypass(base)
+	owner := createOwnerUser(t, setup, client)
+	project := client.Project.Create().SetName("Shared project").SaveX(setup)
+	creator := client.User.Create().SetEmail("creator@test.com").SetPassword("password").SaveX(setup)
+	manager := client.User.Create().SetEmail("manager@test.com").SetPassword("password").SaveX(setup)
+	creator.Edges.ProjectUsers = []*ent.UserProject{client.UserProject.Create().
+		SetUserID(creator.ID).SetProjectID(project.ID).SetScopes([]string{"read_api_keys"}).SaveX(setup)}
+	manager.Edges.ProjectUsers = []*ent.UserProject{client.UserProject.Create().
+		SetUserID(manager.ID).SetProjectID(project.ID).SetIsOwner(true).SaveX(setup)}
+	contextFor := func(caller *ent.User) context.Context {
+		return contexts.WithProjectID(contexts.WithUser(authz.NewUserContext(base, caller.ID), caller), project.ID)
+	}
+
+	shared := client.APIKey.Create().SetUserID(owner.ID).SetProjectID(project.ID).
+		SetType(apikey.TypeUser).SetName("Shared").SetKey("test-shared-key").SaveX(setup)
+	personal := client.APIKey.Create().SetUserID(creator.ID).SetProjectID(project.ID).
+		SetType(apikey.TypePersonal).SetName("Personal").SetKey("test-personal-key").SaveX(setup)
+
+	for _, tc := range []struct {
+		name string
+		user *ent.User
+		key  *ent.APIKey
+		want string
+	}{
+		{"project reader can see shared credential", creator, shared, shared.Key},
+		{"personal creator can see credential", creator, personal, personal.Key},
+		{"project owner sees only personal metadata", manager, personal, ""},
+		{"system owner sees only personal metadata", owner, personal, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := contextFor(tc.user)
+			partial, err := client.APIKey.Query().Where(apikey.IDEQ(tc.key.ID)).Select(apikey.FieldKey).Only(ctx)
+			require.NoError(t, err)
+			got, err := service.RevealAPIKey(ctx, partial)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+
+	_, err := service.RotateAPIKey(contextFor(creator), shared.ID)
+	require.Error(t, err)
+	rotated, err := service.RotateAPIKey(contextFor(manager), shared.ID)
+	require.NoError(t, err)
+	require.NotEqual(t, shared.Key, rotated.Key)
+	_, err = service.RotateAPIKey(contextFor(owner), personal.ID)
+	require.ErrorContains(t, err, "only the personal API key creator")
+	require.Equal(t, personal.Key, client.APIKey.GetX(setup, personal.ID).Key)
+}
+
 func TestAPIKeyService_RotateAPIKey(t *testing.T) {
 	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
 	defer apiKeyService.Stop()

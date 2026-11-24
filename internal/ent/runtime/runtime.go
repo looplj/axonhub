@@ -1435,6 +1435,15 @@ func init() {
 	userprojectDescScopes := userprojectFields[3].Descriptor()
 	// userproject.DefaultScopes holds the default value on creation for the scopes field.
 	userproject.DefaultScopes = userprojectDescScopes.Default.([]string)
+	userrole.Policy = privacy.NewPolicies(schema.UserRole{})
+	userrole.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := userrole.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
 	userroleFields := schema.UserRole{}.Fields()
 	_ = userroleFields
 	// userroleDescCreatedAt is the schema descriptor for created_at field.
