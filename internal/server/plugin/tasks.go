@@ -443,16 +443,20 @@ func (m *Manager) finishTask(ctx context.Context, run *ent.PluginScheduleRun, st
 			return err
 		}
 		if released == 0 {
-			if savingSummary {
-				status, finishedAt = runStatusUnknown, nil
+			if !savingSummary {
+				return nil
 			}
+			stored, err := client.PluginScheduleRun.Get(ctx, run.ID)
+			if err != nil {
+				status, finishedAt = runStatusUnknown, nil
+				return ent.MaskNotFound(err)
+			}
+			status, finishedAt = stored.Status, stored.FinishedAt
 			return nil
 		}
 		if savingSummary {
-			// The schedule update can block. Check the claim deadline after acquiring its row lock.
-			if time.Now().Unix() >= taskLeaseUntil(run.StartedAt) {
-				status = runStatusUnknown
-			} else if err := catalogCheck.save(ctx, client, finished); err != nil {
+			status, err = m.finishCatalogCheck(ctx, catalogCheck, run.StartedAt, finished)
+			if err != nil {
 				return err
 			}
 		}

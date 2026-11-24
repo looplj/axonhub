@@ -88,6 +88,6 @@ func (h *hostCall) checkModelCatalog(_ *moejs.Realm, _ moejs.Value, args []moejs
 	if err != nil {
 		return moejs.Undefined(), h.actionFail(err)
 	}
-	h.result.catalogCheck = &pendingCatalogCheck{installationID: h.installationID, counts: counts}
+	h.result.catalogCheck = &pendingCatalogCheck{installationID: h.installationID, pluginID: h.pluginID, counts: counts}
 	return moejs.Undefined(), nil
 }

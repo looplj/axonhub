@@ -1,6 +1,7 @@
-// 职责: 验证多个插件任务不同时完成时的目录检查摘要。
+// 职责: 验证目录检查摘要的任务完成顺序与事务可见性。
 // 关联文件:
 //   internal/server/plugin/catalog_check_summary.go
+//   internal/server/plugin/callctx.go
 //   internal/server/plugin/tasks.go
 // 注意事项:
 //   摘要按安装共享，任务租约按任务标识独立领取。
@@ -14,6 +15,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -27,7 +30,7 @@ func TestCatalogCheckSummaryCompletionOrder(t *testing.T) {
 		spec := objects.PluginTaskSpec{Schedule: objects.PluginScheduleSpec{Cron: "30 8 * * *"}}
 		manifest["tasks"] = map[string]objects.PluginTaskSpec{"first": spec, "second": spec}
 	}, map[string]string{"plugin.js": "export function onTask() {}", "ui/page.html": "<html></html>"}))
-	require.NoError(t, manager.Enable(ctx, installed.ID, nil, nil))
+	require.NoError(t, manager.Enable(ctx, installed.ID, []string{permReadChannels}, nil))
 	now := time.Now().UTC()
 	claim := func(key string, start time.Time) *ent.PluginScheduleRun {
 		t.Helper()
@@ -38,7 +41,7 @@ func TestCatalogCheckSummaryCompletionOrder(t *testing.T) {
 	}
 	finish := func(run *ent.PluginScheduleRun, finished time.Time, available int) {
 		t.Helper()
-		pending := &pendingCatalogCheck{installationID: installed.ID, counts: biz.CatalogCheckCounts{Available: available}}
+		pending := &pendingCatalogCheck{installationID: installed.ID, pluginID: installed.PluginID, counts: biz.CatalogCheckCounts{Available: available}}
 		require.NoError(t, manager.finishTask(ctx, run, "succeeded", finished, pending))
 	}
 
@@ -57,8 +60,18 @@ func TestCatalogCheckSummaryCompletionOrder(t *testing.T) {
 	expired := claim("first", now.Add(-2*scheduleLease))
 	finish(expired, now.Add(time.Second), 3)
 	require.Equal(t, runStatusUnknown, expired.Status)
+	takenOver := claim("first", now.Add(-2*scheduleLease))
 	successor := claim("first", now)
-	finish(expired, now.Add(2*time.Second), 4)
+	finish(takenOver, now.Add(2*time.Second), 4)
+	history := db.PluginScheduleRun.GetX(ctx, takenOver.ID)
+	require.Equal(t, runStatusUnknown, takenOver.Status)
+	require.Equal(t, history.Status, takenOver.Status)
+	require.NotNil(t, history.FinishedAt)
+	require.Equal(t, history.FinishedAt, takenOver.FinishedAt)
+	db.PluginScheduleRun.DeleteOneID(takenOver.ID).ExecX(ctx)
+	finish(takenOver, now.Add(2*time.Second), 4)
+	require.Equal(t, runStatusUnknown, takenOver.Status)
+	require.Nil(t, takenOver.FinishedAt)
 	kept, err := readCatalogCheckSummary(ctx, db, installed.ID)
 	require.NoError(t, err)
 	require.Equal(t, summary, kept)
@@ -82,4 +95,34 @@ func TestCatalogCheckSummaryCompletionOrder(t *testing.T) {
 	kept, err = readCatalogCheckSummary(ctx, db, installed.ID)
 	require.NoError(t, err)
 	require.Equal(t, updated, kept)
+}
+
+func TestCatalogCheckSummaryInTransaction(t *testing.T) {
+	db := newPluginDB(t)
+	manager := newTestManager(t, db)
+	installed := installUI(t, manager, uiZip(t, nil, nil))
+	grants := []string{permReadChannels}
+	require.NoError(t, manager.Enable(pluginCtx(), installed.ID, grants, nil))
+
+	owner := &ent.User{ID: 1, IsOwner: true}
+	parent := contexts.WithUser(authz.NewUserContext(t.Context(), owner.ID), owner)
+	ctx, err := authz.DelegatePlugin(parent, installed.ID, grants)
+	require.NoError(t, err)
+	ctx = WithCall(ctx, Call{ManifestID: installed.PluginID, InstallationID: installed.ID, CanReadCatalogSummary: true})
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	tx, err := db.Tx(pluginCtx())
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback() }()
+	pending := pendingCatalogCheck{installationID: installed.ID, counts: biz.CatalogCheckCounts{Available: 7}}
+	require.NoError(t, pending.save(pluginCtx(), tx.Client(), time.Now().UTC()))
+	summary, err := manager.CatalogCheckSummary(ent.NewContext(ctx, tx.Client()))
+	require.NoError(t, err)
+	require.NotNil(t, summary)
+	require.Equal(t, pending.counts, summary.CatalogCheckCounts)
+	require.NoError(t, tx.Rollback())
+	summary, err = manager.CatalogCheckSummary(ctx)
+	require.NoError(t, err)
+	require.Nil(t, summary)
 }

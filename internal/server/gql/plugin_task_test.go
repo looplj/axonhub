@@ -8,10 +8,7 @@
 package gql
 
 import (
-	"archive/zip"
-	"bytes"
 	"fmt"
-	"io"
 	"net/http"
 	"testing"
 
@@ -20,7 +17,7 @@ import (
 
 func TestPluginTaskGraphqlFullSQLGrant(t *testing.T) {
 	fx := newPluginEndpointFixture(t, "plugin_task_graphql")
-	pack := pluginTaskZip(t, map[string]string{
+	pack := pluginTestZip(t, map[string]string{
 		"manifest.json": `{
   "schemaVersion": 1,
   "id": "acme.cron",
@@ -59,18 +56,4 @@ fragment Run on Mutation { ... on Mutation { runPluginTask(id:%q, key:"report") 
 	_, history, raw := fx.postAdmin(fx.ownerToken, fmt.Sprintf(`query { pluginTasks(id:%q) { key runs { status } } }`, id))
 	require.NotContains(t, history, "errors", raw)
 	require.Contains(t, raw, `"key":"report","runs":[{"status":"succeeded"}]`)
-}
-
-func pluginTaskZip(t *testing.T, files map[string]string) []byte {
-	t.Helper()
-	var buf bytes.Buffer
-	writer := zip.NewWriter(&buf)
-	for name, contents := range files {
-		entry, err := writer.Create(name)
-		require.NoError(t, err)
-		_, err = io.WriteString(entry, contents)
-		require.NoError(t, err)
-	}
-	require.NoError(t, writer.Close())
-	return buf.Bytes()
 }

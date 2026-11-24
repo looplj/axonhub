@@ -1195,7 +1195,7 @@ func (m *Manager) runInTx(ctx context.Context, fn func(context.Context) error) e
 		return fn(ent.NewContext(ctx, tx.Client()))
 	}
 
-	tx, err := m.db.Tx(ctx)
+	tx, err := m.client(ctx).Tx(ctx)
 	if err != nil {
 		if errors.Is(err, ent.ErrTxStarted) {
 			return fn(ctx)

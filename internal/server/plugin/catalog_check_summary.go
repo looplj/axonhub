@@ -34,7 +34,22 @@ type CatalogCheckSummary struct {
 
 type pendingCatalogCheck struct {
 	installationID int
+	pluginID       string
 	counts         biz.CatalogCheckCounts
+}
+
+// finishCatalogCheck runs after the installation and schedule rows are locked.
+func (m *Manager) finishCatalogCheck(ctx context.Context, check *pendingCatalogCheck, started, finished time.Time) (string, error) {
+	if time.Now().Unix() >= taskLeaseUntil(started) {
+		return runStatusUnknown, nil
+	}
+	if err := m.requireCatalogGrant(ctx, check.installationID, check.pluginID, false); err != nil {
+		if coded, ok := xerrors.IsCodedError(err); ok && coded.Code == xerrors.ErrCodeForbidden {
+			return "canceled", nil
+		}
+		return "", err
+	}
+	return "succeeded", check.save(ctx, m.client(ctx), finished)
 }
 
 // save runs inside the successful task completion transaction after the active run has been matched.
@@ -60,7 +75,7 @@ func (p *pendingCatalogCheck) save(ctx context.Context, client *ent.Client, fini
 	return nil
 }
 
-// requireCatalogGrant uses the primary transaction so a peer's revoked grant takes effect before the next check or read.
+// requireCatalogGrant reads the current installation and grants on the primary.
 func (m *Manager) requireCatalogGrant(ctx context.Context, id int, manifestID string, fromUI bool) error {
 	row, err := m.client(ctx).Plugin.Query().Where(entplugin.IDEQ(id), entplugin.PluginIDEQ(manifestID), entplugin.EnabledEQ(true), entplugin.DeletedAtEQ(0)).
 		Select(entplugin.FieldGrantedPermissions, entplugin.FieldManifest).Only(ctx)

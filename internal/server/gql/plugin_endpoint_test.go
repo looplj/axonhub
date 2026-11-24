@@ -646,18 +646,22 @@ func pluginEndpointZip(t *testing.T, id string, permissions []string, withPage b
   "permissions": %s%s%s
 }`, id, encoded, ui, tableFields)
 
+	files := map[string]string{"manifest.json": manifest}
+	if withPage {
+		files["ui/page.html"] = "<html>ui</html>"
+	}
+	return pluginTestZip(t, files)
+}
+
+func pluginTestZip(t *testing.T, files map[string]string) []byte {
+	t.Helper()
 	var buf bytes.Buffer
 	writer := zip.NewWriter(&buf)
-	write := func(name, content string) {
-		t.Helper()
+	for name, content := range files {
 		entry, err := writer.Create(name)
 		require.NoError(t, err)
 		_, err = io.WriteString(entry, content)
 		require.NoError(t, err)
-	}
-	write("manifest.json", manifest)
-	if withPage {
-		write("ui/page.html", "<html>ui</html>")
 	}
 	require.NoError(t, writer.Close())
 	return buf.Bytes()

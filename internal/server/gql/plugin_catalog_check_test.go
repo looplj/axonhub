@@ -23,22 +23,28 @@ import (
 	"github.com/looplj/axonhub/internal/ent/pluginstorage"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xcache"
+	"github.com/looplj/axonhub/internal/server/plugin"
 )
 
 func TestPluginCatalogCheck(t *testing.T) {
 	cancelCtx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	var cancelOnFetch atomic.Bool
+	duringFetch := make(chan func() error, 1)
 	var unavailable atomic.Bool
 	var hits atomic.Int32
-	const document = `{"providers":{"selected":{"models":[{"id":"from-provider"}]},"other":{"models":[{"id":"followed","canonical_model_id":"maker/followed","cost":{"input":5,"output":50}}]}}}`
+	const document = `{"providers":{"selected":{"models":[{"id":"from-provider"}]},"other":{"models":[{"id":"followed","canonical_model_id":"maker/followed","cost":{"input":5,"output":50,"cache_read":2}}]}}}`
 	fx := newPluginEndpointFixture(t, "plugin_catalog_check", &http.Client{Transport: pluginRoundTrip(func(r *http.Request) (*http.Response, error) {
 		if r.URL.String() != "https://catalog.example.invalid/models" {
 			return nil, fmt.Errorf("unexpected fixture URL: %s", r.URL)
 		}
 		hits.Add(1)
-		if cancelOnFetch.Load() {
-			cancel()
+		select {
+		case action := <-duringFetch:
+			if err := action(); err != nil {
+				return nil, err
+			}
+		default:
 		}
 		status := http.StatusOK
 		if unavailable.Load() {
@@ -46,10 +52,11 @@ func TestPluginCatalogCheck(t *testing.T) {
 		}
 		return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(document))}, nil
 	})})
+	followed := objects.CatalogPrice{Provider: "other", ModelID: "followed", Canonical: "maker/followed", Follow: true}
 	card := &objects.ModelCard{
-		Cost: objects.ModelCardCost{Input: 1, Output: 9},
+		Cost: objects.ModelCardCost{Input: 1, Output: 9, CacheRead: 1},
 		CatalogPrices: map[string]objects.CatalogPrice{
-			"input": {Provider: "other", ModelID: "followed", Canonical: "maker/followed", Follow: true},
+			"input": followed, "cacheRead": followed,
 		},
 	}
 	row := fx.db.Model.Create().SetModelID("local-name").SetDeveloper("maker").SetName("Local").SetGroup("").SetIcon("").
@@ -59,7 +66,7 @@ func TestPluginCatalogCheck(t *testing.T) {
 		"schemaVersion":1,"id":"acme.catalog-check","name":"Catalog check","version":"1.0.0","axonhubVersion":"^1.0.0","pluginApiVersion":1,
 		"permissions":["read_channels"],"tasks":{"check":{"schedule":{"cron":"30 8 * * *","timezone":"UTC"}}},
 		"ui":{"pages":[{"key":"main","entry":"ui/page.html","title":"Summary"}]}}`
-	pack := pluginTaskZip(t, map[string]string{
+	pack := pluginTestZip(t, map[string]string{
 		"manifest.json": manifest, "ui/page.html": "<html></html>",
 		"plugin.js": `export function onTask(ctx) {
 			ctx.checkModelCatalog({providers:["selected"],ignorePrefix:false});
@@ -97,6 +104,13 @@ func TestPluginCatalogCheck(t *testing.T) {
 	require.Zero(t, hits.Load())
 	_, ungranted, _ := fx.postPlugin(fx.ownerToken, pluginID, summaryQuery)
 	require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, ungranted))
+	require.NoError(t, fx.manager.Enable(fx.setupCtx, id, []string{"read_channels"}, nil))
+	require.Nil(t, read(fx.ownerToken))
+	peer, err := plugin.NewManager(plugin.ManagerParams{Client: fx.db, Cache: xcache.Config{Mode: xcache.ModeMemory}})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, peer.Stop(context.Background())) })
+	duringFetch <- func() error { return peer.Disable(fx.setupCtx, id) }
+	check("canceled")
 	require.NoError(t, fx.manager.Enable(fx.setupCtx, id, []string{"read_channels"}, nil))
 	require.Nil(t, read(fx.ownerToken))
 	check("succeeded")
@@ -157,9 +171,10 @@ func TestPluginCatalogCheck(t *testing.T) {
 	unavailable.Store(false)
 	_, err = fx.manager.KVSet(fx.setupCtx, pluginID, id, "", "abort", "yes", 0)
 	require.NoError(t, err)
+	before := hits.Load()
 	check("failed")
 	require.Equal(t, want, read(fx.ownerToken))
-	require.Equal(t, int32(3), hits.Load())
+	require.Equal(t, before+1, hits.Load())
 	_, err = fx.manager.KVDelete(fx.setupCtx, pluginID, id, "", "abort")
 	require.NoError(t, err)
 	for _, invalid := range []string{`{"ignorePrefix":null}`, `{"providers":[null]}`, `{"providers":null}`} {
@@ -170,20 +185,25 @@ func TestPluginCatalogCheck(t *testing.T) {
 	}
 	_, err = fx.manager.KVDelete(fx.setupCtx, pluginID, id, "", "retry")
 	require.NoError(t, err)
-	cancelOnFetch.Store(true)
+	// A peer can revoke the grant before this process reloads the installation.
+	duringFetch <- func() error { return peer.Enable(fx.setupCtx, id, nil, nil) }
+	check("canceled")
+	require.Contains(t, fx.manager.Current().ByID(id).GrantedPermissions, "read_channels")
+	_, denied, _ := fx.postPlugin(fx.ownerToken, pluginID, summaryQuery)
+	require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, denied))
+	before = hits.Load()
+	check("failed")
+	require.Equal(t, before, hits.Load())
+	require.NoError(t, fx.manager.Enable(fx.setupCtx, id, []string{"read_channels"}, nil))
+	require.Equal(t, want, read(fx.ownerToken))
+	duringFetch <- func() error {
+		cancel()
+		return nil
+	}
 	canceled, err := fx.manager.RunTask(cancelCtx, id, "check")
 	require.NoError(t, err)
 	require.Equal(t, "canceled", canceled.Status)
 	require.Equal(t, want, read(fx.ownerToken))
-
-	// A peer can revoke the grant before this process reloads the installation.
-	fx.db.Plugin.UpdateOneID(id).SetGrantedPermissions([]string{}).ExecX(fx.setupCtx)
-	require.Contains(t, fx.manager.Current().ByID(id).GrantedPermissions, "read_channels")
-	_, denied, _ := fx.postPlugin(fx.ownerToken, pluginID, summaryQuery)
-	require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, denied))
-	before := hits.Load()
-	check("failed")
-	require.Equal(t, before, hits.Load())
 	require.Equal(t, 1, fx.db.Model.Query().CountX(fx.setupCtx))
 	require.Equal(t, card, fx.db.Model.GetX(fx.setupCtx, row.ID).ModelCard)
 	require.NoError(t, fx.manager.Delete(fx.setupCtx, id))
