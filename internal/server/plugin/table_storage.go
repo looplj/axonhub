@@ -120,7 +120,7 @@ func (m *Manager) tableOperation(ctx context.Context, storageID int, kind string
 		Where(plugintableoperation.StorageIDEQ(storageID), plugintableoperation.KindEQ(kind)).Only(ctx)
 }
 
-func pluginTableInstallationLock(driver string, id int) (string, []any) {
+func pluginInstallationLock(driver string, id int) (string, []any) {
 	return entsql.Dialect(driver).Update(entplugin.Table).
 		Set(entplugin.FieldEnabled, entsql.ExprFunc(func(b *entsql.Builder) {
 			b.Ident(entplugin.FieldEnabled)
@@ -129,9 +129,9 @@ func pluginTableInstallationLock(driver string, id int) (string, []any) {
 		Query()
 }
 
-func (m *Manager) lockTableInstallation(ctx context.Context, id int) error {
+func (m *Manager) lockInstallation(ctx context.Context, id int) error {
 	driver := m.client(ctx).Driver()
-	query, args := pluginTableInstallationLock(driver.Dialect(), id)
+	query, args := pluginInstallationLock(driver.Dialect(), id)
 	if err := driver.Exec(ctx, query, args, nil); err != nil {
 		return fmt.Errorf("lock plugin installation: %w", err)
 	}
@@ -140,7 +140,7 @@ func (m *Manager) lockTableInstallation(ctx context.Context, id int) error {
 
 func (m *Manager) reservePluginTablePlan(ctx context.Context, plan pluginTablePlan) error {
 	return m.runInTx(ctx, func(txCtx context.Context) error {
-		if err := m.lockTableInstallation(txCtx, plan.installationID); err != nil {
+		if err := m.lockInstallation(txCtx, plan.installationID); err != nil {
 			return err
 		}
 		row, err := m.oneRecord(txCtx, plan.installationID)

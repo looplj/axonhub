@@ -346,7 +346,7 @@ export function onTask(ctx) {
 }
 ```
 
-方法返回 `undefined`。检查只读模型和价格。任务成功时保存本次安装最近的一份摘要。上游读取失败（包括回退到内置目录）、任务失败或取消时，保留上次成功摘要。同一个模型有多项跟随价变化，只计一个变价模型。
+方法返回 `undefined`。检查只读模型和价格。任务成功结束时保存本次运行中最后一次检查的摘要。最后一次检查失败（包括回退到内置目录）、任务失败、取消或租约失效时，保留上次成功摘要。同一个模型有多项跟随价变化，只计一个变价模型。
 
 同一安装的插件页面可通过 `axonhub.graphql` 查询 `pluginCatalogCheckSummary { lastSuccessAt available changed }`。首次成功前返回 `null`。安装需已获 `read_channels` 授权，登录用户需为 Owner 或拥有站点级 `read_settings`、`write_channels` 中的任一权限。卸载插件时清除摘要。
 

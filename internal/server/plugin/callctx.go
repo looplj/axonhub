@@ -1,6 +1,12 @@
 package plugin
 
-import "context"
+import (
+	"context"
+
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/authz/identity"
+	"github.com/looplj/axonhub/internal/contexts"
+)
 
 type callContextKey struct{}
 
@@ -22,4 +28,11 @@ func WithCall(ctx context.Context, call Call) context.Context {
 func CallFromContext(ctx context.Context) (Call, bool) {
 	call, ok := ctx.Value(callContextKey{}).(Call)
 	return call, ok
+}
+
+func (call Call) matchesPrincipal(ctx context.Context) bool {
+	p, _ := authz.GetPrincipal(ctx)
+	user, ok := contexts.GetUser(ctx)
+	_, hasAPIKey := contexts.GetAPIKey(ctx)
+	return !hasAPIKey && ok && user != nil && identity.ValidPlugin(ctx, user.ID) && call.InstallationID > 0 && p.PluginInstallationID == call.InstallationID
 }

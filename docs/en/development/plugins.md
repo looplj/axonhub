@@ -355,7 +355,7 @@ export function onTask(ctx) {
 }
 ```
 
-The method returns `undefined` and leaves model records and prices untouched. A successful run saves one summary for this installation. A failed fetch (including fallback to the bundled catalog), a failed run, or cancellation preserves the previous successful summary. Multiple followed price changes on a model count as one changed model.
+The method returns `undefined` and leaves model records and prices untouched. A successful run saves the result of its last check for this installation. If that check fails (including fallback to the bundled catalog), the task fails or is canceled, or its lease expires, the previous successful summary is preserved. Multiple followed price changes on a model count as one changed model.
 
 A page in the same installation can query `pluginCatalogCheckSummary { lastSuccessAt available changed }` through `axonhub.graphql`. The field is null until the first successful check. The installation needs `read_channels` and the signed-in user needs site-level `read_settings` or `write_channels` (or Owner access). Uninstalling the plugin clears its summary.
 

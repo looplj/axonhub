@@ -9,9 +9,7 @@
 package plugin
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 
 	"github.com/MoeForge/moejs"
 
@@ -20,31 +18,59 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
+type catalogCheckOptions struct {
+	providers    []string
+	ignorePrefix bool
+}
+
+func (h *hostCall) catalogCheckOptions(value moejs.Value) (catalogCheckOptions, error) {
+	var options catalogCheckOptions
+	if value.IsUndefined() {
+		return options, nil
+	}
+	fields, err := h.jsonObject(value, "model catalog options")
+	if err != nil {
+		return options, err
+	}
+	for key, value := range fields {
+		switch key {
+		case "providers":
+			ids, ok := value.([]any)
+			if !ok {
+				return options, h.fail(hostInvalidArgument, "providers must be a list of provider IDs")
+			}
+			for _, id := range ids {
+				provider, ok := id.(string)
+				if !ok || provider == "" {
+					return options, h.fail(hostInvalidArgument, "providers must contain non-empty strings")
+				}
+				options.providers = append(options.providers, provider)
+			}
+		case "ignorePrefix":
+			enabled, ok := value.(bool)
+			if !ok {
+				return options, h.fail(hostInvalidArgument, "ignorePrefix must be a boolean")
+			}
+			options.ignorePrefix = enabled
+		default:
+			return options, h.fail(hostInvalidArgument, "unknown model catalog option")
+		}
+	}
+	return options, nil
+}
+
 func (h *hostCall) checkModelCatalog(_ *moejs.Realm, _ moejs.Value, args []moejs.Value) (moejs.Value, error) {
 	if err := h.enter(false); err != nil {
 		return moejs.Undefined(), err
 	}
+	// A failed recheck invalidates any earlier result from this run, even if the script catches the error.
+	h.result.catalogCheck = nil
 	if err := h.requirePermission(permReadChannels); err != nil {
 		return moejs.Undefined(), err
 	}
-	var options struct {
-		Providers    []string `json:"providers"`
-		IgnorePrefix bool     `json:"ignorePrefix"`
-	}
-	opts, err := h.optionsAt(args, 0)
+	options, err := h.catalogCheckOptions(moejs.Arg(args, 0))
 	if err != nil {
 		return moejs.Undefined(), err
-	}
-	if !opts.IsUndefined() {
-		raw, err := h.rt.AppendJSONWith(nil, opts, moejs.JSONOptions{Strict: true})
-		if err != nil {
-			return moejs.Undefined(), h.fail(hostInvalidArgument, "invalid model catalog options")
-		}
-		decoder := json.NewDecoder(bytes.NewReader(raw))
-		decoder.DisallowUnknownFields()
-		if !isJSONObject(raw) || decoder.Decode(&options) != nil {
-			return moejs.Undefined(), h.fail(hostInvalidArgument, "invalid model catalog options")
-		}
 	}
 	counts, err := authz.RunAsHost(h.ctx, h.manager.db, "plugin-model-catalog-check", func(ctx context.Context) (biz.CatalogCheckCounts, error) {
 		// Recheck the grant on the primary, then release the transaction before contacting the catalog.
@@ -54,7 +80,7 @@ func (h *hostCall) checkModelCatalog(_ *moejs.Realm, _ moejs.Value, args []moejs
 		if err != nil {
 			return biz.CatalogCheckCounts{}, err
 		}
-		return h.manager.models.CheckModelCatalog(ctx, options.Providers, options.IgnorePrefix)
+		return h.manager.models.CheckModelCatalog(ctx, options.providers, options.ignorePrefix)
 	})
 	if coded, ok := xerrors.IsCodedError(err); ok && coded.Code == xerrors.ErrCodeForbidden {
 		return moejs.Undefined(), h.fail(hostPermissionDenied, coded.Message)

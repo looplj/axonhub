@@ -634,7 +634,7 @@ func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip [
 		preview *UpgradePreview
 	)
 	err := m.writeWithPluginTables(ctx, func(txCtx context.Context, provision tableProvisionFn) error {
-		if err := m.lockTableInstallation(txCtx, current.ID); err != nil {
+		if err := m.lockInstallation(txCtx, current.ID); err != nil {
 			return err
 		}
 		row, err := m.oneRecord(txCtx, current.ID)
@@ -702,7 +702,7 @@ func (m *Manager) upgradePlugin(ctx context.Context, current pluginRecord, zip [
 func (m *Manager) Enable(ctx context.Context, id int, granted []string, grantedNetwork []string) error {
 	ctx = authz.WithSystemBypass(ctx, pluginBypassReason)
 	err := m.writeWithPluginTables(ctx, func(txCtx context.Context, provision tableProvisionFn) error {
-		if err := m.lockTableInstallation(txCtx, id); err != nil {
+		if err := m.lockInstallation(txCtx, id); err != nil {
 			return err
 		}
 		row, err := m.oneRecord(txCtx, id)
@@ -795,7 +795,7 @@ func (m *Manager) Delete(ctx context.Context, id int) error {
 func (m *Manager) DeleteWithTables(ctx context.Context, id int, purgeTables bool) error {
 	ctx = authz.WithSystemBypass(ctx, pluginBypassReason)
 	err := m.runInTx(ctx, func(txCtx context.Context) error {
-		if err := m.lockTableInstallation(txCtx, id); err != nil {
+		if err := m.lockInstallation(txCtx, id); err != nil {
 			return err
 		}
 		row, err := m.oneRecord(txCtx, id)

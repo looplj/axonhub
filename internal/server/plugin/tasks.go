@@ -351,7 +351,6 @@ func (m *Manager) executeTask(ctx context.Context, installationID int, key strin
 	defer finishCancel()
 	finished := time.Now().UTC()
 	err = m.finishTask(finishCtx, run, status, finished, result.catalogCheck)
-	run.Status, run.FinishedAt = status, &finished
 	return run, err
 }
 
@@ -424,15 +423,28 @@ func (m *Manager) claimTask(ctx context.Context, installationID int, key string,
 }
 
 func (m *Manager) finishTask(ctx context.Context, run *ent.PluginScheduleRun, status string, finished time.Time, catalogCheck *pendingCatalogCheck) error {
-	return m.runInTx(ctx, func(ctx context.Context) error {
+	savingSummary := status == "succeeded" && catalogCheck != nil
+	err := m.runInTx(ctx, func(ctx context.Context) error {
 		client := m.client(ctx)
-		released, err := client.PluginSchedule.Update().Where(
-			pluginschedule.IDEQ(run.ScheduleID), pluginschedule.ActiveRunIDEQ(run.ID),
-		).SetActiveRunID(0).SetLeaseUntil(0).Save(ctx)
-		if err != nil || released == 0 {
+		claim := client.PluginSchedule.Update().Where(pluginschedule.IDEQ(run.ScheduleID), pluginschedule.ActiveRunIDEQ(run.ID))
+		if savingSummary {
+			// Different task keys share the installation's last successful summary.
+			if err := m.lockInstallation(ctx, catalogCheck.installationID); err != nil {
+				return err
+			}
+			claim.Where(pluginschedule.LeaseUntilGT(time.Now().Unix()))
+		}
+		released, err := claim.SetActiveRunID(0).SetLeaseUntil(0).Save(ctx)
+		if err != nil {
 			return err
 		}
-		if status == "succeeded" && catalogCheck != nil {
+		if released == 0 {
+			if savingSummary {
+				status = runStatusUnknown
+			}
+			return nil
+		}
+		if savingSummary {
 			if err := catalogCheck.save(ctx, client, finished); err != nil {
 				return err
 			}
@@ -450,6 +462,13 @@ func (m *Manager) finishTask(ctx context.Context, run *ent.PluginScheduleRun, st
 		).Exec(ctx)
 		return err
 	})
+	if err == nil {
+		run.Status = status
+		if status != runStatusUnknown {
+			run.FinishedAt = &finished
+		}
+	}
+	return err
 }
 
 func (m *Manager) trackTask(id int, run pluginTaskRun) bool {

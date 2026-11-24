@@ -150,7 +150,7 @@ func (m *Manager) runPluginTableMethod(ctx context.Context, caller pluginTableCa
 	}()
 	d := driver.Dialect()
 	if write {
-		query, args := pluginTableInstallationLock(d, caller.installationID)
+		query, args := pluginInstallationLock(d, caller.installationID)
 		if _, err := tx.ExecContext(ctx, query, args...); err != nil {
 			return nil, err
 		}

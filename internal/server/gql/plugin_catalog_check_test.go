@@ -64,6 +64,11 @@ func TestPluginCatalogCheck(t *testing.T) {
 		"plugin.js": `export function onTask(ctx) {
 			ctx.checkModelCatalog({providers:["selected"],ignorePrefix:false});
 			if (ctx.kv.get("abort") === "yes") throw new Error("fixture task failed after comparing");
+			const retry = ctx.kv.get("retry");
+			if (retry) {
+			    try { ctx.checkModelCatalog(JSON.parse(retry)); }
+			    catch (error) { if (error.code !== "INVALID_ARGUMENT") throw error; }
+			}
 		}`,
 	})
 	result, err := fx.manager.Install(fx.setupCtx, pack, nil, nil)
@@ -156,6 +161,14 @@ func TestPluginCatalogCheck(t *testing.T) {
 	require.Equal(t, want, read(fx.ownerToken))
 	require.Equal(t, int32(3), hits.Load())
 	_, err = fx.manager.KVDelete(fx.setupCtx, pluginID, id, "", "abort")
+	require.NoError(t, err)
+	for _, invalid := range []string{`{"ignorePrefix":null}`, `{"providers":[null]}`, `{"providers":null}`} {
+		_, err := fx.manager.KVSet(fx.setupCtx, pluginID, id, "", "retry", invalid, 0)
+		require.NoError(t, err)
+		check("succeeded") // The script caught the error. Its first check must not be published.
+		require.Equal(t, want, read(fx.ownerToken))
+	}
+	_, err = fx.manager.KVDelete(fx.setupCtx, pluginID, id, "", "retry")
 	require.NoError(t, err)
 	cancelOnFetch.Store(true)
 	canceled, err := fx.manager.RunTask(cancelCtx, id, "check")

@@ -11,7 +11,6 @@ import (
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/authz/identity"
-	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/pluginstorage"
 	"github.com/looplj/axonhub/internal/ent/predicate"
@@ -265,11 +264,8 @@ func runKV[T any](ctx context.Context, m *Manager, manifestID string, installati
 // qualification is computed from the real user before delegation (call.KVWritable),
 // because the delegated user view does not carry owner or plugin-management authority.
 func authorizePluginKV(ctx context.Context, manifestID string, installationID int, write bool) error {
-	p, _ := authz.GetPrincipal(ctx)
-	user, ok := contexts.GetUser(ctx)
 	call, bound := CallFromContext(ctx)
-	_, hasAPIKey := contexts.GetAPIKey(ctx)
-	if hasAPIKey || !ok || user == nil || !identity.ValidPlugin(ctx, user.ID) || p.PluginInstallationID != installationID || !bound || call.InstallationID != installationID || call.ManifestID != manifestID {
+	if !bound || !call.matchesPrincipal(ctx) || call.InstallationID != installationID || call.ManifestID != manifestID {
 		return fmt.Errorf("plugin KV installation identity mismatch")
 	}
 	if write && !call.KVWritable {
