@@ -1,6 +1,9 @@
 {
   "playground.title": "Playground",
   "playground.description": "Interactive environment for testing AI models.",
+  "playground.settings.mode": "Mode",
+  "playground.mode.chat": "Chat",
+  "playground.mode.image": "Image",
   "playground.settings.modelSource": "Test mode",
   "playground.settings.channel": "Channel",
   "playground.settings.selectChannel": "Select a channel",
@@ -23,6 +26,14 @@
   "playground.chat.noMessages": "No messages to retry",
   "playground.errors.noChannelsAvailable": "No channels available",
   "playground.errors.noModelsAvailable": "No models available",
+  "playground.image.size": "Size",
+  "playground.image.sizePlaceholder": "Leave empty for the model default",
+  "playground.image.count": "Image Count",
+  "playground.image.clear": "Clear Results",
+  "playground.image.promptPlaceholder": "Describe the image to generate...",
+  "playground.image.startGenerating": "Start generating images",
+  "playground.image.typePromptBelow": "Type a prompt below to begin",
+  "playground.image.emptyResponse": "The model returned no images.",
   "playground.modelsAvailable": "{{count}} models available across {{channels}} channels",
   "playground.modelPageModelsAvailable": "{{count}} model gateway models available"
 }

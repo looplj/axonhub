@@ -162,6 +162,14 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 			handlers.Playground.ChatCompletion,
 		)
 
+		adminGroup.POST(
+			"/playground/images",
+			middleware.WithLLMTimeout(server.Config.LLMRequestTimeout, server.Config.LLMStreamRequestTimeout),
+			middleware.WithStreamIdleTimeout(server.Config.LLMStreamIdleTimeout),
+			middleware.WithSource(request.SourcePlayground),
+			handlers.Playground.ImageGeneration,
+		)
+
 		adminGroup.GET(
 			"/requests/:request_id/content",
 			middleware.WithTimeout(server.Config.RequestTimeout),

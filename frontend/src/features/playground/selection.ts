@@ -4,12 +4,14 @@ export type PlaygroundSelection = {
   modelSource: PlaygroundModelSource;
   selectedChannel: string;
   model: string;
+  imageModel: string;
 };
 
 export const defaultSelection: PlaygroundSelection = {
   modelSource: 'channel',
   selectedChannel: '',
   model: '',
+  imageModel: '',
 };
 
 const storageKey = (projectId: string) => `axonhub_playground_selection_${projectId}`;
@@ -33,10 +35,13 @@ export function readSelection(projectId: string | null): PlaygroundSelection {
     ) {
       return { ...defaultSelection };
     }
+    const imageModel = 'imageModel' in value && typeof value.imageModel === 'string' ? value.imageModel : '';
     return {
       modelSource: value.modelSource,
       selectedChannel: value.selectedChannel,
       model: value.model,
+      // Selections persisted before image mode existed have no imageModel.
+      imageModel,
     };
   } catch {
     return { ...defaultSelection };
@@ -56,13 +61,17 @@ export function resolveSelection(
   selection: PlaygroundSelection,
   channels: { value: string; models: string[] }[],
   gatewayModels: string[],
+  gatewayImageModels: string[],
   canUseModelGateway: boolean
 ): PlaygroundSelection {
   const channel = channels.find((item) => item.value === selection.selectedChannel) ?? channels[0];
   const selectedChannel = channel?.value ?? '';
   const modelSource = selection.modelSource === 'model_gateway' && canUseModelGateway ? 'model_gateway' : 'channel';
   const models = modelSource === 'model_gateway' ? gatewayModels : (channel?.models ?? []);
+  // Channel model entries carry no type, so image mode reuses the same list.
+  const imageModels = modelSource === 'model_gateway' ? gatewayImageModels : (channel?.models ?? []);
   const model = models.includes(selection.model) ? selection.model : (models[0] ?? '');
+  const imageModel = imageModels.includes(selection.imageModel) ? selection.imageModel : (imageModels[0] ?? '');
 
-  return { modelSource, selectedChannel, model };
+  return { modelSource, selectedChannel, model, imageModel };
 }

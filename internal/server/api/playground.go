@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/aisdk"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
 type PlaygroundResponseError struct {
@@ -51,8 +52,9 @@ type PlaygroundHandlersParams struct {
 }
 
 type PlaygroundHandlers struct {
-	ChannelService             *biz.ChannelService
-	ChatCompletionOrchestrator *orchestrator.ChatCompletionOrchestrator
+	ChannelService              *biz.ChannelService
+	ChatCompletionOrchestrator  *orchestrator.ChatCompletionOrchestrator
+	ImageGenerationOrchestrator *orchestrator.ChatCompletionOrchestrator
 }
 
 func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers {
@@ -64,6 +66,21 @@ func NewPlaygroundHandlers(params PlaygroundHandlersParams) *PlaygroundHandlers 
 			params.RequestService,
 			params.HttpClient,
 			aisdk.NewDataStreamTransformer(),
+			params.SystemService,
+			params.UsageLogService,
+			params.PromptService,
+			params.QuotaService,
+			params.PromptProtectionRuleService,
+			params.LiveStreamRegistry,
+			params.ChannelLimiterManager,
+			params.ProviderQuotaStatusProvider,
+			orchestratorPlugins(params.PluginManager)),
+		ImageGenerationOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+			params.ChannelService,
+			params.DefaultSelector,
+			params.RequestService,
+			params.HttpClient,
+			openai.NewImageGenerationInboundTransformer(),
 			params.SystemService,
 			params.UsageLogService,
 			params.PromptService,
@@ -214,7 +231,15 @@ func (handlers *PlaygroundHandlers) HandleError(rawErr error) *PlaygroundRespons
 }
 
 func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
-	cancel := middleware.SelectLLMTimeout(c, true)
+	handlers.processWithOrchestrator(c, handlers.ChatCompletionOrchestrator, true)
+}
+
+func (handlers *PlaygroundHandlers) ImageGeneration(c *gin.Context) {
+	handlers.processWithOrchestrator(c, handlers.ImageGenerationOrchestrator, false)
+}
+
+func (handlers *PlaygroundHandlers) processWithOrchestrator(c *gin.Context, base *orchestrator.ChatCompletionOrchestrator, streaming bool) {
+	cancel := middleware.SelectLLMTimeout(c, streaming)
 	defer cancel()
 	ctx := c.Request.Context()
 
@@ -270,7 +295,7 @@ func (handlers *PlaygroundHandlers) ChatCompletion(c *gin.Context) {
 
 	log.Debug(ctx, "Received request", log.Any("request", genericReq), log.String("channel_id", channelIDStr), log.String("project_id", projectIDStr))
 
-	processor := handlers.ChatCompletionOrchestrator
+	processor := base
 
 	if channelIDStr != "" {
 		channelID, err := objects.ParseGUID(channelIDStr)

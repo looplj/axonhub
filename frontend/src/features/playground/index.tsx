@@ -39,7 +39,10 @@ import { Response as UIResponse } from '@/components/ai-elements/response';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { useQueryModels } from '@/features/models/data/models';
+import { ImageConversation, useImageGeneration } from './image';
 import { readSelection, resolveSelection, writeSelection, type PlaygroundModelSource } from './selection';
+
+type PlaygroundMode = 'chat' | 'image';
 
 function PlaygroundImageButton() {
   const { t } = useTranslation();
@@ -105,8 +108,12 @@ export default function Playground() {
       ? selectionState
       : { projectId: selectedProjectId, ...readSelection(selectedProjectId), ready: false };
   if (selectionState.projectId !== selectedProjectId) setSelectionState(selection);
-  const { modelSource, selectedChannel, model } = selection;
+  const { modelSource, selectedChannel, model, imageModel } = selection;
   const setModel = (nextModel: string) => setSelectionState((current) => ({ ...current, model: nextModel }));
+  const setImageModel = (nextModel: string) => setSelectionState((current) => ({ ...current, imageModel: nextModel }));
+  const [mode, setMode] = useState<PlaygroundMode>('chat');
+  const [imageSize, setImageSize] = useState('');
+  const [imageCount, setImageCount] = useState(1);
   const [temperature, setTemperature] = useState(0.6);
   const [sendTemperature, setSendTemperature] = useState(true);
   const [maxTokens, setMaxTokens] = useState(4096);
@@ -159,6 +166,17 @@ export default function Playground() {
       where: {
         statusIn: ['enabled'],
         typeIn: ['chat'],
+      },
+    },
+    { enabled: isModelGatewaySource && canUseModelGateway }
+  );
+  const { data: imageModelsData, isLoading: imageModelsLoading } = useQueryModels(
+    {
+      first: 10000,
+      orderBy: { field: 'NAME', direction: 'ASC' },
+      where: {
+        statusIn: ['enabled'],
+        typeIn: ['image_generation'],
       },
     },
     { enabled: isModelGatewaySource && canUseModelGateway }
@@ -261,28 +279,55 @@ export default function Playground() {
   const isLoading = status === 'submitted' || status === 'streaming';
   const hasUserMessage = useMemo(() => messages.some((m) => m.role === 'user'), [messages]);
 
+  const {
+    generations,
+    isGenerating: isImageGenerating,
+    generate: generateImages,
+    stop: stopImages,
+    clear: clearImages,
+    retryLast: retryLastImages,
+  } = useImageGeneration({
+    projectId: selectedProjectId,
+    modelSource,
+    selectedChannel,
+    model: imageModel,
+    size: imageSize,
+    count: imageCount,
+  });
+
   // Handle form submission
   const handleSubmit = useCallback(
     (message: { text?: string; files?: FileUIPart[] }, e: React.FormEvent): Promise<void> | void => {
       e.preventDefault();
+      const text = message.text?.trim() ?? '';
+      if (mode === 'image') {
+        if (text && !isImageGenerating) {
+          void generateImages(text);
+          setInput('');
+        }
+        return;
+      }
       // block submit while a request is in-flight; reject so PromptInput
       // keeps the still-attached files instead of clearing them
       if (isLoading) {
         return Promise.reject(new Error('request in-flight'));
       }
-      const text = message.text?.trim() ?? '';
       const files = message.files ?? [];
       if (text || files.length > 0) {
         sendMessage({ text, files });
         setInput('');
       }
     },
-    [sendMessage, selectedChannel, isLoading]
+    [generateImages, isImageGenerating, isLoading, mode, sendMessage]
   );
 
   const handleClear = useCallback(() => {
+    if (mode === 'image') {
+      clearImages();
+      return;
+    }
     setMessages([]);
-  }, [setMessages]);
+  }, [clearImages, mode, setMessages]);
 
   const handleRetry = useCallback(() => {
     if (messages.length === 0) return;
@@ -333,38 +378,61 @@ export default function Playground() {
     });
   }, [modelsData]);
 
+  const imageGatewayModelOptions = useMemo(() => {
+    if (!imageModelsData?.edges) return [];
+    return imageModelsData.edges.map((edge) => {
+      const modelID = edge.node.modelID;
+      return {
+        value: modelID,
+        label: edge.node.name || modelID,
+      };
+    });
+  }, [imageModelsData]);
+
   useEffect(() => {
-    if (!user || !channelsData || (modelSource === 'model_gateway' && canUseModelGateway && !modelsData)) return;
+    if (!user || !channelsData || (modelSource === 'model_gateway' && canUseModelGateway && (!modelsData || !imageModelsData))) return;
     const channels = channelOptions.map((option) => ({
       value: option.value,
       models:
         channelsData.edges.find((edge) => edge.node.id === option.value)?.node.allModelEntries.map((entry) => entry.requestModel) ?? [],
     }));
     const gatewayModels = modelPageModelOptions.map((option) => option.value);
+    const gatewayImageModels = imageGatewayModelOptions.map((option) => option.value);
     setSelectionState((current) => {
       if (current.projectId !== selectedProjectId) return current;
-      const resolved = resolveSelection(current, channels, gatewayModels, canUseModelGateway);
+      const resolved = resolveSelection(current, channels, gatewayModels, gatewayImageModels, canUseModelGateway);
       if (
         current.ready &&
         current.modelSource === resolved.modelSource &&
         current.selectedChannel === resolved.selectedChannel &&
-        current.model === resolved.model
+        current.model === resolved.model &&
+        current.imageModel === resolved.imageModel
       ) {
         return current;
       }
       return { ...current, ...resolved, ready: true };
     });
-  }, [canUseModelGateway, channelOptions, channelsData, modelPageModelOptions, modelSource, modelsData, selectedProjectId, user]);
+  }, [
+    canUseModelGateway,
+    channelOptions,
+    channelsData,
+    imageGatewayModelOptions,
+    imageModelsData,
+    modelPageModelOptions,
+    modelSource,
+    modelsData,
+    selectedProjectId,
+    user,
+  ]);
 
   useEffect(() => {
     if (selection.ready && selection.projectId === selectedProjectId) {
-      writeSelection(selectedProjectId, { modelSource, selectedChannel, model });
+      writeSelection(selectedProjectId, { modelSource, selectedChannel, model, imageModel });
     }
-  }, [model, modelSource, selectedChannel, selectedProjectId, selection.projectId, selection.ready]);
+  }, [imageModel, model, modelSource, selectedChannel, selectedProjectId, selection.projectId, selection.ready]);
 
   // 根据选中渠道过滤出模型列表（渠道已关闭时不展示其模型）
-  const modelOptions = useMemo(() => {
-    if (isModelGatewaySource) return modelPageModelOptions;
+  const channelModelOptions = useMemo(() => {
     if (!channelsData?.edges || !selectedChannel) return [];
     const channelEdge = channelsData.edges.find((edge) => edge.node.id === selectedChannel);
     if (!channelEdge || channelEdge.node.status !== 'enabled') return [];
@@ -372,16 +440,19 @@ export default function Playground() {
       value: entry.requestModel,
       label: entry.requestModel,
     }));
-  }, [channelsData, isModelGatewaySource, modelPageModelOptions, selectedChannel]);
+  }, [channelsData, selectedChannel]);
 
-  const selectedModelSourceLoading = isModelGatewaySource ? modelsLoading : channelsLoading;
+  const modelOptions = isModelGatewaySource ? modelPageModelOptions : channelModelOptions;
+  const imageModelOptions = isModelGatewaySource ? imageGatewayModelOptions : channelModelOptions;
+
+  const selectedModelSourceLoading = isModelGatewaySource ? (mode === 'image' ? imageModelsLoading : modelsLoading) : channelsLoading;
 
   // 处理渠道选择，自动选第一个模型
   const handleChannelChange = useCallback(
     (channelId: string) => {
       const channelEdge = channelsData?.edges?.find((edge) => edge.node.id === channelId && edge.node.status === 'enabled');
       const firstModel = channelEdge?.node.allModelEntries[0]?.requestModel ?? '';
-      setSelectionState((current) => ({ ...current, selectedChannel: channelId, model: firstModel }));
+      setSelectionState((current) => ({ ...current, selectedChannel: channelId, model: firstModel, imageModel: firstModel }));
     },
     [channelsData]
   );
@@ -397,6 +468,7 @@ export default function Playground() {
           ...current,
           modelSource: nextSource,
           model: modelPageModelOptions[0]?.value ?? '',
+          imageModel: imageGatewayModelOptions[0]?.value ?? '',
           ready: current.ready && !!modelsData,
         }));
         return;
@@ -406,9 +478,10 @@ export default function Playground() {
         ...current,
         modelSource: nextSource,
         model: channelEdge?.node.allModelEntries[0]?.requestModel ?? '',
+        imageModel: channelEdge?.node.allModelEntries[0]?.requestModel ?? '',
       }));
     },
-    [canUseModelGateway, channelsData, modelPageModelOptions, modelsData, selectedChannel]
+    [canUseModelGateway, channelsData, imageGatewayModelOptions, modelPageModelOptions, modelsData, selectedChannel]
   );
 
   return (
@@ -440,6 +513,16 @@ export default function Playground() {
           <ScrollArea className='min-h-0 flex-1 p-4'>
             <div className='space-y-6'>
               <div className='space-y-3'>
+                <Label className='text-xs font-semibold'>{t('playground.settings.mode')}</Label>
+                <Tabs value={mode} onValueChange={(value) => setMode(value as PlaygroundMode)}>
+                  <TabsList className='grid w-full grid-cols-2'>
+                    <TabsTrigger value='chat'>{t('playground.mode.chat')}</TabsTrigger>
+                    <TabsTrigger value='image'>{t('playground.mode.image')}</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
+              <div className='space-y-3'>
                 <Label className='text-xs font-semibold'>{t('playground.settings.modelSource')}</Label>
                 <Tabs value={modelSource} onValueChange={handleModelSourceChange}>
                   <TabsList className={cn('grid w-full', canUseModelGateway ? 'grid-cols-2' : 'grid-cols-1')}>
@@ -470,111 +553,165 @@ export default function Playground() {
                   {t('playground.settings.model')}
                 </Label>
                 <AutoCompleteSelect
-                  selectedValue={model}
-                  onSelectedValueChange={(v) => setModel(v)}
-                  items={modelOptions}
+                  selectedValue={mode === 'image' ? imageModel : model}
+                  onSelectedValueChange={(v) => (mode === 'image' ? setImageModel(v) : setModel(v))}
+                  items={mode === 'image' ? imageModelOptions : modelOptions}
                   isLoading={selectedModelSourceLoading}
                   emptyMessage={t('playground.errors.noModelsAvailable')}
                   placeholder={selectedModelSourceLoading ? t('loading') : t('playground.settings.selectModel')}
                 />
                 {selectedModelSourceLoading && <p className='text-muted-foreground text-[10px]'>{t('loading')}...</p>}
-                {!selectedModelSourceLoading && modelOptions.length > 0 && (
+                {!selectedModelSourceLoading && (mode === 'image' ? imageModelOptions : modelOptions).length > 0 && (
                   <p className='text-muted-foreground text-[10px]'>
                     {isModelGatewaySource
                       ? t('playground.modelPageModelsAvailable', {
-                          count: modelOptions.length,
+                          count: (mode === 'image' ? imageModelOptions : modelOptions).length,
                         })
                       : t('playground.modelsAvailable', {
-                          count: modelOptions.length,
+                          count: (mode === 'image' ? imageModelOptions : modelOptions).length,
                           channels: channelOptions.length,
                         })}
                   </p>
                 )}
               </div>
 
-              <div className='space-y-3'>
-                <div className='flex items-center justify-between gap-2'>
-                  <Label htmlFor='temperature' className='text-xs font-semibold'>
-                    {t('playground.settings.temperature')}: {temperature}
+              {mode === 'image' && (
+                <div className='space-y-3'>
+                  <Label htmlFor='imageSize' className='text-xs font-semibold'>
+                    {t('playground.image.size')}
                   </Label>
-                  <Switch
-                    aria-label={t('playground.settings.sendTemperature')}
-                    checked={sendTemperature}
-                    onCheckedChange={setSendTemperature}
-                  />
-                </div>
-                <div className='px-1'>
                   <Input
-                    id='temperature'
-                    type='range'
-                    min='0'
-                    max='2'
-                    step='0.1'
-                    value={temperature}
-                    disabled={!sendTemperature}
-                    onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                    className='bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg'
+                    id='imageSize'
+                    value={imageSize}
+                    placeholder={t('playground.image.sizePlaceholder')}
+                    onChange={(e) => setImageSize(e.target.value)}
+                    className='h-9'
                   />
-                  <div className='text-muted-foreground mt-1 flex justify-between text-[10px]'>
-                    <span>0</span>
-                    <span>1</span>
-                    <span>2</span>
+                  <div className='space-y-3 pt-3'>
+                    <Label htmlFor='imageCount' className='text-xs font-semibold'>
+                      {t('playground.image.count')}
+                    </Label>
+                    <Input
+                      id='imageCount'
+                      type='number'
+                      min='1'
+                      max='10'
+                      value={imageCount}
+                      onChange={(e) => setImageCount(parseInt(e.target.value, 10) || 1)}
+                      className='h-9'
+                    />
                   </div>
                 </div>
-                {!sendTemperature && <p className='text-muted-foreground text-xs'>{t('playground.settings.temperatureOmitted')}</p>}
-              </div>
+              )}
 
-              <div className='space-y-3'>
-                <Label htmlFor='maxTokens' className='text-xs font-semibold'>
-                  {t('playground.settings.maxTokens')}
-                </Label>
-                <Input
-                  id='maxTokens'
-                  type='number'
-                  min='1'
-                  max='4000'
-                  value={maxTokens}
-                  onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-                  className='h-9'
-                />
-              </div>
+              {mode === 'chat' && (
+                <>
+                  <div className='space-y-3'>
+                    <div className='flex items-center justify-between gap-2'>
+                      <Label htmlFor='temperature' className='text-xs font-semibold'>
+                        {t('playground.settings.temperature')}: {temperature}
+                      </Label>
+                      <Switch
+                        aria-label={t('playground.settings.sendTemperature')}
+                        checked={sendTemperature}
+                        onCheckedChange={setSendTemperature}
+                      />
+                    </div>
+                    <div className='px-1'>
+                      <Input
+                        id='temperature'
+                        type='range'
+                        min='0'
+                        max='2'
+                        step='0.1'
+                        value={temperature}
+                        disabled={!sendTemperature}
+                        onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                        className='bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg'
+                      />
+                      <div className='text-muted-foreground mt-1 flex justify-between text-[10px]'>
+                        <span>0</span>
+                        <span>1</span>
+                        <span>2</span>
+                      </div>
+                    </div>
+                    {!sendTemperature && <p className='text-muted-foreground text-xs'>{t('playground.settings.temperatureOmitted')}</p>}
+                  </div>
 
-              <div className='space-y-3'>
-                <Label htmlFor='systemPrompt' className='text-xs font-semibold'>
-                  {t('playground.settings.systemPrompt')}
-                </Label>
-                <Textarea
-                  id='systemPrompt'
-                  placeholder={t('playground.settings.defaultSystemPrompt')}
-                  value={systemPrompt}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
-                  rows={4}
-                  className='min-h-[80px] resize-none text-sm'
-                />
-              </div>
+                  <div className='space-y-3'>
+                    <Label htmlFor='maxTokens' className='text-xs font-semibold'>
+                      {t('playground.settings.maxTokens')}
+                    </Label>
+                    <Input
+                      id='maxTokens'
+                      type='number'
+                      min='1'
+                      max='4000'
+                      value={maxTokens}
+                      onChange={(e) => setMaxTokens(parseInt(e.target.value))}
+                      className='h-9'
+                    />
+                  </div>
+
+                  <div className='space-y-3'>
+                    <Label htmlFor='systemPrompt' className='text-xs font-semibold'>
+                      {t('playground.settings.systemPrompt')}
+                    </Label>
+                    <Textarea
+                      id='systemPrompt'
+                      placeholder={t('playground.settings.defaultSystemPrompt')}
+                      value={systemPrompt}
+                      onChange={(e) => setSystemPrompt(e.target.value)}
+                      rows={4}
+                      className='min-h-[80px] resize-none text-sm'
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </ScrollArea>
 
           <div className='space-y-2 border-t p-4'>
-            <Button
-              onClick={handleRetry}
-              variant='outline'
-              className='h-9 w-full text-xs'
-              disabled={isLoading || messages.length === 0 || messages.every((msg) => msg.role !== 'assistant')}
-            >
-              <IconRefresh className='mr-2 h-3 w-3' />
-              {isLoading
-                ? t('playground.chat.generating')
-                : messages.length === 0
-                  ? t('playground.chat.noMessages')
-                  : messages.every((msg) => msg.role !== 'assistant')
+            {mode === 'chat' ? (
+              <Button
+                onClick={handleRetry}
+                variant='outline'
+                className='h-9 w-full text-xs'
+                disabled={isLoading || messages.length === 0 || messages.every((msg) => msg.role !== 'assistant')}
+              >
+                <IconRefresh className='mr-2 h-3 w-3' />
+                {isLoading
+                  ? t('playground.chat.generating')
+                  : messages.length === 0
+                    ? t('playground.chat.noMessages')
+                    : messages.every((msg) => msg.role !== 'assistant')
+                      ? t('playground.chat.noMessages')
+                      : t('playground.chat.retry')}
+              </Button>
+            ) : (
+              <Button
+                onClick={retryLastImages}
+                variant='outline'
+                className='h-9 w-full text-xs'
+                disabled={isImageGenerating || generations.length === 0}
+              >
+                <IconRefresh className='mr-2 h-3 w-3' />
+                {isImageGenerating
+                  ? t('playground.chat.generating')
+                  : generations.length === 0
                     ? t('playground.chat.noMessages')
                     : t('playground.chat.retry')}
-            </Button>
+              </Button>
+            )}
 
-            <Button onClick={handleClear} variant='outline' className='h-9 w-full text-xs' disabled={isLoading}>
+            <Button
+              onClick={handleClear}
+              variant='outline'
+              className='h-9 w-full text-xs'
+              disabled={mode === 'chat' ? isLoading : isImageGenerating}
+            >
               <IconTrash className='mr-2 h-3 w-3' />
-              {t('playground.chat.clear')}
+              {mode === 'chat' ? t('playground.chat.clear') : t('playground.image.clear')}
             </Button>
           </div>
         </div>
@@ -582,93 +719,97 @@ export default function Playground() {
         {/* Chat Area */}
         <div className='flex min-h-[50vh] min-w-0 flex-1 flex-col p-4 lg:min-h-0'>
           <div className='shadow-soft border-border bg-card flex h-full min-h-0 flex-col rounded-2xl border p-6'>
-            <Conversation className='max-h-[50vh] min-h-0 flex-1 lg:max-h-none'>
-              <ConversationContent>
-                {messages.length === 0 ? (
-                  <ConversationEmptyState
-                    icon={<MessageSquare className='size-12' />}
-                    title={t('playground.chat.startConversation')}
-                    description={t('playground.chat.typeMessageBelow')}
-                  />
-                ) : (
-                  (() => {
-                    const lastAssistantIndex = (() => {
-                      for (let i = messages.length - 1; i >= 0; i--) {
-                        if (messages[i].role === 'assistant') return i;
-                      }
-                      return -1;
-                    })();
-                    return messages.map((message, messageIndex) => {
-                      const isLastAssistant = message.role === 'assistant' && messageIndex === lastAssistantIndex;
-                      const textContent = message.parts
-                        ?.filter((p) => p.type === 'text')
-                        .map((p: any) => p.text)
-                        .join('\n');
-                      return (
-                        <Message from={message.role} key={message.id} fullWidth={!hasUserMessage}>
-                          <MessageContent>
-                            {message.parts?.map((part, index) => {
-                              if (part.type === 'text') {
-                                return <UIResponse key={index}>{part.text}</UIResponse>;
-                              }
-                              if (part.type === 'reasoning') {
-                                return (
-                                  <Reasoning key={index} isStreaming={isLastAssistant && status === 'streaming'}>
-                                    <ReasoningTrigger />
-                                    <ReasoningContent>{part.text}</ReasoningContent>
-                                  </Reasoning>
-                                );
-                              }
-                              if (part.type === 'file' && part.url) {
-                                const isImage = part.mediaType?.startsWith('image/');
-                                return isImage ? (
-                                  <img
-                                    key={index}
-                                    alt={part.filename || 'attachment'}
-                                    className='rounded-md border object-contain'
-                                    src={part.url}
-                                  />
-                                ) : (
-                                  <a key={index} className='text-primary underline' href={part.url} rel='noreferrer' target='_blank'>
-                                    {part.filename || 'attachment'}
-                                  </a>
-                                );
-                              }
-                              return null;
-                            })}
-                            {isLastAssistant && textContent ? (
-                              <Actions className='mt-2'>
-                                <Action onClick={() => regenerate()} label={t('playground.chat.retry')}>
-                                  <RefreshCcw className='size-3' />
-                                </Action>
-                                <Action
-                                  onClick={async () => {
-                                    try {
-                                      await copyTextToClipboard(textContent);
-                                    } catch {
-                                      toast.error(t('common.errors.copyFailed'));
-                                    }
-                                  }}
-                                  label={t('copy')}
-                                >
-                                  <Copy className='size-3' />
-                                </Action>
-                              </Actions>
-                            ) : null}
-                          </MessageContent>
-                        </Message>
-                      );
-                    });
-                  })()
-                )}
-                {status === 'submitted' && <Loader />}
-              </ConversationContent>
-              <ConversationScrollButton />
-            </Conversation>
+            {mode === 'image' ? (
+              <ImageConversation generations={generations} />
+            ) : (
+              <Conversation className='max-h-[50vh] min-h-0 flex-1 lg:max-h-none'>
+                <ConversationContent>
+                  {messages.length === 0 ? (
+                    <ConversationEmptyState
+                      icon={<MessageSquare className='size-12' />}
+                      title={t('playground.chat.startConversation')}
+                      description={t('playground.chat.typeMessageBelow')}
+                    />
+                  ) : (
+                    (() => {
+                      const lastAssistantIndex = (() => {
+                        for (let i = messages.length - 1; i >= 0; i--) {
+                          if (messages[i].role === 'assistant') return i;
+                        }
+                        return -1;
+                      })();
+                      return messages.map((message, messageIndex) => {
+                        const isLastAssistant = message.role === 'assistant' && messageIndex === lastAssistantIndex;
+                        const textContent = message.parts
+                          ?.filter((p) => p.type === 'text')
+                          .map((p: any) => p.text)
+                          .join('\n');
+                        return (
+                          <Message from={message.role} key={message.id} fullWidth={!hasUserMessage}>
+                            <MessageContent>
+                              {message.parts?.map((part, index) => {
+                                if (part.type === 'text') {
+                                  return <UIResponse key={index}>{part.text}</UIResponse>;
+                                }
+                                if (part.type === 'reasoning') {
+                                  return (
+                                    <Reasoning key={index} isStreaming={isLastAssistant && status === 'streaming'}>
+                                      <ReasoningTrigger />
+                                      <ReasoningContent>{part.text}</ReasoningContent>
+                                    </Reasoning>
+                                  );
+                                }
+                                if (part.type === 'file' && part.url) {
+                                  const isImage = part.mediaType?.startsWith('image/');
+                                  return isImage ? (
+                                    <img
+                                      key={index}
+                                      alt={part.filename || 'attachment'}
+                                      className='rounded-md border object-contain'
+                                      src={part.url}
+                                    />
+                                  ) : (
+                                    <a key={index} className='text-primary underline' href={part.url} rel='noreferrer' target='_blank'>
+                                      {part.filename || 'attachment'}
+                                    </a>
+                                  );
+                                }
+                                return null;
+                              })}
+                              {isLastAssistant && textContent ? (
+                                <Actions className='mt-2'>
+                                  <Action onClick={() => regenerate()} label={t('playground.chat.retry')}>
+                                    <RefreshCcw className='size-3' />
+                                  </Action>
+                                  <Action
+                                    onClick={async () => {
+                                      try {
+                                        await copyTextToClipboard(textContent);
+                                      } catch {
+                                        toast.error(t('common.errors.copyFailed'));
+                                      }
+                                    }}
+                                    label={t('copy')}
+                                  >
+                                    <Copy className='size-3' />
+                                  </Action>
+                                </Actions>
+                              ) : null}
+                            </MessageContent>
+                          </Message>
+                        );
+                      });
+                    })()
+                  )}
+                  {status === 'submitted' && <Loader />}
+                </ConversationContent>
+                <ConversationScrollButton />
+              </Conversation>
+            )}
 
             <PromptInput
               onSubmit={handleSubmit}
-              accept='image/*'
+              accept={mode === 'chat' ? 'image/*' : undefined}
               multiple
               className='relative mt-4 w-full'
               onError={({ code, message }) => toast.error(message)}
@@ -676,12 +817,16 @@ export default function Playground() {
               <PlaygroundAttachments />
               <PromptInputTextarea
                 value={input}
-                placeholder={t('playground.chat.typeMessage')}
+                placeholder={mode === 'image' ? t('playground.image.promptPlaceholder') : t('playground.chat.typeMessage')}
                 onChange={(e) => setInput(e.currentTarget.value)}
-                className='pr-16 pl-12'
+                className={mode === 'chat' ? 'pr-16 pl-12' : 'pr-16'}
               />
-              <PlaygroundImageButton />
-              <PlaygroundSubmit input={input} status={status} onStop={stop} />
+              {mode === 'chat' && <PlaygroundImageButton />}
+              <PlaygroundSubmit
+                input={input}
+                status={mode === 'image' ? (isImageGenerating ? 'submitted' : 'ready') : status}
+                onStop={mode === 'image' ? stopImages : stop}
+              />
             </PromptInput>
           </div>
         </div>
