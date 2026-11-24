@@ -116,3 +116,12 @@ test('localizes the Codex WebSocket checkbox, derived URL and legacy upgrade not
     assert.ok(messages['channels.dialogs.fields.apiFormat.codexWebSocket.legacyUpgrade'], `${locale} legacy note missing`);
   }
 });
+
+test('Codex exposes the separate default-off WebSocket preference and saves it on create and edit', () => {
+  const format = between("{selectedProvider === 'codex' && (", "{selectedProvider === 'claudecode' && (");
+  assert.match(format, /\{codexResponsesWebSocket && \(\s*<label[\s\S]*?data-testid='codex-prefer-responses-websocket'/);
+  assert.match(format, /checked=\{preferResponsesWebSocket \?\? initialRow\?\.settings\?\.preferResponsesWebSocket \?\? false\}/);
+  const submit = between('const onSubmit = async', 'const addModel = () =>');
+  assert.match(submit, /const webSocketPreferencePatch = isCodexType \? \{ preferResponsesWebSocket \} : \{\}/);
+  assert.equal(submit.match(/\.\.\.webSocketPreferencePatch,/g)?.length, 2);
+});
