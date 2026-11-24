@@ -896,6 +896,8 @@
   "channels.dialogs.responseTimeout.valueDisabled": "已关闭",
   "channels.dialogs.responseTimeout.inheritWithValue": "继承全局（{{value}}）",
   "channels.dialogs.responseTimeout.validation": "响应超时必须是 0 到 600 之间的整数秒（0 表示关闭该超时）。",
+  "channels.endpoints.preferResponsesWebSocket.label": "优先使用 Responses WebSocket",
+  "channels.endpoints.preferResponsesWebSocket.description": "当 AxonHub 原本会通过此渠道使用 Responses HTTP 时，改用 WebSocket 连接上游。",
   "channels.endpoints.title": "端点配置",
   "channels.endpoints.apiFormat": "API 格式",
   "channels.endpoints.path": "路径",

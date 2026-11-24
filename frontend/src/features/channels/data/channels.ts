@@ -140,6 +140,7 @@ const CREATE_CHANNEL_MUTATION = `
           reasoningEffortMapping { from to }
         }
         passThroughUserAgent
+        preferResponsesWebSocket
         passThroughBody
         responseTimeout {
           mode
@@ -249,6 +250,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
           reasoningEffortMapping { from to }
         }
         passThroughUserAgent
+        preferResponsesWebSocket
         passThroughBody
         responseTimeout {
           mode
@@ -358,6 +360,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           reasoningEffortMapping { from to }
         }
         passThroughUserAgent
+        preferResponsesWebSocket
         passThroughBody
         responseTimeout {
           mode
@@ -466,6 +469,7 @@ const CHANNEL_FIELDS_FRAGMENT = `
           reasoningEffortMapping { from to }
         }
         passThroughUserAgent
+        preferResponsesWebSocket
         passThroughBody
         responseTimeout {
           mode
@@ -710,6 +714,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             reasoningEffortMapping { from to }
           }
           passThroughUserAgent
+          preferResponsesWebSocket
           passThroughBody
           responseTimeout {
             mode
@@ -960,6 +965,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             reasoningEffortMapping { from to }
           }
           passThroughUserAgent
+          preferResponsesWebSocket
           passThroughBody
           responseTimeout {
             mode
@@ -1275,6 +1281,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
               reasoningEffortMapping { from to }
             }
             passThroughUserAgent
+            preferResponsesWebSocket
             passThroughBody
             responseTimeout {
               mode

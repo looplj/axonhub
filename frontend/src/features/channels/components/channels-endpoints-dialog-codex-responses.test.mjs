@@ -116,3 +116,14 @@ test('detail view and labels recognize the WebSocket Responses format', () => {
     assert.ok(messages['channels.dialogs.fields.apiFormat.formats.openai/responses-ws'], `${locale} WebSocket format label missing`);
   }
 });
+
+test('WebSocket routing preference is separate from endpoint availability and defaults off', () => {
+  assert.match(
+    source,
+    /const canPreferResponsesWebSocket =\s*availableProtocolFormats\.includes\(OPENAI_RESPONSES\) && availableProtocolFormats\.includes\(OPENAI_RESPONSES_WEBSOCKET\)/
+  );
+  const toggle = between('{canPreferResponsesWebSocket && (', '{/* Default endpoints */}');
+  assert.match(toggle, /checked=\{preferResponsesWebSocket \?\? channel\.settings\?\.preferResponsesWebSocket \?\? false\}/);
+  const save = between('const handleSave = useCallback', 'const handleKeyDown = useCallback');
+  assert.match(save, /patch: \{ modelProtocols, preferResponsesWebSocket \}/);
+});

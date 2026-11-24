@@ -21,3 +21,11 @@ test('syncModelPrices preserves stored values and applies explicit updates', () 
   const enabled = wire(mergeChannelSettingsForUpdate(undefined, { syncModelPrices: true }));
   assert.equal(enabled.syncModelPrices, true);
 });
+
+test('WebSocket preference preserves stored values and supports explicit opt-in and opt-out', () => {
+  const existing = { preferResponsesWebSocket: true };
+  assert.equal(wire(mergeChannelSettingsForUpdate(existing, { extraModelPrefix: 'prefix-' })).preferResponsesWebSocket, true);
+  assert.equal(wire(mergeChannelSettingsForUpdate(existing, { preferResponsesWebSocket: false })).preferResponsesWebSocket, false);
+  assert.equal(wire(mergeChannelSettingsForUpdate(undefined, { preferResponsesWebSocket: true })).preferResponsesWebSocket, true);
+  assert.equal(wire(mergeChannelSettingsForUpdate(undefined, {})).preferResponsesWebSocket, undefined);
+});

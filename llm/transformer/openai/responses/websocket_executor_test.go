@@ -1032,97 +1032,6 @@ func TestPrepareWebSocketPayloadKeepsJSONObjectReminderStableAfterAssistantMenti
 	require.Equal(t, "resp_1", secondPayload["previous_response_id"])
 }
 
-func TestRestorePayloadMapRestoresMutatedPayload(t *testing.T) {
-	originalInput := []any{
-		map[string]any{"id": "user_1", "type": "message", "role": "user"},
-		map[string]any{"id": "user_2", "type": "message", "role": "user"},
-	}
-	payload := map[string]any{
-		"model": "gpt-5",
-		"input": originalInput,
-	}
-	original := clonePayloadMap(payload)
-
-	payload["input"] = []json.RawMessage{json.RawMessage(`{"id":"user_2","type":"message","role":"user"}`)}
-	payload["previous_response_id"] = "resp_1"
-	restorePayloadMap(payload, original)
-
-	require.Equal(t, "gpt-5", payload["model"])
-	require.Equal(t, originalInput, payload["input"])
-	require.NotContains(t, payload, "previous_response_id")
-}
-
-func TestWebSocketExecutorReconnectsWhenSuffixStartsWithAssistantOutput(t *testing.T) {
-	var upgrades atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		upgrade := upgrades.Add(1)
-		conn, err := websocket.Accept(w, r, nil)
-		require.NoError(t, err)
-		defer conn.CloseNow()
-
-		var payload map[string]any
-		require.NoError(t, wsjson.Read(r.Context(), conn, &payload))
-
-		if upgrade == 1 {
-			require.NotContains(t, payload, "previous_response_id")
-			require.NoError(t, wsjson.Write(r.Context(), conn, map[string]any{
-				"type": "response.completed",
-				"response": map[string]any{
-					"id":         "resp_1",
-					"object":     "response",
-					"created_at": 1700000000,
-					"model":      "gpt-5",
-					"status":     "completed",
-					"output":     []any{},
-				},
-			}))
-			return
-		}
-
-		require.NotContains(t, payload, "previous_response_id")
-		input, ok := payload["input"].([]any)
-		require.True(t, ok)
-		require.Len(t, input, 3)
-		require.NoError(t, wsjson.Write(r.Context(), conn, map[string]any{
-			"type": "response.completed",
-			"response": map[string]any{
-				"id":         "resp_2",
-				"object":     "response",
-				"created_at": 1700000000,
-				"model":      "gpt-5",
-				"status":     "completed",
-				"output":     []any{},
-			},
-		}))
-	}))
-	defer server.Close()
-
-	executor := NewWebSocketExecutor(nil)
-	ctx := webSocketTestContext()
-	for _, body := range [][]byte{
-		[]byte(`{"model":"gpt-5","input":[{"id":"user_1","type":"message","role":"user"}]}`),
-		[]byte(`{"model":"gpt-5","input":[{"id":"user_1","type":"message","role":"user"},{"id":"assistant_1","type":"message","role":"assistant"},{"id":"user_2","type":"message","role":"user"}]}`),
-	} {
-		stream, err := executor.DoStream(ctx, &httpclient.Request{
-			Method: http.MethodPost,
-			URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
-			Headers: http.Header{
-				webSocketSessionHeader: []string{"assistant-reconnect"},
-			},
-			Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
-			Body: body,
-		})
-		require.NoError(t, err)
-		require.True(t, stream.Next())
-		require.Equal(t, "response.completed", stream.Current().Type)
-		require.False(t, stream.Next())
-		require.NoError(t, stream.Err())
-		require.NoError(t, stream.Close())
-	}
-
-	require.Equal(t, int32(2), upgrades.Load())
-}
-
 func TestWebSocketStreamCloseWhileNextBlockedReportsClosedBeforeResponse(t *testing.T) {
 	type connectionKey struct{}
 	pongRead := make(chan struct{})
@@ -1239,15 +1148,16 @@ func TestWebSocketExecutorSeparatesPoolByOrganizationHeaders(t *testing.T) {
 
 	executor := NewWebSocketExecutor(nil)
 	for _, org := range []string{"org-a", "org-b"} {
+		headers := make(http.Header)
+		headers.Set(webSocketSessionHeader, "org-session")
+		headers.Set(webSocketOrgHeader, org)
+
 		stream, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
-			Method: http.MethodPost,
-			URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
-			Headers: http.Header{
-				webSocketSessionHeader: []string{"org-session"},
-				webSocketOrgHeader:     []string{org},
-			},
-			Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
-			Body: []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message"}]}`),
+			Method:  http.MethodPost,
+			URL:     server.URL + "/v1/responses",
+			Headers: headers,
+			Auth:    &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+			Body:    []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message"}]}`),
 		})
 		require.NoError(t, err)
 		require.True(t, stream.Next())
@@ -1453,70 +1363,78 @@ func TestWebSocketExecutorKeepsConnectionWhenInputExceedsRetainedLimit(t *testin
 	require.Equal(t, int32(1), upgrades.Load())
 }
 
-func TestWebSocketExecutorReconnectsWhenInputIsNotAppendOnly(t *testing.T) {
-	var upgrades atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		upgrade := upgrades.Add(1)
+func TestWebSocketExecutorReusesConnectionWithFullInput(t *testing.T) {
+	const firstInput = `[{"id":"first","type":"message","role":"user"}]`
+	for _, tc := range []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "rewritten input",
+			input: `[{"id":"rewritten","type":"message","role":"user"}]`,
+		},
+		{
+			name:  "suffix starts with assistant output",
+			input: `[{"id":"first","type":"message","role":"user"},{"id":"assistant","type":"message","role":"assistant"},{"id":"next","type":"message","role":"user"}]`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var upgrades atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				upgrades.Add(1)
 
-		conn, err := websocket.Accept(w, r, nil)
-		require.NoError(t, err)
-		defer conn.CloseNow()
+				conn, err := websocket.Accept(w, r, nil)
+				require.NoError(t, err)
+				defer conn.CloseNow()
 
-		var payload map[string]any
-		require.NoError(t, wsjson.Read(r.Context(), conn, &payload))
-		input, ok := payload["input"].([]any)
-		require.True(t, ok)
-		require.Len(t, input, 1)
-		require.NotContains(t, payload, "previous_response_id")
+				for _, input := range []string{firstInput, tc.input} {
+					var payload struct {
+						Input              json.RawMessage `json:"input"`
+						PreviousResponseID json.RawMessage `json:"previous_response_id"`
+					}
+					if !assert.NoError(t, wsjson.Read(r.Context(), conn, &payload)) {
+						return
+					}
+					assert.JSONEq(t, input, string(payload.Input))
+					assert.Empty(t, payload.PreviousResponseID)
+					require.NoError(t, wsjson.Write(r.Context(), conn, map[string]any{
+						"type": "response.completed",
+						"response": map[string]any{
+							"id":         "resp_test",
+							"object":     "response",
+							"created_at": 1700000000,
+							"model":      "gpt-5",
+							"status":     "completed",
+							"output":     []any{},
+						},
+					}))
+				}
+			}))
+			defer server.Close()
 
-		responseID := "resp_1"
-		if upgrade == 2 {
-			message, ok := input[0].(map[string]any)
-			require.True(t, ok)
-			require.Equal(t, "rewritten", message["id"])
-			responseID = "resp_rewritten"
-		}
-		require.NoError(t, wsjson.Write(r.Context(), conn, map[string]any{
-			"type": "response.completed",
-			"response": map[string]any{
-				"id":         responseID,
-				"object":     "response",
-				"created_at": 1700000000,
-				"model":      "gpt-5",
-				"status":     "completed",
-				"output":     []any{},
-			},
-		}))
-		if upgrade == 1 {
-			_, _, err = conn.Read(r.Context())
-			require.Error(t, err)
-		}
-	}))
-	defer server.Close()
+			executor := NewWebSocketExecutor(nil)
+			defer executor.Close()
+			for _, input := range []string{firstInput, tc.input} {
+				stream, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
+					Method: http.MethodPost,
+					URL:    server.URL,
+					Headers: http.Header{
+						webSocketSessionHeader: []string{"full-input-session"},
+					},
+					Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+					Body: []byte(`{"model":"gpt-5","input":` + input + `}`),
+				})
+				require.NoError(t, err)
+				require.True(t, stream.Next())
+				require.Equal(t, "response.completed", stream.Current().Type)
+				require.False(t, stream.Next())
+				require.NoError(t, stream.Err())
+				require.NoError(t, stream.Close())
+			}
 
-	executor := NewWebSocketExecutor(nil)
-	firstBody := []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message","role":"user","content":[{"type":"input_text","text":"first"}]}]}`)
-	rewrittenBody := []byte(`{"model":"gpt-5","input":[{"id":"rewritten","type":"message","role":"user","content":[{"type":"input_text","text":"rewritten"}]}]}`)
-
-	for _, body := range [][]byte{firstBody, rewrittenBody} {
-		stream, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
-			Method: http.MethodPost,
-			URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
-			Headers: http.Header{
-				webSocketSessionHeader: []string{"rewrite-session"},
-			},
-			Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
-			Body: body,
+			require.Equal(t, int32(1), upgrades.Load())
 		})
-		require.NoError(t, err)
-		require.True(t, stream.Next())
-		require.Equal(t, "response.completed", stream.Current().Type)
-		require.False(t, stream.Next())
-		require.NoError(t, stream.Err())
-		require.NoError(t, stream.Close())
 	}
-
-	require.Equal(t, int32(2), upgrades.Load())
 }
 
 func TestWebSocketExecutorEvictsPooledConnectionOnEarlyClose(t *testing.T) {

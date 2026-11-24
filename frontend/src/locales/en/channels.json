@@ -896,6 +896,8 @@
   "channels.dialogs.responseTimeout.valueDisabled": "off",
   "channels.dialogs.responseTimeout.inheritWithValue": "Inherit ({{value}})",
   "channels.dialogs.responseTimeout.validation": "Response timeouts must be whole numbers of seconds between 0 and 600 (0 disables the timeout).",
+  "channels.endpoints.preferResponsesWebSocket.label": "Prefer Responses WebSocket",
+  "channels.endpoints.preferResponsesWebSocket.description": "Use WebSocket upstream when AxonHub would otherwise use Responses HTTP on this channel.",
   "channels.endpoints.title": "Endpoints",
   "channels.endpoints.apiFormat": "API Format",
   "channels.endpoints.path": "Path",

@@ -39,6 +39,7 @@ type UpdateChannelSettingsInput struct {
 	BodyOverrideOperations      []objects.OverrideOperation           `json:"bodyOverrideOperations"`
 	PassThroughUserAgent        *bool                                 `json:"passThroughUserAgent"`
 	SyncModelPrices             *bool                                 `json:"syncModelPrices"`
+	PreferResponsesWebSocket    *bool                                 `json:"preferResponsesWebSocket"`
 	PassThroughBody             *bool                                 `json:"passThroughBody"`
 	RateLimit                   *objects.ChannelRateLimit             `json:"rateLimit"`
 	RetryableStatusCodes        []int                                 `json:"retryableStatusCodes"`
@@ -98,6 +99,9 @@ func (i *UpdateChannelSettingsInput) Apply(base *objects.ChannelSettings) object
 	}
 	if i.SyncModelPrices != nil {
 		merged.SyncModelPrices = *i.SyncModelPrices
+	}
+	if i.PreferResponsesWebSocket != nil {
+		merged.PreferResponsesWebSocket = *i.PreferResponsesWebSocket
 	}
 	if i.PassThroughBody != nil {
 		merged.PassThroughBody = i.PassThroughBody
