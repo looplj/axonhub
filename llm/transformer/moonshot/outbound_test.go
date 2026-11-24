@@ -255,3 +255,52 @@ func TestOutboundTransformer_TransformRequest_Errors(t *testing.T) {
 		})
 	}
 }
+
+func TestOutboundTransformer_TransformRequest_StripsFixedSamplingParams(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://api.moonshot.cn/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		model string
+		keep  bool
+	}{
+		{model: "kimi-k2.6"},
+		{model: "kimi-k2.7-code"},
+		{model: "kimi-k2.7-code-highspeed"},
+		{model: "kimi-k3"},
+		{model: "kimi-k3.1-pro"},
+		{model: "kimi-k3.1-pro-highspeed"},
+		{model: "kimi-k2-0905-preview", keep: true},
+		{model: "moonshot-v1-8k", keep: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			got, err := transformer.TransformRequest(context.Background(), &llm.Request{
+				Model: tt.model,
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+				},
+				Temperature:      lo.ToPtr(0.2),
+				TopP:             lo.ToPtr(0.9),
+				PresencePenalty:  lo.ToPtr(0.1),
+				FrequencyPenalty: lo.ToPtr(0.1),
+			})
+			require.NoError(t, err)
+
+			var body map[string]any
+			require.NoError(t, json.Unmarshal(got.Body, &body))
+
+			for _, k := range []string{"temperature", "top_p", "presence_penalty", "frequency_penalty"} {
+				if tt.keep {
+					assert.Contains(t, body, k)
+				} else {
+					assert.NotContains(t, body, k)
+				}
+			}
+		})
+	}
+}
