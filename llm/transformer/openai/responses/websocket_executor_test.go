@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/coder/websocket"
@@ -2035,45 +2036,48 @@ func TestWebSocketReceiverResumesWhenQueueDrains(t *testing.T) {
 func TestWebSocketReceiverDefersReadingNextBodyWhileOversizedMessageIsQueued(t *testing.T) {
 	for _, size := range []int{1, maxQueuedWebSocketBytes + 1} {
 		t.Run(strconv.Itoa(size), func(t *testing.T) {
-			receiver := &webSocketReceiver{done: make(chan struct{})}
-			target, err := receiver.attach()
-			require.NoError(t, err)
-			require.NoError(t, receiver.enqueue(target, []byte("first")))
+			synctest.Test(t, func(t *testing.T) {
+				receiver := &webSocketReceiver{done: make(chan struct{})}
+				target, err := receiver.attach()
+				require.NoError(t, err)
+				require.NoError(t, receiver.enqueue(target, []byte("first")))
 
-			// Cover both a large payload and a small one with excess capacity.
-			large := make([]byte, size, maxQueuedWebSocketBytes+1)
-			large[0] = 'x'
-			require.NoError(t, receiver.enqueue(target, large))
-			nextTarget := make(chan *webSocketReadTarget, 1)
-			go func() {
-				target, err := receiver.targetForMessage()
-				if !assert.NoError(t, err) {
-					return
+				// Cover both a large payload and a small one with excess capacity.
+				large := make([]byte, size, maxQueuedWebSocketBytes+1)
+				large[0] = 'x'
+				require.NoError(t, receiver.enqueue(target, large))
+				nextTarget := make(chan *webSocketReadTarget, 1)
+				go func() {
+					target, err := receiver.targetForMessage()
+					if !assert.NoError(t, err) {
+						return
+					}
+					nextTarget <- target
+				}()
+
+				ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+				defer cancel()
+				message, err := receiver.next(ctx, target)
+				require.NoError(t, err)
+				require.Equal(t, []byte("first"), message)
+				synctest.Wait()
+				select {
+				case <-nextTarget:
+					t.Fatal("reader admitted the next body while an oversized message was pending")
+				default:
 				}
-				nextTarget <- target
-			}()
 
-			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
-			defer cancel()
-			message, err := receiver.next(ctx, target)
-			require.NoError(t, err)
-			require.Equal(t, []byte("first"), message)
-			select {
-			case <-nextTarget:
-				t.Fatal("reader admitted the next body while an oversized message was pending")
-			default:
-			}
-
-			message, err = receiver.next(ctx, target)
-			require.NoError(t, err)
-			require.Len(t, message, size)
-			require.Equal(t, byte('x'), message[0])
-			select {
-			case ready := <-nextTarget:
-				require.Same(t, target, ready)
-			case <-ctx.Done():
-				t.Fatal("receiver did not resume after the oversized message was consumed")
-			}
+				message, err = receiver.next(ctx, target)
+				require.NoError(t, err)
+				require.Len(t, message, size)
+				require.Equal(t, byte('x'), message[0])
+				select {
+				case ready := <-nextTarget:
+					require.Same(t, target, ready)
+				case <-ctx.Done():
+					t.Fatal("receiver did not resume after the oversized message was consumed")
+				}
+			})
 		})
 	}
 }
