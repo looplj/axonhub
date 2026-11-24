@@ -747,7 +747,7 @@ func TestWebSocketExecutorRejectsExplicitPreviousResponseIDOnFreshConnection(t *
 func TestWebSocketExecutorRejectsDifferentExplicitPreviousResponseID(t *testing.T) {
 	var upgrades atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		upgrade := upgrades.Add(1)
+		upgrades.Add(1)
 		conn, err := websocket.Accept(w, r, nil)
 		require.NoError(t, err)
 		defer conn.CloseNow()
@@ -755,37 +755,17 @@ func TestWebSocketExecutorRejectsDifferentExplicitPreviousResponseID(t *testing.
 		var payload map[string]any
 		require.NoError(t, wsjson.Read(r.Context(), conn, &payload))
 
-		if upgrade == 1 {
-			require.NotContains(t, payload, "previous_response_id")
-			require.NoError(t, wsjson.Write(r.Context(), conn, map[string]any{
-				"type": "response.completed",
-				"response": map[string]any{
-					"id":         "resp_1",
-					"object":     "response",
-					"created_at": 1700000000,
-					"model":      "gpt-5",
-					"status":     "completed",
-					"output":     []any{},
-				},
-			}))
-			return
-		}
-
-		require.Equal(t, "client_prev", payload["previous_response_id"])
-		input, ok := payload["input"].([]any)
-		require.True(t, ok)
-		require.Len(t, input, 2)
+		require.NotContains(t, payload, "previous_response_id")
 		require.NoError(t, wsjson.Write(r.Context(), conn, map[string]any{
 			"type": "response.completed",
 			"response": map[string]any{
-				"id":         "resp_2",
-				"object":     "response",
-				"created_at": 1700000000,
-				"model":      "gpt-5",
-				"status":     "completed",
-				"output":     []any{},
+				"id": "resp_1", "object": "response", "created_at": 1700000000,
+				"model": "gpt-5", "status": "completed", "output": []any{},
 			},
 		}))
+		// Leave the idle socket available until the mismatch closes it.
+		_, _, err = conn.Read(r.Context())
+		assert.Error(t, err)
 	}))
 	defer server.Close()
 
@@ -1502,11 +1482,126 @@ func TestWebSocketExecutorEvictsPooledConnectionOnEarlyClose(t *testing.T) {
 	require.Equal(t, int32(2), upgrades.Load())
 }
 
-// A failed write on a reused session is ambiguous: the upstream may already have
-// accepted and executed response.create. The executor must evict the dead session and
-// surface the write error instead of resending the request on a new connection, which
-// would execute it twice.
-func TestWebSocketExecutorDoesNotReplayAfterReusedSessionWriteFailure(t *testing.T) {
+func TestWebSocketExecutorAnswersUpstreamPingWhileIdle(t *testing.T) {
+	var upgrades atomic.Int32
+	idle := make(chan struct{})
+	pingResult := make(chan error, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrades.Add(1)
+		conn, err := websocket.Accept(w, r, nil)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer conn.CloseNow()
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second)
+		defer cancel()
+		for turn := range 2 {
+			var payload map[string]any
+			if !assert.NoError(t, wsjson.Read(ctx, conn, &payload)) {
+				return
+			}
+			if !assert.NoError(t, wsjson.Write(ctx, conn, map[string]any{
+				"type": "response.completed",
+				"response": map[string]any{
+					"id": "resp_ping", "status": "completed", "output": []any{},
+				},
+			})) {
+				return
+			}
+			if turn == 0 {
+				go func() {
+					select {
+					case <-idle:
+						pingResult <- conn.Ping(ctx)
+					case <-ctx.Done():
+						pingResult <- ctx.Err()
+					}
+				}()
+			}
+		}
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	defer executor.Close()
+	ctx, cancel := context.WithTimeout(webSocketTestContext(), 3*time.Second)
+	defer cancel()
+	request := &httpclient.Request{
+		URL: server.URL,
+		Headers: http.Header{
+			webSocketSessionHeader: []string{"idle-ping"},
+		},
+		Body: []byte(`{"model":"gpt-5","input":[{"type":"message","role":"user","content":"hello"}]}`),
+	}
+	for turn := range 2 {
+		stream, err := executor.DoStream(ctx, request)
+		require.NoError(t, err)
+		require.True(t, stream.Next())
+		require.Equal(t, "response.completed", stream.Current().Type)
+		require.False(t, stream.Next())
+		require.NoError(t, stream.Err())
+		require.NoError(t, stream.Close())
+
+		if turn == 0 {
+			close(idle)
+			select {
+			case err := <-pingResult:
+				require.NoError(t, err)
+			case <-ctx.Done():
+				t.Fatal("upstream ping did not complete")
+			}
+		}
+	}
+	require.Equal(t, int32(1), upgrades.Load())
+}
+
+func TestWebSocketExecutorAnswersPingBeforeConsumerReads(t *testing.T) {
+	pingResult := make(chan error, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := websocket.Accept(w, r, nil)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer conn.CloseNow()
+		ctx, cancel := context.WithTimeout(r.Context(), time.Second)
+		defer cancel()
+		if _, _, err := conn.Read(ctx); !assert.NoError(t, err) {
+			return
+		}
+		conn.CloseRead(ctx)
+		err = conn.Ping(ctx)
+		pingResult <- err
+		if err == nil {
+			assert.NoError(t, wsjson.Write(ctx, conn, map[string]any{
+				"type": "response.completed",
+				"response": map[string]any{
+					"id": "resp_ping", "status": "completed", "output": []any{},
+				},
+			}))
+		}
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	defer executor.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer cancel()
+	stream, err := executor.DoStream(ctx, &httpclient.Request{URL: server.URL, Body: []byte(`{"model":"gpt-5"}`)})
+	require.NoError(t, err)
+	defer stream.Close()
+	select {
+	case err := <-pingResult:
+		require.NoError(t, err)
+	case <-ctx.Done():
+		t.Fatal("upstream ping did not complete")
+	}
+	require.True(t, stream.Next())
+	require.Equal(t, "response.completed", stream.Current().Type)
+	require.False(t, stream.Next())
+	require.NoError(t, stream.Err())
+}
+
+func TestWebSocketExecutorReplacesClosedIdleConnection(t *testing.T) {
 	var upgrades atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		upgrades.Add(1)
@@ -1538,6 +1633,7 @@ func TestWebSocketExecutorDoesNotReplayAfterReusedSessionWriteFailure(t *testing
 	defer server.Close()
 
 	executor := NewWebSocketExecutor(nil)
+	t.Cleanup(func() { require.NoError(t, executor.Close()) })
 	ctx := webSocketTestContext()
 	request := &httpclient.Request{
 		Method: http.MethodPost,
@@ -1556,28 +1652,28 @@ func TestWebSocketExecutorDoesNotReplayAfterReusedSessionWriteFailure(t *testing
 	require.NoError(t, first.Close())
 	require.Equal(t, int32(1), upgrades.Load())
 
-	// Kill the pooled socket while the pool still believes it is healthy, so the
-	// next write fails before anything reaches the upstream.
+	// The background reader must retire the closed socket before the next write.
 	executor.mu.Lock()
 	var pooled *pooledWebSocketConn
 	for _, candidate := range executor.pool {
 		pooled = candidate
-
 		break
 	}
 	executor.mu.Unlock()
 	require.NotNil(t, pooled)
-	require.False(t, pooled.isClosed())
 	require.NoError(t, pooled.conn.CloseNow())
+	select {
+	case <-pooled.receiver.done:
+	case <-time.After(time.Second):
+		t.Fatal("idle receiver did not detect the close")
+	}
 
-	secondRequest := *request
-	secondRequest.Body = []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message"},{"id":"second","type":"message"}]}`)
-	second, err := executor.DoStream(ctx, &secondRequest)
-	require.Error(t, err, "a failed write on a reused session must be surfaced")
-	require.Contains(t, err.Error(), "failed to write response.create websocket event")
-	require.Nil(t, second)
-	require.Equal(t, int32(1), upgrades.Load(),
-		"the request must not be resent on a new upstream connection")
+	second, err := executor.DoStream(ctx, request)
+	require.NoError(t, err)
+	require.True(t, second.Next())
+	require.Equal(t, "response.completed", second.Current().Type)
+	require.NoError(t, second.Close())
+	require.Equal(t, int32(2), upgrades.Load())
 }
 
 // A reused session that dies without a close frame must also surface the failure
@@ -1615,7 +1711,11 @@ func TestWebSocketExecutorDoesNotReplayAfterReusedSessionReadFailure(t *testing.
 			}
 		}
 
-		// Drop the peer without a close frame so the client only notices on read.
+		// Drop the peer after it accepts the second request. A retry would
+		// risk sending response.create twice.
+		if !assert.NoError(t, wsjson.Read(r.Context(), conn, &payload)) {
+			return
+		}
 		tcpConn := r.Context().Value(connectionKey{}).(*net.TCPConn)
 		assert.NoError(t, tcpConn.SetLinger(0))
 	}))
@@ -1644,8 +1744,6 @@ func TestWebSocketExecutorDoesNotReplayAfterReusedSessionReadFailure(t *testing.
 	require.False(t, first.Next())
 	require.NoError(t, first.Err())
 	require.NoError(t, first.Close())
-
-	time.Sleep(100 * time.Millisecond)
 
 	secondRequest := *request
 	secondRequest.Body = []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message"},{"id":"second","type":"message"}]}`)

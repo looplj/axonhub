@@ -492,6 +492,7 @@ type webSocketPoolKey struct {
 }
 
 type pooledWebSocketConn struct {
+	receiver     *webSocketReceiver
 	key          webSocketPoolKey
 	conn         *websocket.Conn
 	activityConn *webSocketActivityConn
@@ -512,6 +513,8 @@ type pooledWebSocketConn struct {
 }
 
 type webSocketLease struct {
+	receiver      *webSocketReceiver
+	readTarget    *webSocketReadTarget
 	conn          *websocket.Conn
 	activityConn  *webSocketActivityConn
 	owner         *WebSocketExecutor
@@ -563,7 +566,7 @@ func (e *WebSocketExecutor) acquire(ctx context.Context, request *httpclient.Req
 		if err != nil {
 			return nil, err
 		}
-		return &webSocketLease{conn: conn, activityConn: activityConn}, nil
+		return &webSocketLease{conn: conn, activityConn: activityConn, receiver: newWebSocketReceiver(conn, nil)}, nil
 	}
 
 	for {
@@ -575,12 +578,12 @@ func (e *WebSocketExecutor) acquire(ctx context.Context, request *httpclient.Req
 		select {
 		case pc.inFlight <- struct{}{}:
 			closed, expired, used := pc.leaseState(time.Now(), e.maxLifetime)
-			if closed || expired {
+			if closed || expired || pc.receiver.ended() {
 				<-pc.inFlight
 				e.evict(pc)
 				continue
 			}
-			return &webSocketLease{conn: pc.conn, activityConn: pc.activityConn, owner: e, pooled: pc, reused: used, generation: pc.generation}, nil
+			return &webSocketLease{conn: pc.conn, activityConn: pc.activityConn, receiver: pc.receiver, owner: e, pooled: pc, reused: used, generation: pc.generation}, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
@@ -635,6 +638,7 @@ func (e *WebSocketExecutor) getOrDialPooled(ctx context.Context, request *httpcl
 		_ = conn.CloseNow()
 		return nil, fmt.Errorf("websocket session pool is full")
 	}
+	pc.receiver = newWebSocketReceiver(conn, func() { e.evict(pc) })
 	e.pool[key] = pc
 	e.generation++
 	pc.generation = e.generation
@@ -966,7 +970,7 @@ func (pc *pooledWebSocketConn) close() {
 	pc.lastInput = nil
 	pc.lastResponseID = ""
 	pc.mu.Unlock()
-	_ = pc.conn.CloseNow()
+	pc.receiver.close()
 }
 
 func (pc *pooledWebSocketConn) previousTurn() ([]json.RawMessage, string) {
@@ -980,8 +984,11 @@ func (l *webSocketLease) release(evict bool) {
 		return
 	}
 	l.once.Do(func() {
+		if l.readTarget != nil {
+			l.receiver.detach(l.readTarget)
+		}
 		if l.pooled == nil {
-			_ = l.conn.CloseNow()
+			l.receiver.close()
 			return
 		}
 		if l.owner != nil {
@@ -1262,7 +1269,7 @@ func (s *webSocketStream) Next() bool {
 	lease := s.lease
 	s.mu.Unlock()
 	httpclient.SetStreamIdleWaiting(s.ctx, true)
-	_, msg, err := lease.conn.Read(s.ctx)
+	msg, err := lease.receiver.next(s.ctx, lease.readTarget)
 	httpclient.SetStreamIdleWaiting(s.ctx, false)
 	if err != nil {
 		s.mu.Lock()

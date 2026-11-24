@@ -41,6 +41,11 @@ func (l *webSocketLease) write(ctx context.Context, payload map[string]any) erro
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	var err error
+	l.readTarget, err = l.receiver.attach()
+	if err != nil {
+		return err
+	}
 	writeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	return wsjson.Write(writeCtx, l.conn, payload)
