@@ -6,6 +6,7 @@
 //   internal/server/gql/plugin.resolvers.go
 // 注意事项:
 //   宿主命名空间在公共 KV 名称语法之外，卸载时与安装数据一起删除。
+//   等待行锁期间，其他实例可能停用插件或撤销 read_channels 授权，因此保存摘要前必须在持锁事务内复核授权。
 
 package plugin
 
