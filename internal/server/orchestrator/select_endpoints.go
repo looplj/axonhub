@@ -52,18 +52,16 @@ func selectEndpointAPIFormat(
 	}
 
 	format := SelectAPIFormat(endpoints, req)
-	if format != llm.APIFormatOpenAIResponse.String() || req.RequestType != llm.RequestTypeChat {
+	if format != llm.APIFormatOpenAIResponse.String() || req.RequestType != llm.RequestTypeChat ||
+		ch.Settings == nil || !ch.Settings.PreferResponsesWebSocket {
 		return format
 	}
 
-	// Codex may expose WebSocket by default. Give it priority only when
-	// the channel configuration explicitly enables it.
-	isWebSocket := func(ep objects.ChannelEndpoint) bool {
-		return ep.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String()
-	}
-	if slices.ContainsFunc(endpoints, isWebSocket) &&
-		slices.ContainsFunc(biz.NormalizeEndpoints(ch.Endpoints, ch.BaseURL), isWebSocket) {
-		return llm.APIFormatOpenAIResponseWebSocket.String()
+	webSocketFormat := llm.APIFormatOpenAIResponseWebSocket.String()
+	if slices.ContainsFunc(endpoints, func(ep objects.ChannelEndpoint) bool {
+		return ep.APIFormat == webSocketFormat
+	}) {
+		return webSocketFormat
 	}
 
 	return format

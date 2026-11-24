@@ -68,7 +68,7 @@ func TestSelectAPIFormat_PrefersResponsesProtocolMatchingInboundTransport(t *tes
 	require.Equal(t, llm.APIFormatOpenAIResponseWebSocket.String(), format)
 }
 
-func TestPopulateAPIFormat_PrefersExplicitResponsesWebSocket(t *testing.T) {
+func TestPopulateAPIFormat_PrefersResponsesWebSocketOnlyWhenOptedIn(t *testing.T) {
 	httpFormat := llm.APIFormatOpenAIResponse.String()
 	wsFormat := llm.APIFormatOpenAIResponseWebSocket.String()
 	dual := []objects.ChannelEndpoint{{APIFormat: httpFormat}, {APIFormat: wsFormat}}
@@ -77,44 +77,47 @@ func TestPopulateAPIFormat_PrefersExplicitResponsesWebSocket(t *testing.T) {
 		name       string
 		configured []objects.ChannelEndpoint
 		inbound    llm.APIFormat
+		preferWS   bool
 		forced     []string
 		want       string
 	}{
 		{
-			name: "default WebSocket keeps HTTP priority", inbound: llm.APIFormatOpenAIResponse, want: httpFormat,
+			name: "built-in WebSocket keeps HTTP priority by default", inbound: llm.APIFormatOpenAIResponse, want: httpFormat,
 		},
 		{
-			name: "HTTP only keeps HTTP", configured: dual[:1], inbound: llm.APIFormatOpenAIResponse, want: httpFormat,
+			name: "saved dual endpoints keep HTTP priority by default", configured: dual,
+			inbound: llm.APIFormatOpenAIResponse, want: httpFormat,
 		},
 		{
-			name: "explicit WebSocket wins over inbound HTTP", configured: dual,
-			inbound: llm.APIFormatOpenAIResponse, want: wsFormat,
+			name: "WebSocket clients keep WebSocket with the preference off", configured: dual,
+			inbound: llm.APIFormatOpenAIResponseWebSocket, want: wsFormat,
 		},
 		{
-			name: "explicit WebSocket wins over HTTP fallback", configured: dual,
-			inbound: llm.APIFormatOpenAIChatCompletion, want: wsFormat,
+			name: "HTTP only keeps HTTP even with preference enabled", configured: dual[:1],
+			inbound: llm.APIFormatOpenAIResponse, preferWS: true, want: httpFormat,
 		},
 		{
-			name: "legacy WebSocket endpoint counts as explicitly enabled",
-			configured: []objects.ChannelEndpoint{
-				{APIFormat: httpFormat},
-				{APIFormat: httpFormat, Transport: objects.ChannelEndpointTransportWebSocket},
-			},
-			inbound: llm.APIFormatOpenAIResponse, want: wsFormat,
+			name:    "opt-in prefers built-in WebSocket over HTTP",
+			inbound: llm.APIFormatOpenAIResponse, preferWS: true, want: wsFormat,
 		},
 		{
-			name: "model protocol override keeps HTTP", configured: dual,
-			inbound: llm.APIFormatOpenAIResponse, forced: []string{httpFormat}, want: httpFormat,
+			name: "opt-in prefers saved WebSocket over HTTP fallback", configured: dual,
+			inbound: llm.APIFormatOpenAIChatCompletion, preferWS: true, want: wsFormat,
+		},
+		{
+			name: "opt-in respects a model protocol override", configured: dual,
+			inbound: llm.APIFormatOpenAIResponse, preferWS: true, forced: []string{httpFormat, wsFormat}, want: httpFormat,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			const model = "test-model"
 
 			ch := &biz.Channel{Channel: &ent.Channel{Type: channel.TypeCodex, Endpoints: tc.configured}}
-			if len(tc.forced) > 0 {
-				ch.Settings = &objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
-					{Model: model, APIFormats: tc.forced},
-				}}
+			if tc.preferWS || len(tc.forced) > 0 {
+				ch.Settings = &objects.ChannelSettings{PreferResponsesWebSocket: tc.preferWS}
+				if len(tc.forced) > 0 {
+					ch.Settings.ModelProtocols = []objects.ModelProtocol{{Model: model, APIFormats: tc.forced}}
+				}
 			}
 			candidate := &ChannelModelsCandidate{
 				Channel: ch,
