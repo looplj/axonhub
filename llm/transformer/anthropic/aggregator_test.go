@@ -1,7 +1,9 @@
 package anthropic
 
 import (
+	"bytes"
 	"encoding/json"
+	"log/slog"
 	"strconv"
 	"testing"
 
@@ -1161,8 +1163,14 @@ func TestAggregateStreamChunks_EmptyToolUseInputDefaultsToObject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var logs bytes.Buffer
+			previousLogger := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelWarn})))
+			t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
 			raw, _, err := AggregateStreamChunks(t.Context(), tt.chunks, PlatformDirect)
 			require.NoError(t, err)
+			require.NotContains(t, logs.String(), "invalid tool use input")
 
 			var payload map[string]any
 			require.NoError(t, json.Unmarshal(raw, &payload))
