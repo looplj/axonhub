@@ -1109,7 +1109,7 @@ func TestWebSocketStreamReportsNormalCloseAfterPartialResponse(t *testing.T) {
 		require.Equal(t, want, stream.Current().Type)
 	}
 	require.False(t, stream.Next())
-	require.ErrorContains(t, stream.Err(), "closed before terminal response event")
+	require.ErrorIs(t, stream.Err(), llm.ErrStreamIncomplete)
 	require.Equal(t, websocket.StatusNormalClosure, websocket.CloseStatus(stream.Err()))
 }
 
@@ -1606,6 +1606,9 @@ func TestWebSocketResponseMessageReadLimit(t *testing.T) {
 					return
 				}
 				defer conn.CloseNow()
+				if _, _, err := conn.Read(r.Context()); !assert.NoError(t, err) {
+					return
+				}
 				writer, err := conn.Writer(r.Context(), websocket.MessageText)
 				if !assert.NoError(t, err) {
 					return
@@ -1628,15 +1631,18 @@ func TestWebSocketResponseMessageReadLimit(t *testing.T) {
 			conn, _, err := executor.dial(ctx, &httpclient.Request{}, "ws"+strings.TrimPrefix(server.URL, "http"), nil)
 			require.NoError(t, err)
 			defer conn.CloseNow()
-			_, reader, err := conn.Reader(ctx)
+			receiver := newWebSocketReceiver(conn, nil)
+			target, err := receiver.attach()
 			require.NoError(t, err)
-			n, err := io.Copy(io.Discard, reader)
+			require.NoError(t, conn.Write(ctx, websocket.MessageText, []byte("{}")))
+			message, err := receiver.next(ctx, target)
 			if size > maxWebSocketResponseMessageBytes {
+				require.ErrorIs(t, err, httpclient.ErrStreamEventTooLarge)
 				require.ErrorIs(t, err, websocket.ErrMessageTooBig)
 				return
 			}
 			require.NoError(t, err)
-			require.EqualValues(t, size, n)
+			require.Len(t, message, size)
 		})
 	}
 }

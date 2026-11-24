@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 const (
@@ -72,6 +74,7 @@ func (r *webSocketReceiver) receive(onExit func()) {
 			slog.Error("websocket receiver panicked", slog.Any("panic", recovered))
 		}
 		if errors.Is(r.err, websocket.ErrMessageTooBig) {
+			r.err = fmt.Errorf("%w: %w", httpclient.ErrStreamEventTooLarge, r.err)
 			slog.Warn("upstream WebSocket response message exceeded read limit", slog.Int("limit_bytes", maxWebSocketResponseMessageBytes))
 		}
 		close(r.done)

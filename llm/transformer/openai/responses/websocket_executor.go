@@ -1297,7 +1297,7 @@ func (s *webSocketStream) Next() bool {
 			return false
 		}
 		if websocket.CloseStatus(err) == websocket.StatusNormalClosure || strings.Contains(err.Error(), "use of closed network connection") {
-			err = fmt.Errorf("upstream websocket closed before terminal response event: %w", err)
+			err = fmt.Errorf("upstream websocket closed before terminal response event: %w: %w", llm.ErrStreamIncomplete, err)
 		}
 		s.setErr(err)
 		s.finish(true)
