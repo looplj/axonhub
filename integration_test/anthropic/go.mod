@@ -1,6 +1,6 @@
 module github.com/looplj/axonhub/anthropic_test
 
-go 1.25.2
+go 1.27.4
 
 require github.com/anthropics/anthropic-sdk-go v1.84.0
 

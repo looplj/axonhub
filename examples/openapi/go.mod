@@ -1,6 +1,6 @@
 module examples
 
-go 1.25.5
+go 1.27.4
 
 tool github.com/Khan/genqlient
 

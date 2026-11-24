@@ -14,6 +14,7 @@ The script keeps these on the same patch version:
 - `cmd/schema/go.mod`
 - `cmd/pack-plugin/go.mod`
 - `cmd/axonhub-desktop/go.mod`
+- `integration_test/**/go.mod` and `examples/**/go.mod`
 - `Dockerfile` (`golang:<version>-alpine3.24`; the Alpine suffix stays)
 - `.github/workflows/*.yml` literal `go-version:` values, including `stable`
 - `AGENTS.md` technology stack
@@ -23,4 +24,3 @@ It leaves these alone:
 
 - `go-version-file:` entries, because they follow the module file
 - commented workflow lines
-- `integration_test/**/go.mod` and `examples/**/go.mod`
