@@ -1130,3 +1130,53 @@ func TestAggregateStreamChunks_WithTestData(t *testing.T) {
 		})
 	}
 }
+
+func TestAggregateStreamChunks_EmptyToolUseInputDefaultsToObject(t *testing.T) {
+	tests := []struct {
+		name   string
+		chunks []*httpclient.StreamEvent
+	}{
+		{
+			name: "no input_json_delta chunks",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[],"usage":{"input_tokens":10,"output_tokens":0}}}`)},
+				{Data: []byte(`{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_1","name":"ping","input":{}}}`)},
+				{Data: []byte(`{"type":"content_block_stop","index":0}`)},
+				{Data: []byte(`{"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":5}}`)},
+				{Data: []byte(`{"type":"message_stop"}`)},
+			},
+		},
+		{
+			name: "whitespace-only input_json_delta chunks",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[],"usage":{"input_tokens":10,"output_tokens":0}}}`)},
+				{Data: []byte(`{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_1","name":"ping","input":{}}}`)},
+				{Data: []byte(`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"   "}}`)},
+				{Data: []byte(`{"type":"content_block_stop","index":0}`)},
+				{Data: []byte(`{"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":5}}`)},
+				{Data: []byte(`{"type":"message_stop"}`)},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw, _, err := AggregateStreamChunks(t.Context(), tt.chunks, PlatformDirect)
+			require.NoError(t, err)
+
+			var payload map[string]any
+			require.NoError(t, json.Unmarshal(raw, &payload))
+
+			content, ok := payload["content"].([]any)
+			require.True(t, ok)
+			require.Len(t, content, 1)
+
+			block, ok := content[0].(map[string]any)
+			require.True(t, ok)
+			require.Equal(t, "tool_use", block["type"])
+			input, hasInput := block["input"]
+			require.True(t, hasInput, "expected serialized tool_use block to include input field")
+			require.Equal(t, map[string]any{}, input)
+		})
+	}
+}
