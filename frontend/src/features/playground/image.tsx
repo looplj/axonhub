@@ -1,5 +1,21 @@
+// 职责: 生图模式的请求发送、结果状态与图片列表渲染。
+// 关联文件:
+//   frontend/src/features/playground/index.tsx
+//   frontend/src/features/playground/selection.ts
+//   frontend/src/lib/app-path.ts
+//   frontend/src/lib/auth-session.ts
+//   frontend/src/locales/en/playground.json
+//   frontend/src/locales/zh-CN/playground.json
+// 遵循的 Rules:
+//   .agents/rules/frontend-general.md
+//   .agents/rules/frontend-i18n.md
+// 注意事项:
+//   size 留空和 n 等于 1 时都不发送，交给模型默认值。
+//   上游可能只返回 b64_json，需要自己拼 data URL。
+
 import { Fragment, useCallback, useRef, useState } from 'react';
 import { z } from 'zod';
+import { nanoid } from 'nanoid';
 import { ImageIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -56,7 +72,7 @@ export function useImageGeneration(params: ImageGenerationParams) {
     async (prompt: string) => {
       if (isGenerating) return;
       const entry: ImageGeneration = {
-        id: crypto.randomUUID(),
+        id: nanoid(),
         prompt,
         status: 'pending',
         images: [],
