@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -1807,7 +1808,7 @@ func TestWebSocketReceiverDrainsQueueBeforeSlowConsumerError(t *testing.T) {
 	require.NoError(t, receiver.enqueue(fullFrame))
 
 	receiver.err = receiver.enqueue([]byte("overflow"))
-	require.ErrorContains(t, receiver.err, "timed out waiting for space")
+	require.ErrorContains(t, receiver.err, "timed out waiting for upstream WebSocket response queue to drain")
 	close(receiver.done)
 
 	message, err := receiver.next(t.Context(), target)
@@ -1845,11 +1846,78 @@ func TestWebSocketReceiverResumesWhenQueueDrains(t *testing.T) {
 	require.Equal(t, []byte("next"), message)
 }
 
-func TestWebSocketReceiverRejectsOversizedFrame(t *testing.T) {
+func TestWebSocketReceiverHandsOffOversizedMessagesInOrder(t *testing.T) {
+	for _, size := range []int{1, maxQueuedWebSocketBytes + 1} {
+		t.Run(strconv.Itoa(size), func(t *testing.T) {
+			receiver := &webSocketReceiver{done: make(chan struct{})}
+			target, err := receiver.attach()
+			require.NoError(t, err)
+			require.NoError(t, receiver.enqueue([]byte("first")))
+
+			// Cover both a large payload and a small one with excess capacity.
+			large := make([]byte, size, maxQueuedWebSocketBytes+1)
+			large[0] = 'x'
+			result := make(chan error, 1)
+			go func() { result <- receiver.enqueue(large) }()
+
+			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+			defer cancel()
+			message, err := receiver.next(ctx, target)
+			require.NoError(t, err)
+			require.Equal(t, []byte("first"), message)
+			select {
+			case err := <-result:
+				t.Fatalf("receiver returned before handing off the oversized message: %v", err)
+			default:
+			}
+
+			message, err = receiver.next(ctx, target)
+			require.NoError(t, err)
+			require.Len(t, message, size)
+			require.Equal(t, byte('x'), message[0])
+			select {
+			case err := <-result:
+				require.NoError(t, err)
+			case <-ctx.Done():
+				t.Fatal("receiver did not resume after the oversized message was consumed")
+			}
+
+			require.NoError(t, receiver.enqueue([]byte("last")))
+			message, err = receiver.next(ctx, target)
+			require.NoError(t, err)
+			require.Equal(t, []byte("last"), message)
+		})
+	}
+}
+
+func TestWebSocketReceiverDiscardsOversizedHandoffOnDetach(t *testing.T) {
 	receiver := &webSocketReceiver{done: make(chan struct{})}
-	_, err := receiver.attach()
+	oldTarget, err := receiver.attach()
 	require.NoError(t, err)
-	require.ErrorContains(t, receiver.enqueue(make([]byte, maxQueuedWebSocketBytes)), "exceeds response queue byte limit")
+	result := make(chan error, 1)
+	go func() { result <- receiver.enqueue(make([]byte, maxQueuedWebSocketBytes+1)) }()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer cancel()
+	select {
+	case <-oldTarget.ready:
+	case <-ctx.Done():
+		t.Fatal("oversized message was not queued")
+	}
+
+	receiver.detach(oldTarget)
+	newTarget, err := receiver.attach()
+	require.NoError(t, err)
+	select {
+	case err := <-result:
+		require.NoError(t, err)
+	case <-ctx.Done():
+		t.Fatal("detaching the old target did not release the receiver")
+	}
+	require.NoError(t, receiver.enqueue([]byte("new response")))
+	message, err := receiver.next(ctx, newTarget)
+	require.NoError(t, err)
+	require.Equal(t, []byte("new response"), message)
 }
 
 // A reused session that dies without a close frame must also surface the failure

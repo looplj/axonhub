@@ -91,40 +91,55 @@ func (r *webSocketReceiver) receive(onExit func()) {
 
 func (r *webSocketReceiver) enqueue(message []byte) error {
 	size := cap(message) + webSocketFrameOverhead
-	if size > maxQueuedWebSocketBytes {
-		return fmt.Errorf("upstream WebSocket frame exceeds response queue byte limit")
-	}
-
 	r.mu.Lock()
 	target := r.target
 	if target == nil {
 		r.mu.Unlock()
 		return fmt.Errorf("unexpected upstream WebSocket message with no active request")
 	}
+
+	if size > maxQueuedWebSocketBytes {
+		// The budget limits read-ahead, not the size of a single message.
+		// Deliver this message in order and do not read another until it is
+		// consumed. Only the receiver can append to the queue.
+		target.appendMessage(message, size)
+		r.mu.Unlock()
+		return r.waitForQueue(target, func() bool { return len(target.messages) == 0 })
+	}
+
 	queued := target.tryEnqueue(message, size)
 	r.mu.Unlock()
 	if queued {
 		return nil
 	}
 
+	return r.waitForQueue(target, func() bool { return target.tryEnqueue(message, size) })
+}
+
+// check is called with the receiver mutex held and only while target is active.
+func (r *webSocketReceiver) waitForQueue(target *webSocketReadTarget, check func() bool) error {
 	wait := time.NewTimer(webSocketQueueWait)
 	defer wait.Stop()
+	expired := false
 	for {
+		r.mu.Lock()
+		complete := r.target != target || check()
+		r.mu.Unlock()
+		if complete {
+			return nil
+		}
+		if expired {
+			return fmt.Errorf("timed out waiting for upstream WebSocket response queue to drain")
+		}
+
 		select {
 		case <-target.space:
-			r.mu.Lock()
-			active := r.target == target
-			queued = active && target.tryEnqueue(message, size)
-			r.mu.Unlock()
-			if !active || queued {
-				return nil
-			}
 		case <-target.detached:
 			return nil
 		case <-r.stopping:
 			return net.ErrClosed
 		case <-wait.C:
-			return fmt.Errorf("timed out waiting for space in upstream WebSocket response queue")
+			expired = true
 		}
 	}
 }
@@ -134,13 +149,18 @@ func (t *webSocketReadTarget) tryEnqueue(message []byte, size int) bool {
 	if size > maxQueuedWebSocketBytes-t.queuedBytes {
 		return false
 	}
+	t.appendMessage(message, size)
+	return true
+}
+
+// appendMessage is called with the receiver mutex held.
+func (t *webSocketReadTarget) appendMessage(message []byte, size int) {
 	t.messages = append(t.messages, message)
 	t.queuedBytes += size
 	select {
 	case t.ready <- struct{}{}:
 	default:
 	}
-	return true
 }
 
 func (r *webSocketReceiver) dequeue(target *webSocketReadTarget) ([]byte, bool) {
