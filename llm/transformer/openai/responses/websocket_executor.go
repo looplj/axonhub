@@ -1269,7 +1269,6 @@ type webSocketStream struct {
 	current   *httpclient.StreamEvent
 	err       error
 	closed    bool
-	sawEvent  bool
 	terminal  bool
 	stopIdle  func()
 }
@@ -1298,13 +1297,7 @@ func (s *webSocketStream) Next() bool {
 			return false
 		}
 		if websocket.CloseStatus(err) == websocket.StatusNormalClosure || strings.Contains(err.Error(), "use of closed network connection") {
-			if ctxErr := httpclient.StreamContextError(s.ctx); ctxErr != nil {
-				s.setErr(ctxErr)
-			} else if !s.hasSeenEvent() {
-				s.setErr(fmt.Errorf("websocket closed before response event"))
-			}
-			s.finish(true)
-			return false
+			err = fmt.Errorf("upstream websocket closed before terminal response event: %w", err)
 		}
 		s.setErr(err)
 		s.finish(true)
@@ -1406,14 +1399,7 @@ func (s *webSocketStream) isClosed() bool {
 func (s *webSocketStream) setCurrent(event *httpclient.StreamEvent) {
 	s.mu.Lock()
 	s.current = event
-	s.sawEvent = true
 	s.mu.Unlock()
-}
-
-func (s *webSocketStream) hasSeenEvent() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.sawEvent
 }
 
 func (s *webSocketStream) markTerminal() {

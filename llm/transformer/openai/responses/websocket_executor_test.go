@@ -1074,6 +1074,45 @@ func TestWebSocketStreamCloseWhileNextBlockedReportsClosedBeforeResponse(t *test
 	require.NoError(t, stream.Err())
 }
 
+func TestWebSocketStreamReportsNormalCloseAfterPartialResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := websocket.Accept(w, r, nil)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer conn.CloseNow()
+		if _, _, err := conn.Read(r.Context()); !assert.NoError(t, err) {
+			return
+		}
+		for _, event := range []string{
+			`{"type":"response.created","response":{"id":"resp_partial"}}`,
+			`{"type":"response.output_text.delta","delta":"partial"}`,
+		} {
+			if !assert.NoError(t, conn.Write(r.Context(), websocket.MessageText, []byte(event))) {
+				return
+			}
+		}
+		_ = conn.Close(websocket.StatusNormalClosure, "")
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	defer executor.Close()
+	ctx, cancel := context.WithTimeout(webSocketTestContext(), 5*time.Second)
+	defer cancel()
+	stream, err := executor.DoStream(ctx, &httpclient.Request{
+		URL: server.URL, Body: []byte(`{"model":"gpt-5"}`),
+	})
+	require.NoError(t, err)
+	for _, want := range []string{"response.created", "response.output_text.delta"} {
+		require.True(t, stream.Next())
+		require.Equal(t, want, stream.Current().Type)
+	}
+	require.False(t, stream.Next())
+	require.ErrorContains(t, stream.Err(), "closed before terminal response event")
+	require.Equal(t, websocket.StatusNormalClosure, websocket.CloseStatus(stream.Err()))
+}
+
 func TestWebSocketStreamDoesNotRetryFreshConnectionFailure(t *testing.T) {
 	var upgrades atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
