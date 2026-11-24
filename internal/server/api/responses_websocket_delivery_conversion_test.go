@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -36,7 +36,7 @@ func TestStreamDeliveryWebSocketConvertedTerminalWriteFailure(t *testing.T) {
 	// Given: the real Responses converter with placeholder zeros and a final 12/34 usage chunk.
 	source := newResponsesWebSocketConvertedDeliveryStream(t)
 	terminalAttempted := false
-	transport := &responsesWebSocketDeliveryWriter{write: func(data []byte) error {
+	transport := &responsesWebSocketDeliveryWriter{write: func(_ context.Context, data []byte) error {
 		require.False(t, source.DeliveryAcknowledged())
 		if gjson.GetBytes(data, "type").String() == "response.completed" {
 			terminalAttempted = true
@@ -63,13 +63,14 @@ func TestStreamDeliveryWebSocketConvertedLoopback(t *testing.T) {
 	}
 	server := newResponsesWebSocketTestServer(t, process, nil)
 	conn := dialResponsesWebSocket(t, server.URL, nil)
-	defer conn.Close()
-	require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
+	defer conn.CloseNow()
 	// When: the client reads the converted terminal then disconnects after acknowledgement.
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"lane-converted","model":"gpt-test","input":"hello"}`)))
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","stream_id":"lane-converted","model":"gpt-test","input":"hello"}`)))
 	var terminal []byte
 	for {
-		_, data, err := conn.ReadMessage()
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+		_, data, err := conn.Read(ctx)
+		cancel()
 		require.NoError(t, err)
 		if gjson.GetBytes(data, "type").String() == "response.completed" {
 			terminal = data
@@ -81,7 +82,7 @@ func TestStreamDeliveryWebSocketConvertedLoopback(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("converted turn did not finish")
 	}
-	require.NoError(t, conn.Close())
+	require.NoError(t, conn.CloseNow())
 	// Then: final usage ordering and the original observer survive the actual wrapper path.
 	require.True(t, source.DeliveryAcknowledged())
 	require.Equal(t, "lane-converted", gjson.GetBytes(terminal, "stream_id").String())

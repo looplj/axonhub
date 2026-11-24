@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -46,7 +46,17 @@ func serveResponsesWebSocket(
 	process responsesWebSocketProcessFunc,
 	transformError responsesWebSocketErrorFunc,
 ) {
-	if !websocket.IsWebSocketUpgrade(c.Request) {
+	hasToken := func(header, want string) bool {
+		for _, value := range c.Request.Header.Values(header) {
+			for token := range strings.SplitSeq(value, ",") {
+				if strings.EqualFold(strings.TrimSpace(token), want) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	if !hasToken("Connection", "upgrade") || !hasToken("Upgrade", "websocket") {
 		JSONError(c, http.StatusBadRequest, errors.New("websocket upgrade required"))
 		return
 	}
@@ -58,24 +68,21 @@ func serveResponsesWebSocket(
 	}
 	c.Request = c.Request.WithContext(ctx)
 
-	responseHeaders := c.Writer.Header().Clone()
-	upgrader := new(websocket.Upgrader)
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, responseHeaders)
+	idleTimer := time.AfterFunc(responsesWebSocketIdleTimeout, cancelSession)
+	defer idleTimer.Stop()
+	conn, err := websocket.Accept(c.Writer, c.Request, &websocket.AcceptOptions{
+		OnPongReceived: func(context.Context, []byte) {
+			idleTimer.Reset(responsesWebSocketIdleTimeout)
+		},
+	})
 	if err != nil {
 		log.Warn(ctx, "Failed to upgrade Responses WebSocket", log.Cause(err))
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.CloseNow() }()
 	writer := &responsesWebSocketWriter{conn: conn}
 
 	conn.SetReadLimit(responsesWebSocketMaxMessageSize)
-	if err := conn.SetReadDeadline(time.Now().Add(responsesWebSocketIdleTimeout)); err != nil {
-		log.Warn(ctx, "Failed to set Responses WebSocket read deadline", log.Cause(err))
-		return
-	}
-	conn.SetPongHandler(func(string) error {
-		return conn.SetReadDeadline(time.Now().Add(responsesWebSocketIdleTimeout))
-	})
 
 	pingDone := make(chan struct{})
 	defer close(pingDone)
@@ -84,20 +91,17 @@ func serveResponsesWebSocket(
 	dispatcher := newResponsesWebSocketDispatcher(ctx, cancelSession, conn, writer, c.Request, requestTimeout, process, transformError)
 	defer dispatcher.wait()
 	for {
-		messageType, message, readErr := conn.ReadMessage()
+		messageType, message, readErr := conn.Read(ctx)
 		if readErr != nil {
-			if !websocket.IsCloseError(readErr, websocket.CloseNormalClosure, websocket.CloseGoingAway) &&
+			if websocket.CloseStatus(readErr) != websocket.StatusNormalClosure && websocket.CloseStatus(readErr) != websocket.StatusGoingAway &&
 				!errors.Is(readErr, io.EOF) && ctx.Err() == nil {
 				log.Warn(ctx, "Failed to read Responses WebSocket message", log.Cause(readErr))
 			}
 			return
 		}
-		if err := conn.SetReadDeadline(time.Now().Add(responsesWebSocketIdleTimeout)); err != nil {
-			log.Warn(ctx, "Failed to refresh Responses WebSocket read deadline", log.Cause(err))
-			return
-		}
+		idleTimer.Reset(responsesWebSocketIdleTimeout)
 
-		if messageType != websocket.TextMessage {
+		if messageType != websocket.MessageText {
 			if err := writeResponsesWebSocketError(writer, invalidResponsesWebSocketRequest("response.create must be sent as a text message", ""), ""); err != nil {
 				return
 			}
@@ -136,8 +140,7 @@ type responsesWebSocketWriter struct {
 }
 
 type responsesWebSocketMessageWriter interface {
-	SetWriteDeadline(time.Time) error
-	WriteMessage(int, []byte) error
+	Write(context.Context, websocket.MessageType, []byte) error
 }
 
 type responsesWebSocketLane struct {
@@ -243,7 +246,7 @@ func (d *responsesWebSocketDispatcher) dispatch(lane *responsesWebSocketLane, st
 				log.Error(d.ctx, "Panic while processing Responses WebSocket request", log.Any("panic", recovered))
 				d.closeOnce.Do(func() {
 					d.cancel()
-					_ = d.conn.Close()
+					_ = d.conn.CloseNow()
 				})
 			}
 		}()
@@ -266,7 +269,7 @@ func (d *responsesWebSocketDispatcher) dispatch(lane *responsesWebSocketLane, st
 			}
 			d.closeOnce.Do(func() {
 				d.cancel()
-				_ = d.conn.Close()
+				_ = d.conn.CloseNow()
 			})
 		}
 	})
@@ -326,8 +329,12 @@ func runResponsesWebSocketPings(ctx context.Context, conn *websocket.Conn, done 
 	for {
 		select {
 		case <-ticker.C:
-			deadline := time.Now().Add(responsesWebSocketPingWriteTimeout)
-			if err := conn.WriteControl(websocket.PingMessage, nil, deadline); err != nil {
+			pingCtx, cancel := context.WithTimeout(ctx, responsesWebSocketPingWriteTimeout)
+			err := conn.Ping(pingCtx)
+			cancel()
+			// A missing pong is governed by the refreshed session idle timer.
+			// Ping also waits for the pong, unlike a control-frame-only write.
+			if err != nil && !errors.Is(err, context.DeadlineExceeded) {
 				return
 			}
 		case <-done:
@@ -659,7 +666,7 @@ func writeResponsesWebSocketResult(
 			eventType := gjson.GetBytes(event.Data, "type").String()
 			status := gjson.GetBytes(event.Data, "response.status").String()
 			if err := writeStreamDelivery(ctx, stream, func() (bool, error) {
-				if err := writeResponsesWebSocketMessage(writer, websocket.TextMessage, data); err != nil {
+				if err := writeResponsesWebSocketMessage(writer, websocket.MessageText, data); err != nil {
 					return false, err
 				}
 				terminal := !terminalSeen && terminalTracker.Observe(event)
@@ -810,15 +817,13 @@ func withResponsesWebSocketStreamID(data []byte, streamID string) ([]byte, error
 	return json.Marshal(event)
 }
 
-func writeResponsesWebSocketMessage(writer *responsesWebSocketWriter, messageType int, data []byte) error {
+func writeResponsesWebSocketMessage(writer *responsesWebSocketWriter, messageType websocket.MessageType, data []byte) error {
 	writer.mu.Lock()
 	defer writer.mu.Unlock()
 
-	if err := writer.conn.SetWriteDeadline(time.Now().Add(responsesWebSocketWriteTimeout)); err != nil {
-		return err
-	}
-
-	return writer.conn.WriteMessage(messageType, data)
+	ctx, cancel := context.WithTimeout(context.Background(), responsesWebSocketWriteTimeout)
+	defer cancel()
+	return writer.conn.Write(ctx, messageType, data)
 }
 
 func writeResponsesWebSocketJSON(writer *responsesWebSocketWriter, value any) error {
@@ -827,5 +832,5 @@ func writeResponsesWebSocketJSON(writer *responsesWebSocketWriter, value any) er
 		return err
 	}
 
-	return writeResponsesWebSocketMessage(writer, websocket.TextMessage, data)
+	return writeResponsesWebSocketMessage(writer, websocket.MessageText, data)
 }

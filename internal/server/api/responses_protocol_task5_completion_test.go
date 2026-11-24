@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -55,18 +55,19 @@ func TestResponsesProtocolIntegrationDownstreamCancellationDrainsUpstream(t *tes
 	}))
 	client, handlers, project := newResponsesIntegrationFixture(t, upstream.URL)
 	gateway := responsesIntegrationGateway(t, client, handlers, project)
-	conn, response, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(gateway.URL, "http")+"/v1/responses", nil)
+	conn, response, err := websocket.Dial(t.Context(), "ws"+strings.TrimPrefix(gateway.URL, "http")+"/v1/responses", nil)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusSwitchingProtocols, response.StatusCode)
-	t.Cleanup(func() { _ = conn.Close() })
+	t.Cleanup(func() { _ = conn.CloseNow() })
+	conn.SetReadLimit(-1)
 
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"cancel-lane","model":"synthetic-model","input":"cancel-canary"}`)))
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","stream_id":"cancel-lane","model":"synthetic-model","input":"cancel-canary"}`)))
 	select {
 	case <-started:
 	case <-time.After(5 * time.Second):
 		t.Fatal("upstream request did not start")
 	}
-	require.NoError(t, conn.Close())
+	require.NoError(t, conn.CloseNow())
 
 	select {
 	case <-canceled:

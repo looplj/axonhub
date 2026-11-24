@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -10,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -69,7 +70,7 @@ func TestCodexRoutes_WebSocketParity(t *testing.T) {
 	defer surface.Close()
 	var terminals []string
 	for _, path := range []string{"/v1/responses", "/codex/responses"} {
-		conn, resp, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(surface.URL, "http")+path, http.Header{"Authorization": []string{"Bearer " + h.key.Key}})
+		conn, resp, err := websocket.Dial(t.Context(), "ws"+strings.TrimPrefix(surface.URL, "http")+path, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": []string{"Bearer " + h.key.Key}}})
 		if err != nil {
 			status := "no HTTP response"
 			body := ""
@@ -83,11 +84,14 @@ func TestCodexRoutes_WebSocketParity(t *testing.T) {
 			require.Failf(t, "WebSocket handshake failed", "path=%s status=%s body=%q error=%v", path, status, body, err)
 		}
 		require.Equal(t, 101, resp.StatusCode)
-		require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
+		conn.SetReadLimit(-1)
+		t.Cleanup(func() { _ = conn.CloseNow() })
 		for range 2 {
-			require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"gpt-test","instructions":"synthetic","input":[{"type":"compaction_trigger"}]}`)))
+			require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-test","instructions":"synthetic","input":[{"type":"compaction_trigger"}]}`)))
 			for {
-				_, event, err := conn.ReadMessage()
+				ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+				_, event, err := conn.Read(ctx)
+				cancel()
 				require.NoError(t, err)
 				eventType := gjson.GetBytes(event, "type").String()
 				require.NotEqual(t, "error", eventType, string(event))
@@ -105,7 +109,7 @@ func TestCodexRoutes_WebSocketParity(t *testing.T) {
 				t.Fatal("test canceled")
 			}
 		}
-		require.NoError(t, conn.Close())
+		require.NoError(t, conn.CloseNow())
 	}
 	require.Equal(t, []string{"compaction", "compaction", "compaction", "compaction"}, terminals)
 	require.Equal(t, int32(4), calls.Load())
@@ -159,7 +163,7 @@ func TestCodexRoutes_DisabledWebSocketUpgrade(t *testing.T) {
 		if key != "" {
 			headers.Set("Authorization", "Bearer "+key)
 		}
-		conn, response, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(surface.URL, "http")+"/codex/responses", headers)
+		conn, response, err := websocket.Dial(t.Context(), "ws"+strings.TrimPrefix(surface.URL, "http")+"/codex/responses", &websocket.DialOptions{HTTPHeader: headers})
 		require.Error(t, err)
 		require.Nil(t, conn)
 		require.Equal(t, 404, response.StatusCode)

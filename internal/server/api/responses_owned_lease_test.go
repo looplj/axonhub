@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -21,20 +21,21 @@ func TestResponsesDownstreamDisconnectReleasesOwnedIdleLease(t *testing.T) {
 	// Given
 	closed := make(chan struct{})
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		conn, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer conn.CloseNow()
+		conn.SetReadLimit(-1)
 		defer close(closed)
-		_, _, err = conn.ReadMessage()
+		_, _, err = conn.Read(t.Context())
 		if err != nil {
 			return
 		}
-		if err := conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed","response":{"id":"provider","status":"completed","output":[]}}`)); err != nil {
+		if err := conn.Write(r.Context(), websocket.MessageText, []byte(`{"type":"response.completed","response":{"id":"provider","status":"completed","output":[]}}`)); err != nil {
 			return
 		}
-		_, _, _ = conn.ReadMessage()
+		_, _, _ = conn.Read(t.Context())
 	}))
 	t.Cleanup(upstream.Close)
 	executor := responses.NewWebSocketExecutor(nil)
@@ -47,14 +48,13 @@ func TestResponsesDownstreamDisconnectReleasesOwnedIdleLease(t *testing.T) {
 		return orchestrator.ChatCompletionResult{ChatCompletionStream: stream}, err
 	}, nil)
 	conn := dialResponsesWebSocket(t, downstream.URL, nil)
-	t.Cleanup(func() { conn.Close() })
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"gpt-5","input":"root"}`)))
-	_, completed, err := conn.ReadMessage()
+	t.Cleanup(func() { conn.CloseNow() })
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5","input":"root"}`)))
+	_, completed, err := conn.Read(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, "response.completed", gjson.GetBytes(completed, "type").String(), string(completed))
 	// When
-	require.NoError(t, conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second)))
-	require.NoError(t, conn.Close())
+	require.NoError(t, conn.Close(websocket.StatusNormalClosure, ""))
 	// Then
 	select {
 	case <-closed:

@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -15,16 +15,16 @@ import (
 func TestResponsesProviderRecoveryUsesNonRetrySentinel(t *testing.T) {
 	// Given
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		conn, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			return
 		}
-		defer conn.Close()
-		_, _, err = conn.ReadMessage()
+		defer conn.CloseNow()
+		_, _, err = conn.Read(r.Context())
 		if err != nil {
 			return
 		}
-		if err := conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"error","status":400,"error":{"code":"previous_response_not_found","type":"invalid_request_error"}}`)); err != nil {
+		if err := conn.Write(r.Context(), websocket.MessageText, []byte(`{"type":"error","status":400,"error":{"code":"previous_response_not_found","type":"invalid_request_error"}}`)); err != nil {
 			t.Error(err)
 		}
 	}))
