@@ -10,6 +10,7 @@ package responses
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -21,7 +22,8 @@ import (
 )
 
 const (
-	maxQueuedWebSocketBytes = 16 << 20
+	maxWebSocketResponseMessageBytes = 64 << 20
+	maxQueuedWebSocketBytes          = 16 << 20
 	// Charge small frames for the queue's slice headers and allocation overhead.
 	webSocketFrameOverhead = 64
 	// Reads cannot process control frames during backpressure. Keep the wait
@@ -68,6 +70,9 @@ func (r *webSocketReceiver) receive(onExit func()) {
 		if recovered := recover(); recovered != nil {
 			r.err = fmt.Errorf("websocket receiver panicked: %v", recovered)
 			slog.Error("websocket receiver panicked", slog.Any("panic", recovered))
+		}
+		if errors.Is(r.err, websocket.ErrMessageTooBig) {
+			slog.Warn("upstream WebSocket response message exceeded read limit", slog.Int("limit_bytes", maxWebSocketResponseMessageBytes))
 		}
 		close(r.done)
 		r.close()

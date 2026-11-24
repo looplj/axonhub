@@ -1597,6 +1597,50 @@ func TestWebSocketExecutorAnswersUpstreamPingWhileIdle(t *testing.T) {
 	require.Equal(t, int32(1), upgrades.Load())
 }
 
+func TestWebSocketResponseMessageReadLimit(t *testing.T) {
+	for _, size := range []int{maxWebSocketResponseMessageBytes, maxWebSocketResponseMessageBytes + 1} {
+		t.Run(strconv.Itoa(size), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				conn, err := websocket.Accept(w, r, nil)
+				if !assert.NoError(t, err) {
+					return
+				}
+				defer conn.CloseNow()
+				writer, err := conn.Writer(r.Context(), websocket.MessageText)
+				if !assert.NoError(t, err) {
+					return
+				}
+				chunk := strings.Repeat("x", 1<<16)
+				for remaining := size; remaining > 0; remaining -= len(chunk) {
+					if _, err := io.WriteString(writer, chunk[:min(remaining, len(chunk))]); err != nil {
+						return
+					}
+				}
+				_ = writer.Close()
+				_, _, _ = conn.Read(r.Context())
+			}))
+			defer server.Close()
+
+			executor := NewWebSocketExecutor(nil)
+			defer executor.Close()
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			conn, _, err := executor.dial(ctx, &httpclient.Request{}, "ws"+strings.TrimPrefix(server.URL, "http"), nil)
+			require.NoError(t, err)
+			defer conn.CloseNow()
+			_, reader, err := conn.Reader(ctx)
+			require.NoError(t, err)
+			n, err := io.Copy(io.Discard, reader)
+			if size > maxWebSocketResponseMessageBytes {
+				require.ErrorIs(t, err, websocket.ErrMessageTooBig)
+				return
+			}
+			require.NoError(t, err)
+			require.EqualValues(t, size, n)
+		})
+	}
+}
+
 func TestWebSocketExecutorKeepsConnectionWithQueuedLargeCompletion(t *testing.T) {
 	var upgrades atomic.Int32
 	pingNow := make(chan struct{})
