@@ -7,10 +7,12 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
-	"github.com/stretchr/testify/require"
 )
 
 func TestResponsesDisconnectReleasesOwnedLeases(t *testing.T) {
@@ -18,19 +20,19 @@ func TestResponsesDisconnectReleasesOwnedLeases(t *testing.T) {
 	var upgrades atomic.Int32
 	closed := make(chan struct{}, 2)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		conn, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			return
 		}
 		upgrades.Add(1)
-		defer conn.Close()
+		defer conn.CloseNow()
 		defer func() { closed <- struct{}{} }()
 		for {
 			var frame json.RawMessage
-			if conn.ReadJSON(&frame) != nil {
+			if wsjson.Read(r.Context(), conn, &frame) != nil {
 				return
 			}
-			if conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed","response":{"id":"provider_id","status":"completed","output":[]}}`)) != nil {
+			if conn.Write(r.Context(), websocket.MessageText, []byte(`{"type":"response.completed","response":{"id":"provider_id","status":"completed","output":[]}}`)) != nil {
 				return
 			}
 		}

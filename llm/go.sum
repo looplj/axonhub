@@ -50,8 +50,6 @@ github.com/googleapis/enterprise-certificate-proxy v0.3.25 h1:n/6K8rCcoQQjGZ+o5i
 github.com/googleapis/enterprise-certificate-proxy v0.3.25/go.mod h1:hEjCmnoakQzv5ImLUp6alkY7XgLlNoAxwTXmhHHNIsI=
 github.com/googleapis/gax-go/v2 v2.27.0 h1:qe2iQOUzxb3fd6x6ewpIEixPQhJ+0Ihc/RRZhKA/2g0=
 github.com/googleapis/gax-go/v2 v2.27.0/go.mod h1:RofiqDw3ehcG4L0H1zO3D2Itpwd3/uS/7wdmbNDF1DE=
-github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=
-github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/kaptinlin/jsonrepair v0.4.10 h1:ijLLcmx2nPnFBtje2dpiCNtMA7NV1SAQrd/Z6fF0gfA=
 github.com/kaptinlin/jsonrepair v0.4.10/go.mod h1:eWRC42KDUT0MHkMplUN6necu59FQFqKOKe+86akpY3g=
 github.com/klauspost/compress v1.20.4 h1:dD0v/bvxtjCBqQu6sx1TNWkalEY5lNTIe+HY9w8TeNI=

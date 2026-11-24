@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/coder/websocket/wsjson"
+
 	"github.com/looplj/axonhub/llm/httpclient"
 
 	"github.com/looplj/axonhub/llm/transformer/shared"
@@ -39,14 +41,7 @@ func (l *webSocketLease) write(ctx context.Context, payload map[string]any) erro
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	stop := context.AfterFunc(ctx, func() { _ = l.conn.Close() })
-	defer stop()
-	deadline := time.Now().Add(30 * time.Second)
-	if expires, ok := ctx.Deadline(); ok && expires.Before(deadline) {
-		deadline = expires
-	}
-	if err := l.conn.SetWriteDeadline(deadline); err != nil {
-		return err
-	}
-	return l.conn.WriteJSON(payload)
+	writeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	return wsjson.Write(writeCtx, l.conn, payload)
 }

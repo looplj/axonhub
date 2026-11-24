@@ -8,7 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -19,13 +20,13 @@ func TestResponsesContinuationMissingHistoryFailsBeforeDispatch(t *testing.T) {
 	// Given: an explicit old ID without a live owning connection.
 	var writes atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		conn, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer conn.CloseNow()
 		var body json.RawMessage
-		if conn.ReadJSON(&body) == nil {
+		if wsjson.Read(r.Context(), conn, &body) == nil {
 			writes.Add(1)
 		}
 	}))
@@ -47,18 +48,19 @@ func TestResponsesNativeContinuationSurvivesRetentionLimit(t *testing.T) {
 	// Given: a real WS with two completions and an intentionally tiny optional cache.
 	frames := make(chan json.RawMessage, 2)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		conn, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer conn.CloseNow()
+		conn.SetReadLimit(-1)
 		for _, id := range []string{"resp_1", "resp_2"} {
 			var frame json.RawMessage
-			if conn.ReadJSON(&frame) != nil {
+			if wsjson.Read(r.Context(), conn, &frame) != nil {
 				return
 			}
 			frames <- frame
-			if conn.WriteJSON(map[string]json.RawMessage{"type": json.RawMessage(`"response.completed"`), "response": json.RawMessage(`{"id":"` + id + `","status":"completed","output":[]}`)}) != nil {
+			if wsjson.Write(r.Context(), conn, map[string]json.RawMessage{"type": json.RawMessage(`"response.completed"`), "response": json.RawMessage(`{"id":"` + id + `","status":"completed","output":[]}`)}) != nil {
 				return
 			}
 		}
