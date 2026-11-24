@@ -220,6 +220,20 @@ func TestPluginCatalogCheck(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "canceled", stopped.Status)
 	require.Equal(t, want, read(fx.ownerToken))
+	// Cancel after the upsert has executed but before the task transaction commits.
+	publishCtx, stopPublish := context.WithCancel(t.Context())
+	defer stopPublish()
+	fx.db.PluginStorage.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, mutation ent.Mutation) (ent.Value, error) {
+			value, err := next.Mutate(ctx, mutation)
+			stopPublish()
+			return value, err
+		})
+	})
+	stopped, err = fx.manager.RunTask(publishCtx, id, "check")
+	require.NoError(t, err)
+	require.Equal(t, "canceled", stopped.Status)
+	require.Equal(t, want, read(fx.ownerToken))
 	duringFetch <- func() error {
 		cancel()
 		return nil

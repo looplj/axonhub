@@ -15,6 +15,7 @@ package plugin
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"maps"
@@ -430,7 +431,20 @@ func taskLeaseUntil(started time.Time) int64 {
 }
 
 func (m *Manager) finishTask(runCtx context.Context, run *ent.PluginScheduleRun, status string, finished time.Time, catalogCheck *pendingCatalogCheck) error {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(runCtx), 5*time.Second)
+	if status == "succeeded" && catalogCheck != nil {
+		err := m.recordTaskResult(runCtx, run, status, finished, catalogCheck)
+		runErr := runCtx.Err()
+		if runErr == nil || (!errors.Is(err, runErr) && !errors.Is(err, sql.ErrTxDone)) {
+			return err
+		}
+		// Cancellation rolled back the summary and lease release together.
+		status = taskRunStatus(runErr, nil)
+	}
+	return m.recordTaskResult(context.WithoutCancel(runCtx), run, status, finished, catalogCheck)
+}
+
+func (m *Manager) recordTaskResult(ctx context.Context, run *ent.PluginScheduleRun, status string, finished time.Time, catalogCheck *pendingCatalogCheck) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	savingSummary := status == "succeeded" && catalogCheck != nil
 	finishedAt := &finished
@@ -448,7 +462,7 @@ func (m *Manager) finishTask(runCtx context.Context, run *ent.PluginScheduleRun,
 			return err
 		}
 		if released == 0 {
-			if !savingSummary {
+			if catalogCheck == nil {
 				return nil
 			}
 			stored, err := client.PluginScheduleRun.Get(ctx, run.ID)
@@ -460,7 +474,7 @@ func (m *Manager) finishTask(runCtx context.Context, run *ent.PluginScheduleRun,
 			return nil
 		}
 		if savingSummary {
-			status, err = m.finishCatalogCheck(ctx, runCtx, catalogCheck, run.StartedAt, finished)
+			status, err = m.finishCatalogCheck(ctx, catalogCheck, run.StartedAt, finished)
 			if err != nil {
 				return err
 			}

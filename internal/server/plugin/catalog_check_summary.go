@@ -7,7 +7,7 @@
 // 注意事项:
 //   宿主命名空间在公共 KV 名称语法之外，卸载时与安装数据一起删除。
 //   等待行锁期间，其他实例可能停用插件或撤销 read_channels 授权，因此保存摘要前必须在持锁事务内复核授权。
-//   收尾事务需要记录取消或超时状态，写摘要时仍须检查原任务的取消信号。
+//   摘要与成功状态必须在受任务取消信号控制的同一事务中提交。
 
 package plugin
 
@@ -44,7 +44,7 @@ type pendingCatalogCheck struct {
 }
 
 // finishCatalogCheck runs after the installation and schedule rows are locked.
-func (m *Manager) finishCatalogCheck(ctx, runCtx context.Context, check *pendingCatalogCheck, started, finished time.Time) (string, error) {
+func (m *Manager) finishCatalogCheck(ctx context.Context, check *pendingCatalogCheck, started, finished time.Time) (string, error) {
 	if time.Now().Unix() >= taskLeaseUntil(started) {
 		return runStatusUnknown, nil
 	}
@@ -53,9 +53,6 @@ func (m *Manager) finishCatalogCheck(ctx, runCtx context.Context, check *pending
 			return "canceled", nil
 		}
 		return "", err
-	}
-	if err := runCtx.Err(); err != nil {
-		return taskRunStatus(err, nil), nil
 	}
 	return "succeeded", check.save(ctx, m.client(ctx), finished)
 }
