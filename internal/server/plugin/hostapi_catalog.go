@@ -68,6 +68,9 @@ func (h *hostCall) checkModelCatalog(_ *moejs.Realm, _ moejs.Value, args []moejs
 	if err := h.requirePermission(permReadChannels); err != nil {
 		return moejs.Undefined(), err
 	}
+	if h.manager == nil || h.manager.models == nil {
+		return moejs.Undefined(), h.fail(hostInternal, "model service is unavailable")
+	}
 	options, err := h.catalogCheckOptions(moejs.Arg(args, 0))
 	if err != nil {
 		return moejs.Undefined(), err

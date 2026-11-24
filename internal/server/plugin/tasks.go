@@ -333,25 +333,28 @@ func (m *Manager) executeTask(ctx context.Context, installationID int, key strin
 		InstallationID: loaded.ID, Export: pluginTaskExport, Args: args, Config: loaded.Config,
 		Generation: gen, BorrowWait: time.Second, backgroundTask: true,
 	})
-	status := "succeeded"
-	switch {
-	case errors.Is(runCtx.Err(), context.DeadlineExceeded):
-		status = "timed_out"
-	case errors.Is(runCtx.Err(), context.Canceled):
-		status = "canceled"
-	case invokeErr != nil:
-		status = "failed"
-	}
+	status := taskRunStatus(runCtx.Err(), invokeErr)
 	if invokeErr != nil {
 		log.Warn(ctx, "plugin task invocation failed", log.String("plugin_id", loaded.PluginID),
 			log.Int("installation_id", loaded.ID), log.String("key", key),
 			log.Int("run_id", run.ID), log.String("status", status))
 	}
-	finishCtx, finishCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-	defer finishCancel()
 	finished := time.Now().UTC()
-	err = m.finishTask(finishCtx, run, status, finished, result.catalogCheck)
+	err = m.finishTask(runCtx, run, status, finished, result.catalogCheck)
 	return run, err
+}
+
+func taskRunStatus(runErr, invokeErr error) string {
+	switch {
+	case errors.Is(runErr, context.DeadlineExceeded):
+		return "timed_out"
+	case errors.Is(runErr, context.Canceled):
+		return "canceled"
+	case invokeErr != nil:
+		return "failed"
+	default:
+		return "succeeded"
+	}
 }
 
 func (m *Manager) claimTask(ctx context.Context, installationID int, key string, slot *time.Time, now time.Time) (*ent.PluginScheduleRun, error) {
@@ -426,7 +429,9 @@ func taskLeaseUntil(started time.Time) int64 {
 	return started.Add(scheduleLease).Unix()
 }
 
-func (m *Manager) finishTask(ctx context.Context, run *ent.PluginScheduleRun, status string, finished time.Time, catalogCheck *pendingCatalogCheck) error {
+func (m *Manager) finishTask(runCtx context.Context, run *ent.PluginScheduleRun, status string, finished time.Time, catalogCheck *pendingCatalogCheck) error {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(runCtx), 5*time.Second)
+	defer cancel()
 	savingSummary := status == "succeeded" && catalogCheck != nil
 	finishedAt := &finished
 	err := m.runInTx(ctx, func(ctx context.Context) error {
@@ -455,7 +460,7 @@ func (m *Manager) finishTask(ctx context.Context, run *ent.PluginScheduleRun, st
 			return nil
 		}
 		if savingSummary {
-			status, err = m.finishCatalogCheck(ctx, catalogCheck, run.StartedAt, finished)
+			status, err = m.finishCatalogCheck(ctx, runCtx, catalogCheck, run.StartedAt, finished)
 			if err != nil {
 				return err
 			}

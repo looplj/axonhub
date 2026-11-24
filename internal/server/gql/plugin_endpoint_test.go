@@ -567,7 +567,7 @@ func (fx *pluginEndpointFixture) post(path, token, query string, variables map[s
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(encoded))
 	req.Header.Set("Content-Type", "application/json")
 	if len(projectID) > 0 {
-		req.Header.Set("X-Project-ID", fmt.Sprintf("gid://axonhub/Project/%d", projectID[0]))
+		req.Header.Set("X-Project-Id", fmt.Sprintf("gid://axonhub/Project/%d", projectID[0]))
 	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)

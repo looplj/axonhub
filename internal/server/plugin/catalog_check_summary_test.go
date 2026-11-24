@@ -117,12 +117,14 @@ func TestCatalogCheckSummaryInTransaction(t *testing.T) {
 	defer func() { _ = tx.Rollback() }()
 	pending := pendingCatalogCheck{installationID: installed.ID, counts: biz.CatalogCheckCounts{Available: 7}}
 	require.NoError(t, pending.save(pluginCtx(), tx.Client(), time.Now().UTC()))
-	summary, err := manager.CatalogCheckSummary(ent.NewContext(ctx, tx.Client()))
-	require.NoError(t, err)
-	require.NotNil(t, summary)
-	require.Equal(t, pending.counts, summary.CatalogCheckCounts)
+	for _, txCtx := range []context.Context{ent.NewContext(ctx, tx.Client()), ent.NewTxContext(ctx, tx)} {
+		summary, err := manager.CatalogCheckSummary(txCtx)
+		require.NoError(t, err)
+		require.NotNil(t, summary)
+		require.Equal(t, pending.counts, summary.CatalogCheckCounts)
+	}
 	require.NoError(t, tx.Rollback())
-	summary, err = manager.CatalogCheckSummary(ctx)
+	summary, err := manager.CatalogCheckSummary(ctx)
 	require.NoError(t, err)
 	require.Nil(t, summary)
 }

@@ -20,6 +20,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/hook"
 	"github.com/looplj/axonhub/internal/ent/pluginstorage"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
@@ -104,11 +106,18 @@ func TestPluginCatalogCheck(t *testing.T) {
 	require.Zero(t, hits.Load())
 	_, ungranted, _ := fx.postPlugin(fx.ownerToken, pluginID, summaryQuery)
 	require.Equal(t, "FORBIDDEN", graphqlErrorCode(t, ungranted))
-	require.NoError(t, fx.manager.Enable(fx.setupCtx, id, []string{"read_channels"}, nil))
-	require.Nil(t, read(fx.ownerToken))
 	peer, err := plugin.NewManager(plugin.ManagerParams{Client: fx.db, Cache: xcache.Config{Mode: xcache.ModeMemory}})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, peer.Stop(context.Background())) })
+	require.NoError(t, peer.Enable(fx.setupCtx, id, []string{"read_channels"}, nil))
+	require.NotContains(t, fx.manager.Current().ByID(id).GrantedPermissions, "read_channels")
+	require.Nil(t, read(fx.ownerToken))
+	// The peer has no model service. Its task fails without publishing a summary.
+	unavailableRun, err := peer.RunTask(t.Context(), id, "check")
+	require.NoError(t, err)
+	require.Equal(t, "failed", unavailableRun.Status)
+	require.Nil(t, read(fx.ownerToken))
+	require.NoError(t, fx.manager.ForceRefresh(fx.setupCtx))
 	duringFetch <- func() error { return peer.Disable(fx.setupCtx, id) }
 	check("canceled")
 	require.NoError(t, fx.manager.Enable(fx.setupCtx, id, []string{"read_channels"}, nil))
@@ -195,6 +204,21 @@ func TestPluginCatalogCheck(t *testing.T) {
 	check("failed")
 	require.Equal(t, before, hits.Load())
 	require.NoError(t, fx.manager.Enable(fx.setupCtx, id, []string{"read_channels"}, nil))
+	require.Equal(t, want, read(fx.ownerToken))
+	// Cancel after the script returned, while the completion transaction releases the lease.
+	finishCtx, stop := context.WithCancel(t.Context())
+	defer stop()
+	fx.db.PluginSchedule.Use(func(next ent.Mutator) ent.Mutator {
+		return hook.PluginScheduleFunc(func(ctx context.Context, mutation *ent.PluginScheduleMutation) (ent.Value, error) {
+			if activeID, set := mutation.ActiveRunID(); set && activeID == 0 {
+				stop()
+			}
+			return next.Mutate(ctx, mutation)
+		})
+	})
+	stopped, err := fx.manager.RunTask(finishCtx, id, "check")
+	require.NoError(t, err)
+	require.Equal(t, "canceled", stopped.Status)
 	require.Equal(t, want, read(fx.ownerToken))
 	duringFetch <- func() error {
 		cancel()

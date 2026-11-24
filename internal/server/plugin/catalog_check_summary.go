@@ -7,6 +7,7 @@
 // 注意事项:
 //   宿主命名空间在公共 KV 名称语法之外，卸载时与安装数据一起删除。
 //   等待行锁期间，其他实例可能停用插件或撤销 read_channels 授权，因此保存摘要前必须在持锁事务内复核授权。
+//   收尾事务需要记录取消或超时状态，写摘要时仍须检查原任务的取消信号。
 
 package plugin
 
@@ -25,11 +26,14 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-const catalogSummaryNamespace = "/host"
-const catalogSummaryKey = "model-catalog-check"
+const (
+	catalogSummaryNamespace = "/host"
+	catalogSummaryKey       = "model-catalog-check"
+)
 
 type CatalogCheckSummary struct {
 	biz.CatalogCheckCounts
+
 	LastSuccessAt time.Time `json:"lastSuccessAt"`
 }
 
@@ -40,7 +44,7 @@ type pendingCatalogCheck struct {
 }
 
 // finishCatalogCheck runs after the installation and schedule rows are locked.
-func (m *Manager) finishCatalogCheck(ctx context.Context, check *pendingCatalogCheck, started, finished time.Time) (string, error) {
+func (m *Manager) finishCatalogCheck(ctx, runCtx context.Context, check *pendingCatalogCheck, started, finished time.Time) (string, error) {
 	if time.Now().Unix() >= taskLeaseUntil(started) {
 		return runStatusUnknown, nil
 	}
@@ -49,6 +53,9 @@ func (m *Manager) finishCatalogCheck(ctx context.Context, check *pendingCatalogC
 			return "canceled", nil
 		}
 		return "", err
+	}
+	if err := runCtx.Err(); err != nil {
+		return taskRunStatus(err, nil), nil
 	}
 	return "succeeded", check.save(ctx, m.client(ctx), finished)
 }
@@ -94,7 +101,11 @@ func (m *Manager) CatalogCheckSummary(ctx context.Context) (*CatalogCheckSummary
 	if !ok || !call.CanReadCatalogSummary || !call.matchesPrincipal(ctx) {
 		return nil, xerrors.ForbiddenError("permission denied")
 	}
-	return authz.RunAsHost(ctx, m.client(ctx), "read-plugin-catalog-check-summary", func(hostCtx context.Context) (*CatalogCheckSummary, error) {
+	client := m.client(ctx)
+	if tx := ent.TxFromContext(ctx); tx != nil {
+		client = tx.Client()
+	}
+	return authz.RunAsHost(ctx, client, "read-plugin-catalog-check-summary", func(hostCtx context.Context) (*CatalogCheckSummary, error) {
 		var summary *CatalogCheckSummary
 		err := m.runInTx(hostCtx, func(txCtx context.Context) error {
 			if err := m.requireCatalogGrant(txCtx, call.InstallationID, call.ManifestID, true); err != nil {
