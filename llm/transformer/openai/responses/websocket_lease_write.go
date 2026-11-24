@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
-	"github.com/coder/websocket/wsjson"
+	"github.com/coder/websocket"
 
 	"github.com/looplj/axonhub/llm/httpclient"
 
@@ -28,6 +29,9 @@ func isWebSocketRecoveryEvent(raw []byte) bool {
 	}
 	return json.Unmarshal(raw, &event) == nil && (event.Code == "previous_response_not_found" || event.Error.Code == "previous_response_not_found")
 }
+
+// Match Codex's upload fragments so a pong can be sent between data frames.
+const webSocketRequestFragmentSize = 1 << 20
 
 var errWebSocketClosedBeforeSend = errors.New("websocket closed before sending response.create")
 
@@ -52,5 +56,36 @@ func (l *webSocketLease) write(ctx context.Context, payload map[string]any) erro
 	}
 	writeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	return wsjson.Write(writeCtx, l.conn, payload)
+	return json.NewEncoder(webSocketRequestWriter{ctx: writeCtx, conn: l.conn}).Encode(payload)
+}
+
+// The JSON encoder supplies one serialized response.create to Write.
+type webSocketRequestWriter struct {
+	ctx  context.Context
+	conn *websocket.Conn
+}
+
+func (w webSocketRequestWriter) Write(data []byte) (int, error) {
+	if len(data) <= webSocketRequestFragmentSize {
+		if err := w.conn.Write(w.ctx, websocket.MessageText, data); err != nil {
+			return 0, err
+		}
+		return len(data), nil
+	}
+
+	writer, err := w.conn.Writer(w.ctx, websocket.MessageText)
+	if err != nil {
+		return 0, err
+	}
+	written := 0
+	for fragment := range slices.Chunk(data, webSocketRequestFragmentSize) {
+		n, err := writer.Write(fragment)
+		written += n
+		if err != nil {
+			// The caller retires this socket. Closing the writer would send
+			// the final fragment of a partially written request.
+			return written, err
+		}
+	}
+	return written, writer.Close()
 }

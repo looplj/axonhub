@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -1554,6 +1555,93 @@ func TestWebSocketExecutorAnswersUpstreamPingWhileIdle(t *testing.T) {
 		}
 	}
 	require.Equal(t, int32(1), upgrades.Load())
+}
+
+func TestWebSocketExecutorAnswersPingBeforeLargeUploadCompletes(t *testing.T) {
+	const inputSize = 8 * webSocketRequestFragmentSize
+	type uploadResult struct {
+		receivedBytes    int
+		pongDuringUpload bool
+		pingErr          error
+	}
+	result := make(chan uploadResult, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var uploadComplete atomic.Bool
+		var pongDuringUpload atomic.Bool
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			OnPongReceived: func(context.Context, []byte) {
+				pongDuringUpload.Store(!uploadComplete.Load())
+			},
+		})
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer conn.CloseNow()
+		conn.SetReadLimit(-1)
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+
+		kind, body, err := conn.Reader(ctx)
+		if !assert.NoError(t, err) || !assert.Equal(t, websocket.MessageText, kind) {
+			return
+		}
+		buffer := make([]byte, 32<<10)
+		received, err := body.Read(buffer)
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		// Send the ping after the upload starts. Read slowly so the socket
+		// writer must flush multiple fragments before the message ends.
+		pingDone := make(chan error, 1)
+		go func() { pingDone <- conn.Ping(ctx) }()
+		for {
+			n, err := body.Read(buffer)
+			received += n
+			if err == io.EOF {
+				break
+			}
+			if !assert.NoError(t, err) {
+				return
+			}
+			time.Sleep(2 * time.Millisecond)
+		}
+		uploadComplete.Store(true)
+		conn.CloseRead(ctx)
+		result <- uploadResult{
+			receivedBytes:    received,
+			pongDuringUpload: pongDuringUpload.Load(),
+			pingErr:          <-pingDone,
+		}
+		assert.NoError(t, wsjson.Write(ctx, conn, map[string]any{
+			"type":     "response.completed",
+			"response": map[string]any{"id": "resp_large_upload", "status": "completed", "output": []any{}},
+		}))
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	defer executor.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 12*time.Second)
+	defer cancel()
+	payload, err := json.Marshal(map[string]any{"model": "gpt-5", "input": strings.Repeat("a", inputSize)})
+	require.NoError(t, err)
+	stream, err := executor.DoStream(ctx, &httpclient.Request{Method: http.MethodPost, URL: server.URL, Body: payload})
+	require.NoError(t, err)
+	defer stream.Close()
+
+	select {
+	case observation := <-result:
+		require.Greater(t, observation.receivedBytes, inputSize)
+		require.NoError(t, observation.pingErr)
+		require.True(t, observation.pongDuringUpload, "upstream must receive the pong before reading the entire request message")
+	case <-ctx.Done():
+		t.Fatal("did not receive the upload observation")
+	}
+	require.True(t, stream.Next())
+	require.Equal(t, "response.completed", stream.Current().Type)
+	require.False(t, stream.Next())
+	require.NoError(t, stream.Err())
 }
 
 func TestWebSocketExecutorAnswersPingAfterQueuingSmallFrames(t *testing.T) {
