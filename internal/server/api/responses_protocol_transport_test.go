@@ -1,11 +1,12 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -23,38 +24,40 @@ func TestResponsesProtocolIntegrationUpstreamWebSocket(t *testing.T) {
 				require.Equal(t, http.MethodGet, r.Method)
 				require.Equal(t, "/v1/responses", r.URL.Path)
 				require.Equal(t, "Bearer synthetic-key", r.Header.Get("Authorization"))
-				conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+				conn, err := websocket.Accept(w, r, nil)
 				if err != nil {
 					t.Error(err)
 					return
 				}
-				defer conn.Close()
+				defer conn.CloseNow()
 				defer close(closed)
-				require.NoError(t, conn.SetReadDeadline(time.Now().Add(10*time.Second)))
+				conn.SetReadLimit(-1)
 				for {
-					_, body, err := conn.ReadMessage()
+					ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+					_, body, err := conn.Read(ctx)
+					cancel()
 					if err != nil {
 						return
 					}
 					frames <- body
-					if err := conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.created","sequence_number":0,"response":{"id":"provider-native","object":"response","created_at":1700000000,"model":"synthetic-model","status":"in_progress","output":[]}}`)); err != nil {
+					if err := conn.Write(r.Context(), websocket.MessageText, []byte(`{"type":"response.created","sequence_number":0,"response":{"id":"provider-native","object":"response","created_at":1700000000,"model":"synthetic-model","status":"in_progress","output":[]}}`)); err != nil {
 						t.Error(err)
 						return
 					}
-					if err := conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"type":"message","id":"provider-tool-item","status":"in_progress","role":"assistant","content":[]}}`)); err != nil {
+					if err := conn.Write(r.Context(), websocket.MessageText, []byte(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"type":"message","id":"provider-tool-item","status":"in_progress","role":"assistant","content":[]}}`)); err != nil {
 						t.Error(err)
 						return
 					}
-					if err := conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.output_text.delta","sequence_number":2,"output_index":0,"content_index":0,"item_id":"provider-tool-item","delta":"synthetic-answer"}`)); err != nil {
+					if err := conn.Write(r.Context(), websocket.MessageText, []byte(`{"type":"response.output_text.delta","sequence_number":2,"output_index":0,"content_index":0,"item_id":"provider-tool-item","delta":"synthetic-answer"}`)); err != nil {
 						t.Error(err)
 						return
 					}
-					if err := conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.output_item.done","sequence_number":3,"output_index":0,"item":{"type":"message","id":"provider-tool-item","status":"completed","role":"assistant","content":[{"type":"output_text","text":"synthetic-answer"}]}}`)); err != nil {
+					if err := conn.Write(r.Context(), websocket.MessageText, []byte(`{"type":"response.output_item.done","sequence_number":3,"output_index":0,"item":{"type":"message","id":"provider-tool-item","status":"completed","role":"assistant","content":[{"type":"output_text","text":"synthetic-answer"}]}}`)); err != nil {
 						t.Error(err)
 						return
 					}
 					completed := `{"type":"response.completed","sequence_number":4,"response":{"id":"provider-native","object":"response","created_at":1700000000,"model":"synthetic-model","status":"completed","output":[{"type":"message","id":"provider-tool-item","role":"assistant","content":[{"type":"output_text","text":"synthetic-answer"}]}]}}`
-					if err := conn.WriteMessage(websocket.TextMessage, []byte(completed)); err != nil {
+					if err := conn.Write(r.Context(), websocket.MessageText, []byte(completed)); err != nil {
 						t.Error(err)
 						return
 					}
@@ -76,7 +79,7 @@ func TestResponsesProtocolIntegrationUpstreamWebSocket(t *testing.T) {
 				require.Equal(t, "provider-native", gjson.GetBytes(response, "response.id").String(), string(response))
 				require.Equal(t, "provider-tool-item", gjson.GetBytes(response, "response.output.0.id").String(), string(response))
 				require.Equal(t, "lane-canary", gjson.GetBytes(response, "stream_id").String())
-				require.NoError(t, conn.Close())
+				require.NoError(t, conn.CloseNow())
 				responsesIntegrationAwait(t, closed)
 			}
 			// Then: envelopes and provider identity remain native, with no cumulative replay.

@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/server/orchestrator"
@@ -23,11 +23,11 @@ func TestResponsesNativeContinuationIsolatedByStreamID(t *testing.T) {
 		return orchestrator.ChatCompletionResult{ChatCompletion: &httpclient.Response{Body: []byte(`{"id":"done","status":"completed","output":[]}`)}}, nil
 	}, nil)
 	conn := dialResponsesWebSocket(t, server.URL, http.Header{"Session-Id": {"client"}})
-	t.Cleanup(func() { require.NoError(t, conn.Close()) })
+	t.Cleanup(func() { require.NoError(t, conn.CloseNow()) })
 	// When
 	for _, frame := range []string{`{"type":"response.create","stream_id":"a","model":"gpt-5","input":"a"}`, `{"type":"response.create","stream_id":"b","model":"gpt-5","input":"b"}`} {
-		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(frame)))
-		_, _, err := conn.ReadMessage()
+		require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(frame)))
+		_, _, err := conn.Read(t.Context())
 		require.NoError(t, err)
 	}
 	// Then

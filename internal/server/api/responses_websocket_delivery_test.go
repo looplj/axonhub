@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/server/orchestrator"
@@ -79,11 +79,12 @@ func TestStreamDeliveryWebSocketAcknowledgesSuccessfulTerminalWrite(t *testing.T
 	conn := dialResponsesWebSocket(t, server.URL, nil)
 
 	// When: the client receives the semantic terminal event, then disconnects.
-	require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"gpt-test","input":"hello"}`)))
-	_, _, err := conn.ReadMessage()
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-test","input":"hello"}`)))
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	_, _, err := conn.Read(ctx)
+	cancel()
 	require.NoError(t, err)
-	defer conn.Close()
+	defer conn.CloseNow()
 
 	// Then: acknowledgement follows the successful local WebSocket write.
 	select {
@@ -91,7 +92,7 @@ func TestStreamDeliveryWebSocketAcknowledgesSuccessfulTerminalWrite(t *testing.T
 	case <-time.After(time.Second):
 		t.Fatal("successful terminal write was not acknowledged")
 	}
-	require.NoError(t, conn.Close())
+	require.NoError(t, conn.CloseNow())
 	require.True(t, stream.DeliveryAcknowledged())
 }
 
@@ -105,12 +106,13 @@ func TestStreamDeliveryWebSocketDoesNotAcknowledgeUnsuccessfulTerminal(t *testin
 			}
 			server := newResponsesWebSocketTestServer(t, process, nil)
 			conn := dialResponsesWebSocket(t, server.URL, nil)
-			defer conn.Close()
+			defer conn.CloseNow()
 
 			// When: the failed terminal event is written to the socket.
-			require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
-			require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"gpt-test","input":"hello"}`)))
-			_, _, err := conn.ReadMessage()
+			require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-test","input":"hello"}`)))
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			_, _, err := conn.Read(ctx)
+			cancel()
 			require.NoError(t, err)
 
 			// Then: provider failure never becomes successful delivery acknowledgement.
@@ -137,16 +139,16 @@ func TestStreamDeliveryWebSocketCancellationBeforeTerminalReleasesTurn(t *testin
 	}
 	server := newResponsesWebSocketTestServer(t, process, nil)
 	conn := dialResponsesWebSocket(t, server.URL, nil)
-	defer conn.Close()
+	defer conn.CloseNow()
 
 	// When: the WebSocket closes before the semantic terminal can be written.
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"gpt-test","input":"hello"}`)))
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-test","input":"hello"}`)))
 	select {
 	case <-started:
 	case <-time.After(time.Second):
 		t.Fatal("turn did not start")
 	}
-	conn.Close()
+	conn.CloseNow()
 
 	// Then: the canceled turn is released without acknowledgement or a leak.
 	select {
@@ -188,26 +190,27 @@ func TestStreamDeliveryWebSocketAcknowledgementIsolatedPerTurn(t *testing.T) {
 	}
 	server := newResponsesWebSocketTestServer(t, process, nil)
 	conn := dialResponsesWebSocket(t, server.URL, nil)
-	defer conn.Close()
-	require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
+	defer conn.CloseNow()
 
 	// When: the first turn completes, then a second same-lane turn is canceled.
 	request := []byte(`{"type":"response.create","stream_id":"lane-a","model":"gpt-test","input":"hello"}`)
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, request))
-	_, _, err := conn.ReadMessage()
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, request))
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	_, _, err := conn.Read(ctx)
+	cancel()
 	require.NoError(t, err)
 	select {
 	case <-first.acknowledgedC:
 	case <-time.After(time.Second):
 		t.Fatal("first turn was not acknowledged")
 	}
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, request))
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, request))
 	select {
 	case <-secondStarted:
 	case <-time.After(time.Second):
 		t.Fatal("second turn did not start")
 	}
-	conn.Close()
+	conn.CloseNow()
 	select {
 	case <-second.closedC:
 	case <-time.After(5 * time.Second):

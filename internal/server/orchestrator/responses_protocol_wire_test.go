@@ -8,8 +8,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/http/httpguts"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
@@ -43,19 +45,21 @@ func TestResponsesProtocolWireMatrix(t *testing.T) {
 				require.NoError(t, err)
 				mu.Lock()
 				method, path, body = r.Method, r.URL.Path, string(payload)
-				upgraded = websocket.IsWebSocketUpgrade(r)
+				upgraded = httpguts.HeaderValuesContainsToken(r.Header["Connection"], "upgrade") &&
+					httpguts.HeaderValuesContainsToken(r.Header["Upgrade"], "websocket")
 				mu.Unlock()
 
 				if upgraded {
-					conn, err := (&websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}).Upgrade(w, r, nil)
+					conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
 					require.NoError(t, err)
-					defer conn.Close()
-					_, message, err := conn.ReadMessage()
+					defer conn.CloseNow()
+					conn.SetReadLimit(-1)
+					_, message, err := conn.Read(t.Context())
 					require.NoError(t, err)
 					mu.Lock()
 					body = string(message)
 					mu.Unlock()
-					require.NoError(t, conn.WriteJSON(map[string]any{
+					require.NoError(t, wsjson.Write(r.Context(), conn, map[string]any{
 						"type": "response.completed",
 						"response": map[string]any{
 							"id":     "resp_wire",

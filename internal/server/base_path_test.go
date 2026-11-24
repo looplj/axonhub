@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/contexts"
@@ -79,19 +79,20 @@ func TestMountBasePath(t *testing.T) {
 func TestMountBasePathPreservesWebSocketUpgrade(t *testing.T) {
 	router := gin.New()
 	router.GET("/v1/responses", func(c *gin.Context) {
-		upgrader := websocket.Upgrader{}
-		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		conn, err := websocket.Accept(c.Writer, c.Request, nil)
 		if err == nil {
-			defer conn.Close()
-			_ = conn.WriteMessage(websocket.TextMessage, []byte("connected"))
+			defer conn.CloseNow()
+			conn.SetReadLimit(-1)
+			_ = conn.Write(c.Request.Context(), websocket.MessageText, []byte("connected"))
 		}
 	})
 	server := httptest.NewServer(mountBasePath("/axonhub", router))
 	defer server.Close()
-	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http")+"/axonhub/v1/responses", nil)
+	conn, _, err := websocket.Dial(t.Context(), "ws"+strings.TrimPrefix(server.URL, "http")+"/axonhub/v1/responses", nil)
 	require.NoError(t, err)
-	defer conn.Close()
-	_, message, err := conn.ReadMessage()
+	defer conn.CloseNow()
+	conn.SetReadLimit(-1)
+	_, message, err := conn.Read(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, "connected", string(message))
 }

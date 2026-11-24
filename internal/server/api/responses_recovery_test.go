@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -23,13 +23,13 @@ func TestResponsesRecoveryPreservesSurvivorLane(t *testing.T) {
 		return orchestrator.ChatCompletionResult{ChatCompletion: &httpclient.Response{Body: []byte(`{"id":"survivor","status":"completed","output":[]}`)}}, nil
 	}, nil)
 	conn := dialResponsesWebSocket(t, server.URL, http.Header{})
-	t.Cleanup(func() { require.NoError(t, conn.Close()) })
+	t.Cleanup(func() { require.NoError(t, conn.CloseNow()) })
 	// When
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"failed","model":"gpt-5","previous_response_id":"missing","input":"delta"}`)))
-	_, recovery, err := conn.ReadMessage()
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","stream_id":"failed","model":"gpt-5","previous_response_id":"missing","input":"delta"}`)))
+	_, recovery, err := conn.Read(t.Context())
 	require.NoError(t, err)
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"other","model":"gpt-5","input":"root"}`)))
-	_, completed, err := conn.ReadMessage()
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","stream_id":"other","model":"gpt-5","input":"root"}`)))
+	_, completed, err := conn.Read(t.Context())
 	// Then
 	require.NoError(t, err)
 	require.Equal(t, int64(400), gjson.GetBytes(recovery, "status").Int())

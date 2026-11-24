@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
@@ -82,13 +82,13 @@ func TestStreamDeliveryE2E(t *testing.T) {
 			return orchestrator.ChatCompletionResult{}, ctx.Err()
 		}, nil)
 		conn := dialResponsesWebSocket(t, server.URL, nil)
-		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"gpt-test","input":"hello"}`)))
+		require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-test","input":"hello"}`)))
 		select {
 		case <-started:
 		case <-time.After(5 * time.Second):
 			t.Fatal("synthetic turn did not start")
 		}
-		require.NoError(t, conn.Close())
+		require.NoError(t, conn.CloseNow())
 		select {
 		case <-canceled:
 		case <-time.After(5 * time.Second):
@@ -102,10 +102,11 @@ func TestStreamDeliveryE2E(t *testing.T) {
 			return orchestrator.ChatCompletionResult{ChatCompletionStream: stream}, nil
 		}, nil)
 		conn := dialResponsesWebSocket(t, server.URL, nil)
-		defer conn.Close()
-		require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
-		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"gpt-test","input":"hello"}`)))
-		_, event, err := conn.ReadMessage()
+		defer conn.CloseNow()
+		require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-test","input":"hello"}`)))
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+		_, event, err := conn.Read(ctx)
+		cancel()
 		require.NoError(t, err)
 		require.JSONEq(t, `{"type":"response.completed","response":{"status":"completed"}}`, string(event))
 		select {

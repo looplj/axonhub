@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -60,16 +60,19 @@ func TestStreamDeliveryWebSocketHTTPUpstream(t *testing.T) {
 			}
 			server := newResponsesWebSocketTestServer(t, process, nil)
 			conn := dialResponsesWebSocket(t, server.URL, nil)
-			defer conn.Close()
-			require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
+			defer conn.CloseNow()
 			// When: the socket closes at the chosen observable semantic boundary.
-			require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"gpt-test","input":"synthetic"}`)))
-			_, data, err := conn.ReadMessage()
+			require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-test","input":"synthetic"}`)))
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			_, data, err := conn.Read(ctx)
+			cancel()
 			require.NoError(t, err)
 			require.Equal(t, "response.created", gjson.GetBytes(data, "type").String())
 			source := <-sources
 			if completed {
-				_, data, err = conn.ReadMessage()
+				ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+				_, data, err = conn.Read(ctx)
+				cancel()
 				require.NoError(t, err)
 				require.Equal(t, "response.completed", gjson.GetBytes(data, "type").String())
 				select {
@@ -78,7 +81,7 @@ func TestStreamDeliveryWebSocketHTTPUpstream(t *testing.T) {
 					t.Fatal("terminal write was not acknowledged")
 				}
 			}
-			require.NoError(t, conn.Close())
+			require.NoError(t, conn.CloseNow())
 			// Then: only the completed turn is acknowledged; pre-terminal disconnect cancels upstream.
 			select {
 			case <-source.closedC:
