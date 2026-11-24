@@ -8,6 +8,7 @@
 package plugin
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -65,4 +66,20 @@ func TestCatalogCheckSummaryCompletionOrder(t *testing.T) {
 	updated, err := readCatalogCheckSummary(ctx, db, installed.ID)
 	require.NoError(t, err)
 	require.Equal(t, 5, updated.Available)
+
+	// A different writer can hold the schedule row until this task's lease expires.
+	deadline := time.Now().Truncate(time.Second).Add(time.Second)
+	waiting := claim("second", deadline.Add(-scheduleLease))
+	db.PluginSchedule.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, mutation ent.Mutation) (ent.Value, error) {
+			time.Sleep(time.Until(deadline))
+			return next.Mutate(ctx, mutation)
+		})
+	})
+	finish(waiting, now.Add(4*time.Second), 6)
+	require.Equal(t, runStatusUnknown, waiting.Status)
+	require.Equal(t, runStatusUnknown, db.PluginScheduleRun.GetX(ctx, waiting.ID).Status)
+	kept, err = readCatalogCheckSummary(ctx, db, installed.ID)
+	require.NoError(t, err)
+	require.Equal(t, updated, kept)
 }

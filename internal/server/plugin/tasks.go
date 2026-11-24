@@ -395,7 +395,7 @@ func (m *Manager) claimTask(ctx context.Context, installationID int, key string,
 			_, err := claim.Save(ctx)
 			return err
 		}
-		updated, err := claim.SetLeaseUntil(now.Add(scheduleLease).Unix()).Save(ctx)
+		updated, err := claim.SetLeaseUntil(taskLeaseUntil(now)).Save(ctx)
 		if err != nil {
 			return err
 		}
@@ -422,8 +422,13 @@ func (m *Manager) claimTask(ctx context.Context, installationID int, key string,
 	return run, nil
 }
 
+func taskLeaseUntil(started time.Time) int64 {
+	return started.Add(scheduleLease).Unix()
+}
+
 func (m *Manager) finishTask(ctx context.Context, run *ent.PluginScheduleRun, status string, finished time.Time, catalogCheck *pendingCatalogCheck) error {
 	savingSummary := status == "succeeded" && catalogCheck != nil
+	finishedAt := &finished
 	err := m.runInTx(ctx, func(ctx context.Context) error {
 		client := m.client(ctx)
 		claim := client.PluginSchedule.Update().Where(pluginschedule.IDEQ(run.ScheduleID), pluginschedule.ActiveRunIDEQ(run.ID))
@@ -432,7 +437,6 @@ func (m *Manager) finishTask(ctx context.Context, run *ent.PluginScheduleRun, st
 			if err := m.lockInstallation(ctx, catalogCheck.installationID); err != nil {
 				return err
 			}
-			claim.Where(pluginschedule.LeaseUntilGT(time.Now().Unix()))
 		}
 		released, err := claim.SetActiveRunID(0).SetLeaseUntil(0).Save(ctx)
 		if err != nil {
@@ -440,12 +444,15 @@ func (m *Manager) finishTask(ctx context.Context, run *ent.PluginScheduleRun, st
 		}
 		if released == 0 {
 			if savingSummary {
-				status = runStatusUnknown
+				status, finishedAt = runStatusUnknown, nil
 			}
 			return nil
 		}
 		if savingSummary {
-			if err := catalogCheck.save(ctx, client, finished); err != nil {
+			// The schedule update can block. Check the claim deadline after acquiring its row lock.
+			if time.Now().Unix() >= taskLeaseUntil(run.StartedAt) {
+				status = runStatusUnknown
+			} else if err := catalogCheck.save(ctx, client, finished); err != nil {
 				return err
 			}
 		}
@@ -463,10 +470,7 @@ func (m *Manager) finishTask(ctx context.Context, run *ent.PluginScheduleRun, st
 		return err
 	})
 	if err == nil {
-		run.Status = status
-		if status != runStatusUnknown {
-			run.FinishedAt = &finished
-		}
+		run.Status, run.FinishedAt = status, finishedAt
 	}
 	return err
 }
