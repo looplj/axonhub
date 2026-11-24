@@ -221,6 +221,8 @@ extend type Model {
   editVersion: String! @goField(forceResolver: true)
   missingReferencePrices: [String!]! @goField(forceResolver: true)
   associatedChannelCount: Int! @goField(forceResolver: true)
+  catalogAliases: [String!]! @goField(forceResolver: true)
+  catalogPrices: [CatalogImportLocalPrice!]! @goField(forceResolver: true)
 }
 
 extend type Query {
@@ -281,6 +283,13 @@ type CatalogImportOffer {
   identity: String!
   canonical: String!
   rates: [CatalogImportRate!]!
+}
+
+type ModelCatalogOffersPage {
+  source: String!
+  fetchedAt: Time!
+  offers: [CatalogImportOffer!]!
+  nextCursor: String
 }
 
 type CatalogImportLocalPrice {
@@ -351,6 +360,7 @@ type CatalogImportOutcome {
 }
 extend type Query {
   catalogImportPreview(scope: CatalogImportScope!): CatalogImportPreview!
+  modelCatalogOffers(providers: [String!], first: Int = 100, after: String, refresh: Boolean = false): ModelCatalogOffersPage!
 }
 extend type Mutation {
   applyCatalogImport(scope: CatalogImportScope!, revision: String!, selections: [CatalogImportSelection!]!): [CatalogImportOutcome!]!

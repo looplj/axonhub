@@ -225,32 +225,8 @@ func indexCatalog(data []byte) (*catalogIndex, error) {
 			if _, exists := idx.offers[key]; exists {
 				continue
 			}
-			canonical := modelString(entry, "canonical_model_id")
-			developer, _, ok := strings.Cut(canonical, "/")
-			if !ok {
-				developer = ""
-			}
-			switch developer {
-			case "moonshotai":
-				developer = "moonshot"
-			case "deepseek-ai":
-				developer = "deepseek"
-			case "qwen":
-				developer = "alibaba"
-			}
-			if developer == "" && slices.Contains(DefaultDeveloperIDs, provider) {
-				developer = provider
-			}
-			name := modelString(entry, "display_name")
-			if name == "" {
-				name = modelString(entry, "name")
-			}
-			if name == "" {
-				name = id
-			}
-			offer := &CatalogImportOffer{Provider: provider, ModelID: id, Name: name, Developer: developer, Canonical: canonical, Rates: offerRates(entry), Type: catalogModelType(modelString(entry, "type")), entry: entry}
-			identity, _ := json.Marshal([3]string{canonical, modelString(entry, "version"), modelString(entry, "release_date")})
-			offer.Identity = string(identity)
+			offer := catalogOfferFromEntry(provider, id, entry)
+			canonical := offer.Canonical
 			idx.offers[key] = offer
 			idx.exact[id] = append(idx.exact[id], offer)
 			if canonical != "" {
@@ -261,6 +237,36 @@ func indexCatalog(data []byte) (*catalogIndex, error) {
 		}
 	}
 	return idx, nil
+}
+
+func catalogOfferFromEntry(provider, id string, entry map[string]any) *CatalogImportOffer {
+	canonical := modelString(entry, "canonical_model_id")
+	developer, _, ok := strings.Cut(canonical, "/")
+	if !ok {
+		developer = ""
+	}
+	switch developer {
+	case "moonshotai":
+		developer = "moonshot"
+	case "deepseek-ai":
+		developer = "deepseek"
+	case "qwen":
+		developer = "alibaba"
+	}
+	if developer == "" && slices.Contains(DefaultDeveloperIDs, provider) {
+		developer = provider
+	}
+	name := modelString(entry, "display_name")
+	if name == "" {
+		name = modelString(entry, "name")
+	}
+	if name == "" {
+		name = id
+	}
+	offer := &CatalogImportOffer{Provider: provider, ModelID: id, Name: name, Developer: developer, Canonical: canonical, Rates: offerRates(entry), Type: catalogModelType(modelString(entry, "type")), entry: entry}
+	identity, _ := json.Marshal([3]string{canonical, modelString(entry, "version"), modelString(entry, "release_date")})
+	offer.Identity = string(identity)
+	return offer
 }
 
 func preferredOffer(offers []*CatalogImportOffer) *CatalogImportOffer {
@@ -329,7 +335,8 @@ func shareCatalogIdentity(ids []string, idx *catalogIndex) bool {
 	return true
 }
 
-func catalogLocalPrices(card *objects.ModelCard) []CatalogImportLocalPrice {
+// CatalogLocalPrices returns stored reference prices and their catalog bindings.
+func CatalogLocalPrices(card *objects.ModelCard) []CatalogImportLocalPrice {
 	result := make([]CatalogImportLocalPrice, 0, 4)
 	for _, field := range catalogPriceFields {
 		price := CatalogImportLocalPrice{Field: ReferencePriceField(field)}
@@ -494,7 +501,7 @@ func (svc *ModelService) catalogPreviewFromSnapshot(ctx context.Context, scope C
 			if err != nil {
 				return nil, err
 			}
-			row.Prices = catalogLocalPrices(m.ModelCard)
+			row.Prices = CatalogLocalPrices(m.ModelCard)
 			idx.addBoundOffers(row, len(providerOffers[id]) == 0)
 		} else if row.Preferred != nil {
 			row.Name = row.Preferred.Name

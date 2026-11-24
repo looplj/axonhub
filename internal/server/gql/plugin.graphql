@@ -155,11 +155,24 @@ extend type Mutation {
   pluginTableOperation(table: String!, operation: PluginTableCommand!, args: [JSONRawMessageInput!]!): JSONRawMessage!
 }
 
+type PluginUIBadge {
+  count: Int
+  dot: Boolean!
+  tone: PluginUIBadgeTone!
+}
+
+enum PluginUIBadgeTone {
+  accent
+  warning
+  danger
+}
+
 type PluginUIPage {
   pluginID: String!
   key: String!
   entry: String!
   title: JSONRawMessage!
+  badge: PluginUIBadge
 }
 
 type PluginUIActionEffect {
@@ -175,6 +188,7 @@ type PluginUIAction {
   icon: String!
   effect: PluginUIActionEffect!
   revision: String!
+  badge: PluginUIBadge
 }
 
 type PluginUIEntries {

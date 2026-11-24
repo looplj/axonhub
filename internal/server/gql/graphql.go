@@ -137,6 +137,10 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.Use(graphqlTransactions(deps.Ent))
 	gqlSrv.SetErrorPresenter(presentGraphqlError)
 
+	if deps.PluginManager != nil {
+		deps.PluginManager.SetGraphQLExecutor(newTaskGraphQLExecutor(schema, deps.Ent))
+	}
+
 	return &GraphqlHandler{
 		Graphql:       gqlSrv,
 		PluginGraphql: newPluginGraphqlHandler(schema, deps.Ent, deps.PluginManager),
@@ -267,15 +271,24 @@ func newPluginGraphqlHandler(schema graphql.ExecutableSchema, client *ent.Client
 	srv := handler.New(schema)
 	srv.AddTransport(transport.POST{})
 	srv.SetQueryCache(lru.New[*ast.QueryDocument](1024))
+	configurePluginGraphQL(srv, client)
+	return &pluginGraphqlHTTPHandler{
+		handler: srv,
+		manager: manager,
+	}
+}
+
+func configurePluginGraphQL(srv interface {
+	Use(graphql.HandlerExtension)
+	AroundOperations(graphql.OperationMiddleware)
+	SetErrorPresenter(graphql.ErrorPresenterFunc)
+}, client *ent.Client,
+) {
 	srv.Use(extension.FixedComplexityLimit(pluginGraphqlComplexityLimit))
 	srv.Use(&loggingTracer{})
 	srv.AroundOperations(rejectPluginGraphqlOperation)
 	srv.Use(graphqlTransactions(client))
 	srv.SetErrorPresenter(presentGraphqlError)
-	return &pluginGraphqlHTTPHandler{
-		handler: srv,
-		manager: manager,
-	}
 }
 
 // apiKeyReadOnly keeps service-account API keys read-only on the admin GraphQL

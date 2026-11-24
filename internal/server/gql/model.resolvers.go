@@ -11,10 +11,12 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/authz/identity"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/samber/lo"
@@ -44,6 +46,19 @@ func (r *modelResolver) MissingReferencePrices(ctx context.Context, obj *ent.Mod
 // AssociatedChannelCount is the resolver for the associatedChannelCount field.
 func (r *modelResolver) AssociatedChannelCount(ctx context.Context, obj *ent.Model) (int, error) {
 	return r.modelService.CountModelAssociatedChannels(ctx, obj)
+}
+
+// CatalogAliases is the resolver for the catalogAliases field.
+func (r *modelResolver) CatalogAliases(ctx context.Context, obj *ent.Model) ([]string, error) {
+	if obj.ModelCard == nil || obj.ModelCard.CatalogAliases == nil {
+		return []string{}, nil
+	}
+	return obj.ModelCard.CatalogAliases, nil
+}
+
+// CatalogPrices is the resolver for the catalogPrices field.
+func (r *modelResolver) CatalogPrices(ctx context.Context, obj *ent.Model) ([]*biz.CatalogImportLocalPrice, error) {
+	return lo.ToSlicePtr(biz.CatalogLocalPrices(obj.ModelCard)), nil
 }
 
 // CreateModel is the resolver for the createModel field.
@@ -150,6 +165,10 @@ func (r *queryResolver) PreviewChannelModelEntries(ctx context.Context, input Ch
 
 // FetchModels is the resolver for the fetchModels field.
 func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error) {
+	// ModelFetcher uses the admin HTTP client. Plugins use their own authorized transport.
+	if identity.IsPlugin(ctx) {
+		return nil, xerrors.ForbiddenError("plugins must use their granted network access to fetch models")
+	}
 	if err := authz.RequireScope(ctx, scopes.ScopeWriteChannels); err != nil {
 		return nil, err
 	}
@@ -251,4 +270,12 @@ func (r *queryResolver) CatalogImportPreview(ctx context.Context, scope biz.Cata
 		return nil, err
 	}
 	return r.modelService.CatalogImportPreview(authz.WithScopeDecision(ctx, scopes.ScopeWriteChannels), scope)
+}
+
+// ModelCatalogOffers is the resolver for the modelCatalogOffers field.
+func (r *queryResolver) ModelCatalogOffers(ctx context.Context, providers []string, first *int, after *string, refresh *bool) (*biz.ModelCatalogOffersPage, error) {
+	if !scopes.HasSiteScope(ctx, scopes.ScopeReadChannels) {
+		return nil, xerrors.ForbiddenError("permission denied: requires read_channels scope")
+	}
+	return r.catalogService.ModelCatalogOffers(ctx, providers, lo.FromPtrOr(first, 100), lo.FromPtr(after), lo.FromPtr(refresh))
 }

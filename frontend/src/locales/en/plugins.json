@@ -104,6 +104,8 @@
   "plugins.actions.more": "More plugin actions",
   "plugins.actions.error": "Plugin action could not load",
   "plugins.actions.loadError": "Could not load plugin actions. Click to retry.",
+  "plugins.badge.count": "Pending items: {{count}}",
+  "plugins.badge.dot": "Pending items",
   "plugins.grant.addedActions": "New actions",
   "plugins.grant.sqlWarning": "SQL access lets this plugin read, modify, or delete anything the AxonHub database account can access, including credentials.",
   "plugins.grant.sqlAccess": "Full AxonHub database access",

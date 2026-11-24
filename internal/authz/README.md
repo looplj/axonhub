@@ -18,7 +18,7 @@ Defined in [principal.go](./principal.go):
 - `PrincipalTypeSystem` - System principal (background tasks, internal operations)
 - `PrincipalTypeUser` - User principal
 - `PrincipalTypeAPIKey` - API Key principal
-- `PrincipalTypePlugin` - a user delegation bound to one installation and an immutable grant snapshot
+- `PrincipalTypePlugin` - an installation with an immutable grant snapshot. A page also pins a delegated user. A scheduled task carries the installation's grants with no user identity.
 
 Key Features:
 - `WithPrincipal` is set-once. Constructors preserve existing internal non-plugin transitions, but reject replacement of a Plugin principal.

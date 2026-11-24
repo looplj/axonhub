@@ -7,6 +7,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/authz/identity"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
@@ -65,6 +66,9 @@ func HasScope(ctx context.Context, requiredScope scopes.ScopeSlug) bool {
 	case PrincipalTypeSystem, PrincipalTypeTest:
 		return true
 	case PrincipalTypePlugin:
+		if p.UserID == nil {
+			return identity.PluginInstallationGranted(ctx, string(requiredScope))
+		}
 		user, ok := contexts.GetUser(ctx)
 		if !ok || user == nil {
 			return false

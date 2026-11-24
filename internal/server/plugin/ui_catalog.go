@@ -14,6 +14,9 @@ type UIPage struct {
 	Key      string
 	Entry    string
 	Title    objects.JSONRawMessage
+	Badge    *UIBadge
+
+	installationID int
 }
 
 type UIAction struct {
@@ -24,6 +27,9 @@ type UIAction struct {
 	Icon     string
 	Effect   objects.PluginUIActionEffect
 	Revision string
+	Badge    *UIBadge
+
+	installationID int
 }
 
 // UIEntries lists UI contributions for any logged-in user.
@@ -63,13 +69,14 @@ func (m *Manager) UIEntries() *UIEntries {
 				icon = "puzzle"
 			}
 			actions = append(actions, &UIAction{
-				PluginID: row.PluginID,
-				Key:      action.Key,
-				Slot:     action.Slot,
-				Title:    objects.JSONRawMessage(raw),
-				Icon:     icon,
-				Effect:   action.Effect,
-				Revision: row.PackageSHA256,
+				installationID: row.ID,
+				PluginID:       row.PluginID,
+				Key:            action.Key,
+				Slot:           action.Slot,
+				Title:          objects.JSONRawMessage(raw),
+				Icon:           icon,
+				Effect:         action.Effect,
+				Revision:       row.PackageSHA256,
 			})
 		}
 		for _, page := range row.Manifest.UI.Pages {
@@ -78,10 +85,11 @@ func (m *Manager) UIEntries() *UIEntries {
 				continue
 			}
 			pages = append(pages, &UIPage{
-				PluginID: row.PluginID,
-				Key:      page.Key,
-				Entry:    page.Entry,
-				Title:    objects.JSONRawMessage(raw),
+				installationID: row.ID,
+				PluginID:       row.PluginID,
+				Key:            page.Key,
+				Entry:          page.Entry,
+				Title:          objects.JSONRawMessage(raw),
 			})
 		}
 	}

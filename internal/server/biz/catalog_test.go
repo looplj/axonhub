@@ -341,3 +341,54 @@ func TestCatalogService_SettingsReadErrorSkipsDownload(t *testing.T) {
 	require.ErrorContains(t, err, "unmarshal catalog settings")
 	require.Equal(t, hits, f.requests.Load())
 }
+
+func TestModelCatalogOffersPagination(t *testing.T) {
+	ctx, system, svc := newCatalogTestService(t)
+	var requests atomic.Int32
+	var changed atomic.Bool
+	useCatalogUpstream(t, ctx, system, svc, func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		if changed.Load() {
+			_, _ = w.Write([]byte(`{"providers":{"other":{"models":[{"id":"other"}]},"test":{"models":[{"id":"z"},{"id":"a","cost":{"input":6}}]}}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"providers":{"other":{"models":[{"id":"other"}]},"test":{"models":[{"id":"z"},{"id":"a","cost":{"input":5}}]}}}`))
+	})
+	page, err := svc.ModelCatalogOffers(ctx, []string{"test"}, 1, "", true)
+	require.NoError(t, err)
+	require.Equal(t, catalogSourceUpstream, page.Source)
+	require.Len(t, page.Offers, 1)
+	require.Equal(t, "a", page.Offers[0].ModelID)
+	require.Equal(t, 5.0, *page.Offers[0].Rates[0].Base)
+	require.NotNil(t, page.NextCursor)
+
+	next, err := svc.ModelCatalogOffers(ctx, []string{"test"}, 1, *page.NextCursor, false)
+	require.NoError(t, err)
+	require.Equal(t, page.FetchedAt, next.FetchedAt)
+	require.Len(t, next.Offers, 1)
+	require.Equal(t, "z", next.Offers[0].ModelID)
+	require.Nil(t, next.NextCursor)
+	require.EqualValues(t, 1, requests.Load())
+
+	replica := NewCatalogService(system, svc.httpClient)
+	next, err = replica.ModelCatalogOffers(ctx, []string{"test"}, 1, *page.NextCursor, false)
+	require.NoError(t, err)
+	require.Len(t, next.Offers, 1)
+	require.Equal(t, "z", next.Offers[0].ModelID)
+	require.EqualValues(t, 2, requests.Load())
+
+	refreshed, err := svc.ModelCatalogOffers(ctx, []string{"test"}, 1, "", true)
+	require.NoError(t, err)
+	require.Equal(t, page.NextCursor, refreshed.NextCursor)
+	next, err = svc.ModelCatalogOffers(ctx, []string{"test"}, 1, *page.NextCursor, false)
+	require.NoError(t, err)
+	require.Len(t, next.Offers, 1)
+	require.Equal(t, "z", next.Offers[0].ModelID)
+
+	changed.Store(true)
+	_, err = svc.ModelCatalogOffers(ctx, []string{"test"}, 1, "", true)
+	require.NoError(t, err)
+	_, err = svc.ModelCatalogOffers(ctx, []string{"test"}, 1, *page.NextCursor, false)
+	require.ErrorContains(t, err, "snapshot changed")
+	require.EqualValues(t, 4, requests.Load())
+}

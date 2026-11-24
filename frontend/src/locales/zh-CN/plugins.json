@@ -104,6 +104,8 @@
   "plugins.actions.more": "更多插件操作",
   "plugins.actions.error": "插件操作加载失败",
   "plugins.actions.loadError": "插件操作加载失败，点击重试",
+  "plugins.badge.count": "{{count}} 项待处理",
+  "plugins.badge.dot": "有待处理项",
   "plugins.grant.addedActions": "新增操作",
   "plugins.grant.sqlWarning": "授予 SQL 权限后，插件可以读取、修改或删除 AxonHub 数据库账号能访问的所有数据，包括凭据。",
   "plugins.grant.sqlAccess": "完整的 AxonHub 数据库权限",

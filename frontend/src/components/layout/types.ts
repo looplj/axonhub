@@ -1,5 +1,6 @@
 import { LinkProps } from '@tanstack/react-router';
 import type { NavModuleId } from '@/config/nav-items';
+import type { PluginUIBadge } from '@/features/plugins/data/plugin-ui';
 
 interface User {
   name: string;
@@ -23,6 +24,7 @@ interface BaseNavItem {
 }
 
 type NavLink = BaseNavItem & {
+  pluginBadge?: PluginUIBadge | null;
   url: LinkProps['to'];
   items?: never;
   mobileOnly?: boolean;

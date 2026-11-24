@@ -967,6 +967,8 @@ type ComplexityRoot struct {
 
 	Model struct {
 		AssociatedChannelCount func(childComplexity int) int
+		CatalogAliases         func(childComplexity int) int
+		CatalogPrices          func(childComplexity int) int
 		CreatedAt              func(childComplexity int) int
 		Developer              func(childComplexity int) int
 		EditVersion            func(childComplexity int) int
@@ -1036,6 +1038,13 @@ type ComplexityRoot struct {
 	ModelCardReasoning struct {
 		Default   func(childComplexity int) int
 		Supported func(childComplexity int) int
+	}
+
+	ModelCatalogOffersPage struct {
+		FetchedAt  func(childComplexity int) int
+		NextCursor func(childComplexity int) int
+		Offers     func(childComplexity int) int
+		Source     func(childComplexity int) int
 	}
 
 	ModelChannelConnection struct {
@@ -1455,6 +1464,7 @@ type ComplexityRoot struct {
 	}
 
 	PluginUIAction struct {
+		Badge    func(childComplexity int) int
 		Effect   func(childComplexity int) int
 		Icon     func(childComplexity int) int
 		Key      func(childComplexity int) int
@@ -1469,12 +1479,19 @@ type ComplexityRoot struct {
 		Type  func(childComplexity int) int
 	}
 
+	PluginUIBadge struct {
+		Count func(childComplexity int) int
+		Dot   func(childComplexity int) int
+		Tone  func(childComplexity int) int
+	}
+
 	PluginUIEntries struct {
 		Actions func(childComplexity int) int
 		Pages   func(childComplexity int) int
 	}
 
 	PluginUIPage struct {
+		Badge    func(childComplexity int) int
 		Entry    func(childComplexity int) int
 		Key      func(childComplexity int) int
 		PluginID func(childComplexity int) int
@@ -1735,6 +1752,7 @@ type ComplexityRoot struct {
 		FetchModels                     func(childComplexity int, input biz.FetchModelsInput) int
 		GetCacheDiagnostics             func(childComplexity int, input *GetCacheDiagnosticsInput) int
 		Me                              func(childComplexity int) int
+		ModelCatalogOffers              func(childComplexity int, providers []string, first *int, after *string, refresh *bool) int
 		ModelPerformanceStats           func(childComplexity int) int
 		Models                          func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) int
 		MyProjects                      func(childComplexity int) int
@@ -2560,6 +2578,8 @@ type ModelResolver interface {
 	EditVersion(ctx context.Context, obj *ent.Model) (string, error)
 	MissingReferencePrices(ctx context.Context, obj *ent.Model) ([]string, error)
 	AssociatedChannelCount(ctx context.Context, obj *ent.Model) (int, error)
+	CatalogAliases(ctx context.Context, obj *ent.Model) ([]string, error)
+	CatalogPrices(ctx context.Context, obj *ent.Model) ([]*biz.CatalogImportLocalPrice, error)
 }
 type MutationResolver interface {
 	CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error)
@@ -2817,6 +2837,7 @@ type QueryResolver interface {
 	QueryModelChannelConnections(ctx context.Context, associations []*objects.ModelAssociation) ([]*biz.ModelChannelConnection, error)
 	QueryUnassociatedChannels(ctx context.Context) ([]*biz.UnassociatedChannel, error)
 	CatalogImportPreview(ctx context.Context, scope biz.CatalogImportScope) (*biz.CatalogImportPreview, error)
+	ModelCatalogOffers(ctx context.Context, providers []string, first *int, after *string, refresh *bool) (*biz.ModelCatalogOffersPage, error)
 	AutoBackupSettings(ctx context.Context) (*biz.AutoBackupSettings, error)
 	ChannelProbeData(ctx context.Context, input biz.GetChannelProbeDataInput) ([]*biz.ChannelProbeData, error)
 	AnalyticsMetadata(ctx context.Context) (*AnalyticsMetadata, error)
@@ -6200,6 +6221,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Model.AssociatedChannelCount(childComplexity), true
+	case "Model.catalogAliases":
+		if e.complexity.Model.CatalogAliases == nil {
+			break
+		}
+
+		return e.complexity.Model.CatalogAliases(childComplexity), true
+	case "Model.catalogPrices":
+		if e.complexity.Model.CatalogPrices == nil {
+			break
+		}
+
+		return e.complexity.Model.CatalogPrices(childComplexity), true
 	case "Model.createdAt":
 		if e.complexity.Model.CreatedAt == nil {
 			break
@@ -6495,6 +6528,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelCardReasoning.Supported(childComplexity), true
+
+	case "ModelCatalogOffersPage.fetchedAt":
+		if e.complexity.ModelCatalogOffersPage.FetchedAt == nil {
+			break
+		}
+
+		return e.complexity.ModelCatalogOffersPage.FetchedAt(childComplexity), true
+	case "ModelCatalogOffersPage.nextCursor":
+		if e.complexity.ModelCatalogOffersPage.NextCursor == nil {
+			break
+		}
+
+		return e.complexity.ModelCatalogOffersPage.NextCursor(childComplexity), true
+	case "ModelCatalogOffersPage.offers":
+		if e.complexity.ModelCatalogOffersPage.Offers == nil {
+			break
+		}
+
+		return e.complexity.ModelCatalogOffersPage.Offers(childComplexity), true
+	case "ModelCatalogOffersPage.source":
+		if e.complexity.ModelCatalogOffersPage.Source == nil {
+			break
+		}
+
+		return e.complexity.ModelCatalogOffersPage.Source(childComplexity), true
 
 	case "ModelChannelConnection.channel":
 		if e.complexity.ModelChannelConnection.Channel == nil {
@@ -9061,6 +9119,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PluginTaskState.Timezone(childComplexity), true
 
+	case "PluginUIAction.badge":
+		if e.complexity.PluginUIAction.Badge == nil {
+			break
+		}
+
+		return e.complexity.PluginUIAction.Badge(childComplexity), true
 	case "PluginUIAction.effect":
 		if e.complexity.PluginUIAction.Effect == nil {
 			break
@@ -9117,6 +9181,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PluginUIActionEffect.Type(childComplexity), true
 
+	case "PluginUIBadge.count":
+		if e.complexity.PluginUIBadge.Count == nil {
+			break
+		}
+
+		return e.complexity.PluginUIBadge.Count(childComplexity), true
+	case "PluginUIBadge.dot":
+		if e.complexity.PluginUIBadge.Dot == nil {
+			break
+		}
+
+		return e.complexity.PluginUIBadge.Dot(childComplexity), true
+	case "PluginUIBadge.tone":
+		if e.complexity.PluginUIBadge.Tone == nil {
+			break
+		}
+
+		return e.complexity.PluginUIBadge.Tone(childComplexity), true
+
 	case "PluginUIEntries.actions":
 		if e.complexity.PluginUIEntries.Actions == nil {
 			break
@@ -9130,6 +9213,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PluginUIEntries.Pages(childComplexity), true
 
+	case "PluginUIPage.badge":
+		if e.complexity.PluginUIPage.Badge == nil {
+			break
+		}
+
+		return e.complexity.PluginUIPage.Badge(childComplexity), true
 	case "PluginUIPage.entry":
 		if e.complexity.PluginUIPage.Entry == nil {
 			break
@@ -10328,6 +10417,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Me(childComplexity), true
+	case "Query.modelCatalogOffers":
+		if e.complexity.Query.ModelCatalogOffers == nil {
+			break
+		}
+
+		args, err := ec.field_Query_modelCatalogOffers_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ModelCatalogOffers(childComplexity, args["providers"].([]string), args["first"].(*int), args["after"].(*string), args["refresh"].(*bool)), true
 	case "Query.modelPerformanceStats":
 		if e.complexity.Query.ModelPerformanceStats == nil {
 			break
@@ -16801,6 +16901,32 @@ func (ec *executionContext) field_Query_getCacheDiagnostics_args(ctx context.Con
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_modelCatalogOffers_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "providers", ec.unmarshalOString2ᚕstringᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["providers"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "first", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "after", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["after"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "refresh", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["refresh"] = arg3
 	return args, nil
 }
 
@@ -35279,6 +35405,78 @@ func (ec *executionContext) fieldContext_Model_associatedChannelCount(_ context.
 	return fc, nil
 }
 
+func (ec *executionContext) _Model_catalogAliases(ctx context.Context, field graphql.CollectedField, obj *ent.Model) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Model_catalogAliases,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Model().CatalogAliases(ctx, obj)
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Model_catalogAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Model",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Model_catalogPrices(ctx context.Context, field graphql.CollectedField, obj *ent.Model) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Model_catalogPrices,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Model().CatalogPrices(ctx, obj)
+		},
+		nil,
+		ec.marshalNCatalogImportLocalPrice2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogImportLocalPriceᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Model_catalogPrices(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Model",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "field":
+				return ec.fieldContext_CatalogImportLocalPrice_field(ctx, field)
+			case "value":
+				return ec.fieldContext_CatalogImportLocalPrice_value(ctx, field)
+			case "follow":
+				return ec.fieldContext_CatalogImportLocalPrice_follow(ctx, field)
+			case "canonical":
+				return ec.fieldContext_CatalogImportLocalPrice_canonical(ctx, field)
+			case "provider":
+				return ec.fieldContext_CatalogImportLocalPrice_provider(ctx, field)
+			case "modelID":
+				return ec.fieldContext_CatalogImportLocalPrice_modelID(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogImportLocalPrice", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ModelAssociation_type(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAssociation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -36320,6 +36518,140 @@ func (ec *executionContext) fieldContext_ModelCardReasoning_default(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _ModelCatalogOffersPage_source(ctx context.Context, field graphql.CollectedField, obj *biz.ModelCatalogOffersPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelCatalogOffersPage_source,
+		func(ctx context.Context) (any, error) {
+			return obj.Source, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelCatalogOffersPage_source(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelCatalogOffersPage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelCatalogOffersPage_fetchedAt(ctx context.Context, field graphql.CollectedField, obj *biz.ModelCatalogOffersPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelCatalogOffersPage_fetchedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.FetchedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelCatalogOffersPage_fetchedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelCatalogOffersPage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelCatalogOffersPage_offers(ctx context.Context, field graphql.CollectedField, obj *biz.ModelCatalogOffersPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelCatalogOffersPage_offers,
+		func(ctx context.Context) (any, error) {
+			return obj.Offers, nil
+		},
+		nil,
+		ec.marshalNCatalogImportOffer2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogImportOfferᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelCatalogOffersPage_offers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelCatalogOffersPage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "provider":
+				return ec.fieldContext_CatalogImportOffer_provider(ctx, field)
+			case "modelID":
+				return ec.fieldContext_CatalogImportOffer_modelID(ctx, field)
+			case "name":
+				return ec.fieldContext_CatalogImportOffer_name(ctx, field)
+			case "developer":
+				return ec.fieldContext_CatalogImportOffer_developer(ctx, field)
+			case "type":
+				return ec.fieldContext_CatalogImportOffer_type(ctx, field)
+			case "identity":
+				return ec.fieldContext_CatalogImportOffer_identity(ctx, field)
+			case "canonical":
+				return ec.fieldContext_CatalogImportOffer_canonical(ctx, field)
+			case "rates":
+				return ec.fieldContext_CatalogImportOffer_rates(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogImportOffer", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelCatalogOffersPage_nextCursor(ctx context.Context, field graphql.CollectedField, obj *biz.ModelCatalogOffersPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelCatalogOffersPage_nextCursor,
+		func(ctx context.Context) (any, error) {
+			return obj.NextCursor, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelCatalogOffersPage_nextCursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelCatalogOffersPage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ModelChannelConnection_channel(ctx context.Context, field graphql.CollectedField, obj *biz.ModelChannelConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -36640,6 +36972,10 @@ func (ec *executionContext) fieldContext_ModelEdge_node(_ context.Context, field
 				return ec.fieldContext_Model_missingReferencePrices(ctx, field)
 			case "associatedChannelCount":
 				return ec.fieldContext_Model_associatedChannelCount(ctx, field)
+			case "catalogAliases":
+				return ec.fieldContext_Model_catalogAliases(ctx, field)
+			case "catalogPrices":
+				return ec.fieldContext_Model_catalogPrices(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Model", field.Name)
 		},
@@ -43219,6 +43555,10 @@ func (ec *executionContext) fieldContext_Mutation_createModel(ctx context.Contex
 				return ec.fieldContext_Model_missingReferencePrices(ctx, field)
 			case "associatedChannelCount":
 				return ec.fieldContext_Model_associatedChannelCount(ctx, field)
+			case "catalogAliases":
+				return ec.fieldContext_Model_catalogAliases(ctx, field)
+			case "catalogPrices":
+				return ec.fieldContext_Model_catalogPrices(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Model", field.Name)
 		},
@@ -43294,6 +43634,10 @@ func (ec *executionContext) fieldContext_Mutation_bulkCreateModels(ctx context.C
 				return ec.fieldContext_Model_missingReferencePrices(ctx, field)
 			case "associatedChannelCount":
 				return ec.fieldContext_Model_associatedChannelCount(ctx, field)
+			case "catalogAliases":
+				return ec.fieldContext_Model_catalogAliases(ctx, field)
+			case "catalogPrices":
+				return ec.fieldContext_Model_catalogPrices(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Model", field.Name)
 		},
@@ -43369,6 +43713,10 @@ func (ec *executionContext) fieldContext_Mutation_updateModel(ctx context.Contex
 				return ec.fieldContext_Model_missingReferencePrices(ctx, field)
 			case "associatedChannelCount":
 				return ec.fieldContext_Model_associatedChannelCount(ctx, field)
+			case "catalogAliases":
+				return ec.fieldContext_Model_catalogAliases(ctx, field)
+			case "catalogPrices":
+				return ec.fieldContext_Model_catalogPrices(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Model", field.Name)
 		},
@@ -49137,6 +49485,43 @@ func (ec *executionContext) fieldContext_PluginUIAction_revision(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _PluginUIAction_badge(ctx context.Context, field graphql.CollectedField, obj *plugin.UIAction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginUIAction_badge,
+		func(ctx context.Context) (any, error) {
+			return obj.Badge, nil
+		},
+		nil,
+		ec.marshalOPluginUIBadge2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋpluginᚐUIBadge,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginUIAction_badge(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginUIAction",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "count":
+				return ec.fieldContext_PluginUIBadge_count(ctx, field)
+			case "dot":
+				return ec.fieldContext_PluginUIBadge_dot(ctx, field)
+			case "tone":
+				return ec.fieldContext_PluginUIBadge_tone(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PluginUIBadge", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PluginUIActionEffect_type(ctx context.Context, field graphql.CollectedField, obj *objects.PluginUIActionEffect) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -49195,6 +49580,93 @@ func (ec *executionContext) fieldContext_PluginUIActionEffect_entry(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _PluginUIBadge_count(ctx context.Context, field graphql.CollectedField, obj *plugin.UIBadge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginUIBadge_count,
+		func(ctx context.Context) (any, error) {
+			return obj.Count, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginUIBadge_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginUIBadge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginUIBadge_dot(ctx context.Context, field graphql.CollectedField, obj *plugin.UIBadge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginUIBadge_dot,
+		func(ctx context.Context) (any, error) {
+			return obj.Dot, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginUIBadge_dot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginUIBadge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginUIBadge_tone(ctx context.Context, field graphql.CollectedField, obj *plugin.UIBadge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginUIBadge_tone,
+		func(ctx context.Context) (any, error) {
+			return obj.Tone, nil
+		},
+		nil,
+		ec.marshalNPluginUIBadgeTone2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋpluginᚐUIBadgeTone,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginUIBadge_tone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginUIBadge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PluginUIBadgeTone does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PluginUIEntries_pages(ctx context.Context, field graphql.CollectedField, obj *plugin.UIEntries) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -49227,6 +49699,8 @@ func (ec *executionContext) fieldContext_PluginUIEntries_pages(_ context.Context
 				return ec.fieldContext_PluginUIPage_entry(ctx, field)
 			case "title":
 				return ec.fieldContext_PluginUIPage_title(ctx, field)
+			case "badge":
+				return ec.fieldContext_PluginUIPage_badge(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PluginUIPage", field.Name)
 		},
@@ -49272,6 +49746,8 @@ func (ec *executionContext) fieldContext_PluginUIEntries_actions(_ context.Conte
 				return ec.fieldContext_PluginUIAction_effect(ctx, field)
 			case "revision":
 				return ec.fieldContext_PluginUIAction_revision(ctx, field)
+			case "badge":
+				return ec.fieldContext_PluginUIAction_badge(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PluginUIAction", field.Name)
 		},
@@ -49390,6 +49866,43 @@ func (ec *executionContext) fieldContext_PluginUIPage_title(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type JSONRawMessage does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PluginUIPage_badge(ctx context.Context, field graphql.CollectedField, obj *plugin.UIPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PluginUIPage_badge,
+		func(ctx context.Context) (any, error) {
+			return obj.Badge, nil
+		},
+		nil,
+		ec.marshalOPluginUIBadge2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋpluginᚐUIBadge,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PluginUIPage_badge(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PluginUIPage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "count":
+				return ec.fieldContext_PluginUIBadge_count(ctx, field)
+			case "dot":
+				return ec.fieldContext_PluginUIBadge_dot(ctx, field)
+			case "tone":
+				return ec.fieldContext_PluginUIBadge_tone(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PluginUIBadge", field.Name)
 		},
 	}
 	return fc, nil
@@ -57261,6 +57774,57 @@ func (ec *executionContext) fieldContext_Query_catalogImportPreview(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_catalogImportPreview_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_modelCatalogOffers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_modelCatalogOffers,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().ModelCatalogOffers(ctx, fc.Args["providers"].([]string), fc.Args["first"].(*int), fc.Args["after"].(*string), fc.Args["refresh"].(*bool))
+		},
+		nil,
+		ec.marshalNModelCatalogOffersPage2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelCatalogOffersPage,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_modelCatalogOffers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "source":
+				return ec.fieldContext_ModelCatalogOffersPage_source(ctx, field)
+			case "fetchedAt":
+				return ec.fieldContext_ModelCatalogOffersPage_fetchedAt(ctx, field)
+			case "offers":
+				return ec.fieldContext_ModelCatalogOffersPage_offers(ctx, field)
+			case "nextCursor":
+				return ec.fieldContext_ModelCatalogOffersPage_nextCursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelCatalogOffersPage", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_modelCatalogOffers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -109304,6 +109868,78 @@ func (ec *executionContext) _Model(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "catalogAliases":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Model_catalogAliases(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "catalogPrices":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Model_catalogPrices(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -109668,6 +110304,57 @@ func (ec *executionContext) _ModelCardReasoning(ctx context.Context, sel ast.Sel
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var modelCatalogOffersPageImplementors = []string{"ModelCatalogOffersPage"}
+
+func (ec *executionContext) _ModelCatalogOffersPage(ctx context.Context, sel ast.SelectionSet, obj *biz.ModelCatalogOffersPage) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelCatalogOffersPageImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelCatalogOffersPage")
+		case "source":
+			out.Values[i] = ec._ModelCatalogOffersPage_source(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fetchedAt":
+			out.Values[i] = ec._ModelCatalogOffersPage_fetchedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "offers":
+			out.Values[i] = ec._ModelCatalogOffersPage_offers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nextCursor":
+			out.Values[i] = ec._ModelCatalogOffersPage_nextCursor(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -112782,6 +113469,8 @@ func (ec *executionContext) _PluginUIAction(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "badge":
+			out.Values[i] = ec._PluginUIAction_badge(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -112823,6 +113512,52 @@ func (ec *executionContext) _PluginUIActionEffect(ctx context.Context, sel ast.S
 			}
 		case "entry":
 			out.Values[i] = ec._PluginUIActionEffect_entry(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var pluginUIBadgeImplementors = []string{"PluginUIBadge"}
+
+func (ec *executionContext) _PluginUIBadge(ctx context.Context, sel ast.SelectionSet, obj *plugin.UIBadge) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pluginUIBadgeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PluginUIBadge")
+		case "count":
+			out.Values[i] = ec._PluginUIBadge_count(ctx, field, obj)
+		case "dot":
+			out.Values[i] = ec._PluginUIBadge_dot(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tone":
+			out.Values[i] = ec._PluginUIBadge_tone(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -112924,6 +113659,8 @@ func (ec *executionContext) _PluginUIPage(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "badge":
+			out.Values[i] = ec._PluginUIPage_badge(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -116865,6 +117602,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_catalogImportPreview(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "modelCatalogOffers":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_modelCatalogOffers(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -125546,6 +126305,60 @@ func (ec *executionContext) marshalNCatalogImportLocalPrice2ᚕgithubᚗcomᚋlo
 	return ret
 }
 
+func (ec *executionContext) marshalNCatalogImportLocalPrice2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogImportLocalPriceᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.CatalogImportLocalPrice) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCatalogImportLocalPrice2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogImportLocalPrice(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCatalogImportLocalPrice2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogImportLocalPrice(ctx context.Context, sel ast.SelectionSet, v *biz.CatalogImportLocalPrice) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CatalogImportLocalPrice(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNCatalogImportMember2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐCatalogImportMember(ctx context.Context, sel ast.SelectionSet, v biz.CatalogImportMember) graphql.Marshaler {
 	return ec._CatalogImportMember(ctx, sel, &v)
 }
@@ -128348,6 +129161,20 @@ func (ec *executionContext) marshalNModelCardReasoning2githubᚗcomᚋloopljᚋa
 	return ec._ModelCardReasoning(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalNModelCatalogOffersPage2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelCatalogOffersPage(ctx context.Context, sel ast.SelectionSet, v biz.ModelCatalogOffersPage) graphql.Marshaler {
+	return ec._ModelCatalogOffersPage(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNModelCatalogOffersPage2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelCatalogOffersPage(ctx context.Context, sel ast.SelectionSet, v *biz.ModelCatalogOffersPage) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ModelCatalogOffersPage(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNModelChannelConnection2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelChannelConnectionᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.ModelChannelConnection) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -129492,6 +130319,23 @@ func (ec *executionContext) marshalNPluginUIAction2ᚖgithubᚗcomᚋloopljᚋax
 
 func (ec *executionContext) marshalNPluginUIActionEffect2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐPluginUIActionEffect(ctx context.Context, sel ast.SelectionSet, v objects.PluginUIActionEffect) graphql.Marshaler {
 	return ec._PluginUIActionEffect(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNPluginUIBadgeTone2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋpluginᚐUIBadgeTone(ctx context.Context, v any) (plugin.UIBadgeTone, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := plugin.UIBadgeTone(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPluginUIBadgeTone2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋpluginᚐUIBadgeTone(ctx context.Context, sel ast.SelectionSet, v plugin.UIBadgeTone) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) marshalNPluginUIEntries2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋpluginᚐUIEntries(ctx context.Context, sel ast.SelectionSet, v plugin.UIEntries) graphql.Marshaler {
@@ -136187,6 +137031,13 @@ func (ec *executionContext) marshalOPluginManifestRequestHook2ᚖgithubᚗcomᚋ
 		return graphql.Null
 	}
 	return ec._PluginManifestRequestHook(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOPluginUIBadge2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋpluginᚐUIBadge(ctx context.Context, sel ast.SelectionSet, v *plugin.UIBadge) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PluginUIBadge(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPluginUpgradePreview2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋpluginᚐUpgradePreview(ctx context.Context, sel ast.SelectionSet, v *plugin.UpgradePreview) graphql.Marshaler {
