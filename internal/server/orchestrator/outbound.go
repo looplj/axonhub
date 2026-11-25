@@ -751,8 +751,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	transformStarted := time.Now()
 	httpRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
 	if err != nil {
-		var credentialErr *biz.VertexCredentialError
-		if errors.As(err, &credentialErr) {
+		if credentialErr, ok := errors.AsType[*biz.VertexCredentialError](err); ok {
 			p.state.Perf = &biz.PerformanceRecord{
 				ChannelID: candidate.Channel.ID,
 				APIKey:    credentialErr.CredentialRef,
