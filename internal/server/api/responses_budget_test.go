@@ -19,7 +19,10 @@ func TestResponsesAdapterBudgetsQueue128MiB(t *testing.T) {
 	accepted := d.reserve(128 << 20)
 	// Then
 	require.True(t, accepted)
-	require.False(t, d.reserve(1))
+	_, rejected := d.admit("new", 1)
+	require.NotNil(t, rejected)
+	require.Zero(t, d.namedStreams)
+	require.Empty(t, d.lanes)
 	d.queueBudget.Replace(128<<20, 0)
 	<-d.pending
 	require.True(t, d.reserve(128<<20))

@@ -38,13 +38,16 @@ var errWebSocketClosedBeforeSend = errors.New("websocket closed before sending r
 func (l *webSocketLease) write(ctx context.Context, payload map[string]any) error {
 	if l.pooled != nil {
 		l.pooled.mu.Lock()
-		defer l.pooled.mu.Unlock()
+		// inFlight serializes writers for the lifetime of this lease.
 		if l.pooled.closed || l.pooled.generation != l.generation {
+			l.pooled.mu.Unlock()
 			return errWebSocketClosedBeforeSend
 		}
 		if id := explicitPreviousResponseID(payload); id != "" && id != l.pooled.lastResponseID {
+			l.pooled.mu.Unlock()
 			return shared.ResponsesRecoveryError()
 		}
+		l.pooled.mu.Unlock()
 	}
 	if err := ctx.Err(); err != nil {
 		return err

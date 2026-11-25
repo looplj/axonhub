@@ -519,6 +519,12 @@ func TestResponsesWebSocketWarmupReturnsIDAndMergesContinuation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "resp_generated", gjson.GetBytes(unrelated, "response.id").String())
 
+	invalid := `{"type":"response.create","generate":false,"model":"","previous_response_id":"` + warmupID + `"}`
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(invalid)))
+	_, rejected, err := conn.Read(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "model", gjson.GetBytes(rejected, "error.param").String())
+
 	continuation := `{"type":"response.create","model":"gpt-test","previous_response_id":"` + warmupID + `","input":[{"type":"function_call_output","call_id":"call_1","output":"ok"}]}`
 	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(continuation)))
 	_, generated, err := conn.Read(t.Context())
@@ -653,4 +659,28 @@ func dialResponsesWebSocket(t *testing.T, serverURL string, headers http.Header)
 
 	conn.SetReadLimit(-1)
 	return conn
+}
+
+func TestResponsesWebSocketIncompleteStreamKeepsLaneReusable(t *testing.T) {
+	server := newResponsesWebSocketTestServer(t, func(_ context.Context, request *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+		if gjson.GetBytes(request.Body, "input").String() == "first" {
+			return orchestrator.ChatCompletionResult{ChatCompletionStream: streams.SliceStream([]*httpclient.StreamEvent{
+				{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"hi"}`)},
+			})}, nil
+		}
+		return orchestrator.ChatCompletionResult{ChatCompletion: &httpclient.Response{Body: []byte(`{"id":"second"}`)}}, nil
+	}, nil)
+	conn := dialResponsesWebSocket(t, server.URL, nil)
+	defer conn.CloseNow()
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	for _, input := range []string{"first", "second"} {
+		require.NoError(t, conn.Write(ctx, websocket.MessageText, []byte(fmt.Sprintf(`{"type":"response.create","stream_id":"lane","input":%q}`, input))))
+	}
+	for _, want := range []string{"response.output_text.delta", "error", "response.completed"} {
+		_, event, err := conn.Read(ctx)
+		require.NoError(t, err)
+		require.Equal(t, want, gjson.GetBytes(event, "type").String())
+		require.Equal(t, "lane", gjson.GetBytes(event, "stream_id").String())
+	}
 }

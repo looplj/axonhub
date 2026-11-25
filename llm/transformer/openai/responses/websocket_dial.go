@@ -118,7 +118,15 @@ func configurePlainWebSocketProxy(ctx context.Context, transport *http.Transport
 	transport.DialContext = func(_ context.Context, network, targetAddr string) (net.Conn, error) {
 		// Transport can detach DialContext cancellation to allow connection reuse.
 		// This tunnel belongs to a single WebSocket handshake.
-		conn, err := dialWebSocketProxyTunnel(ctx, dial, transport.TLSClientConfig, proxyURL, network, targetAddr)
+		connectHeaders := transport.ProxyConnectHeader
+		if get := transport.GetProxyConnectHeader; get != nil {
+			h, err := get(ctx, proxyURL, targetAddr)
+			if err != nil {
+				return nil, err
+			}
+			connectHeaders = h
+		}
+		conn, err := dialWebSocketProxyTunnel(ctx, dial, transport.TLSClientConfig, proxyURL, network, targetAddr, connectHeaders)
 		if err != nil {
 			return nil, fmt.Errorf("websocket proxy CONNECT: %w", err)
 		}
@@ -127,7 +135,7 @@ func configurePlainWebSocketProxy(ctx context.Context, transport *http.Transport
 	return nil
 }
 
-func dialWebSocketProxyTunnel(ctx context.Context, dial func(context.Context, string, string) (net.Conn, error), tlsConfig *tls.Config, proxyURL *url.URL, network, targetAddr string) (net.Conn, error) {
+func dialWebSocketProxyTunnel(ctx context.Context, dial func(context.Context, string, string) (net.Conn, error), tlsConfig *tls.Config, proxyURL *url.URL, network, targetAddr string, headers http.Header) (net.Conn, error) {
 	port := proxyURL.Port()
 	if port == "" {
 		port = "80"
@@ -168,9 +176,12 @@ func dialWebSocketProxyTunnel(ctx context.Context, dial func(context.Context, st
 		Method: http.MethodConnect,
 		URL:    &url.URL{Opaque: targetAddr},
 		Host:   targetAddr,
-		Header: make(http.Header),
+		Header: headers.Clone(),
 	}
 	if user := proxyURL.User; user != nil {
+		if request.Header == nil {
+			request.Header = make(http.Header)
+		}
 		password, _ := user.Password()
 		credentials := base64.StdEncoding.EncodeToString([]byte(user.Username() + ":" + password))
 		request.Header.Set("Proxy-Authorization", "Basic "+credentials)

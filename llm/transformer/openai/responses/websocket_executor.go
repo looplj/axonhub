@@ -77,9 +77,13 @@ func NewWebSocketExecutor(inner pipeline.Executor) *WebSocketExecutor {
 	if hc, ok := inner.(*httpclient.HttpClient); ok {
 		transport.Proxy = hc.ProxyFunc()
 		if native := hc.GetNativeClient(); native != nil {
-			if source, ok := native.Transport.(*http.Transport); ok && source.TLSClientConfig != nil {
-				transport.TLSClientConfig = source.TLSClientConfig.Clone()
-				transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
+			if source, ok := native.Transport.(*http.Transport); ok {
+				transport.ProxyConnectHeader = source.ProxyConnectHeader.Clone()
+				transport.GetProxyConnectHeader = source.GetProxyConnectHeader
+				if source.TLSClientConfig != nil {
+					transport.TLSClientConfig = source.TLSClientConfig.Clone()
+					transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
+				}
 			}
 		}
 	}

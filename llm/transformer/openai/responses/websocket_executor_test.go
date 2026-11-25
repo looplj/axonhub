@@ -1753,6 +1753,8 @@ func TestWebSocketExecutorAnswersPingBeforeLargeUploadCompletes(t *testing.T) {
 		pingErr          error
 	}
 	result := make(chan uploadResult, 1)
+	executor := NewWebSocketExecutor(nil)
+	defer executor.Close()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var uploadComplete atomic.Bool
 		var pongDuringUpload atomic.Bool
@@ -1765,6 +1767,10 @@ func TestWebSocketExecutorAnswersPingBeforeLargeUploadCompletes(t *testing.T) {
 			return
 		}
 		defer conn.CloseNow()
+		if r.Header.Get(webSocketSessionHeader) == "other" {
+			_, _, _ = conn.Read(r.Context())
+			return
+		}
 		conn.SetReadLimit(-1)
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
@@ -1778,6 +1784,13 @@ func TestWebSocketExecutorAnswersPingBeforeLargeUploadCompletes(t *testing.T) {
 		if !assert.NoError(t, err) {
 			return
 		}
+
+		// Pause consumption of the upload until a different pooled session acquires its lease.
+		other, err := executor.acquire(webSocketTestContext(), &httpclient.Request{}, "ws://"+r.Host, http.Header{http.CanonicalHeaderKey(webSocketSessionHeader): {"other"}})
+		if !assert.NoError(t, err) {
+			return
+		}
+		other.release(true)
 
 		// Send the ping after the upload starts. Read slowly so the socket
 		// writer must flush multiple fragments before the message ends.
@@ -1808,13 +1821,11 @@ func TestWebSocketExecutorAnswersPingBeforeLargeUploadCompletes(t *testing.T) {
 	}))
 	defer server.Close()
 
-	executor := NewWebSocketExecutor(nil)
-	defer executor.Close()
-	ctx, cancel := context.WithTimeout(t.Context(), 12*time.Second)
+	ctx, cancel := context.WithTimeout(webSocketTestContext(), 12*time.Second)
 	defer cancel()
 	payload, err := json.Marshal(map[string]any{"model": "gpt-5", "input": strings.Repeat("a", inputSize)})
 	require.NoError(t, err)
-	stream, err := executor.DoStream(ctx, &httpclient.Request{Method: http.MethodPost, URL: server.URL, Body: payload})
+	stream, err := executor.DoStream(ctx, &httpclient.Request{Method: http.MethodPost, URL: server.URL, Headers: http.Header{webSocketSessionHeader: {"upload"}}, Body: payload})
 	require.NoError(t, err)
 	defer stream.Close()
 

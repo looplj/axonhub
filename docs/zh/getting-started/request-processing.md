@@ -118,6 +118,10 @@ API Key Profile: gpt-4 → claude-3-opus
 
 系统把上游返回的结果转换回客户端期望的格式，并记录请求结果。
 
+## Responses WebSocket 并发请求
+
+使用 Responses WebSocket 时，每个 `stream_id` 同时只发起一个 `response.create`；省略该字段时也按同一默认通道处理。收到终止事件或错误后，再在该通道发送下一条请求。队列拒绝可能早于上一轮的终止事件到达，且只标识通道。并发请求请使用不同的流 ID。
+
 ## 什么时候看哪篇文档
 
 | 如果你的问题是 | 优先看 |
