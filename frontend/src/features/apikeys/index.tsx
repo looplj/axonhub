@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import type { SortingState } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
+import { type DateTimeRangeValue } from '@/utils/date-range';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
-import { type DateTimeRangeValue } from '@/utils/date-range';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Main } from '@/components/layout/main';
 import { PageHeader } from '@/components/layout/page-header';
@@ -52,11 +52,10 @@ function loadSorting(): SortingState {
 function ApiKeysContent() {
   const { t } = useTranslation();
   const { user, apiKeyPermissions, userPermissions } = usePermissions();
-  const { startCursor, endCursor, cursorHistory, pageSize, setCursors, setPageSize, resetCursor, paginationArgs } =
-    usePaginationSearch({
-      defaultPageSize: 20,
-      pageSizeStorageKey: 'apikeys-table-page-size',
-    });
+  const { startCursor, endCursor, cursorHistory, pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
+    defaultPageSize: 20,
+    pageSizeStorageKey: 'apikeys-table-page-size',
+  });
 
   const [activeTab, setActiveTab] = useState<ApiKeyTabKey>('all');
   const [sorting, setSorting] = useState<SortingState>(loadSorting);
@@ -89,15 +88,11 @@ function ApiKeysContent() {
   // Build where clause for API filtering
   const whereClause = (() => {
     const where: Record<string, unknown> = {};
-    
-    // Use OR condition for searching both name and key
+
     if (debouncedSearchFilter) {
-      where.or = [
-        { nameContainsFold: debouncedSearchFilter },
-        { keyContainsFold: debouncedSearchFilter },
-      ];
+      where.nameContainsFold = debouncedSearchFilter;
     }
-    
+
     if (activeTab === 'mine') {
       where.userID = user?.id;
     } else if (activeTab !== 'all') {
@@ -112,19 +107,16 @@ function ApiKeysContent() {
     if (userFilter.length > 0 && userFilter[0]) {
       where.userID = userFilter[0]; // API expects single userID
     }
-    
+
     // Add AND condition to combine OR search with other filters
     if (where.or && (where.typeIn || where.statusIn || where.userID)) {
       const orCondition = where.or;
       delete where.or;
       return {
-        and: [
-          { or: orCondition },
-          where,
-        ],
+        and: [{ or: orCondition }, where],
       };
     }
-    
+
     return Object.keys(where).length > 0 ? where : undefined;
   })();
 
@@ -151,10 +143,7 @@ function ApiKeysContent() {
     orderBy: currentOrderBy,
   });
 
-  const tableData = React.useMemo(
-    () => (data?.edges?.map((edge) => edge.node) ?? []),
-    [data?.edges]
-  );
+  const tableData = React.useMemo(() => data?.edges?.map((edge) => edge.node) ?? [], [data?.edges]);
 
   // Reset cursor when filters change
   React.useEffect(() => {

@@ -10,7 +10,8 @@ import (
 )
 
 type APIKey struct {
-	ID       objects.GUID            `json:"id"`
+	ID objects.GUID `json:"id"`
+	// The new credential on creation, or the caller's own credential. Empty for other keys.
 	Key      string                  `json:"key"`
 	Name     string                  `json:"name"`
 	Scopes   []string                `json:"scopes,omitempty"`

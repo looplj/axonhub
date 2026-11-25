@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -81,23 +81,25 @@ func responsesIntegrationPost(t *testing.T, server *httptest.Server, path, body 
 
 func responsesIntegrationDial(t *testing.T, server *httptest.Server) *websocket.Conn {
 	t.Helper()
-	conn, response, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http")+"/v1/responses", nil)
+	conn, response, err := websocket.Dial(t.Context(), "ws"+strings.TrimPrefix(server.URL, "http")+"/v1/responses", nil)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusSwitchingProtocols, response.StatusCode)
 	t.Cleanup(func() {
-		if err := conn.Close(); !errors.Is(err, net.ErrClosed) {
+		if err := conn.CloseNow(); !errors.Is(err, net.ErrClosed) {
 			require.NoError(t, err)
 		}
 	})
+	conn.SetReadLimit(-1)
 	return conn
 }
 
 func responsesIntegrationTurn(t *testing.T, conn *websocket.Conn, body string) []byte {
 	t.Helper()
-	require.NoError(t, conn.SetReadDeadline(time.Now().Add(10*time.Second)))
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(body)))
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(body)))
 	for {
-		_, event, err := conn.ReadMessage()
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+		_, event, err := conn.Read(ctx)
+		cancel()
 		require.NoError(t, err)
 		switch gjson.GetBytes(event, "type").String() {
 		case "response.completed", "response.failed", "error":

@@ -81,7 +81,9 @@ func (_c *UserRoleCreate) Mutation() *UserRoleMutation {
 
 // Save creates the UserRole in the database.
 func (_c *UserRoleCreate) Save(ctx context.Context) (*UserRole, error) {
-	_c.defaults()
+	if err := _c.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
@@ -108,15 +110,22 @@ func (_c *UserRoleCreate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (_c *UserRoleCreate) defaults() {
+func (_c *UserRoleCreate) defaults() error {
 	if _, ok := _c.mutation.CreatedAt(); !ok {
+		if userrole.DefaultCreatedAt == nil {
+			return fmt.Errorf("ent: uninitialized userrole.DefaultCreatedAt (forgotten import ent/runtime?)")
+		}
 		v := userrole.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		if userrole.DefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized userrole.DefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := userrole.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.

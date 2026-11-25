@@ -149,6 +149,14 @@ do
   update_go_mod "$module"
 done
 
+extra_modules=$(mktemp)
+find integration_test examples -name go.mod -type f -not -path '*/node_modules/*' | sort >"$extra_modules"
+while IFS= read -r module; do
+  [ -n "$module" ] || continue
+  update_go_mod "$module"
+done <"$extra_modules"
+rm -f "$extra_modules"
+
 update_dockerfile
 
 for prose in \

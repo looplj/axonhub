@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -54,14 +55,19 @@ func guidID(g *objects.GUID, expectedType string) (*int, error) {
 //
 // Lives in its own file (not openapi.resolvers.go) so gqlgen's regeneration
 // pass doesn't sweep it into a warning block as "unknown code".
-func toOpenAPIAPIKey(k *ent.APIKey) *APIKey {
+func toOpenAPIAPIKey(ctx context.Context, k *ent.APIKey, created bool) *APIKey {
 	if k == nil {
 		return nil
 	}
 
+	key := ""
+	caller, ok := contexts.GetAPIKey(ctx)
+	if created || (ok && caller != nil && caller.ID == k.ID && caller.Key == k.Key) {
+		key = k.Key
+	}
 	return &APIKey{
 		ID:       objects.GUID{Type: "APIKey", ID: k.ID},
-		Key:      k.Key,
+		Key:      key,
 		Name:     k.Name,
 		Scopes:   k.Scopes,
 		Profiles: k.Profiles,

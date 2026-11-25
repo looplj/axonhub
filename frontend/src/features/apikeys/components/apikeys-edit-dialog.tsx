@@ -138,8 +138,8 @@ export function ApiKeysEditDialog() {
                 </FormItem>
               )}
             </div>
-            <div className='space-y-4'>
-              <div>
+            {selectedApiKey?.key && (
+              <div className='space-y-4'>
                 <div className='flex items-center justify-between'>
                   <label className='text-muted-foreground text-sm font-medium'>{t('apikeys.dialogs.fields.key.label')}</label>
                   <Button type='button' variant='ghost' size='sm' onClick={() => setShowApiKey(!showApiKey)} className='h-6 px-2'>
@@ -151,7 +151,7 @@ export function ApiKeysEditDialog() {
                   {showApiKey ? selectedApiKey?.key : '••••••••••••••••••••••••••••••••'}
                 </p>
               </div>
-            </div>
+            )}
             <DialogFooter>
               <Button type='button' variant='outline' onClick={handleClose} disabled={isSubmitting}>
                 {t('common.buttons.cancel')}

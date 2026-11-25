@@ -107,7 +107,8 @@ export function useProjects(
     after?: string;
     orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' };
     where?: any;
-  } = {}
+  } = {},
+  options?: { enabled?: boolean }
 ) {
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
@@ -119,6 +120,7 @@ export function useProjects(
 
   return useQuery({
     queryKey: ['projects', queryVariables],
+    enabled: options?.enabled,
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ projects: ProjectConnection }>(PROJECTS_QUERY, queryVariables);

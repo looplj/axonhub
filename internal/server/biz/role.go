@@ -294,5 +294,5 @@ func (s *RoleService) RoleNameExists(ctx context.Context, level role.Level, name
 // invalidateUserCache clears all user cache when a role is modified.
 // Since role changes affect user scopes, we clear the entire cache for simplicity.
 func (s *RoleService) invalidateUserCache(ctx context.Context) {
-	s.userService.clearUserCache(ctx)
+	runAfterCommit(ctx, s.userService.clearUserCache)
 }

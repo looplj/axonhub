@@ -2,8 +2,10 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -11,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -473,6 +476,7 @@ func TestAddUserToProject_WithRoles(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
+	ctx = contexts.WithUser(ctx, createOwnerUser(t, ctx, client))
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -611,6 +615,7 @@ func TestRemoveUserFromProject_Success(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
+	ctx = contexts.WithUser(ctx, createOwnerUser(t, ctx, client))
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -656,6 +661,7 @@ func TestRemoveUserFromProject_NotFound(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
+	ctx = contexts.WithUser(ctx, createOwnerUser(t, ctx, client))
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -686,6 +692,7 @@ func TestRemoveUserFromProject_WithRoles(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
+	ctx = contexts.WithUser(ctx, createOwnerUser(t, ctx, client))
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -1208,6 +1215,7 @@ func TestUpdateUserStatus_CacheInvalidation(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
+	ctx = contexts.WithUser(ctx, createOwnerUser(t, ctx, client))
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -1242,6 +1250,7 @@ func TestUpdateUserStatusDeactivatedDisablesOnlyPersonalAPIKeys(t *testing.T) {
 
 	ctx := ent.NewContext(context.Background(), client)
 	ctx = authz.WithTestBypass(ctx)
+	ctx = contexts.WithUser(ctx, createOwnerUser(t, ctx, client))
 
 	testUser, err := client.User.Create().
 		SetEmail("deactivate@example.com").
@@ -1362,6 +1371,7 @@ func TestRemoveUserFromProject_CacheInvalidation(t *testing.T) {
 	ctx := context.Background()
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
+	ctx = contexts.WithUser(ctx, createOwnerUser(t, ctx, client))
 
 	// Create a user
 	testUser, err := client.User.Create().
@@ -1573,6 +1583,256 @@ func TestUpdateProjectUser_UpdateIsOwner_PermissionDenied(t *testing.T) {
 		Only(ctx)
 	require.NoError(t, err)
 	require.False(t, userProject.IsOwner)
+}
+
+func TestUpdateUser_RequiresSystemOwnerToChangeOwnership(t *testing.T) {
+	service, client := setupTestUserService(t)
+	t.Cleanup(func() { _ = client.Close() })
+	ctx := ent.NewContext(t.Context(), client)
+	setup := authz.WithTestBypass(ctx)
+	owner := createOwnerUser(t, setup, client)
+	manager := client.User.Create().
+		SetEmail("manager@example.com").
+		SetPassword("password").
+		SetScopes([]string{"read_users", "write_users"}).
+		SaveX(setup)
+	managerCtx := contexts.WithUser(authz.NewUserContext(ctx, manager.ID), manager)
+
+	_, err := service.UpdateUser(managerCtx, manager.ID, ent.UpdateUserInput{IsOwner: lo.ToPtr(true)})
+	require.ErrorIs(t, err, privacy.Deny)
+	require.False(t, client.User.GetX(setup, manager.ID).IsOwner)
+
+	updated, err := service.UpdateUser(managerCtx, manager.ID, ent.UpdateUserInput{
+		IsOwner:   lo.ToPtr(false),
+		FirstName: lo.ToPtr("Updated"),
+	})
+	require.NoError(t, err)
+	require.False(t, updated.IsOwner)
+	require.Equal(t, "Updated", updated.FirstName)
+
+	ownerCtx := contexts.WithUser(authz.NewUserContext(ctx, owner.ID), owner)
+	for _, isOwner := range []bool{true, false} {
+		_, err := service.UpdateUser(ownerCtx, manager.ID, ent.UpdateUserInput{IsOwner: lo.ToPtr(isOwner)})
+		require.NoError(t, err)
+		require.Equal(t, isOwner, client.User.GetX(setup, manager.ID).IsOwner)
+	}
+}
+
+func TestProjectUser_RequiresProjectOwnerToChangeOwnership(t *testing.T) {
+	service, client := setupTestUserService(t)
+	t.Cleanup(func() { _ = client.Close() })
+	ctx := ent.NewContext(t.Context(), client)
+	setup := authz.WithTestBypass(ctx)
+	project := client.Project.Create().SetName("Project").SaveX(setup)
+	owner := client.User.Create().SetEmail("project-owner@example.com").SetPassword("password").SaveX(setup)
+	manager := client.User.Create().SetEmail("project-manager@example.com").SetPassword("password").SaveX(setup)
+	invitee := client.User.Create().SetEmail("invitee@example.com").SetPassword("password").SaveX(setup)
+	ownerMembership := client.UserProject.Create().
+		SetUserID(owner.ID).SetProjectID(project.ID).SetIsOwner(true).SaveX(setup)
+	managerMembership := client.UserProject.Create().
+		SetUserID(manager.ID).SetProjectID(project.ID).SetScopes([]string{"read_users", "write_users"}).SaveX(setup)
+	owner.Edges.ProjectUsers = []*ent.UserProject{ownerMembership}
+	manager.Edges.ProjectUsers = []*ent.UserProject{managerMembership}
+	ownerCtx := contexts.WithProjectID(contexts.WithUser(authz.NewUserContext(ctx, owner.ID), owner), project.ID)
+	managerCtx := contexts.WithProjectID(contexts.WithUser(authz.NewUserContext(ctx, manager.ID), manager), project.ID)
+
+	_, err := service.UpdateProjectUser(managerCtx, manager.ID, project.ID, lo.ToPtr(true), nil, nil, nil)
+	require.ErrorIs(t, err, privacy.Deny)
+	require.False(t, client.UserProject.GetX(setup, managerMembership.ID).IsOwner)
+
+	_, err = service.AddUserToProject(managerCtx, invitee.ID, project.ID, lo.ToPtr(true), nil, nil)
+	require.ErrorIs(t, err, privacy.Deny)
+	require.False(t, client.UserProject.Query().Where(userproject.UserIDEQ(invitee.ID)).ExistX(setup))
+
+	updated, err := service.UpdateProjectUser(managerCtx, manager.ID, project.ID, lo.ToPtr(false), []string{"read_users"}, nil, nil)
+	require.NoError(t, err)
+	require.False(t, updated.IsOwner)
+	require.Equal(t, []string{"read_users"}, updated.Scopes)
+
+	member, err := service.AddUserToProject(ownerCtx, invitee.ID, project.ID, lo.ToPtr(true), nil, nil)
+	require.NoError(t, err)
+	require.True(t, member.IsOwner)
+	updated, err = service.UpdateProjectUser(ownerCtx, invitee.ID, project.ID, lo.ToPtr(false), nil, nil, nil)
+	require.NoError(t, err)
+	require.False(t, updated.IsOwner)
+}
+
+func TestProjectOwnerCanAssignProjectRoles(t *testing.T) {
+	service, client := setupTestUserService(t)
+	defer client.Close()
+	ctx := ent.NewContext(t.Context(), client)
+	setup := authz.WithTestBypass(ctx)
+	project := client.Project.Create().SetName("Project").SaveX(setup)
+	owner := client.User.Create().SetEmail("project-owner@example.com").SetPassword("password").SaveX(setup)
+	owner.Edges.ProjectUsers = []*ent.UserProject{client.UserProject.Create().
+		SetUserID(owner.ID).SetProjectID(project.ID).SetIsOwner(true).SaveX(setup)}
+	ownerCtx := contexts.WithProjectID(contexts.WithUser(authz.NewUserContext(ctx, owner.ID), owner), project.ID)
+	invitee := client.User.Create().SetEmail("invitee@example.com").SetPassword("password").SaveX(setup)
+	originalRole := client.Role.Create().SetName("Member").SetLevel(role.LevelProject).SetProjectID(project.ID).SaveX(setup)
+	newRole := client.Role.Create().SetName("Editor").SetLevel(role.LevelProject).SetProjectID(project.ID).SaveX(setup)
+
+	membership, err := service.AddUserToProject(ownerCtx, invitee.ID, project.ID, nil, []string{"read_requests"}, []int{originalRole.ID})
+	require.NoError(t, err)
+	require.Equal(t, []int{originalRole.ID}, invitee.QueryRoles().IDsX(setup))
+
+	updated, err := service.UpdateProjectUser(ownerCtx, invitee.ID, project.ID, lo.ToPtr(true),
+		[]string{"write_requests"}, []int{newRole.ID}, []int{originalRole.ID})
+	require.NoError(t, err)
+	require.True(t, updated.IsOwner)
+	require.Equal(t, []string{"write_requests"}, updated.Scopes)
+	require.Equal(t, []int{newRole.ID}, invitee.QueryRoles().IDsX(setup))
+
+	writeErr := errors.New("injected failure after role write")
+	client.User.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, mut ent.Mutation) (ent.Value, error) {
+			value, err := next.Mutate(ctx, mut)
+			if err == nil && len(mut.AddedIDs(user.EdgeRoles)) > 0 {
+				return nil, writeErr
+			}
+			return value, err
+		})
+	})
+
+	_, err = service.UpdateProjectUser(ownerCtx, invitee.ID, project.ID, lo.ToPtr(false),
+		[]string{"read_users"}, []int{originalRole.ID}, []int{newRole.ID})
+	require.ErrorIs(t, err, writeErr)
+	stored := client.UserProject.GetX(setup, membership.ID)
+	require.True(t, stored.IsOwner)
+	require.Equal(t, []string{"write_requests"}, stored.Scopes)
+	require.Equal(t, []int{newRole.ID}, invitee.QueryRoles().IDsX(setup))
+
+	secondInvitee := client.User.Create().SetEmail("second-invitee@example.com").SetPassword("password").SaveX(setup)
+	_, err = service.AddUserToProject(ownerCtx, secondInvitee.ID, project.ID, nil, nil, []int{originalRole.ID})
+	require.ErrorIs(t, err, writeErr)
+	require.False(t, client.UserProject.Query().
+		Where(userproject.UserIDEQ(secondInvitee.ID), userproject.ProjectIDEQ(project.ID)).
+		ExistX(setup))
+	require.Empty(t, secondInvitee.QueryRoles().IDsX(setup))
+}
+
+func TestDelegatedUserManagementRespectsGrantAndMembershipBoundaries(t *testing.T) {
+	service, client := setupTestUserService(t)
+	defer client.Close()
+	ctx := ent.NewContext(t.Context(), client)
+	setup := authz.WithTestBypass(ctx)
+	systemOwner := createOwnerUser(t, setup, client)
+	manager := client.User.Create().SetEmail("manager@test.com").SetPassword("password").
+		SetScopes([]string{"read_users", "write_users"}).SaveX(setup)
+	project := client.Project.Create().SetName("Managed").SaveX(setup)
+	otherProject := client.Project.Create().SetName("Other").SaveX(setup)
+	manager.Edges.ProjectUsers = []*ent.UserProject{client.UserProject.Create().
+		SetUserID(manager.ID).SetProjectID(project.ID).SetIsOwner(true).SaveX(setup)}
+	managerCtx := contexts.WithProjectID(contexts.WithUser(authz.NewUserContext(ctx, manager.ID), manager), project.ID)
+	systemRole := client.Role.Create().SetName("Settings").SetLevel(role.LevelSystem).
+		SetProjectID(0).SetScopes([]string{"read_settings"}).SaveX(setup)
+	projectRole := client.Role.Create().SetName("Local").SetLevel(role.LevelProject).
+		SetProjectID(project.ID).SaveX(setup)
+	foreignRole := client.Role.Create().SetName("Foreign").SetLevel(role.LevelProject).
+		SetProjectID(otherProject.ID).SaveX(setup)
+
+	input := ent.CreateUserInput{Email: "member@test.com", Password: "password", Scopes: []string{"read_settings"}}
+	_, err := service.CreateUser(managerCtx, input)
+	require.ErrorContains(t, err, "permission denied")
+	input.Scopes, input.RoleIDs = nil, []int{systemRole.ID}
+	_, err = service.CreateUser(managerCtx, input)
+	require.ErrorContains(t, err, "permission denied")
+	input.Scopes, input.RoleIDs = []string{"read_users"}, nil
+	member, err := service.CreateUser(managerCtx, input)
+	require.NoError(t, err)
+
+	client.UserProject.Create().SetUserID(member.ID).SetProjectID(project.ID).SaveX(setup)
+	client.UserProject.Create().SetUserID(member.ID).SetProjectID(otherProject.ID).SetIsOwner(true).SaveX(setup)
+	client.User.UpdateOneID(member.ID).AddRoleIDs(foreignRole.ID).SaveX(setup)
+	for _, invalidRole := range []*ent.Role{systemRole, foreignRole} {
+		_, err = service.UpdateProjectUser(managerCtx, member.ID, project.ID, nil, nil, []int{invalidRole.ID}, nil)
+		require.ErrorIs(t, err, privacy.Deny)
+		_, err = service.UpdateProjectUser(managerCtx, member.ID, project.ID, nil, nil, nil, []int{invalidRole.ID})
+		require.ErrorIs(t, err, privacy.Deny)
+	}
+	_, err = service.UpdateProjectUser(managerCtx, member.ID, project.ID, nil, nil, []int{projectRole.ID}, nil)
+	require.NoError(t, err)
+
+	_, err = service.UpdateUserStatus(managerCtx, systemOwner.ID, user.StatusDeactivated)
+	require.ErrorIs(t, err, privacy.Deny)
+	_, err = service.UpdateUserStatus(managerCtx, member.ID, user.StatusDeactivated)
+	require.ErrorIs(t, err, privacy.Deny)
+	_, err = service.UpdateUser(managerCtx, member.ID, ent.UpdateUserInput{Password: lo.ToPtr("another-password")})
+	require.ErrorIs(t, err, privacy.Deny)
+	_, err = service.UpdateUser(managerCtx, member.ID, ent.UpdateUserInput{Email: &member.Email, FirstName: lo.ToPtr("Updated")})
+	require.NoError(t, err)
+	err = service.RemoveUserFromProject(managerCtx, member.ID, otherProject.ID)
+	require.ErrorIs(t, err, privacy.Deny)
+	require.True(t, client.UserProject.Query().Where(userproject.UserIDEQ(member.ID), userproject.ProjectIDEQ(otherProject.ID)).ExistX(setup))
+
+	projects := NewProjectService(ProjectServiceParams{Ent: client})
+	_, err = projects.UpdateProject(managerCtx, otherProject.ID, ent.UpdateProjectInput{ClearUsers: true})
+	require.ErrorIs(t, err, privacy.Deny)
+}
+
+func TestUpdateUserValidatesRoleRemovalAndClear(t *testing.T) {
+	service, client := setupTestUserService(t)
+	defer client.Close()
+	ctx := ent.NewContext(t.Context(), client)
+	setup := authz.WithTestBypass(ctx)
+	manager := client.User.Create().SetEmail("manager@test.com").SetPassword("password").
+		SetScopes([]string{"read_users", "write_users"}).SaveX(setup)
+	managerCtx := contexts.WithUser(authz.NewUserContext(ctx, manager.ID), manager)
+	project := client.Project.Create().SetName("Other project").SaveX(setup)
+	protectedRole := client.Role.Create().SetName("Project writer").SetLevel(role.LevelProject).
+		SetProjectID(project.ID).SetScopes([]string{"write_requests"}).SaveX(setup)
+	editableRole := client.Role.Create().SetName("User reader").SetLevel(role.LevelSystem).
+		SetScopes([]string{"read_users"}).SaveX(setup)
+	target := client.User.Create().SetEmail("target@test.com").SetPassword("password").
+		SetFirstName("Original").AddRoleIDs(protectedRole.ID, editableRole.ID).SaveX(setup)
+
+	for _, input := range []ent.UpdateUserInput{
+		{RemoveRoleIDs: []int{editableRole.ID, protectedRole.ID}},
+		{ClearRoles: true},
+	} {
+		input.FirstName = lo.ToPtr("Changed")
+		_, err := service.UpdateUser(managerCtx, target.ID, input)
+		require.ErrorContains(t, err, "cannot grant scope 'write_requests'")
+		require.ElementsMatch(t, []int{protectedRole.ID, editableRole.ID}, target.QueryRoles().IDsX(setup))
+		require.Equal(t, "Original", client.User.GetX(setup, target.ID).FirstName)
+	}
+
+	_, err := service.UpdateUser(managerCtx, target.ID, ent.UpdateUserInput{RemoveRoleIDs: []int{editableRole.ID}})
+	require.NoError(t, err)
+	require.Equal(t, []int{protectedRole.ID}, target.QueryRoles().IDsX(setup))
+}
+
+func TestUpdateUserClearRolesOnlyRemovesCheckedAssignments(t *testing.T) {
+	service, client := setupTestUserService(t)
+	defer client.Close()
+	ctx := ent.NewContext(t.Context(), client)
+	setup := authz.WithTestBypass(ctx)
+	manager := client.User.Create().SetEmail("manager@test.com").SetPassword("password").
+		SetScopes([]string{"read_users", "write_users"}).SaveX(setup)
+	managerCtx := contexts.WithUser(authz.NewUserContext(ctx, manager.ID), manager)
+	keptRole := client.Role.Create().SetName("Keep").SetScopes([]string{"read_users"}).SaveX(setup)
+	removedRole := client.Role.Create().SetName("Remove").SetScopes([]string{"read_users"}).SaveX(setup)
+	newRole := client.Role.Create().SetName("Add").SetScopes([]string{"read_users"}).SaveX(setup)
+	concurrentRole := client.Role.Create().SetName("Concurrent").SetScopes([]string{"write_settings"}).SaveX(setup)
+	target := client.User.Create().SetEmail("target@test.com").SetPassword("password").
+		AddRoleIDs(keptRole.ID, removedRole.ID).SaveX(setup)
+
+	client.User.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, mut ent.Mutation) (ent.Value, error) {
+			// Simulate another authorized writer assigning a role after authorization.
+			_, err := client.UserRole.Create().SetUserID(target.ID).SetRoleID(concurrentRole.ID).Save(setup)
+			if err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, mut)
+		})
+	})
+	_, err := service.UpdateUser(managerCtx, target.ID, ent.UpdateUserInput{
+		ClearRoles:    true,
+		AddRoleIDs:    []int{keptRole.ID, removedRole.ID, newRole.ID},
+		RemoveRoleIDs: []int{removedRole.ID},
+	})
+	require.NoError(t, err)
+	require.ElementsMatch(t, []int{keptRole.ID, newRole.ID, concurrentRole.ID}, target.QueryRoles().IDsX(setup))
 }
 
 func TestDeleteUserArchivesOnlyPersonalAPIKeysAndInvalidatesCache(t *testing.T) {

@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 
-	"github.com/looplj/axonhub/internal/authz/identity"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/system"
 )
+
+// SystemJWTSecretKey identifies the system setting reserved for JWT signing.
+const SystemJWTSecretKey = "system_jwt_secret_key"
 
 type (
 	// QueryPolicy will deny if the query rule returns nil or privacy.Skip.
@@ -39,10 +41,8 @@ func (p Policy) EvalMutation(ctx context.Context, m ent.Mutation) error {
 func (policies QueryPolicy) EvalQuery(ctx context.Context, q ent.Query) error {
 	// Resource constraints must apply to every Ent entry point, including node/nodes
 	// and aggregate queries, before a business scope can allow the query.
-	if identity.IsPlugin(ctx) {
-		if query, ok := q.(*ent.SystemQuery); ok {
-			query.Where(system.KeyNEQ("system_jwt_secret_key"))
-		}
+	if query, ok := q.(*ent.SystemQuery); ok {
+		query.Where(system.KeyNEQ(SystemJWTSecretKey))
 	}
 
 	for _, policy := range policies {

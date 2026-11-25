@@ -11,8 +11,38 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/role"
+	entuser "github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 )
+
+// UserRoleReadRule protects role assignments when reached directly or via an edge.
+func UserRoleReadRule() privacy.QueryRule {
+	return privacy.FilterFunc(func(ctx context.Context, q privacy.Filter) error {
+		caller, err := getUserFromContext(ctx)
+		if err != nil {
+			return err
+		}
+		systemUsers := EffectiveSystemScope(ctx, caller, ScopeReadUsers)
+		systemRoles := EffectiveSystemScope(ctx, caller, ScopeReadRoles)
+		if systemUsers && systemRoles {
+			return privacy.Allow
+		}
+		projectID, ok := contexts.GetProjectID(ctx)
+		if !ok || projectID <= 0 ||
+			(!systemUsers && !EffectiveProjectScope(ctx, caller, projectID, ScopeReadUsers)) ||
+			(!systemRoles && !EffectiveProjectScope(ctx, caller, projectID, ScopeReadRoles)) {
+			return privacy.Denyf("role assignments require user and role read access")
+		}
+		filter, ok := q.(*ent.UserRoleFilter)
+		if !ok {
+			return privacy.Denyf("role assignment query cannot be scoped")
+		}
+		filter.WhereHasRoleWith(role.ProjectIDEQ(projectID))
+		filter.WhereHasUserWith(entuser.HasProjectUsersWith(userproject.ProjectIDEQ(projectID)))
+		return privacy.Allow
+	})
+}
 
 type ProjectOwnedFilter interface {
 	WhereProjectID(entql.IntP)

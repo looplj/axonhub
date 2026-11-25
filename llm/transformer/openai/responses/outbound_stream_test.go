@@ -10,8 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/google/go-cmp/cmp"
-	"github.com/gorilla/websocket"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
@@ -1705,13 +1706,13 @@ func TestOutboundTransformer_TransformStream_MalformedWebSocketErrorFrame(t *tes
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+				conn, err := websocket.Accept(w, r, nil)
 				require.NoError(t, err)
-				defer conn.Close()
+				defer conn.CloseNow()
 
 				var payload map[string]any
-				require.NoError(t, conn.ReadJSON(&payload))
-				require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(tt.data)))
+				require.NoError(t, wsjson.Read(r.Context(), conn, &payload))
+				require.NoError(t, conn.Write(r.Context(), websocket.MessageText, []byte(tt.data)))
 			}))
 			defer server.Close()
 

@@ -154,6 +154,56 @@ func TestBuildImageGenerateRequest_WithParameters(t *testing.T) {
 	assert.Equal(t, "transparent", body["background"])
 }
 
+func TestBuildImageGenerateRequest_ForwardsProviderControls(t *testing.T) {
+	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	ot := tr.(*OutboundTransformer)
+	req := &llm.Request{
+		Model:     "sensenova-u1.5-lite",
+		APIFormat: llm.APIFormatOpenAIImageGeneration,
+		Image: &llm.ImageRequest{
+			Prompt:       "a pixel fox",
+			Watermark:    lo.ToPtr(false),
+			PromptExtend: lo.ToPtr(true),
+		},
+	}
+
+	httpReq, err := ot.buildImageGenerateRequest(req, "test-key")
+	require.NoError(t, err)
+
+	var body map[string]any
+
+	err = json.Unmarshal(httpReq.Body, &body)
+	require.NoError(t, err)
+	assert.Equal(t, false, body["watermark"])
+	assert.Equal(t, true, body["prompt_extend"])
+}
+
+func TestBuildImageGenerateRequest_OmitsProviderControlsWhenUnset(t *testing.T) {
+	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	ot := tr.(*OutboundTransformer)
+	req := &llm.Request{
+		Model:     "gpt-image-1",
+		APIFormat: llm.APIFormatOpenAIImageGeneration,
+		Image: &llm.ImageRequest{
+			Prompt: "a pixel fox",
+		},
+	}
+
+	httpReq, err := ot.buildImageGenerateRequest(req, "test-key")
+	require.NoError(t, err)
+
+	var body map[string]any
+
+	err = json.Unmarshal(httpReq.Body, &body)
+	require.NoError(t, err)
+	assert.NotContains(t, body, "watermark")
+	assert.NotContains(t, body, "prompt_extend")
+}
+
 func TestBuildImageGenerateRequest_WithSingleImage(t *testing.T) {
 	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
 	require.NoError(t, err)
@@ -362,6 +412,43 @@ func TestBuildImageEditRequest_ForwardsExplicitResponseFormat(t *testing.T) {
 	require.NoError(t, err)
 	defer form.RemoveAll()
 	assert.Equal(t, []string{"b64_json"}, form.Value["response_format"])
+}
+
+func TestBuildImageEditRequest_ForwardsProviderControls(t *testing.T) {
+	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	ot := tr.(*OutboundTransformer)
+	imageData, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==")
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model:     "sensenova-u1.5-lite",
+		APIFormat: llm.APIFormatOpenAIImageEdit,
+		Image: &llm.ImageRequest{
+			Prompt:       "make it blue",
+			Images:       [][]byte{imageData},
+			Watermark:    lo.ToPtr(false),
+			PromptExtend: lo.ToPtr(true),
+		},
+	}
+
+	httpReq, err := ot.buildImageEditRequest(req, "test-key")
+	require.NoError(t, err)
+
+	body := map[string]any{}
+
+	err = json.Unmarshal(httpReq.JSONBody, &body)
+	require.NoError(t, err)
+	assert.Equal(t, false, body["watermark"])
+	assert.Equal(t, true, body["prompt_extend"])
+
+	reader := multipart.NewReader(bytes.NewReader(httpReq.Body), strings.TrimPrefix(httpReq.Headers.Get("Content-Type"), "multipart/form-data; boundary="))
+	form, err := reader.ReadForm(1024)
+	require.NoError(t, err)
+	defer form.RemoveAll()
+	assert.Equal(t, []string{"false"}, form.Value["watermark"])
+	assert.Equal(t, []string{"true"}, form.Value["prompt_extend"])
 }
 
 func TestBuildImageEditRequest_MultipleImagesUsesArrayField(t *testing.T) {

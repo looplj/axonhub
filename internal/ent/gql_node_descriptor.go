@@ -2222,50 +2222,6 @@ func (_m *Role) Node(ctx context.Context) (node *Node, err error) {
 }
 
 // Node implements Noder interface
-func (_m *System) Node(ctx context.Context) (node *Node, err error) {
-	node = &Node{
-		ID:     _m.ID,
-		Type:   "System",
-		Fields: make([]*Field, 4),
-		Edges:  make([]*Edge, 0),
-	}
-	var buf []byte
-	if buf, err = json.Marshal(_m.CreatedAt); err != nil {
-		return nil, err
-	}
-	node.Fields[0] = &Field{
-		Type:  "time.Time",
-		Name:  "created_at",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(_m.UpdatedAt); err != nil {
-		return nil, err
-	}
-	node.Fields[1] = &Field{
-		Type:  "time.Time",
-		Name:  "updated_at",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(_m.Key); err != nil {
-		return nil, err
-	}
-	node.Fields[2] = &Field{
-		Type:  "string",
-		Name:  "key",
-		Value: string(buf),
-	}
-	if buf, err = json.Marshal(_m.Value); err != nil {
-		return nil, err
-	}
-	node.Fields[3] = &Field{
-		Type:  "string",
-		Name:  "value",
-		Value: string(buf),
-	}
-	return node, nil
-}
-
-// Node implements Noder interface
 func (_m *Thread) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,

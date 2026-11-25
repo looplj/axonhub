@@ -68,6 +68,72 @@ func TestSelectAPIFormat_PrefersResponsesProtocolMatchingInboundTransport(t *tes
 	require.Equal(t, llm.APIFormatOpenAIResponseWebSocket.String(), format)
 }
 
+func TestPopulateAPIFormat_PrefersResponsesWebSocketOnlyWhenOptedIn(t *testing.T) {
+	httpFormat := llm.APIFormatOpenAIResponse.String()
+	wsFormat := llm.APIFormatOpenAIResponseWebSocket.String()
+	dual := []objects.ChannelEndpoint{{APIFormat: httpFormat}, {APIFormat: wsFormat}}
+
+	for _, tc := range []struct {
+		name       string
+		configured []objects.ChannelEndpoint
+		inbound    llm.APIFormat
+		preferWS   bool
+		forced     []string
+		want       string
+	}{
+		{
+			name: "built-in WebSocket keeps HTTP priority by default", inbound: llm.APIFormatOpenAIResponse, want: httpFormat,
+		},
+		{
+			name: "saved dual endpoints keep HTTP priority by default", configured: dual,
+			inbound: llm.APIFormatOpenAIResponse, want: httpFormat,
+		},
+		{
+			name: "WebSocket clients keep WebSocket with the preference off", configured: dual,
+			inbound: llm.APIFormatOpenAIResponseWebSocket, want: wsFormat,
+		},
+		{
+			name: "HTTP only keeps HTTP even with preference enabled", configured: dual[:1],
+			inbound: llm.APIFormatOpenAIResponse, preferWS: true, want: httpFormat,
+		},
+		{
+			name:    "opt-in prefers built-in WebSocket over HTTP",
+			inbound: llm.APIFormatOpenAIResponse, preferWS: true, want: wsFormat,
+		},
+		{
+			name: "opt-in prefers saved WebSocket over HTTP fallback", configured: dual,
+			inbound: llm.APIFormatOpenAIChatCompletion, preferWS: true, want: wsFormat,
+		},
+		{
+			name: "opt-in respects a model protocol override", configured: dual,
+			inbound: llm.APIFormatOpenAIResponse, preferWS: true, forced: []string{httpFormat, wsFormat}, want: httpFormat,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const model = "test-model"
+
+			ch := &biz.Channel{Channel: &ent.Channel{Type: channel.TypeCodex, Endpoints: tc.configured}}
+			if tc.preferWS || len(tc.forced) > 0 {
+				ch.Settings = &objects.ChannelSettings{PreferResponsesWebSocket: tc.preferWS}
+				if len(tc.forced) > 0 {
+					ch.Settings.ModelProtocols = []objects.ModelProtocol{{Model: model, APIFormats: tc.forced}}
+				}
+			}
+			candidate := &ChannelModelsCandidate{
+				Channel: ch,
+				Models:  []biz.ChannelModelEntry{{ActualModel: model}},
+			}
+			got := populateAPIFormat(t.Context(), []*ChannelModelsCandidate{candidate}, &llm.Request{
+				Model: model, RequestType: llm.RequestTypeChat, APIFormat: tc.inbound,
+			})
+
+			require.Len(t, got, 1)
+			require.Equal(t, tc.want, got[0].APIFormat)
+			require.Equal(t, []string{tc.want}, got[0].modelAPIFormats)
+		})
+	}
+}
+
 func TestSelectAPIFormat_PrefersResponsesTransportFamilyOverUnrelatedFormat(t *testing.T) {
 	tests := []struct {
 		name   string

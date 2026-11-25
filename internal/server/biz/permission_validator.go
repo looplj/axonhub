@@ -176,9 +176,14 @@ func (v *PermissionValidator) CanGrantRole(ctx context.Context, roleScopes []str
 // CanEditUserPermissions checks if the current user can edit another user's permissions.
 // Rule: Cannot edit users with higher or equal permissions, unless you are an owner.
 func (v *PermissionValidator) CanEditUserPermissions(ctx context.Context, targetUserID int, projectID *int) error {
+	_, err := v.editableUser(ctx, targetUserID, projectID)
+	return err
+}
+
+func (v *PermissionValidator) editableUser(ctx context.Context, targetUserID int, projectID *int) (*ent.User, error) {
 	currentUser, ok := contexts.GetUser(ctx)
 	if !ok || currentUser == nil {
-		return fmt.Errorf("user not found in context")
+		return nil, fmt.Errorf("user not found in context")
 	}
 
 	// Get target user
@@ -192,37 +197,30 @@ func (v *PermissionValidator) CanEditUserPermissions(ctx context.Context, target
 			Only(bypassCtx)
 	})
 	if err != nil {
-		return fmt.Errorf("failed to get target user: %w", err)
+		return nil, fmt.Errorf("failed to get target user: %w", err)
 	}
 
-	// Check if target is an owner
-	targetIsOwner, err := v.isProjectOwner(ctx, targetUser, projectID)
-	if err != nil {
-		return err
+	if err := v.checkUserHierarchy(ctx, currentUser, targetUser, projectID); err != nil {
+		return nil, err
 	}
+	return targetUser, nil
+}
 
-	// Current user must be owner to edit another owner
-	if targetIsOwner {
-		currentIsOwner, err := v.isProjectOwner(ctx, currentUser, projectID)
-		if err != nil {
-			return err
-		}
-
-		if !currentIsOwner {
-			return fmt.Errorf("insufficient permissions: cannot edit owner users")
-		}
-
-		return nil
-	}
-
-	// Owners can edit anyone
+func (v *PermissionValidator) checkUserHierarchy(ctx context.Context, currentUser, targetUser *ent.User, projectID *int) error {
 	currentIsOwner, err := v.isProjectOwner(ctx, currentUser, projectID)
 	if err != nil {
 		return err
 	}
-
 	if currentIsOwner {
 		return nil
+	}
+
+	targetIsOwner, err := v.isProjectOwner(ctx, targetUser, projectID)
+	if err != nil {
+		return err
+	}
+	if targetIsOwner {
+		return privacy.Denyf("insufficient permissions: cannot edit owner users")
 	}
 
 	// Get both users' scopes
@@ -244,10 +242,25 @@ func (v *PermissionValidator) CanEditUserPermissions(ctx context.Context, target
 	// Check if all target user's scopes are within current user's permissions
 	for _, scope := range targetUserScopes {
 		if !currentScopeSet[scope] {
-			return fmt.Errorf("insufficient permissions: target user has scope '%s' that you don't possess", scope)
+			return privacy.Denyf("insufficient permissions: target user has scope '%s' that you don't possess", scope)
 		}
 	}
 
+	return nil
+}
+
+// canManageUserAccount checks the permissions acquired or interrupted by changes
+// to login credentials or account status, including the target's project access.
+func (v *PermissionValidator) canManageUserAccount(ctx context.Context, target *ent.User) error {
+	caller, ok := contexts.GetUser(ctx)
+	if !ok || caller == nil {
+		return privacy.Denyf("user not found in context")
+	}
+	for _, membership := range target.Edges.ProjectUsers {
+		if err := v.checkUserHierarchy(ctx, caller, target, &membership.ProjectID); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -259,6 +272,9 @@ func (v *PermissionValidator) CanEditRole(ctx context.Context, roleID int, proje
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get role: %w", err)
+	}
+	if projectID != nil && (role.IsSystemRole() || *role.ProjectID != *projectID) {
+		return privacy.Denyf("role does not belong to the project")
 	}
 	if projectID == nil && !role.IsSystemRole() {
 		projectID = role.ProjectID
@@ -304,11 +320,33 @@ func (v *PermissionValidator) CanDeleteUser(ctx context.Context, targetUserID in
 	return nil
 }
 
-// CanChangeOwnership prevents a delegated plugin from changing owner authority.
-// Direct-user ownership rules remain enforced by the existing mutation paths.
-func (v *PermissionValidator) CanChangeOwnership(ctx context.Context, isOwner *bool) error {
-	if isOwner != nil && identity.IsPlugin(ctx) {
-		return privacy.Denyf("plugin cannot change owner authority")
+// ownerChange returns the owner value authorized for persistence. An unchanged
+// value must be omitted from the write so it cannot overwrite a concurrent change.
+func (v *PermissionValidator) ownerChange(ctx context.Context, projectID *int, requested *bool, current bool) (*bool, error) {
+	if requested == nil {
+		return nil, nil
 	}
-	return nil
+	if identity.IsPlugin(ctx) {
+		return nil, privacy.Denyf("plugin cannot change owner authority")
+	}
+	if *requested == current {
+		return nil, nil
+	}
+	if scopes.IsDirectOwner(ctx) {
+		return requested, nil
+	}
+	if projectID == nil {
+		return nil, privacy.Denyf("only system owners can change system ownership")
+	}
+
+	if caller, ok := contexts.GetUser(ctx); ok && caller != nil {
+		isOwner, err := v.isProjectOwner(ctx, caller, projectID)
+		if err != nil {
+			return nil, err
+		}
+		if isOwner {
+			return requested, nil
+		}
+	}
+	return nil, privacy.Denyf("only owners of this project or system owners can change project ownership")
 }

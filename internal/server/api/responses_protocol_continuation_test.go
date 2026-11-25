@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -25,19 +26,18 @@ func TestResponsesProtocolNativeContinuationRetainsCompletedConnection(t *testin
 			var connections atomic.Int32
 			frames := make(chan []byte, 2)
 			upstream := responsesIntegrationServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+				conn, err := websocket.Accept(w, r, nil)
 				if err != nil {
 					t.Error(err)
 					return
 				}
 				connections.Add(1)
-				defer conn.Close()
-				if err := conn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
-					t.Error(err)
-					return
-				}
+				defer conn.CloseNow()
+				conn.SetReadLimit(-1)
 				for turn := 0; ; turn++ {
-					_, body, err := conn.ReadMessage()
+					ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+					_, body, err := conn.Read(ctx)
+					cancel()
 					if err != nil {
 						return
 					}
@@ -46,7 +46,7 @@ func TestResponsesProtocolNativeContinuationRetainsCompletedConnection(t *testin
 					if turn > 0 {
 						response = `{"type":"response.completed","response":{"id":"provider-final","status":"completed","output":[]}}`
 					}
-					if err := conn.WriteMessage(websocket.TextMessage, []byte(response)); err != nil {
+					if err := conn.Write(r.Context(), websocket.MessageText, []byte(response)); err != nil {
 						t.Error(err)
 						return
 					}

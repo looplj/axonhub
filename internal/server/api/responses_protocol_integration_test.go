@@ -3,15 +3,17 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -84,20 +86,25 @@ func TestResponsesProtocolIntegrationIsolation(t *testing.T) {
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/v1/responses"
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	conn, _, err := websocket.Dial(t.Context(), wsURL, nil)
 	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, conn.Close()) })
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"tenant-a","model":"synthetic-model","input":"synthetic-input"}`)))
-	_, created, err := conn.ReadMessage()
+	t.Cleanup(func() {
+		if err := conn.CloseNow(); !errors.Is(err, net.ErrClosed) {
+			require.NoError(t, err)
+		}
+	})
+	conn.SetReadLimit(-1)
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","stream_id":"tenant-a","model":"synthetic-model","input":"synthetic-input"}`)))
+	_, created, err := conn.Read(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, "provider-ws-1", gjson.GetBytes(created, "response.id").String())
-	_, completed, err := conn.ReadMessage()
+	_, completed, err := conn.Read(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, "provider-item-ws-1", gjson.GetBytes(completed, "response.output.0.id").String())
 	require.Equal(t, "tenant-a", gjson.GetBytes(completed, "stream_id").String())
 	require.NotEmpty(t, <-upstreamRequests)
-	require.NoError(t, conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "done")))
-	_, _, err = conn.ReadMessage()
+	require.NoError(t, conn.Close(websocket.StatusNormalClosure, "done"))
+	_, _, err = conn.Read(t.Context())
 	require.Error(t, err)
 }
 

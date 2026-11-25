@@ -558,8 +558,13 @@ func TestUpdateRole_CacheInvalidation(t *testing.T) {
 	input := ent.UpdateRoleInput{
 		Scopes: newScopes,
 	}
-	_, err = roleService.UpdateRole(ctx, testRole.ID, input)
-	require.NoError(t, err)
+	require.NoError(t, roleService.RunInTransaction(ctx, func(txCtx context.Context) error {
+		_, err := roleService.UpdateRole(txCtx, testRole.ID, input)
+		require.NoError(t, err)
+		_, err = userService.UserCache.Get(ctx, cacheKey)
+		require.NoError(t, err, "User cache should keep committed data until role update commits")
+		return nil
+	}))
 
 	// Verify cache was invalidated
 	_, err = userService.UserCache.Get(ctx, cacheKey)

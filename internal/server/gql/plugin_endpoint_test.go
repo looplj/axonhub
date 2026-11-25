@@ -473,6 +473,7 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 	handler := NewGraphqlHandlers(Dependencies{
 		Ent:                            db,
 		AuthService:                    authSvc,
+		APIKeyService:                  apiKeySvc,
 		UserService:                    userSvc,
 		SystemService:                  systemSvc,
 		ChannelService:                 channelSvc,

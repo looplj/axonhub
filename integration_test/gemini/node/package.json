@@ -12,5 +12,10 @@
   "type": "commonjs",
   "dependencies": {
     "@google/genai": "^3.6.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "gaxios@7>rimraf": "^6.1.4"
+    }
   }
 }

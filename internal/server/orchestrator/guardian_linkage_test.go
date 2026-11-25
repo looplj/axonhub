@@ -15,6 +15,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -249,12 +250,14 @@ func TestSafeguardsReviewerFollowsParentProtocol(t *testing.T) {
 		formats      []string
 		review       bool
 		forced       bool
+		preferWS     bool
 		want         string
 	}{
-		{name: "HTTP parent", parentFormat: httpFormat, formats: []string{wsFormat, httpFormat}, review: true, want: httpFormat},
+		{name: "HTTP parent", parentFormat: httpFormat, formats: []string{wsFormat, httpFormat}, review: true, preferWS: true, want: httpFormat},
 		{name: "WebSocket parent", parentFormat: wsFormat, formats: []string{httpFormat, wsFormat}, review: true, want: wsFormat},
 		{name: "Anthropic parent", parentFormat: anthropicFormat, formats: []string{httpFormat, anthropicFormat}, review: true, want: anthropicFormat},
 		{name: "no parent protocol uses normal endpoint order", formats: []string{httpFormat, wsFormat}, review: true, want: httpFormat},
+		{name: "no parent protocol uses opted-in WebSocket preference", formats: []string{httpFormat, wsFormat}, review: true, preferWS: true, want: wsFormat},
 		{name: "missing parent endpoint uses normal endpoint order", parentFormat: wsFormat, formats: []string{httpFormat, anthropicFormat}, review: true, want: httpFormat},
 		{name: "HTTP-only model override", parentFormat: wsFormat, formats: []string{httpFormat}, review: true, forced: true, want: httpFormat},
 		{name: "ordinary request uses normal endpoint order", parentFormat: wsFormat, formats: []string{httpFormat, wsFormat}, want: httpFormat},
@@ -279,7 +282,11 @@ func TestSafeguardsReviewerFollowsParentProtocol(t *testing.T) {
 				APIFormat:   llm.APIFormatOpenAIChatCompletion,
 				RequestType: llm.RequestTypeChat,
 			}
-			require.Equal(t, tc.want, selectEndpointAPIFormat(ctx, endpoints, request, tc.forced))
+			ch := &biz.Channel{Channel: &ent.Channel{}}
+			if tc.preferWS {
+				ch.Settings = &objects.ChannelSettings{PreferResponsesWebSocket: true}
+			}
+			require.Equal(t, tc.want, selectEndpointAPIFormat(ctx, ch, endpoints, request, tc.forced))
 		})
 	}
 }

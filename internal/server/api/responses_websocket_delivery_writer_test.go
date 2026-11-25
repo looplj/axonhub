@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/server/orchestrator"
@@ -16,19 +17,16 @@ import (
 )
 
 type responsesWebSocketDeliveryWriter struct {
-	write       func([]byte) error
-	deadlineErr error
+	write func(context.Context, []byte) error
 }
 
-func (w *responsesWebSocketDeliveryWriter) SetWriteDeadline(time.Time) error { return w.deadlineErr }
-
-func (w *responsesWebSocketDeliveryWriter) WriteMessage(_ int, data []byte) error {
-	return w.write(data)
+func (w *responsesWebSocketDeliveryWriter) Write(ctx context.Context, _ websocket.MessageType, data []byte) error {
+	return w.write(ctx, data)
 }
 
 func TestStreamDeliveryWebSocketWriter(t *testing.T) {
 	for _, primed := range []bool{false, true} {
-		for _, mode := range []string{"success", "write_error", "deadline_error", "cancel_during_write", "queued_terminal_unwritten", "completed_with_failed_status", "completed_with_incomplete_status", "completed_with_cancelled_status"} {
+		for _, mode := range []string{"success", "write_error", "write_timeout", "cancel_during_write", "queued_terminal_unwritten", "completed_with_failed_status", "completed_with_incomplete_status", "completed_with_cancelled_status"} {
 			name := mode + "/unprimed"
 			if primed {
 				name = mode + "/primed"
@@ -56,20 +54,22 @@ func TestStreamDeliveryWebSocketWriter(t *testing.T) {
 					stream = primeCodexTurnStateHeader(http.Header{}, stream)
 				}
 				writes := 0
-				transport := &responsesWebSocketDeliveryWriter{write: func(data []byte) error {
+				transport := &responsesWebSocketDeliveryWriter{write: func(writeCtx context.Context, data []byte) error {
 					writes++
 					require.False(t, source.DeliveryAcknowledged(), "acknowledgement preceded message write return")
 					switch mode {
 					case "write_error", "queued_terminal_unwritten":
 						return io.ErrClosedPipe
+					case "write_timeout":
+						deadline, ok := writeCtx.Deadline()
+						require.True(t, ok, "message write must have a timeout")
+						require.WithinDuration(t, time.Now().Add(responsesWebSocketWriteTimeout), deadline, time.Second)
+						return context.DeadlineExceeded
 					case "cancel_during_write":
 						cancel()
 					}
 					return nil
 				}}
-				if mode == "deadline_error" {
-					transport.deadlineErr = io.ErrClosedPipe
-				}
 				// When
 				err := writeResponsesWebSocketResult(ctx, &responsesWebSocketWriter{conn: transport}, orchestrator.ChatCompletionResult{ChatCompletionStream: stream}, nil, "lane-a")
 				// Then: a terminal frame that was written successfully is delivered,
@@ -77,8 +77,10 @@ func TestStreamDeliveryWebSocketWriter(t *testing.T) {
 				// short writes and unwritten queued terminals stay unacknowledged.
 				require.Equal(t, mode == "success" || mode == "cancel_during_write", source.DeliveryAcknowledged())
 				switch mode {
-				case "write_error", "queued_terminal_unwritten", "deadline_error":
+				case "write_error", "queued_terminal_unwritten":
 					require.ErrorIs(t, err, io.ErrClosedPipe)
+				case "write_timeout":
+					require.ErrorIs(t, err, context.DeadlineExceeded)
 				default:
 					require.NoError(t, err)
 				}
@@ -100,7 +102,7 @@ func TestStreamDeliveryWebSocketHeldWrite(t *testing.T) {
 	t.Cleanup(func() { releaseOnce.Do(func() { close(release) }) })
 	done := make(chan error, 1)
 	source := newResponsesWebSocketDeliveryStream("response.completed")
-	transport := &responsesWebSocketDeliveryWriter{write: func([]byte) error {
+	transport := &responsesWebSocketDeliveryWriter{write: func(context.Context, []byte) error {
 		close(entered)
 		<-release
 		return nil

@@ -63,6 +63,14 @@ type ImageRequest struct {
 
 	// PromptOptimizer enables provider prompt optimization when supported.
 	PromptOptimizer *bool `json:"prompt_optimizer,omitempty"`
+
+	// Watermark controls whether the provider adds its logo watermark to generated images.
+	// It is a provider-specific control (for example SenseNova) and is forwarded as-is when present.
+	Watermark *bool `json:"watermark,omitempty"`
+
+	// PromptExtend enables provider prompt rewriting/extension when supported.
+	// It is a provider-specific control (for example SenseNova) and is forwarded as-is when present.
+	PromptExtend *bool `json:"prompt_extend,omitempty"`
 }
 
 type ImageReference struct {

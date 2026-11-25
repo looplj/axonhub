@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/userproject"
@@ -158,23 +159,14 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 
 // UpdateProject updates an existing project.
 func (s *ProjectService) UpdateProject(ctx context.Context, id int, input ent.UpdateProjectInput) (*ent.Project, error) {
+	if input.ClearUsers || len(input.AddUserIDs) > 0 || len(input.RemoveUserIDs) > 0 {
+		return nil, privacy.Denyf("use project membership operations to change project members")
+	}
 	client := s.entFromContext(ctx)
 
 	mut := client.Project.UpdateOneID(id)
 	mut.SetNillableName(input.Name)
 	mut.SetNillableDescription(input.Description)
-
-	if input.ClearUsers {
-		mut.ClearUsers()
-	}
-
-	if input.AddUserIDs != nil {
-		mut.AddUserIDs(input.AddUserIDs...)
-	}
-
-	if input.RemoveUserIDs != nil {
-		mut.RemoveUserIDs(input.RemoveUserIDs...)
-	}
 
 	project, err := mut.Save(ctx)
 	if err != nil {

@@ -68,7 +68,9 @@ func (_u *UserRoleUpdate) Mutation() *UserRoleMutation {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *UserRoleUpdate) Save(ctx context.Context) (int, error) {
-	_u.defaults()
+	if err := _u.defaults(); err != nil {
+		return 0, err
+	}
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -95,11 +97,15 @@ func (_u *UserRoleUpdate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (_u *UserRoleUpdate) defaults() {
+func (_u *UserRoleUpdate) defaults() error {
 	if _, ok := _u.mutation.UpdatedAt(); !ok && !_u.mutation.UpdatedAtCleared() {
+		if userrole.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized userrole.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := userrole.UpdateDefaultUpdatedAt()
 		_u.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -217,7 +223,9 @@ func (_u *UserRoleUpdateOne) Select(field string, fields ...string) *UserRoleUpd
 
 // Save executes the query and returns the updated UserRole entity.
 func (_u *UserRoleUpdateOne) Save(ctx context.Context) (*UserRole, error) {
-	_u.defaults()
+	if err := _u.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -244,11 +252,15 @@ func (_u *UserRoleUpdateOne) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (_u *UserRoleUpdateOne) defaults() {
+func (_u *UserRoleUpdateOne) defaults() error {
 	if _, ok := _u.mutation.UpdatedAt(); !ok && !_u.mutation.UpdatedAtCleared() {
+		if userrole.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized userrole.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := userrole.UpdateDefaultUpdatedAt()
 		_u.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.

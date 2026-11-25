@@ -233,6 +233,7 @@ type ChannelSettings {
   passThroughUserAgent: Boolean
   passThroughBody: Boolean
   syncModelPrices: Boolean
+  preferResponsesWebSocket: Boolean
   rateLimit: ChannelRateLimit
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPattern!]
@@ -359,6 +360,7 @@ input ChannelSettingsInput {
   passThroughUserAgent: Boolean
   passThroughBody: Boolean
   syncModelPrices: Boolean
+  preferResponsesWebSocket: Boolean
   rateLimit: ChannelRateLimitInput
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPatternInput!]
@@ -390,6 +392,7 @@ input UpdateChannelSettingsInput {
   passThroughUserAgent: Boolean
   passThroughBody: Boolean
   syncModelPrices: Boolean
+  preferResponsesWebSocket: Boolean
   rateLimit: ChannelRateLimitInput
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPatternInput!]

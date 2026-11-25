@@ -90,7 +90,7 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 					continue
 				}
 				endpoints, forced := applyForcedAPIFormatsForRequest(ctx, c.Channel, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, baseEndpoints)
-				format := selectEndpointAPIFormat(ctx, endpoints, req, forced)
+				format := selectEndpointAPIFormat(ctx, c.Channel, endpoints, req, forced)
 				// Explicit protocols have no generic fallback. A model whose forced protocol
 				// list cannot serve the requested protocol must not remain as the first retry
 				// entry, otherwise an empty candidate format falls back to the channel's
@@ -115,7 +115,7 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 		} else {
 			c.modelAPIFormats = nil
 			endpoints, forced := applyForcedAPIFormatsForRequest(ctx, c.Channel, c.Models, req.Model, req.RequestType, baseEndpoints)
-			c.APIFormat = selectEndpointAPIFormat(ctx, endpoints, req, forced)
+			c.APIFormat = selectEndpointAPIFormat(ctx, c.Channel, endpoints, req, forced)
 		}
 
 		if requiresExplicitEndpoint(req.RequestType) && c.APIFormat == "" {

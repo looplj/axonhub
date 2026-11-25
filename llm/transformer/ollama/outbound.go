@@ -86,6 +86,10 @@ type Options struct {
 	NumCtx      *int     `json:"num_ctx,omitempty"`
 	NumPredict  *int     `json:"num_predict,omitempty"`
 	Stop        []string `json:"stop,omitempty"`
+
+	Seed             *int     `json:"seed,omitempty"`
+	FrequencyPenalty *float64 `json:"frequency_penalty,omitempty"`
+	PresencePenalty  *float64 `json:"presence_penalty,omitempty"`
 }
 
 type ChatResponse struct {
@@ -302,6 +306,31 @@ func (t *OutboundTransformer) buildOptions(llmReq *llm.Request) *Options {
 		}
 
 		opts.TopP = llmReq.TopP
+	}
+
+	if llmReq.Seed != nil {
+		if opts == nil {
+			opts = &Options{}
+		}
+
+		seed := int(*llmReq.Seed)
+		opts.Seed = &seed
+	}
+
+	if llmReq.FrequencyPenalty != nil {
+		if opts == nil {
+			opts = &Options{}
+		}
+
+		opts.FrequencyPenalty = llmReq.FrequencyPenalty
+	}
+
+	if llmReq.PresencePenalty != nil {
+		if opts == nil {
+			opts = &Options{}
+		}
+
+		opts.PresencePenalty = llmReq.PresencePenalty
 	}
 
 	if llmReq.MaxTokens != nil {

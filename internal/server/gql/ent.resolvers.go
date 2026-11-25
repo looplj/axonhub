@@ -44,6 +44,11 @@ func (r *aPIKeyResolver) ProjectID(ctx context.Context, obj *ent.APIKey) (*objec
 	}, nil
 }
 
+// Key is the resolver for the key field.
+func (r *aPIKeyResolver) Key(ctx context.Context, obj *ent.APIKey) (string, error) {
+	return r.apiKeyService.RevealAPIKey(ctx, obj)
+}
+
 // User is the resolver for the user field.
 // Returns nil if the user has been soft-deleted.
 func (r *aPIKeyResolver) User(ctx context.Context, obj *ent.APIKey) (*ent.User, error) {
@@ -526,18 +531,6 @@ func (r *queryResolver) Roles(ctx context.Context, after *entgql.Cursor[int], fi
 	)
 }
 
-// Systems is the resolver for the systems field.
-func (r *queryResolver) Systems(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.SystemOrder, where *ent.SystemWhereInput) (*ent.SystemConnection, error) {
-	if err := validatePaginationArgs(first, last); err != nil {
-		return nil, err
-	}
-
-	return r.client.System.Query().Paginate(ctx, after, first, before, last,
-		ent.WithSystemOrder(orderBy),
-		ent.WithSystemFilter(where.Filter),
-	)
-}
-
 // Threads is the resolver for the threads field.
 func (r *queryResolver) Threads(ctx context.Context, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ThreadOrder, where *ent.ThreadWhereInput) (*ent.ThreadConnection, error) {
 	if err := validatePaginationArgs(first, last); err != nil {
@@ -853,14 +846,6 @@ func (r *roleResolver) UserRoles(ctx context.Context, obj *ent.Role) ([]*ent.Use
 }
 
 // ID is the resolver for the id field.
-func (r *systemResolver) ID(ctx context.Context, obj *ent.System) (*objects.GUID, error) {
-	return &objects.GUID{
-		Type: ent.TypeSystem,
-		ID:   obj.ID,
-	}, nil
-}
-
-// ID is the resolver for the id field.
 func (r *threadResolver) ID(ctx context.Context, obj *ent.Thread) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeThread,
@@ -1069,9 +1054,6 @@ func (r *Resolver) RequestExecution() RequestExecutionResolver { return &request
 // Role returns RoleResolver implementation.
 func (r *Resolver) Role() RoleResolver { return &roleResolver{r} }
 
-// System returns SystemResolver implementation.
-func (r *Resolver) System() SystemResolver { return &systemResolver{r} }
-
 // Thread returns ThreadResolver implementation.
 func (r *Resolver) Thread() ThreadResolver { return &threadResolver{r} }
 
@@ -1108,7 +1090,6 @@ type queryResolver struct{ *Resolver }
 type requestResolver struct{ *Resolver }
 type requestExecutionResolver struct{ *Resolver }
 type roleResolver struct{ *Resolver }
-type systemResolver struct{ *Resolver }
 type threadResolver struct{ *Resolver }
 type traceResolver struct{ *Resolver }
 type usageLogResolver struct{ *Resolver }

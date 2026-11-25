@@ -7,38 +7,78 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
-func TestPluginSystemEntityProtectsSigningKey(t *testing.T) {
-	fx := newPluginEndpointFixture(t, "plugin_system_secret")
+func TestAdminGraphQLProtectsCredentialsAndRoleAssignments(t *testing.T) {
+	fx := newPluginEndpointFixture(t, "admin_credential_and_role_read")
+	projectKey := fx.db.APIKey.Query().Where(apikey.KeyEQ(fx.serviceAccount)).OnlyX(fx.setupCtx)
+	readerKey := fx.db.APIKey.Create().SetName("Metadata reader").SetKey("test-reader-credential").
+		SetUserID(fx.readerID).SetProjectID(projectKey.ProjectID).SetType(apikey.TypeServiceAccount).
+		SetScopes([]string{"read_api_keys"}).SaveX(fx.setupCtx)
+	keyID := fmt.Sprintf("gid://axonhub/APIKey/%d", projectKey.ID)
+	query := fmt.Sprintf(`{ node(id: %q) { ... on APIKey { name key } } }`, keyID)
+
+	_, payload, raw := fx.postAdmin(readerKey.Key, query)
+	require.NotContains(t, payload, "errors", raw)
+	require.Contains(t, raw, projectKey.Name)
+	require.NotContains(t, raw, projectKey.Key)
+	_, payload, raw = fx.postAdmin(fx.ownerToken, query)
+	require.NotContains(t, payload, "errors", raw)
+	require.Contains(t, raw, projectKey.Key)
+
+	systemRole := fx.db.Role.Create().SetName("System role").SetLevel(role.LevelSystem).SetProjectID(0).SaveX(fx.setupCtx)
+	assignment := fx.db.UserRole.Create().SetUserID(projectKey.UserID).SetRoleID(systemRole.ID).SaveX(fx.setupCtx)
+	roleID := fmt.Sprintf("gid://axonhub/UserRole/%d", assignment.ID)
+	query = fmt.Sprintf(`{ node(id: %q) { ... on UserRole { userID roleID } } }`, roleID)
+	_, payload, raw = fx.postAdmin(fx.readerToken, query)
+	require.Contains(t, payload, "errors", raw)
+	_, payload, raw = fx.postAdmin(fx.ownerToken, query)
+	require.NotContains(t, payload, "errors", raw)
+	require.Contains(t, raw, "roleID")
+}
+
+func TestSystemSettingsAreNotExposedAsGraphQLEntities(t *testing.T) {
+	fx := newPluginEndpointFixture(t, "internal_system_settings")
 	installed, err := fx.manager.Install(fx.setupCtx, pluginEndpointZip(t, "acme.settings", []string{"read_settings"}, true), nil, nil)
 	require.NoError(t, err)
 	require.NoError(t, fx.manager.Enable(fx.setupCtx, installed.Plugin.ID, []string{"read_settings"}, nil))
 	secret := fx.db.System.Query().Where(system.KeyEQ(biz.SystemKeySecretKey)).OnlyX(fx.setupCtx)
-	fx.db.System.Create().SetKey(biz.SystemKeyBrandName).SetValue("visible-plugin-brand").SaveX(fx.setupCtx)
-	code, payload, raw := fx.postPlugin(fx.ownerToken, "acme.settings", `{ systems(first: 100) { edges { node { key value } } } }`)
-	require.Equal(t, http.StatusOK, code, raw)
-	require.NotContains(t, payload, "errors", raw)
-	require.Contains(t, raw, "visible-plugin-brand")
-	require.NotContains(t, raw, secret.Value)
-	require.NotContains(t, raw, biz.SystemKeySecretKey)
-	id := fmt.Sprintf("gid://axonhub/System/%d", secret.ID)
-	for _, query := range []string{
-		fmt.Sprintf(`{ node(id: %q) { ... on System { key value } } }`, id),
-		fmt.Sprintf(`{ nodes(ids: [%q]) { ... on System { key value } } }`, id),
-		fmt.Sprintf(`query { alias: node(id: %q) { ... Secret } } fragment Secret on System { key value }`, id),
+	brand := fx.db.System.Create().SetKey(biz.SystemKeyBrandName).SetValue("visible-brand").SaveX(fx.setupCtx)
+	fx.db.User.UpdateOneID(fx.readerID).SetScopes([]string{"read_settings"}).SaveX(fx.setupCtx)
+
+	for _, endpoint := range []struct {
+		name string
+		post func(string) (int, map[string]any, string)
+	}{
+		{"admin owner", func(query string) (int, map[string]any, string) { return fx.postAdmin(fx.ownerToken, query) }},
+		{"admin settings reader", func(query string) (int, map[string]any, string) { return fx.postAdmin(fx.readerToken, query) }},
+		{"plugin", func(query string) (int, map[string]any, string) {
+			return fx.postPlugin(fx.ownerToken, "acme.settings", query)
+		}},
 	} {
-		code, payload, raw = fx.postPlugin(fx.ownerToken, "acme.settings", query)
-		require.Equal(t, http.StatusOK, code, raw)
-		require.Contains(t, payload, "errors", raw)
-		require.NotContains(t, raw, secret.Value)
+		t.Run(endpoint.name, func(t *testing.T) {
+			_, payload, raw := endpoint.post(`{ systems { totalCount } }`)
+			require.Contains(t, graphqlError(t, payload)["message"], `Cannot query field "systems"`, raw)
+
+			id := fmt.Sprintf("gid://axonhub/System/%d", secret.ID)
+			_, payload, raw = endpoint.post(fmt.Sprintf(`{ node(id: %q) { ... on System { value } } }`, id))
+			require.Contains(t, graphqlError(t, payload)["message"], `Unknown type "System"`)
+			require.NotContains(t, raw, secret.Value)
+
+			id = fmt.Sprintf("gid://axonhub/System/%d", brand.ID)
+			_, payload, _ = endpoint.post(fmt.Sprintf(`{ node(id: %q) { id } }`, id))
+			require.Contains(t, graphqlError(t, payload)["message"], "unknown node type: System")
+
+			code, payload, raw := endpoint.post(`{ brandSettings { brandName } }`)
+			require.Equal(t, http.StatusOK, code, raw)
+			require.NotContains(t, payload, "errors", raw)
+			require.Contains(t, raw, brand.Value)
+		})
 	}
-	// The ordinary direct owner path keeps its existing visibility.
-	_, payload, raw = fx.postAdmin(fx.ownerToken, fmt.Sprintf(`{ node(id: %q) { ... on System { key value } } }`, id))
-	require.NotContains(t, payload, "errors", raw)
-	require.Contains(t, raw, secret.Value)
 }
 
 // Settings reads authorize at the resolver: a warm cache must not change the decision.

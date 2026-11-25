@@ -66,6 +66,42 @@ func TestImageInboundTransformer_TransformRequest_Generation_JSON(t *testing.T) 
 	assert.Contains(t, string(outReq.Body), `"n":2`)
 }
 
+func TestImageInboundTransformer_TransformRequest_Generation_ProviderControls(t *testing.T) {
+	inbound := NewImageGenerationInboundTransformer()
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/generations",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    []byte(`{"prompt":"a cat","model":"sensenova-u1.5-lite","watermark":false,"prompt_extend":true}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+	require.NotNil(t, llmReq.Image)
+	require.NotNil(t, llmReq.Image.Watermark)
+	assert.False(t, *llmReq.Image.Watermark)
+	require.NotNil(t, llmReq.Image.PromptExtend)
+	assert.True(t, *llmReq.Image.PromptExtend)
+}
+
+func TestImageInboundTransformer_TransformRequest_Generation_ProviderControlsAbsent(t *testing.T) {
+	inbound := NewImageGenerationInboundTransformer()
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/generations",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    []byte(`{"prompt":"a cat","model":"gpt-image-1"}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+	require.NotNil(t, llmReq.Image)
+	assert.Nil(t, llmReq.Image.Watermark)
+	assert.Nil(t, llmReq.Image.PromptExtend)
+}
+
 func TestImageInboundTransformer_TransformRequest_Generation_WithSingleImage(t *testing.T) {
 	inbound := NewImageGenerationInboundTransformer()
 
@@ -468,6 +504,37 @@ func TestImageInboundTransformer_TransformRequest_Edit_JSON(t *testing.T) {
 	assert.Equal(t, "b64_json", llmReq.Image.ResponseFormat)
 	require.Len(t, llmReq.Image.Images, 1)
 	assert.Equal(t, pngBytes, llmReq.Image.Images[0])
+}
+
+func TestImageInboundTransformer_TransformRequest_Edit_JSON_ProviderControls(t *testing.T) {
+	inbound := NewImageEditInboundTransformer()
+
+	pngBytes := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes)
+
+	reqBody, err := json.Marshal(map[string]any{
+		"prompt":        "make it blue",
+		"model":         "sensenova-u1.5-lite",
+		"image":         dataURL,
+		"watermark":     false,
+		"prompt_extend": true,
+	})
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/edits",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+	require.NotNil(t, llmReq.Image)
+	require.NotNil(t, llmReq.Image.Watermark)
+	assert.False(t, *llmReq.Image.Watermark)
+	require.NotNil(t, llmReq.Image.PromptExtend)
+	assert.True(t, *llmReq.Image.PromptExtend)
 }
 
 func TestImageInboundTransformer_TransformRequest_Edit_JSON_MultipleImagesAndMask(t *testing.T) {

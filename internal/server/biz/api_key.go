@@ -18,9 +18,11 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/authz/identity"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -1024,7 +1026,6 @@ func (s *APIKeyService) GetAPIKey(ctx context.Context, key string) (*ent.APIKey,
 	cacheKey := buildAPIKeyCacheKey(key)
 
 	cached, err := s.APIKeyCache.Get(ctx, cacheKey)
-
 	if err != nil {
 		if errors.Is(err, live.ErrKeyNotFound) {
 			return nil, fmt.Errorf("%w: failed to get api key: %w", ErrInvalidAPIKey, err)
@@ -1190,10 +1191,49 @@ func (s *APIKeyService) BulkArchiveAPIKeys(ctx context.Context, ids []int) error
 	return s.bulkUpdateAPIKeyStatus(ctx, ids, apikey.StatusArchived, "archive")
 }
 
+// RevealAPIKey renders the credential of an APIKey visible to the caller.
+func (s *APIKeyService) RevealAPIKey(ctx context.Context, key *ent.APIKey) (string, error) {
+	if err := authz.RequireDirectUser(ctx); err != nil {
+		return "", nil
+	}
+	caller, _ := contexts.GetUser(ctx)
+	isOwner := scopes.IsDirectOwner(ctx)
+
+	// GraphQL can pass a partial Ent row, with no creator, type or scopes selected.
+	if key.Type == "" || (key.Type == apikey.TypePersonal && key.UserID == 0) ||
+		(key.Type == apikey.TypeServiceAccount && !isOwner) {
+		var err error
+		key, err = s.entFromContext(ctx).APIKey.Get(ctx, key.ID)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	switch key.Type {
+	case apikey.TypeUser:
+		return key.Key, nil
+	case apikey.TypePersonal:
+		if caller.ID == key.UserID {
+			return key.Key, nil
+		}
+	case apikey.TypeServiceAccount:
+		if isOwner || (caller.ID == key.UserID &&
+			NewPermissionValidator().CanGrantAPIKeyScopes(ctx, caller, key.Scopes, key.ProjectID) == nil) {
+			return key.Key, nil
+		}
+	case apikey.TypeNoauth:
+		if isOwner {
+			return key.Key, nil
+		}
+	}
+	return "", nil
+}
+
 // RotateAPIKey rotates an API key by generating a new key value while preserving all other properties.
 // This is useful when a key is compromised or when an employee leaves, without losing usage statistics.
 func (s *APIKeyService) RotateAPIKey(ctx context.Context, id int) (*ent.APIKey, error) {
-	existing, err := s.db.APIKey.Get(ctx, id)
+	client := s.entFromContext(ctx)
+	existing, err := client.APIKey.Get(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API key: %w", err)
 	}
@@ -1203,26 +1243,22 @@ func (s *APIKeyService) RotateAPIKey(ctx context.Context, id int) (*ent.APIKey, 
 		return nil, fmt.Errorf("noauth type API key cannot be rotated")
 	}
 
-	// Rotating hands the caller a usable copy of the key, so the caller must be
-	// able to grant the scopes the key already carries.
-	if existing.Type == apikey.TypeServiceAccount {
-		user, ok := contexts.GetUser(ctx)
-		if !ok {
-			return nil, fmt.Errorf("user not found in context")
+	caller, ok := contexts.GetUser(ctx)
+	if identity.IsPlugin(ctx) || !ok || caller == nil {
+		return nil, privacy.Denyf("only a direct user can rotate an API key")
+	}
+	switch existing.Type {
+	case apikey.TypePersonal:
+		if existing.UserID != caller.ID {
+			return nil, privacy.Denyf("only the personal API key creator can rotate it")
 		}
-
-		if err := s.requireServiceAccountScopeGrant(ctx, user.ID, existing.ProjectID, existing.Scopes); err != nil {
+	case apikey.TypeServiceAccount:
+		// The caller must be able to grant the scopes on the returned credential.
+		if err := s.requireServiceAccountScopeGrant(ctx, caller.ID, existing.ProjectID, existing.Scopes); err != nil {
 			return nil, err
 		}
-	}
-
-	if existing.Type == apikey.TypePersonal {
-		user, ok := contexts.GetUser(ctx)
-		if !ok {
-			return nil, fmt.Errorf("user not found in context")
-		}
-		if existing.UserID != user.ID && !user.IsOwner {
-			return nil, fmt.Errorf("personal API key can only be rotated by its creator or a system owner")
+		if !scopes.IsDirectOwner(ctx) && existing.UserID != caller.ID {
+			return nil, privacy.Denyf("only the service account API key creator or a system owner can rotate it")
 		}
 	}
 
@@ -1235,15 +1271,17 @@ func (s *APIKeyService) RotateAPIKey(ctx context.Context, id int) (*ent.APIKey, 
 	oldKey := existing.Key
 
 	// Update the key field directly using Ent
-	rotated, err := s.db.APIKey.UpdateOneID(id).
+	rotated, err := client.APIKey.UpdateOneID(id).
+		Where(apikey.KeyEQ(oldKey)).
 		SetKey(newKey).
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to rotate API key: %w", err)
 	}
 
-	// Invalidate caches for both old and new keys
-	s.invalidateAPIKeyCaches(ctx, oldKey, newKey)
+	runAfterCommit(ctx, func(ctx context.Context) {
+		s.invalidateAPIKeyCaches(ctx, oldKey, newKey)
+	})
 
 	return rotated, nil
 }

@@ -25,7 +25,7 @@ func (r *mutationResolver) CreateLLMAPIKey(ctx context.Context, name string) (*A
 		return nil, err
 	}
 
-	return toOpenAPIAPIKey(apiKey), nil
+	return toOpenAPIAPIKey(ctx, apiKey, true), nil
 }
 
 // UpdateAPIKeyProfiles is the resolver for the updateAPIKeyProfiles field.
@@ -55,7 +55,7 @@ func (r *mutationResolver) UpdateAPIKeyProfiles(ctx context.Context, id *objects
 		return nil, err
 	}
 
-	return toOpenAPIAPIKey(apiKey), nil
+	return toOpenAPIAPIKey(ctx, apiKey, false), nil
 }
 
 // LoadAPIKeyProfileTemplate is the resolver for the loadApiKeyProfileTemplate field.
@@ -78,7 +78,7 @@ func (r *mutationResolver) LoadAPIKeyProfileTemplate(ctx context.Context, input 
 		return nil, err
 	}
 
-	return toOpenAPIAPIKey(apiKey), nil
+	return toOpenAPIAPIKey(ctx, apiKey, false), nil
 }
 
 // APIKey is the resolver for the apiKey field.
@@ -88,7 +88,7 @@ func (r *queryResolver) APIKey(ctx context.Context, id *objects.GUID, key *strin
 		return nil, err
 	}
 
-	return toOpenAPIAPIKey(apiKey), nil
+	return toOpenAPIAPIKey(ctx, apiKey, false), nil
 }
 
 // APIKeyQuotaUsages is the resolver for the apiKeyQuotaUsages field.

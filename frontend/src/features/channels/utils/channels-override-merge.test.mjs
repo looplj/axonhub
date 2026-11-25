@@ -36,3 +36,11 @@ test('channel Realtime config survives full channel settings merges', () => {
   assert.deepEqual(wire(mergeChannelSettingsForUpdate({ realtime: existingRealtime }, { realtime: updatedRealtime })).realtime, updatedRealtime);
   assert.equal(wire(mergeChannelSettingsForUpdate({ realtime: existingRealtime }, { realtime: null })).realtime, null);
 });
+
+test('WebSocket preference preserves stored values and supports explicit opt-in and opt-out', () => {
+  const existing = { preferResponsesWebSocket: true };
+  assert.equal(wire(mergeChannelSettingsForUpdate(existing, { extraModelPrefix: 'prefix-' })).preferResponsesWebSocket, true);
+  assert.equal(wire(mergeChannelSettingsForUpdate(existing, { preferResponsesWebSocket: false })).preferResponsesWebSocket, false);
+  assert.equal(wire(mergeChannelSettingsForUpdate(undefined, { preferResponsesWebSocket: true })).preferResponsesWebSocket, true);
+  assert.equal(wire(mergeChannelSettingsForUpdate(undefined, {})).preferResponsesWebSocket, undefined);
+});

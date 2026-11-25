@@ -8,7 +8,7 @@ import LongText from '@/components/long-text';
 import { User } from '../data/schema';
 import { DataTableRowActions } from './data-table-row-actions';
 
-export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = false): ColumnDef<User>[] => {
+export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean, canReadRoles: boolean): ColumnDef<User>[] => {
   const columns: ColumnDef<User>[] = [];
 
   // Only show select column if user has write permissions (for potential bulk operations)
@@ -58,8 +58,11 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
           <Badge variant='secondary'>{t('users.badges.user')}</Badge>
         );
       },
-    },
-    {
+    }
+  );
+
+  if (canReadRoles) {
+    columns.push({
       accessorKey: 'roles',
       header: t('users.columns.roles'),
       cell: ({ row }) => {
@@ -78,7 +81,10 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
           </div>
         );
       },
-    },
+    });
+  }
+
+  columns.push(
     {
       accessorKey: 'status',
       header: t('common.columns.status'),

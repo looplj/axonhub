@@ -125,6 +125,7 @@ interface Props {
 }
 
 const ALLOWED_API_FORMATS = configurableChannelEndpointApiFormatSchema.options;
+const OPENAI_RESPONSES = 'openai/responses';
 const OPENAI_RESPONSES_WEBSOCKET = 'openai/responses-ws';
 const OPENAI_REALTIME_WEBSOCKET = 'openai/realtime-ws';
 // The official OpenAI Realtime upstream is fixed: the channel credentials and
@@ -283,6 +284,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   const [detectionResults, setDetectionResults] = useState<DetectedChannelEndpoint[] | null>(null);
   const initialCodexResponses = useMemo(() => getCodexResponsesWebSocketState(channel), [channel]);
   const [codexResponsesWebSocket, setCodexResponsesWebSocket] = useState(initialCodexResponses.enabled);
+  const [preferResponsesWebSocket, setPreferResponsesWebSocket] = useState<boolean>();
 
   const supportedModelOptions = useMemo(
     () => Array.from(new Set([...channel.supportedModels, ...modelProtocols.map((mp) => mp.model)])).map((model) => ({ value: model, label: model })),
@@ -303,6 +305,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
 
     setEndpoints(channel.endpoints ?? []);
     setCodexResponsesWebSocket(initialCodexResponses.enabled);
+    setPreferResponsesWebSocket(undefined);
     setNewApiFormat('');
     setNewPath('');
     setNewBaseURL('');
@@ -545,6 +548,8 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   const availableProtocolFormats = useMemo(() => {
     return getAvailableProtocolFormats(defaultEndpoints, savedEndpoints);
   }, [defaultEndpoints, savedEndpoints]);
+  const canPreferResponsesWebSocket =
+    availableProtocolFormats.includes(OPENAI_RESPONSES) && availableProtocolFormats.includes(OPENAI_RESPONSES_WEBSOCKET);
 
   const affectedProtocolModels = useMemo(
     () =>
@@ -691,7 +696,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
             handshakeTimeoutMs: ep.handshakeTimeoutMs ?? undefined,
           })),
         },
-        patch: { modelProtocols },
+        patch: { modelProtocols, preferResponsesWebSocket },
       });
 
       toast.success(t('channels.messages.updateSuccess'));
@@ -699,7 +704,18 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     } catch {
       // error handled by hook
     }
-  }, [channel, defaultEndpoints, isCodexChannel, legacyRealtimeEndpoints, savedEndpoints, modelProtocols, onOpenChange, updateChannelSettings, t]);
+  }, [
+    channel,
+    defaultEndpoints,
+    isCodexChannel,
+    legacyRealtimeEndpoints,
+    savedEndpoints,
+    modelProtocols,
+    preferResponsesWebSocket,
+    onOpenChange,
+    updateChannelSettings,
+    t,
+  ]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -752,6 +768,19 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                 )}
               </div>
             </div>
+          )}
+
+          {canPreferResponsesWebSocket && (
+            <label className='flex cursor-pointer items-center justify-between gap-4 rounded-lg border px-3 py-2.5'>
+              <span className='space-y-1'>
+                <span className='block text-sm font-medium'>{t('channels.endpoints.preferResponsesWebSocket.label')}</span>
+                <span className='text-muted-foreground block text-xs'>{t('channels.endpoints.preferResponsesWebSocket.description')}</span>
+              </span>
+              <Switch
+                checked={preferResponsesWebSocket ?? channel.settings?.preferResponsesWebSocket ?? false}
+                onCheckedChange={setPreferResponsesWebSocket}
+              />
+            </label>
           )}
 
           {/* Default endpoints */}

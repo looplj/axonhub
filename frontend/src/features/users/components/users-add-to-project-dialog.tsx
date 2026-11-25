@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { graphqlRequest } from '@/gql/graphql';
+import { GraphQLRequestError, graphqlRequest } from '@/gql/graphql';
 import { ROLES_QUERY } from '@/gql/roles';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { isProjectOwner } from '@/lib/permission-utils';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -67,14 +69,14 @@ interface Props {
 
 export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Props) {
   const { t } = useTranslation();
+  const { user } = usePermissions();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [userProjectIds, setUserProjectIds] = useState<string[]>([]);
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
-  // Fetch all projects
-  const { data: projectsData } = useProjects({ first: 100 });
+  const { data: projectsData } = useProjects({ first: 100 }, { enabled: open });
 
   const formSchema = createFormSchema(t);
   type AddToProjectForm = z.infer<typeof formSchema>;
@@ -90,6 +92,7 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
   });
 
   const selectedProjectId = form.watch('projectId');
+  const canChangeOwnership = isProjectOwner(user, selectedProjectId);
 
   // Load user's existing projects when dialog opens
   useEffect(() => {
@@ -173,7 +176,7 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
           input: {
             projectId: values.projectId,
             userId: currentRow.id,
-            isOwner: values.isOwner,
+            isOwner: isProjectOwner(user, values.projectId) ? values.isOwner : undefined,
             scopes: values.scopes,
             roleIDs: values.roleIDs,
           },
@@ -185,7 +188,8 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
       form.reset();
       onOpenChange(false);
     } catch (error) {
-      toast.error(t('common.errors.somethingWentWrong'));
+      const forbidden = error instanceof GraphQLRequestError && error.status === 403;
+      toast.error(t(forbidden ? 'common.errors.forbidden' : 'common.errors.somethingWentWrong'));
     } finally {
       setSubmitting(false);
     }
@@ -238,7 +242,10 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
                     <FormLabel>{t('users.form.selectProject')}</FormLabel>
                     <SelectDropdown
                       defaultValue={field.value}
-                      onValueChange={field.onChange}
+                      onValueChange={(projectId) => {
+                        field.onChange(projectId);
+                        form.setValue('isOwner', false);
+                      }}
                       placeholder={t('users.form.selectProjectPlaceholder')}
                       items={projects}
                     />
@@ -249,21 +256,23 @@ export function UsersAddToProjectDialog({ currentRow, open, onOpenChange }: Prop
 
               {selectedProjectId && (
                 <>
-                  <FormField
-                    control={form.control}
-                    name='isOwner'
-                    render={({ field }) => (
-                      <FormItem className='flex flex-row items-start space-y-0 space-x-3'>
-                        <FormControl>
-                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                        <div className='space-y-1 leading-none'>
-                          <FormLabel>{t('users.form.isOwner')}</FormLabel>
-                          <p className='text-muted-foreground text-sm'>{t('users.form.ownerDescription')}</p>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
+                  {canChangeOwnership && (
+                    <FormField
+                      control={form.control}
+                      name='isOwner'
+                      render={({ field }) => (
+                        <FormItem className='flex flex-row items-start space-y-0 space-x-3'>
+                          <FormControl>
+                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                          <div className='space-y-1 leading-none'>
+                            <FormLabel>{t('users.form.isOwner')}</FormLabel>
+                            <p className='text-muted-foreground text-sm'>{t('users.form.ownerDescription')}</p>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   {/* Roles Section */}
                   <div className='space-y-3'>

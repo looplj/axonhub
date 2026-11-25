@@ -42,11 +42,7 @@ func (System) Edges() []ent.Edge {
 }
 
 func (System) Annotations() []schema.Annotation {
-	return []schema.Annotation{
-		entgql.QueryField(),
-		entgql.RelayConnection(),
-		entgql.Mutations(entgql.MutationCreate(), entgql.MutationUpdate()),
-	}
+	return []schema.Annotation{entgql.Skip(entgql.SkipAll)}
 }
 
 // Policy 定义 System 的权限策略.

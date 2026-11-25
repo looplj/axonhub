@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -20,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -37,7 +36,7 @@ const (
 	webSocketAccountIDHeader  = "Chatgpt-Account-Id"
 	webSocketOriginatorHeader = "Originator"
 	webSocketUserAgentHeader  = "User-Agent"
-	webSocketOrgHeader        = "OpenAI-Organization"
+	webSocketOrgHeader        = "Openai-Organization"
 	webSocketProjectHeader    = "OpenAI-Project"
 	// OpenAI limits Responses WebSocket connections to 60 minutes. The
 	// Codex store=false path depends on connection-local state: real upstream
@@ -53,8 +52,8 @@ const (
 )
 
 type WebSocketExecutor struct {
-	inner  pipeline.Executor
-	dialer *websocket.Dialer
+	inner     pipeline.Executor
+	transport *http.Transport
 
 	mu               sync.Mutex
 	pool             map[webSocketPoolKey]*pooledWebSocketConn
@@ -70,23 +69,23 @@ type WebSocketExecutor struct {
 }
 
 func NewWebSocketExecutor(inner pipeline.Executor) *WebSocketExecutor {
-	dialer := &websocket.Dialer{
-		HandshakeTimeout: 30 * time.Second,
-		Proxy:            http.ProxyFromEnvironment,
+	transport := &http.Transport{
+		Proxy:               http.ProxyFromEnvironment,
+		TLSHandshakeTimeout: 30 * time.Second,
 	}
 	if hc, ok := inner.(*httpclient.HttpClient); ok {
-		dialer.Proxy = hc.ProxyFunc()
+		transport.Proxy = hc.ProxyFunc()
 		if native := hc.GetNativeClient(); native != nil {
-			if transport, ok := native.Transport.(*http.Transport); ok && transport.TLSClientConfig != nil {
-				dialer.TLSClientConfig = transport.TLSClientConfig.Clone()
-				dialer.TLSClientConfig.NextProtos = []string{"http/1.1"}
+			if source, ok := native.Transport.(*http.Transport); ok && source.TLSClientConfig != nil {
+				transport.TLSClientConfig = source.TLSClientConfig.Clone()
+				transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
 			}
 		}
 	}
 
 	return &WebSocketExecutor{
 		inner:            inner,
-		dialer:           dialer,
+		transport:        transport,
 		pool:             map[webSocketPoolKey]*pooledWebSocketConn{},
 		idleTTL:          defaultWebSocketIdleTTL,
 		maxLifetime:      defaultWebSocketMaxLifetime,
@@ -403,7 +402,7 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 			stopIdle()
 		}
 	}()
-	setWebSocketActivity(lease.conn.NetConn(), activity)
+	setWebSocketActivity(lease.activityConn, activity)
 
 	if err := lease.write(ctx, payload); err != nil {
 		// A write failure is ambiguous: the upstream may already have accepted and
@@ -493,12 +492,13 @@ type webSocketPoolKey struct {
 }
 
 type pooledWebSocketConn struct {
-	key        webSocketPoolKey
-	conn       *websocket.Conn
-	inFlight   chan struct{}
-	createdAt  time.Time
-	lastUsedAt time.Time
-	used       bool
+	key          webSocketPoolKey
+	conn         *websocket.Conn
+	activityConn *webSocketActivityConn
+	inFlight     chan struct{}
+	createdAt    time.Time
+	lastUsedAt   time.Time
+	used         bool
 
 	mu             sync.Mutex
 	closed         bool
@@ -513,6 +513,7 @@ type pooledWebSocketConn struct {
 
 type webSocketLease struct {
 	conn          *websocket.Conn
+	activityConn  *webSocketActivityConn
 	owner         *WebSocketExecutor
 	pooled        *pooledWebSocketConn
 	reused        bool
@@ -523,7 +524,6 @@ type webSocketLease struct {
 }
 
 func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header, payload map[string]any) (*webSocketLease, error) {
-	originalPayload := clonePayloadMap(payload)
 	lease, err := e.acquire(ctx, request, wsURL, headers)
 	if err != nil {
 		return nil, err
@@ -532,23 +532,8 @@ func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *h
 	lease.native = shared.IsResponsesWebSocket(ctx)
 	if err := prepareWebSocketPayloadForLease(payload, lease); err != nil {
 		lease.release(true)
-		var reconnectErr *webSocketReconnectRequiredError
-		if !errors.As(err, &reconnectErr) {
-			return nil, err
-		}
-
-		restorePayloadMap(payload, originalPayload)
-		lease, err = e.acquire(ctx, request, wsURL, headers)
-		if err != nil {
-			return nil, err
-		}
-		lease.native = shared.IsResponsesWebSocket(ctx)
-		if err := prepareWebSocketPayloadForLease(payload, lease); err != nil {
-			lease.release(true)
-			return nil, err
-		}
+		return nil, err
 	}
-	lease.native = shared.IsResponsesWebSocket(ctx)
 	if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
 		origin := attempt.Origin()
 		if explicitPreviousResponseID(payload) != "" && origin.Generation != 0 && origin.Generation != lease.generation {
@@ -571,34 +556,14 @@ func (e *WebSocketExecutor) acquirePreparedLease(ctx context.Context, request *h
 	return lease, nil
 }
 
-func clonePayloadMap(payload map[string]any) map[string]any {
-	if payload == nil {
-		return nil
-	}
-	clone := make(map[string]any, len(payload))
-	for key, value := range payload {
-		clone[key] = value
-	}
-	return clone
-}
-
-func restorePayloadMap(payload, original map[string]any) {
-	for key := range payload {
-		delete(payload, key)
-	}
-	for key, value := range original {
-		payload[key] = value
-	}
-}
-
 func (e *WebSocketExecutor) acquire(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header) (*webSocketLease, error) {
 	key, ok := e.poolKey(ctx, request, wsURL, headers)
 	if !ok {
-		conn, err := e.dial(ctx, request, wsURL, headers)
+		conn, activityConn, err := e.dial(ctx, request, wsURL, headers)
 		if err != nil {
 			return nil, err
 		}
-		return &webSocketLease{conn: conn}, nil
+		return &webSocketLease{conn: conn, activityConn: activityConn}, nil
 	}
 
 	for {
@@ -615,7 +580,7 @@ func (e *WebSocketExecutor) acquire(ctx context.Context, request *httpclient.Req
 				e.evict(pc)
 				continue
 			}
-			return &webSocketLease{conn: pc.conn, owner: e, pooled: pc, reused: used, generation: pc.generation}, nil
+			return &webSocketLease{conn: pc.conn, activityConn: pc.activityConn, owner: e, pooled: pc, reused: used, generation: pc.generation}, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
@@ -636,28 +601,29 @@ func (e *WebSocketExecutor) getOrDialPooled(ctx context.Context, request *httpcl
 	}
 	e.mu.Unlock()
 
-	conn, err := e.dial(ctx, request, wsURL, headers)
+	conn, activityConn, err := e.dial(ctx, request, wsURL, headers)
 	if err != nil {
 		return nil, err
 	}
 
 	pc := &pooledWebSocketConn{
-		key:        key,
-		conn:       conn,
-		inFlight:   make(chan struct{}, 1),
-		createdAt:  now,
-		lastUsedAt: now,
+		key:          key,
+		conn:         conn,
+		activityConn: activityConn,
+		inFlight:     make(chan struct{}, 1),
+		createdAt:    now,
+		lastUsedAt:   now,
 	}
 
 	e.mu.Lock()
 	if e.closed {
 		e.mu.Unlock()
-		_ = conn.Close()
+		_ = conn.CloseNow()
 		return nil, fmt.Errorf("websocket executor is closed")
 	}
 	if existing := e.pool[key]; existing != nil && !existing.isClosed() {
 		e.mu.Unlock()
-		_ = conn.Close()
+		_ = conn.CloseNow()
 		return existing, nil
 	}
 	// maxPoolSize is a hard cap on tracked pooled sessions (idle + in-flight).
@@ -666,7 +632,7 @@ func (e *WebSocketExecutor) getOrDialPooled(ctx context.Context, request *httpcl
 	// concurrency does not hit this branch; it waits on that session's inFlight slot.
 	if e.maxPoolSize > 0 && len(e.pool) >= e.maxPoolSize && !e.evictOldestIdleLocked() {
 		e.mu.Unlock()
-		_ = conn.Close()
+		_ = conn.CloseNow()
 		return nil, fmt.Errorf("websocket session pool is full")
 	}
 	e.pool[key] = pc
@@ -677,70 +643,6 @@ func (e *WebSocketExecutor) getOrDialPooled(ctx context.Context, request *httpcl
 	e.mu.Unlock()
 
 	return pc, nil
-}
-
-// dial applies idle timing through connection setup and the HTTP upgrade,
-// refreshing it on socket reads and closing the socket if the context cancels.
-func (e *WebSocketExecutor) dial(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header) (*websocket.Conn, error) {
-	ctx, activity, stopIdle := httpclient.NewStreamIdleContext(ctx)
-	defer stopIdle()
-	dialer := e.dialer
-	if dialer == nil {
-		dialer = websocket.DefaultDialer
-	}
-
-	// Gorilla applies context deadlines during the handshake, but context
-	// cancellation alone does not interrupt a blocked response-header read.
-	handshakeCtx := ctx
-	stopDialCancellation := func() bool { return false }
-	defer func() { stopDialCancellation() }()
-	clonedDialer := *dialer
-	dialContext := clonedDialer.NetDialContext
-	if dialContext == nil {
-		if legacyDial := clonedDialer.NetDial; legacyDial != nil {
-			dialContext = func(_ context.Context, network, address string) (net.Conn, error) {
-				return legacyDial(network, address)
-			}
-		} else {
-			dialContext = (&net.Dialer{}).DialContext
-		}
-	}
-	clonedDialer.NetDialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
-		conn, err := dialContext(ctx, network, address)
-		if err != nil {
-			return nil, err
-		}
-		stopDialCancellation = context.AfterFunc(handshakeCtx, func() { _ = conn.Close() })
-		return &webSocketActivityConn{Conn: conn, activity: activity}, nil
-	}
-	if dialTLS := clonedDialer.NetDialTLSContext; dialTLS != nil {
-		clonedDialer.NetDialTLSContext = func(ctx context.Context, network, address string) (net.Conn, error) {
-			conn, err := dialTLS(ctx, network, address)
-			if err != nil {
-				return nil, err
-			}
-			stopDialCancellation = context.AfterFunc(handshakeCtx, func() { _ = conn.Close() })
-			return &webSocketActivityConn{Conn: conn, activity: activity}, nil
-		}
-	}
-	conn, resp, err := clonedDialer.DialContext(ctx, wsURL, headers)
-	if resp != nil {
-		// The WebSocket handshake is an HTTP response. Observe it before
-		// converting a rejected handshake into httpclient.Error so both
-		// successful and failed handshakes retain their provider headers.
-		request.ObserveResponseHeaders(ctx, resp.Header)
-	}
-	if err != nil {
-		if cause := httpclient.StreamContextError(ctx); cause != nil {
-			return nil, fmt.Errorf("websocket dial failed: %w", cause)
-		}
-		return nil, newWebSocketDialError(request, resp, err)
-	}
-	if cause := httpclient.StreamContextError(ctx); cause != nil {
-		_ = conn.Close()
-		return nil, fmt.Errorf("websocket dial failed: %w", cause)
-	}
-	return conn, nil
 }
 
 func (e *WebSocketExecutor) poolKey(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header) (webSocketPoolKey, bool) {
@@ -1064,7 +966,7 @@ func (pc *pooledWebSocketConn) close() {
 	pc.lastInput = nil
 	pc.lastResponseID = ""
 	pc.mu.Unlock()
-	_ = pc.conn.Close()
+	_ = pc.conn.CloseNow()
 }
 
 func (pc *pooledWebSocketConn) previousTurn() ([]json.RawMessage, string) {
@@ -1079,7 +981,7 @@ func (l *webSocketLease) release(evict bool) {
 	}
 	l.once.Do(func() {
 		if l.pooled == nil {
-			_ = l.conn.Close()
+			_ = l.conn.CloseNow()
 			return
 		}
 		if l.owner != nil {
@@ -1132,12 +1034,6 @@ func toWebSocketURL(rawURL string) (string, error) {
 	return u.String(), nil
 }
 
-type webSocketReconnectRequiredError struct{}
-
-func (e *webSocketReconnectRequiredError) Error() string {
-	return "websocket session context changed; reconnect and send full context"
-}
-
 func prepareWebSocketPayloadForLease(payload map[string]any, lease *webSocketLease) error {
 	if explicitID := explicitPreviousResponseID(payload); explicitID != "" {
 		if lease == nil || lease.pooled == nil || !lease.reused {
@@ -1165,7 +1061,7 @@ func prepareWebSocketPayloadForLease(payload map[string]any, lease *webSocketLea
 	if !ok {
 		return nil
 	}
-	if !lease.native && (lease.owner == nil || rawMessagesSize(fullInput) <= lease.owner.maxRetainedInput) {
+	if lease.owner == nil || rawMessagesSize(fullInput) <= lease.owner.maxRetainedInput {
 		lease.nextFullInput = fullInput
 	}
 
@@ -1173,22 +1069,15 @@ func prepareWebSocketPayloadForLease(payload map[string]any, lease *webSocketLea
 	if !lease.reused || previousResponseID == "" {
 		return nil
 	}
-	if explicitID := explicitPreviousResponseID(payload); explicitID != "" {
-		if explicitID != previousResponseID {
-			return &webSocketReconnectRequiredError{}
-		}
-
-		// Native WebSocket clients send only the new input together with the
-		// response ID returned on this connection. Preserve that delta as-is.
-		return nil
-	}
 	if len(previousInput) == 0 {
 		return nil
 	}
 
 	suffix, ok := inputSuffix(previousInput, fullInput)
-	if !ok || len(suffix) == 0 || suffixStartsWithResponseOutput(suffix) {
-		return &webSocketReconnectRequiredError{}
+	if !ok || suffixStartsWithResponseOutput(suffix) {
+		// This is independent of the retained turn. Use the full input on
+		// the existing socket without adding a previous_response_id.
+		return nil
 	}
 
 	payload["input"] = suffix
@@ -1373,7 +1262,7 @@ func (s *webSocketStream) Next() bool {
 	lease := s.lease
 	s.mu.Unlock()
 	httpclient.SetStreamIdleWaiting(s.ctx, true)
-	_, msg, err := lease.conn.ReadMessage()
+	_, msg, err := lease.conn.Read(s.ctx)
 	httpclient.SetStreamIdleWaiting(s.ctx, false)
 	if err != nil {
 		s.mu.Lock()
@@ -1382,7 +1271,7 @@ func (s *webSocketStream) Next() bool {
 		if closed {
 			return false
 		}
-		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || strings.Contains(err.Error(), "use of closed network connection") {
+		if websocket.CloseStatus(err) == websocket.StatusNormalClosure || strings.Contains(err.Error(), "use of closed network connection") {
 			if ctxErr := httpclient.StreamContextError(s.ctx); ctxErr != nil {
 				s.setErr(ctxErr)
 			} else if !s.hasSeenEvent() {
@@ -1530,8 +1419,11 @@ func (s *webSocketStream) finish(evict bool) {
 		}
 		lease := s.lease
 		s.mu.Unlock()
+		// coder may still be closing a canceled read even after it returned a
+		// terminal event. Retire that socket before cleanup cancels healthy reads.
+		evict = evict || s.ctx.Err() != nil
 		if s.stopIdle != nil {
-			setWebSocketActivity(lease.conn.NetConn(), nil)
+			setWebSocketActivity(lease.activityConn, nil)
 			s.stopIdle()
 		}
 		lease.release(evict)
@@ -1655,17 +1547,13 @@ func (c *webSocketActivityConn) Read(p []byte) (int, error) {
 	return n, err
 }
 
-// setWebSocketActivity replaces the pooled socket's observer, unwrapping TLS
-// when necessary. A nil observer detaches the finished request's watchdog.
-func setWebSocketActivity(conn net.Conn, activity func()) {
-	if c, ok := conn.(*webSocketActivityConn); ok {
-		c.mu.Lock()
-		c.activity = activity
-		c.mu.Unlock()
+// setWebSocketActivity replaces the observer retained separately from coder's
+// connection. A nil observer detaches the finished request's watchdog.
+func setWebSocketActivity(conn *webSocketActivityConn, activity func()) {
+	if conn == nil {
 		return
 	}
-	// TLS wraps the dialed socket, which retains the read observer.
-	if c, ok := conn.(interface{ NetConn() net.Conn }); ok {
-		setWebSocketActivity(c.NetConn(), activity)
-	}
+	conn.mu.Lock()
+	conn.activity = activity
+	conn.mu.Unlock()
 }

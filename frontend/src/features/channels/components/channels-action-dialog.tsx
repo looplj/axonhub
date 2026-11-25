@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Textarea } from '@/components/ui/textarea';
@@ -804,6 +805,7 @@ export function ChannelsActionDialog({
   const [responsesTransport, setResponsesTransport] = useState<ResponsesTransport>(() => getResponsesTransportFromChannel(initialRow));
   const initialCodexResponses = useMemo(() => getCodexResponsesWebSocketState(initialRow), [initialRow]);
   const [codexResponsesWebSocket, setCodexResponsesWebSocket] = useState(initialCodexResponses.enabled);
+  const [preferResponsesWebSocket, setPreferResponsesWebSocket] = useState<boolean>();
   const [useGeminiVertex, setUseGeminiVertex] = useState(() => {
     if (initialRow) {
       return initialRow.type === 'gemini_vertex';
@@ -860,6 +862,7 @@ export function ChannelsActionDialog({
       setCodexAuthJSONText('');
       codexThirdPartyBaseURLRef.current = '';
       setCodexResponsesWebSocket(initialCodexResponses.enabled);
+      setPreferResponsesWebSocket(undefined);
       setXaiSSOToken('');
     }
   }, [open, resetCodexOAuth, resetClaudecodeOAuth, resetAntigravityOAuth, resetXaiOAuth, initialCodexResponses.enabled]);
@@ -1126,6 +1129,7 @@ export function ChannelsActionDialog({
     realtimeClientEventsPerSecond,
     responsesTransport,
     codexResponsesWebSocket,
+    preferResponsesWebSocket,
     useGeminiVertex,
     useAnthropicAws,
     useKimiCoding,
@@ -1811,6 +1815,7 @@ export function ChannelsActionDialog({
       if (isCodexType) {
         dataWithModels.endpoints = buildCodexResponsesEndpoints(initialRow?.endpoints, codexResponsesWebSocket);
       }
+      const webSocketPreferencePatch = isCodexType ? { preferResponsesWebSocket } : {};
       const codexModelProtocols =
         isCodexType && initialRow ? translateLegacyCodexModelProtocols(initialRow, initialRow.settings?.modelProtocols) : undefined;
 
@@ -1840,6 +1845,7 @@ export function ChannelsActionDialog({
             ? { modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, existingModelProtocols) }
             : {}),
           ...(codexModelProtocols ? { modelProtocols: codexModelProtocols } : {}),
+          ...webSocketPreferencePatch,
         };
         if (currentRealtime && !matchingRealtime) settingsPatch.modelProtocols = withoutRealtimeModelProtocols(settingsPatch.modelProtocols ?? existingModelProtocols);
 
@@ -1914,6 +1920,7 @@ export function ChannelsActionDialog({
               }
             : {}),
           ...(codexModelProtocols ? { modelProtocols: codexModelProtocols } : {}),
+          ...webSocketPreferencePatch,
         });
 
         const createInput = {
@@ -2373,6 +2380,7 @@ export function ChannelsActionDialog({
     setRealtimeClientEventsPerSecond(getRealtimeClientEventsPerSecondInputValue(initialRow?.settings?.realtime?.clientEventsPerSecond));
     setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
     setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
+    setPreferResponsesWebSocket(undefined);
     setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
     setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
     setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
@@ -2587,6 +2595,21 @@ export function ChannelsActionDialog({
                               <p className='text-muted-foreground text-xs break-all' data-testid='codex-responses-websocket-url'>
                                 {t('channels.dialogs.fields.apiFormat.codexWebSocket.derivedURL', { url: codexResponsesWebSocketURL })}
                               </p>
+                            )}
+                            {codexResponsesWebSocket && (
+                              <label className='flex cursor-pointer items-center justify-between gap-4 py-2'>
+                                <span className='space-y-1'>
+                                  <span className='block text-sm font-medium'>{t('channels.endpoints.preferResponsesWebSocket.label')}</span>
+                                  <span className='text-muted-foreground block text-xs'>
+                                    {t('channels.endpoints.preferResponsesWebSocket.description')}
+                                  </span>
+                                </span>
+                                <Switch
+                                  checked={preferResponsesWebSocket ?? initialRow?.settings?.preferResponsesWebSocket ?? false}
+                                  onCheckedChange={setPreferResponsesWebSocket}
+                                  data-testid='codex-prefer-responses-websocket'
+                                />
+                              </label>
                             )}
                             {codexResponsesWebSocket &&
                               (initialCodexResponses.webSocketOnly || hasCodexResponsesWebSocketOverrideReplacement(initialRow)) && (

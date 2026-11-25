@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -26,17 +26,18 @@ func TestStreamDeliveryWebSocketDisconnectReleasesEveryLane(t *testing.T) {
 		return orchestrator.ChatCompletionResult{}, ctx.Err()
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := new(websocket.Upgrader).Upgrade(w, r, nil)
+		conn, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			t.Errorf("upgrade: %v", err)
 			return
 		}
-		defer conn.Close()
+		defer conn.CloseNow()
+		conn.SetReadLimit(-1)
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 		d := newResponsesWebSocketDispatcher(ctx, cancel, conn, &responsesWebSocketWriter{conn: conn}, r, 0, process, nil)
 		for {
-			_, message, err := conn.ReadMessage()
+			_, message, err := conn.Read(ctx)
 			if err != nil {
 				break
 			}
@@ -58,10 +59,10 @@ func TestStreamDeliveryWebSocketDisconnectReleasesEveryLane(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 	conn := dialResponsesWebSocket(t, server.URL, nil)
-	defer conn.Close()
+	defer conn.CloseNow()
 	for i := range responsesWebSocketMaxActive {
 		message := []byte(`{"type":"response.create","stream_id":"lane-` + string(rune('a'+i)) + `","model":"gpt-test"}`)
-		require.NoError(t, conn.WriteMessage(websocket.TextMessage, message))
+		require.NoError(t, conn.Write(t.Context(), websocket.MessageText, message))
 	}
 	for range responsesWebSocketMaxActive {
 		select {
@@ -71,7 +72,7 @@ func TestStreamDeliveryWebSocketDisconnectReleasesEveryLane(t *testing.T) {
 		}
 	}
 	for _, lane := range []string{"lane-a", "waiting-for-slot"} {
-		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"`+lane+`","model":"gpt-test"}`)))
+		require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","stream_id":"`+lane+`","model":"gpt-test"}`)))
 	}
 	for range responsesWebSocketMaxActive + 2 {
 		select {
@@ -81,7 +82,7 @@ func TestStreamDeliveryWebSocketDisconnectReleasesEveryLane(t *testing.T) {
 		}
 	}
 	// When: the client closes while every active slot is occupied.
-	require.NoError(t, conn.Close())
+	require.NoError(t, conn.CloseNow())
 	// Then: all goroutines, active slots, pending slots, and lane tails are released.
 	select {
 	case d := <-finished:
@@ -109,12 +110,13 @@ func TestStreamDeliveryWebSocketTurnContextsAreIndependent(t *testing.T) {
 	}
 	server := newResponsesWebSocketTestServer(t, process, nil)
 	conn := dialResponsesWebSocket(t, server.URL, nil)
-	defer conn.Close()
-	require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
+	defer conn.CloseNow()
 	// When: consecutive turns complete while the connection remains open.
 	for range 2 {
-		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"lane-a","model":"gpt-test"}`)))
-		_, data, err := conn.ReadMessage()
+		require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(`{"type":"response.create","stream_id":"lane-a","model":"gpt-test"}`)))
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+		_, data, err := conn.Read(ctx)
+		cancel()
 		require.NoError(t, err)
 		require.Equal(t, "response.completed", gjson.GetBytes(data, "type").String())
 	}

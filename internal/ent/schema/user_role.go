@@ -7,12 +7,18 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 // UserRole holds the schema definition for the UserRole entity.
 type UserRole struct {
 	ent.Schema
+}
+
+func (UserRole) Policy() ent.Policy {
+	return privacy.Policy{Query: privacy.QueryPolicy{scopes.UserRoleReadRule()}}
 }
 
 func (UserRole) Mixin() []ent.Mixin {

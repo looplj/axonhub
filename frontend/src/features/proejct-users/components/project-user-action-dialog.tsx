@@ -8,7 +8,6 @@ import { graphqlRequest } from '@/gql/graphql';
 import { ROLES_QUERY } from '@/gql/roles';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { canEditUserPermissions } from '@/lib/permission-utils';
 import { formatUserName } from '@/lib/utils';
@@ -19,6 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, useFormField } from '@/components/ui/form';
 import { ScopesSelect } from '@/components/scopes-select';
 import { useDebounce } from '@/hooks/use-debounce';
+import { usePermissions } from '@/hooks/usePermissions';
 import { User } from '../data/schema';
 import { useAddUserToProject, useUpdateProjectUser, useAllUsersOptions } from '../data/users';
 
@@ -100,8 +100,9 @@ function UserFieldPicker({
 
 export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Props) {
   const { t } = useTranslation();
-  const currentUser = useAuthStore((state) => state.auth.user);
+  const { user: currentUser, isProjectOwner } = usePermissions();
   const selectedProjectId = useSelectedProjectId();
+  const canChangeOwnership = !!selectedProjectId && isProjectOwner;
   const isEdit = !!currentRow;
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
@@ -218,7 +219,7 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
 
       await updateProjectUser.mutateAsync({
         userId: currentRow.id,
-        isOwner: values.isOwner,
+        isOwner: canChangeOwnership && values.isOwner !== currentRow.isOwner ? values.isOwner : undefined,
         scopes: values.scopes,
         addRoleIDs: addRoleIDs.length > 0 ? addRoleIDs : undefined,
         removeRoleIDs: removeRoleIDs.length > 0 ? removeRoleIDs : undefined,
@@ -229,7 +230,7 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
     } else {
       await addUserToProject.mutateAsync({
         userId: values.userId || '',
-        isOwner: values.isOwner,
+        isOwner: canChangeOwnership ? values.isOwner : undefined,
         scopes: values.scopes,
         roleIDs: values.roleIDs,
       });
@@ -300,22 +301,23 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
                 />
               )}
 
-              {/* Project Owner Checkbox */}
-              <FormField
-                control={form.control}
-                name='isOwner'
-                render={({ field }) => (
-                  <FormItem className='flex flex-row items-start space-y-0 space-x-3'>
-                    <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                    <div className='space-y-1 leading-none'>
-                      <FormLabel>{t('users.form.isOwner')}</FormLabel>
-                      <p className='text-muted-foreground text-sm'>{t('users.form.ownerDescription')}</p>
-                    </div>
-                  </FormItem>
-                )}
-              />
+              {canChangeOwnership && (
+                <FormField
+                  control={form.control}
+                  name='isOwner'
+                  render={({ field }) => (
+                    <FormItem className='flex flex-row items-start space-y-0 space-x-3'>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                      <div className='space-y-1 leading-none'>
+                        <FormLabel>{t('users.form.isOwner')}</FormLabel>
+                        <p className='text-muted-foreground text-sm'>{t('users.form.ownerDescription')}</p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {/* Roles Section */}
               <div className='space-y-3'>

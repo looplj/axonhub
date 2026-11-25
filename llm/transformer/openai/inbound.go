@@ -159,23 +159,19 @@ func isReasoningSignatureEvent(resp *llm.Response) bool {
 		return false
 	}
 
-	delta := resp.Choices[0].Delta
-	if delta == nil {
+	choice := resp.Choices[0]
+	delta := choice.Delta
+	if delta == nil || delta.ReasoningSignature == nil || *delta.ReasoningSignature == "" {
 		return false
 	}
 
-	// Check if ReasoningSignature is set
-	if delta.ReasoningSignature == nil || *delta.ReasoningSignature == "" {
+	// Gemini and Copilot can carry signatures on the terminal chunk.
+	if finish := choice.FinishReason; finish != nil && *finish != "" {
 		return false
 	}
-
-	// Copilot puts reasoning_opaque on the terminal chunk together with
-	// finish_reason and usage. OpenAI output still omits the signature, but
-	// dropping the chunk would also drop those terminal fields.
-	if resp.Choices[0].FinishReason != nil && *resp.Choices[0].FinishReason != "" {
-		return false
-	}
-	if resp.Usage != nil {
+	// Keep usage that can be returned to the client. An all-zero placeholder
+	// adds nothing to a signature-only chunk.
+	if usage := UsageFromLLM(resp.Usage); usage != nil && *usage != (Usage{}) {
 		return false
 	}
 

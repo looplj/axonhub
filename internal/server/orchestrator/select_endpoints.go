@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"slices"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
@@ -32,6 +33,7 @@ func selectForcedAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request
 
 func selectEndpointAPIFormat(
 	ctx context.Context,
+	ch *biz.Channel,
 	endpoints []objects.ChannelEndpoint,
 	req *llm.Request,
 	forced bool,
@@ -51,7 +53,20 @@ func selectEndpointAPIFormat(
 		return selectForcedAPIFormat(endpoints, req)
 	}
 
-	return SelectAPIFormat(endpoints, req)
+	format := SelectAPIFormat(endpoints, req)
+	if format != llm.APIFormatOpenAIResponse.String() || req.RequestType != llm.RequestTypeChat ||
+		ch.Settings == nil || !ch.Settings.PreferResponsesWebSocket {
+		return format
+	}
+
+	webSocketFormat := llm.APIFormatOpenAIResponseWebSocket.String()
+	if slices.ContainsFunc(endpoints, func(ep objects.ChannelEndpoint) bool {
+		return ep.APIFormat == webSocketFormat
+	}) {
+		return webSocketFormat
+	}
+
+	return format
 }
 
 func selectAPIFormat(

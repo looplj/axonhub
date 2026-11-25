@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { graphqlRequest } from '@/gql/graphql';
+import { GraphQLRequestError, graphqlRequest } from '@/gql/graphql';
 import { ROLES_QUERY } from '@/gql/roles';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/stores/authStore';
 import { filterGrantableRoles, canEditUserPermissions } from '@/lib/permission-utils';
 import { passwordConfirmationSchema } from '@/lib/validation';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -69,11 +69,13 @@ interface Props {
 
 export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
   const { t } = useTranslation();
-  const currentUser = useAuthStore((state) => state.auth.user);
+  const { user: currentUser, isOwner, hasSystemScope } = usePermissions();
+  const canReadRoles = hasSystemScope('read_roles');
   const isEdit = !!currentRow;
+  const canChangeOwnership = isEdit && isOwner;
+  const canEdit = !currentRow || canEditUserPermissions(currentUser, currentRow.scopes || [], currentRow.isOwner || false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
-  const [canEdit, setCanEdit] = useState(true);
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
   const createUser = useCreateUser();
@@ -103,13 +105,12 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
           email: '',
           password: '',
           confirmPassword: '',
-          isOwner: false,
           roleIDs: [],
           scopes: [],
         },
   });
 
-  const loadRolesAndScopes = useCallback(async () => {
+  const loadRoles = useCallback(async () => {
     setLoading(true);
     try {
       const rolesData = await graphqlRequest(ROLES_QUERY, { first: 100, where: { level: 'system' } });
@@ -129,52 +130,43 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
 
       const allRoles = rolesResponse.roles.edges.map((edge) => edge.node);
 
-      const grantableRoles = filterGrantableRoles(currentUser, allRoles);
-      setRoles(grantableRoles);
-
-      if (isEdit && currentRow) {
-        const targetScopes = currentRow.scopes || [];
-        const canEditTarget = canEditUserPermissions(currentUser, targetScopes, currentRow.isOwner || false);
-        setCanEdit(canEditTarget);
-      }
+      setRoles(filterGrantableRoles(currentUser, allRoles));
     } catch (error) {
       toast.error(t('common.errors.userLoadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [t, setRoles, currentUser, isEdit, currentRow]);
+  }, [t, currentUser]);
 
-  // Load roles and scopes when dialog opens
   useEffect(() => {
-    if (open) {
-      loadRolesAndScopes();
+    if (open && canReadRoles) {
+      loadRoles();
     }
-  }, [open, loadRolesAndScopes, currentUser, isEdit, currentRow]);
+  }, [open, canReadRoles, loadRoles]);
 
   const onSubmit = async (values: UserForm) => {
     try {
       if (isEdit && currentRow) {
-        // For updates, we need to calculate role changes
-        const currentRoleIDs = currentRow.roles?.edges?.map((edge) => edge.node.id) || [];
-        const newRoleIDs = values.roleIDs || [];
-
-        const addRoleIDs = newRoleIDs.filter((id) => !currentRoleIDs.includes(id));
-        const removeRoleIDs = currentRoleIDs.filter((id) => !newRoleIDs.includes(id));
-
         const updateInput: UpdateUserInput = {
           firstName: values.firstName,
           lastName: values.lastName,
           email: values.email,
-          isOwner: values.isOwner,
+          isOwner: canChangeOwnership && values.isOwner !== currentRow.isOwner ? values.isOwner : undefined,
           scopes: values.scopes,
         };
 
-        // Only add role fields if there are changes
-        if (addRoleIDs.length > 0) {
-          updateInput.addRoleIDs = addRoleIDs;
-        }
-        if (removeRoleIDs.length > 0) {
-          updateInput.removeRoleIDs = removeRoleIDs;
+        if (canReadRoles) {
+          const currentRoleIDs = currentRow.roles?.edges?.map((edge) => edge.node.id) || [];
+          const newRoleIDs = values.roleIDs || [];
+          const addRoleIDs = newRoleIDs.filter((id) => !currentRoleIDs.includes(id));
+          const removeRoleIDs = currentRoleIDs.filter((id) => !newRoleIDs.includes(id));
+
+          if (addRoleIDs.length > 0) {
+            updateInput.addRoleIDs = addRoleIDs;
+          }
+          if (removeRoleIDs.length > 0) {
+            updateInput.removeRoleIDs = removeRoleIDs;
+          }
         }
 
         await updateUser.mutateAsync({
@@ -189,9 +181,8 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
           email: values.email,
           password: values.password || '',
           // 注意：不包含 confirmPassword
-          isOwner: values.isOwner,
           scopes: values.scopes,
-          roleIDs: values.roleIDs,
+          roleIDs: canReadRoles ? values.roleIDs : undefined,
         };
 
         await createUser.mutateAsync(createInput);
@@ -200,7 +191,8 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
       form.reset();
       onOpenChange(false);
     } catch (error) {
-      toast.error(t('common.errors.userSaveFailed'));
+      const forbidden = error instanceof GraphQLRequestError && error.status === 403;
+      toast.error(t(forbidden ? 'common.errors.forbidden' : 'common.errors.userSaveFailed'));
     }
   };
 
@@ -314,47 +306,50 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                 </div>
               )}
 
-              <FormField
-                control={form.control}
-                name='isOwner'
-                render={({ field }) => (
-                  <FormItem className='flex flex-row items-start space-y-0 space-x-3'>
-                    <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                    <div className='space-y-1 leading-none'>
-                      <FormLabel>{t('users.form.isOwner')}</FormLabel>
-                      <p className='text-muted-foreground text-sm'>{t('users.form.ownerDescription')}</p>
-                    </div>
-                  </FormItem>
-                )}
-              />
-
-              {/* Roles Section */}
-              <div className='space-y-3 pt-2'>
-                <FormLabel>{t('users.form.roles')}</FormLabel>
-                {loading ? (
-                  <div>{t('users.form.loadingRoles')}</div>
-                ) : (
-                  <div className='grid grid-cols-2 gap-2'>
-                    {roles.map((role) => (
-                      <div key={role.id} className='flex items-center space-x-2'>
-                        <Checkbox
-                          id={`role-${role.id}`}
-                          checked={(form.watch('roleIDs') || []).includes(role.id)}
-                          onCheckedChange={() => handleRoleToggle(role.id)}
-                        />
-                        <label
-                          htmlFor={`role-${role.id}`}
-                          className='text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
-                        >
-                          {role.name}
-                        </label>
+              {canChangeOwnership && (
+                <FormField
+                  control={form.control}
+                  name='isOwner'
+                  render={({ field }) => (
+                    <FormItem className='flex flex-row items-start space-y-0 space-x-3'>
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                      <div className='space-y-1 leading-none'>
+                        <FormLabel>{t('users.form.isOwner')}</FormLabel>
+                        <p className='text-muted-foreground text-sm'>{t('users.form.ownerDescription')}</p>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {canReadRoles && (
+                <div className='space-y-3 pt-2'>
+                  <FormLabel>{t('users.form.roles')}</FormLabel>
+                  {loading ? (
+                    <div>{t('users.form.loadingRoles')}</div>
+                  ) : (
+                    <div className='grid grid-cols-2 gap-2'>
+                      {roles.map((role) => (
+                        <div key={role.id} className='flex items-center space-x-2'>
+                          <Checkbox
+                            id={`role-${role.id}`}
+                            checked={(form.watch('roleIDs') || []).includes(role.id)}
+                            onCheckedChange={() => handleRoleToggle(role.id)}
+                          />
+                          <label
+                            htmlFor={`role-${role.id}`}
+                            className='text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
+                          >
+                            {role.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Scopes Section */}
               <FormField
