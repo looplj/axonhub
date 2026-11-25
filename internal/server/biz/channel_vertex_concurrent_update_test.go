@@ -44,8 +44,8 @@ func TestChannelService_UpdateVertexCredentialsPreservesConcurrentDisable(t *tes
 				create.SetStatus(channel.StatusDisabled).SetErrorMessage("operator disabled")
 			}
 			if mode == "scheduled" {
-				create.SetErrorMessage(scheduledDisableReason).SetAutoDisabledAt(time.Now().Round(0)).
-					SetAutoDisableExpiresAt(time.Now().Add(time.Hour).Round(0))
+				create.SetErrorMessage(scheduledDisableReason).SetAutoDisabledAt(time.Now().UTC().Round(0)).
+					SetAutoDisableExpiresAt(time.Now().Add(time.Hour).UTC().Round(0))
 			}
 			stored, err := create.Save(ctx)
 			require.NoError(t, err)
