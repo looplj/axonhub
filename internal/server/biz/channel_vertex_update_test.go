@@ -88,8 +88,10 @@ func TestVertexJSONCredentialsRejectNonGeminiEndpointsOnSave(t *testing.T) {
 			ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
 			baseURL := "https://vertex.example.invalid"
 			if operation == "create" {
-				_, err := svc.CreateChannel(ctx, ent.CreateChannelInput{Type: channel.TypeGeminiVertex, Name: "Vertex endpoint", BaseURL: &baseURL,
-					Credentials: jsonCredentials, Endpoints: crossProtocol, SupportedModels: []string{"test-model"}, DefaultTestModel: "test-model"})
+				_, err := svc.CreateChannel(ctx, ent.CreateChannelInput{
+					Type: channel.TypeGeminiVertex, Name: "Vertex endpoint", BaseURL: &baseURL,
+					Credentials: jsonCredentials, Endpoints: crossProtocol, SupportedModels: []string{"test-model"}, DefaultTestModel: "test-model",
+				})
 				require.ErrorContains(t, err, "service-account credentials require Gemini endpoints")
 				return
 			}

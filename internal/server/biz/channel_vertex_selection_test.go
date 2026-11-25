@@ -13,12 +13,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/stretchr/testify/require"
 )
 
 func TestVertexMixedSelectionStrategies(t *testing.T) {
@@ -85,7 +86,7 @@ func TestVertexSnapshotReplacementDoesNotReuseToken(t *testing.T) {
 	calls := 0
 	client := httpclient.NewHttpClientWithClient(&http.Client{Transport: vertexTokenTransport(func(r *http.Request) (*http.Response, error) {
 		calls++
-		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(fmt.Sprintf(`{"access_token":"snapshot-%d","token_type":"Bearer","expires_in":3600}`, calls)))}, nil
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(fmt.Sprintf(`{"access_token":"snapshot-%d","token_type":"Bearer","expires_in":3600}`, calls)))}, nil
 	})})
 	old := buildChannel(entity, client)
 	oldOutbound, err := newVertexOutbound(old, entity.BaseURL, "")
