@@ -38,8 +38,8 @@ func newResponsesContinuation(store *responsesSessionStore, body []byte) *respon
 
 type responsesWarmupAcceptedKey struct{}
 
-// WithResponsesWarmupAccepted releases the adapter's cached warmup once the
-// continuation is resolved, before reserving space for its replacement transcript.
+// WithResponsesWarmupAccepted releases the adapter's cached warmup after local
+// channel admission, before reserving space for its replacement transcript.
 func WithResponsesWarmupAccepted(ctx context.Context, accept func()) context.Context {
 	return context.WithValue(ctx, responsesWarmupAcceptedKey{}, accept)
 }
@@ -127,29 +127,8 @@ func prepareResponsesAttemptBodyWithRequest(ctx context.Context, p *PersistentOu
 		}
 		c.snapshotBody = encoded
 	}
-	if accept, ok := ctx.Value(responsesWarmupAcceptedKey{}).(func()); ok {
-		accept()
-	}
 	c.input = nil
 	c.retain = c.complete && !native && len(payload["input"]) <= 64<<20
-	if c.retain {
-		if lane := shared.GetResponsesLane(ctx); lane != nil {
-			c.lane = lane
-			c.retentionBytes = len(payload["input"])
-			if !lane.Budget().Replace(0, c.retentionBytes) {
-				c.retentionBytes, c.retain = 0, false
-			}
-		}
-	}
-	if c.retain {
-		c.input = responseSessionInputItems(payload["input"])
-	}
-	if lane := shared.GetResponsesLane(ctx); lane != nil {
-		c.capture.metadataOnly = native || !c.retain
-		if !c.capture.metadataOnly {
-			c.capture.budget = lane.Budget()
-		}
-	}
 	return body, nil
 }
 
@@ -332,18 +311,6 @@ func verifyResponsesAttempt(p *PersistentOutboundTransformer) pipeline.Middlewar
 		}
 		if c.complete && !gjson.GetBytes(request.Body, "previous_response_id").Exists() && responses.IsResponsesFormat(llm.APIFormat(request.APIFormat)) {
 			c.snapshotBody = request.Body
-			if c.retain {
-				input := gjson.GetBytes(request.Body, "input")
-				if c.lane != nil && !c.lane.Budget().Replace(c.retentionBytes, len(input.Raw)) {
-					c.releaseRetention()
-					c.retain, c.input = false, nil
-				} else {
-					if c.lane != nil {
-						c.retentionBytes = len(input.Raw)
-					}
-					c.input = responseSessionInputItems([]byte(input.Raw))
-				}
-			}
 		}
 		if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
 			if c.owner != nil && originMatches(c.owner.Origin, origin) && gjson.GetBytes(request.Body, "previous_response_id").Exists() {
