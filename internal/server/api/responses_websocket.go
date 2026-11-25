@@ -116,20 +116,13 @@ func serveResponsesWebSocket(
 			continue
 		}
 
-		lane, laneErr := dispatcher.lane(streamID)
+		lane, laneErr := dispatcher.admit(streamID, len(message))
 		if laneErr != nil {
 			if err := writeResponsesWebSocketError(writer, laneErr, streamID); err != nil {
 				return
 			}
 			continue
 		}
-		if !dispatcher.reserve(len(message)) {
-			if err := writeResponsesWebSocketError(writer, responsesWebSocketQueueLimitError(), streamID); err != nil {
-				return
-			}
-			continue
-		}
-
 		dispatcher.dispatch(lane, streamID, append([]byte(nil), message...))
 	}
 }
@@ -208,11 +201,9 @@ func (d *responsesWebSocketDispatcher) reserve(size int) bool {
 	}
 }
 
-func (d *responsesWebSocketDispatcher) lane(streamID string) (*responsesWebSocketLane, *httpclient.Error) {
-	if lane := d.lanes[streamID]; lane != nil {
-		return lane, nil
-	}
-	if streamID != "" && d.namedStreams >= responsesWebSocketMaxNamedStreams {
+func (d *responsesWebSocketDispatcher) admit(streamID string, size int) (*responsesWebSocketLane, *httpclient.Error) {
+	lane := d.lanes[streamID]
+	if lane == nil && streamID != "" && d.namedStreams >= responsesWebSocketMaxNamedStreams {
 		return nil, responsesWebSocketRequestError(
 			"This WebSocket connection has reached its maximum number of distinct stream IDs (32). Reuse an existing stream_id or open a new WebSocket connection.",
 			"stream_id",
@@ -220,9 +211,15 @@ func (d *responsesWebSocketDispatcher) lane(streamID string) (*responsesWebSocke
 		)
 	}
 
+	if !d.reserve(size) {
+		return nil, responsesWebSocketQueueLimitError()
+	}
+	if lane != nil {
+		return lane, nil
+	}
 	ready := make(chan struct{})
 	close(ready)
-	lane := &responsesWebSocketLane{tail: ready}
+	lane = &responsesWebSocketLane{tail: ready}
 	lane.owner = shared.NewResponsesLane("responses-lane-"+uuid.NewString(), d.retainedBudget)
 	lane.session.budget = d.retainedBudget
 	d.lanes[streamID] = lane
@@ -277,7 +274,12 @@ func (d *responsesWebSocketDispatcher) dispatch(lane *responsesWebSocketLane, st
 
 func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLane, streamID string, message []byte) error {
 	request, warmup, requestErr := lane.session.prepareRequest(d.rawRequest, message)
-	defer lane.session.releaseConsumedWarmup()
+	defer func() {
+		if lane.session.mergedBytes > 0 {
+			lane.session.budget.Replace(lane.session.mergedBytes, 0)
+			lane.session.mergedBytes = 0
+		}
+	}()
 	if requestErr != nil {
 		return writeResponsesWebSocketError(d.writer, requestErr, streamID)
 	}
@@ -286,6 +288,9 @@ func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLa
 	}
 
 	requestCtx := shared.WithResponsesLane(d.ctx, lane.owner)
+	if lane.session.mergedBytes > 0 {
+		requestCtx = orchestrator.WithResponsesWarmupAccepted(requestCtx, lane.session.releaseWarmup)
+	}
 	var cancel context.CancelFunc
 	if d.requestTimeout > 0 {
 		requestCtx, cancel = context.WithTimeout(requestCtx, d.requestTimeout)
@@ -299,11 +304,16 @@ func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLa
 
 	result, processErr := d.process(requestCtx, request)
 	if processErr != nil {
-		lane.owner.RetireLeases()
+		if lane.session.mergedBytes == 0 || lane.session.warmupID == "" {
+			lane.owner.RetireLeases()
+		}
 		httpErr := transformResponsesWebSocketError(requestCtx, processErr, d.transformError)
 		return writeResponsesWebSocketError(d.writer, httpErr, streamID)
 	}
 
+	if lane.session.mergedBytes > 0 {
+		lane.session.releaseWarmup()
+	}
 	return writeResponsesWebSocketResult(requestCtx, d.writer, result, d.transformError, streamID)
 }
 
@@ -391,6 +401,7 @@ type responsesWebSocketSession struct {
 	warmupPayload map[string]json.RawMessage
 	budget        *shared.ResponsesBudget
 	warmupBytes   int
+	mergedBytes   int
 }
 
 type responsesWebSocketWarmup struct {
@@ -438,12 +449,7 @@ func (s *responsesWebSocketSession) prepareRequest(
 			}
 			return nil, nil, invalidResponsesWebSocketRequest(err.Error(), "input")
 		}
-		s.warmupID = ""
-		s.warmupPayload = nil
-		if s.budget != nil {
-			s.budget.Replace(s.warmupBytes, 0)
-		}
-		s.warmupBytes = mergedBytes
+		s.mergedBytes = mergedBytes
 	}
 
 	if !generate {
@@ -457,9 +463,10 @@ func (s *responsesWebSocketSession) prepareRequest(
 			s.budget = shared.NewResponsesBudget(64 << 20)
 		}
 		size := responsesWarmupBytes(payload)
-		if !s.budget.Replace(s.warmupBytes, size) {
+		if !s.budget.Replace(s.warmupBytes+s.mergedBytes, size) {
 			return nil, nil, responsesWebSocketRetentionLimitError()
 		}
+		s.mergedBytes = 0
 		s.warmupBytes = size
 		s.warmupID = id
 		s.warmupPayload = cloneResponsesWebSocketPayload(payload)
@@ -686,6 +693,13 @@ func writeResponsesWebSocketResult(
 			return writeResponsesWebSocketError(writer, transformResponsesWebSocketError(ctx, err, transformError), streamID)
 		}
 
+		if !terminalSeen && !errors.Is(ctx.Err(), context.Canceled) {
+			err := ctx.Err()
+			if err == nil {
+				err = orchestrator.ErrStreamIncomplete
+			}
+			return writeResponsesWebSocketError(writer, transformResponsesWebSocketError(ctx, err, transformError), streamID)
+		}
 		return nil
 	}
 

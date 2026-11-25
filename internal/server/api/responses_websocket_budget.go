@@ -22,12 +22,6 @@ func (s *responsesWebSocketSession) releaseWarmup() {
 	s.warmupID, s.warmupPayload = "", nil
 }
 
-func (s *responsesWebSocketSession) releaseConsumedWarmup() {
-	if s.warmupID == "" {
-		s.releaseWarmup()
-	}
-}
-
 func responsesWebSocketRetentionLimitError() *httpclient.Error {
 	return responsesWebSocketRequestError("This WebSocket connection has reached its retained context byte limit (64 MiB).", "input", "websocket_context_limit_reached")
 }

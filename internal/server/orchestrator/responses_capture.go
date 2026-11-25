@@ -86,6 +86,33 @@ type responsesProviderCapture struct {
 
 func (m *responsesProviderCapture) Name() string { return "responses_provider_completion" }
 
+// This middleware follows channel queue and RPM admission in the outbound chain.
+func (m *responsesProviderCapture) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+	c := m.state.ResponsesContinuation
+	if c == nil {
+		return request, nil
+	}
+	if accept, ok := ctx.Value(responsesWarmupAcceptedKey{}).(func()); ok {
+		accept()
+	}
+	c.lane = shared.GetResponsesLane(ctx)
+	if c.retain {
+		input := gjson.GetBytes(c.snapshotBody, "input")
+		if c.lane != nil {
+			c.retain = c.lane.Budget().Replace(0, len(input.Raw))
+			if c.retain {
+				c.retentionBytes = len(input.Raw)
+				c.capture.budget = c.lane.Budget()
+			}
+		}
+		if c.retain {
+			c.input = responseSessionInputItems([]byte(input.Raw))
+		}
+	}
+	c.capture.metadataOnly = c.lane != nil && !c.retain
+	return request, nil
+}
+
 func (m *responsesProviderCapture) OnOutboundRawResponse(ctx context.Context, response *httpclient.Response) (*httpclient.Response, error) {
 	if c := m.state.ResponsesContinuation; c != nil {
 		c.capture.mu.Lock()

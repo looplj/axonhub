@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -483,7 +485,14 @@ func TestResponsesWebSocketWritesProtocolAndProcessingErrorsWithoutClosingConnec
 
 func TestResponsesWebSocketWarmupReturnsIDAndMergesContinuation(t *testing.T) {
 	requests := make(chan *httpclient.Request, 2)
-	process := func(_ context.Context, request *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+	var retired atomic.Bool
+	process := func(ctx context.Context, request *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+		if _, err := responses.NewInboundTransformer().TransformRequest(ctx, request); err != nil {
+			return orchestrator.ChatCompletionResult{}, err
+		}
+		if gjson.GetBytes(request.Body, "input").String() == "unrelated" {
+			shared.GetResponsesLane(ctx).RegisterLease(shared.ResponsesOrigin{}, func() { retired.Store(true) })
+		}
 		requests <- request
 		return orchestrator.ChatCompletionResult{
 			ChatCompletion: nil,
@@ -518,6 +527,19 @@ func TestResponsesWebSocketWarmupReturnsIDAndMergesContinuation(t *testing.T) {
 	_, unrelated, err := conn.Read(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, "resp_generated", gjson.GetBytes(unrelated, "response.id").String())
+
+	invalid := `{"type":"response.create","generate":false,"model":"","previous_response_id":"` + warmupID + `"}`
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(invalid)))
+	_, rejected, err := conn.Read(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "model", gjson.GetBytes(rejected, "error.param").String())
+
+	invalid = strings.Replace(invalid, `"generate":false,`, "", 1)
+	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(invalid)))
+	_, rejected, err = conn.Read(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "error", gjson.GetBytes(rejected, "type").String())
+	require.False(t, retired.Load())
 
 	continuation := `{"type":"response.create","model":"gpt-test","previous_response_id":"` + warmupID + `","input":[{"type":"function_call_output","call_id":"call_1","output":"ok"}]}`
 	require.NoError(t, conn.Write(t.Context(), websocket.MessageText, []byte(continuation)))
@@ -653,4 +675,34 @@ func dialResponsesWebSocket(t *testing.T, serverURL string, headers http.Header)
 
 	conn.SetReadLimit(-1)
 	return conn
+}
+
+func TestResponsesWebSocketIncompleteStreamKeepsLaneReusable(t *testing.T) {
+	server := newResponsesWebSocketTestServer(t, func(_ context.Context, request *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+		if gjson.GetBytes(request.Body, "input").String() == "first" {
+			return orchestrator.ChatCompletionResult{ChatCompletionStream: streams.SliceStream([]*httpclient.StreamEvent{
+				{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"hi"}`)},
+			})}, nil
+		}
+		return orchestrator.ChatCompletionResult{ChatCompletion: &httpclient.Response{Body: []byte(`{"id":"second"}`)}}, nil
+	}, func(ctx context.Context, err error) *httpclient.Error {
+		return transformOrchestratorError(ctx, err, &orchestrator.ChatCompletionOrchestrator{Inbound: responses.NewInboundTransformer()})
+	})
+	conn := dialResponsesWebSocket(t, server.URL, nil)
+	defer conn.CloseNow()
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	for _, input := range []string{"first", "second"} {
+		require.NoError(t, conn.Write(ctx, websocket.MessageText, []byte(fmt.Sprintf(`{"type":"response.create","stream_id":"lane","input":%q}`, input))))
+	}
+	for _, want := range []string{"response.output_text.delta", "error", "response.completed"} {
+		_, event, err := conn.Read(ctx)
+		require.NoError(t, err)
+		require.Equal(t, want, gjson.GetBytes(event, "type").String())
+		if want == "error" {
+			require.EqualValues(t, http.StatusBadGateway, gjson.GetBytes(event, "status").Int())
+			require.Equal(t, "upstream_stream_interrupted", gjson.GetBytes(event, "error.code").String())
+		}
+		require.Equal(t, "lane", gjson.GetBytes(event, "stream_id").String())
+	}
 }

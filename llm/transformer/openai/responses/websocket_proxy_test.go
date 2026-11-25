@@ -58,8 +58,12 @@ func TestWebSocketDialProxyReadActivity(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
+			wantHeader := "static"
+			if test.secureProxy {
+				wantHeader = "dynamic"
+			}
 			target := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Header.Get("Authorization") != "Bearer upstream-token" || r.Header.Get("Proxy-Authorization") != "" {
+				if r.Header.Get("X-Tunnel") != "" || r.Header.Get("Authorization") != "Bearer upstream-token" || r.Header.Get("Proxy-Authorization") != "" {
 					http.Error(w, "unexpected upstream authorization", http.StatusUnauthorized)
 					return
 				}
@@ -84,7 +88,7 @@ func TestWebSocketDialProxyReadActivity(t *testing.T) {
 					http.Error(w, "CONNECT required", http.StatusMethodNotAllowed)
 					return
 				}
-				if r.Header.Get("Proxy-Authorization") != proxyAuthorization || r.Header.Get("Authorization") != "" {
+				if r.Header.Get("X-Tunnel") != wantHeader || r.Header.Get("Proxy-Authorization") != proxyAuthorization || r.Header.Get("Authorization") != "" {
 					http.Error(w, "unexpected proxy authorization", http.StatusProxyAuthRequired)
 					return
 				}
@@ -148,7 +152,15 @@ func TestWebSocketDialProxyReadActivity(t *testing.T) {
 				proxy.Start()
 			}
 			defer proxy.Close()
-			executor := NewWebSocketExecutor(nil)
+			client := httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled})
+			source := client.GetNativeClient().Transport.(*http.Transport)
+			source.ProxyConnectHeader = http.Header{"X-Tunnel": {"static"}}
+			if test.secureProxy {
+				source.GetProxyConnectHeader = func(context.Context, *url.URL, string) (http.Header, error) {
+					return http.Header{"X-Tunnel": {"dynamic"}}, nil
+				}
+			}
+			executor := NewWebSocketExecutor(client)
 			defer executor.Close()
 			switch {
 			case test.securePeer:

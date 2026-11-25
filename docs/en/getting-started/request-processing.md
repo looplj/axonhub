@@ -118,6 +118,10 @@ If the upstream call fails, AxonHub may retry or switch to the next candidate ch
 
 The system converts the upstream result back into the format the client expects and records the result.
 
+## Responses WebSocket concurrency
+
+For Responses WebSocket clients, keep one outstanding `response.create` per `stream_id`, including the default lane when the field is omitted. Wait for a terminal event or an error before sending the next create on that lane. Queue rejections can arrive before an earlier turn completes and identify only the lane. Use distinct stream IDs for concurrent turns.
+
 ## Which Document to Read Next
 
 | If your question is | Read this |
