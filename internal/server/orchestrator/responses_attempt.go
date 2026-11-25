@@ -36,6 +36,14 @@ func newResponsesContinuation(store *responsesSessionStore, body []byte) *respon
 	return &responsesContinuation{store: store, original: body, previous: gjson.GetBytes(body, "previous_response_id").String(), capture: &responsesCompletion{}}
 }
 
+type responsesWarmupAcceptedKey struct{}
+
+// WithResponsesWarmupAccepted releases the adapter's cached warmup once the
+// continuation is resolved, before reserving space for its replacement transcript.
+func WithResponsesWarmupAccepted(ctx context.Context, accept func()) context.Context {
+	return context.WithValue(ctx, responsesWarmupAcceptedKey{}, accept)
+}
+
 type responsesAttemptTarget struct {
 	origin     shared.ResponsesOrigin
 	forwardsID bool
@@ -118,6 +126,9 @@ func prepareResponsesAttemptBodyWithRequest(ctx context.Context, p *PersistentOu
 			return nil, err
 		}
 		c.snapshotBody = encoded
+	}
+	if accept, ok := ctx.Value(responsesWarmupAcceptedKey{}).(func()); ok {
+		accept()
 	}
 	c.input = nil
 	c.retain = c.complete && !native && len(payload["input"]) <= 64<<20

@@ -288,6 +288,9 @@ func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLa
 	}
 
 	requestCtx := shared.WithResponsesLane(d.ctx, lane.owner)
+	if lane.session.mergedBytes > 0 {
+		requestCtx = orchestrator.WithResponsesWarmupAccepted(requestCtx, lane.session.releaseWarmup)
+	}
 	var cancel context.CancelFunc
 	if d.requestTimeout > 0 {
 		requestCtx, cancel = context.WithTimeout(requestCtx, d.requestTimeout)
@@ -301,7 +304,9 @@ func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLa
 
 	result, processErr := d.process(requestCtx, request)
 	if processErr != nil {
-		lane.owner.RetireLeases()
+		if lane.session.mergedBytes == 0 || lane.session.warmupID == "" {
+			lane.owner.RetireLeases()
+		}
 		httpErr := transformResponsesWebSocketError(requestCtx, processErr, d.transformError)
 		return writeResponsesWebSocketError(d.writer, httpErr, streamID)
 	}
