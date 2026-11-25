@@ -83,6 +83,14 @@ func (t *OutboundTransformer) TransformRequest(
 	// Convert llm.Request to openai.Request first
 	oaiReq := openai.RequestFromLLM(ctx, llmReq, openai.ReasoningFieldContent)
 
+	// Let Moonshot apply the fixed sampling parameters for these models.
+	if hasFixedSamplingParams(llmReq.Model) {
+		oaiReq.Temperature = nil
+		oaiReq.TopP = nil
+		oaiReq.PresencePenalty = nil
+		oaiReq.FrequencyPenalty = nil
+	}
+
 	// Moonshot doesn't support json_schema, convert to json_object
 	if oaiReq.ResponseFormat != nil && oaiReq.ResponseFormat.Type == "json_schema" {
 		oaiReq.ResponseFormat.Type = "json_object"
@@ -116,4 +124,16 @@ func (t *OutboundTransformer) TransformRequest(
 		Auth:      auth,
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 	}, nil
+}
+
+// hasFixedSamplingParams reports whether the model rejects client-provided
+// temperature, top_p, presence_penalty and frequency_penalty values.
+func hasFixedSamplingParams(model string) bool {
+	switch model {
+	case "kimi-k2.6", "kimi-k2.7-code", "kimi-k2.7-code-highspeed",
+		"kimi-k3", "kimi-k3.1-pro", "kimi-k3.1-pro-highspeed":
+		return true
+	default:
+		return false
+	}
 }
