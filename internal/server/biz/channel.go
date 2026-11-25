@@ -1128,6 +1128,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 	}
 
+	if input.Credentials != nil {
+		svc.apiKeyOpsLock.Lock()
+	}
+
 	var updated *ent.Channel
 	providerIdentityChanged := false
 	clearStaleQuotaSettings := input.Settings == nil && input.Type != nil &&
@@ -1265,6 +1269,9 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 		return nil
 	})
+	if input.Credentials != nil {
+		svc.apiKeyOpsLock.Unlock()
+	}
 	if err != nil {
 		return nil, err
 	}
