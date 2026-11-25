@@ -110,6 +110,9 @@ func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, l
 // credential selected by the API key provider, so a Vertex key resolves to its own
 // project and region. Image generation uses generateContent (not streaming).
 func (t *OutboundTransformer) buildImageRequestURL(ctx context.Context, llmReq *llm.Request) string {
+	if t.config.EndpointPath != "" {
+		return strings.TrimRight(t.resolveBaseURL(ctx), "/") + t.config.EndpointPath
+	}
 	version := t.config.APIVersion
 	if version == "" {
 		version = DefaultAPIVersion
