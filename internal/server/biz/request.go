@@ -665,7 +665,7 @@ func (s *RequestService) CreateRequestExecution(
 			// reordered or removed, and it cannot tell two keys with the same last-4
 			// characters apart. Single-key and OAuth channels have nothing to
 			// disambiguate, so they stay null.
-			if allKeys := channel.Credentials.GetAllAPIKeys(); len(allKeys) > 1 {
+			if allKeys := channel.Credentials.GetAllCredentialRefs(); len(allKeys) > 1 {
 				if idx := slices.Index(allKeys, apiKey); idx >= 0 {
 					mut = mut.SetChannelAPIKeyIndex(idx + 1)
 				}

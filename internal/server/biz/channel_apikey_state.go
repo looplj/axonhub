@@ -170,7 +170,7 @@ func (st *apiKeySelectionState) nextRoundRobinKey(ch *Channel, per int) string {
 func (st *apiKeySelectionState) stickyKeyFor(ch *Channel, traceID string) string {
 	enabled := ch.cachedEnabledAPIKeys
 	if len(enabled) == 0 {
-		return ch.Credentials.APIKeys[0]
+		return ""
 	}
 
 	if len(enabled) == 1 {
@@ -222,7 +222,7 @@ func (st *apiKeySelectionState) isServing(ch *Channel) bool {
 // key has been removed from the channel, and moves forward through the full key
 // array (wrapping around) skipping disabled keys.
 func (st *apiKeySelectionState) selectFixedKey(ch *Channel) string {
-	all := ch.Credentials.GetAllAPIKeys()
+	all := ch.Credentials.GetAllCredentialRefs()
 	if len(all) == 0 {
 		return ""
 	}
@@ -263,7 +263,7 @@ func (st *apiKeySelectionState) selectFixedKey(ch *Channel) string {
 // Only the provider built from the currently served snapshot moves the cursor;
 // see isServing.
 func (st *apiKeySelectionState) selectRoundRobinSuccessKey(ch *Channel) string {
-	all := ch.Credentials.GetAllAPIKeys()
+	all := ch.Credentials.GetAllCredentialRefs()
 	if len(all) == 0 {
 		return ""
 	}
@@ -334,7 +334,7 @@ func (svc *ChannelService) onAPIKeySuccess(channelID int, apiKey string) {
 		return
 	}
 
-	all := ch.Credentials.GetAllAPIKeys()
+	all := ch.Credentials.GetAllCredentialRefs()
 	if len(all) == 0 {
 		state.rrSuccessCount = 0
 

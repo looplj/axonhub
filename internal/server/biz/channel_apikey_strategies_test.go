@@ -179,14 +179,11 @@ func TestPriorityKeyProvider_SkipsDisabledLeadingKeys(t *testing.T) {
 	require.Equal(t, "third", p.Get(context.Background()))
 }
 
-func TestPriorityKeyProvider_AllDisabledFallsBackToFirst(t *testing.T) {
+func TestPriorityKeyProvider_AllDisabledReturnsEmpty(t *testing.T) {
 	ch := newKeyChannel(1, []string{"first", "second"}, "first", "second")
 	p := NewPriorityKeyProvider(ch)
 
-	// Every key is disabled, so the enabled snapshot is empty and the provider
-	// falls back to the channel's first key. A channel in this state is taken out
-	// of service, so this selection is never actually used.
-	require.Equal(t, "first", p.Get(context.Background()))
+	require.Empty(t, p.Get(context.Background()))
 }
 
 // --- C. fixed ---
@@ -311,7 +308,7 @@ func TestFixedKeyProvider_RemovedKeyThenSkipsDisabledTail(t *testing.T) {
 	require.Equal(t, "k1", NewFixedKeyProvider(reloaded).Get(context.Background()))
 }
 
-func TestFixedKeyProvider_AllDisabledFallsBackToFirst(t *testing.T) {
+func TestFixedKeyProvider_AllDisabledReturnsEmpty(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2"}), objects.APIKeyStrategyFixed)
 	_, state := newFixedProvider(t, svc, ch)
@@ -321,7 +318,7 @@ func TestFixedKeyProvider_AllDisabledFallsBackToFirst(t *testing.T) {
 	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2"}, "k1", "k2"), objects.APIKeyStrategyFixed)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
 
-	require.Equal(t, "k1", NewFixedKeyProvider(reloaded).Get(context.Background()))
+	require.Empty(t, NewFixedKeyProvider(reloaded).Get(context.Background()))
 }
 
 func TestFixedKeyProvider_UsesItsOwnSnapshot(t *testing.T) {
