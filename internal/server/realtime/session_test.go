@@ -941,3 +941,10 @@ func TestClientErrorExposesOnlySafeDetails(t *testing.T) {
 		})
 	}
 }
+
+func TestFlushDownstreamCloseRecoversFromPanic(t *testing.T) {
+	readerDone := make(chan struct{})
+	started := time.Now()
+	flushDownstreamClose(t.Context(), nil, int(websocket.StatusNormalClosure), "test", func() {}, readerDone)
+	require.Less(t, time.Since(started), 200*time.Millisecond, "recovered close panic must release done immediately")
+}

@@ -8,7 +8,9 @@ package orchestrator
 
 import (
 	"testing"
+	"time"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 
@@ -44,4 +46,15 @@ func TestRealtimeQwenMixedToolTranscriptPricingIsNotGuessed(t *testing.T) {
 	usage.Realtime.UnbilledOutputTextTokens = 0
 	require.NoError(t, applyRealtimeBillingPolicy(target, usage, true))
 	require.Zero(t, usage.Realtime.UnbilledOutputTextTokens)
+}
+
+func TestRealtimeProbeInheritsServerHandshakeTimeout(t *testing.T) {
+	defaultProbe := &TestChannelOrchestrator{}
+	require.Equal(t, 15*time.Second, defaultProbe.realtimeProbeConfig(objects.ChannelEndpoint{}).HandshakeTimeout)
+
+	configuredProbe := (&TestChannelOrchestrator{}).WithRealtimeConfig(rt.Config{HandshakeTimeout: time.Minute})
+	require.Equal(t, time.Minute, configuredProbe.realtimeProbeConfig(objects.ChannelEndpoint{}).HandshakeTimeout)
+	require.Equal(t, 20*time.Second, configuredProbe.realtimeProbeConfig(objects.ChannelEndpoint{
+		HandshakeTimeoutMs: lo.ToPtr(int64(20000)),
+	}).HandshakeTimeout)
 }

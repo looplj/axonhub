@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xjson"
 	"github.com/looplj/axonhub/internal/pkg/xsecret"
 	"github.com/looplj/axonhub/internal/server/biz"
+	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -50,6 +51,7 @@ type TestChannelOrchestrator struct {
 	modelMapper                 *ModelMapper
 	loadBalancer                *LoadBalancer
 	channelLimiterManager       *ChannelLimiterManager
+	realtimeConfig              rt.Config
 }
 
 // NewTestChannelOrchestrator creates a new TestChannelOrchestrator.
@@ -73,6 +75,12 @@ func NewTestChannelOrchestrator(
 		loadBalancer:                NewLoadBalancer(nil, channelService, NewWeightStrategy()),
 		channelLimiterManager:       NewChannelLimiterManager(),
 	}
+}
+
+// WithRealtimeConfig configures the baseline Realtime settings inherited by probes.
+func (processor *TestChannelOrchestrator) WithRealtimeConfig(config rt.Config) *TestChannelOrchestrator {
+	processor.realtimeConfig = config
+	return processor
 }
 
 // TestChannelRequest represents a channel test request.

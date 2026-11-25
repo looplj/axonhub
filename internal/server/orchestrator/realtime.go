@@ -578,19 +578,28 @@ func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Con
 }
 
 type realtimeResponse struct {
-	createEventID    string
-	reservationOrder int
-	request          *ent.Request
-	done             bool
-	auditFinalized   bool
-	auditStatus      request.Status
-	auditSummary     map[string]any
-	started          time.Time
-	firstOutput      *int64
-	firstOutputAt    *time.Time
-	hadFunctionCall  bool
-	observedUsage    *llm.Usage
+	createEventID     string
+	reservationOrder  int
+	request           *ent.Request
+	done              bool
+	auditFinalized    bool
+	auditStatus       request.Status
+	auditSummary      map[string]any
+	started           time.Time
+	generationStarted time.Time
+	firstOutput       *int64
+	firstOutputAt     *time.Time
+	hadFunctionCall   bool
+	observedUsage     *llm.Usage
 }
+
+func (r *realtimeResponse) performanceStart() time.Time {
+	if !r.generationStarted.IsZero() {
+		return r.generationStarted
+	}
+	return r.started
+}
+
 type realtimeAudioCommit struct {
 	eventID          string
 	reserved         bool
@@ -847,6 +856,7 @@ func (c *RealtimeConversation) reserveClientInput(kind, eventID string, key *ent
 		reservation := c.committedInputs[0]
 		c.committedInputs = slices.Delete(c.committedInputs, 0, 1)
 		reservation.createEventID = eventID
+		reservation.generationStarted = time.Now()
 		c.pendingResponses = append(c.pendingResponses, reservation)
 		return nil
 	}
@@ -862,6 +872,7 @@ func (c *RealtimeConversation) reserveClientInput(kind, eventID string, key *ent
 	if kind == "response.create" {
 		reservation.createEventID = eventID
 		reservation.reservationOrder = c.nextReservationOrder()
+		reservation.generationStarted = reservation.started
 		c.pendingResponses = append(c.pendingResponses, reservation)
 	} else {
 		c.pendingInput = reservation
@@ -1081,10 +1092,10 @@ func (c *RealtimeConversation) finishResponse(data []byte, id string) error {
 	response.auditFinalized = true
 	switch status {
 	case request.StatusCompleted:
-		c.service.RecordRealtimeSuccessAt(billingCtx, c.target, response.started, response.firstOutputAt, usage.CompletionTokens)
+		c.service.RecordRealtimeSuccessAt(billingCtx, c.target, response.performanceStart(), response.firstOutputAt, usage.CompletionTokens)
 		c.circuitBreakerFailureRecorded = false
 	case request.StatusFailed:
-		c.service.RecordRealtimeFailureAt(billingCtx, c.target, response.started)
+		c.service.RecordRealtimeFailureAt(billingCtx, c.target, response.performanceStart())
 		c.circuitBreakerFailureRecorded = true
 	}
 	return nil
@@ -1256,6 +1267,9 @@ func (c *RealtimeConversation) admitResponse(id string) error {
 		if err != nil {
 			return err
 		}
+	}
+	if r.generationStarted.IsZero() {
+		r.generationStarted = time.Now()
 	}
 	c.responses[id] = r
 	return nil

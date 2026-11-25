@@ -44,6 +44,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/internal/server/plugin"
+	"github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/internal/server/video_storage"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -83,6 +84,7 @@ type Dependencies struct {
 	VideoWorker                    *video_storage.Worker
 	CatalogService                 *biz.CatalogService
 	PluginManager                  *plugin.Manager
+	RealtimeConfig                 realtime.Config `optional:"true"`
 }
 
 type GraphqlHandler struct {
@@ -180,6 +182,7 @@ func newSchemaFromDeps(deps Dependencies) graphql.ExecutableSchema {
 		deps.VideoWorker,
 		deps.CatalogService,
 		deps.PluginManager,
+		deps.RealtimeConfig,
 	)
 }
 

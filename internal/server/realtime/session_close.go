@@ -11,6 +11,7 @@ package realtime
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -43,6 +44,12 @@ func flushDownstreamClose(ctx context.Context, conn *websocket.Conn, code int, r
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error(ctx, "realtime close handshake panicked", log.Int("close_code", code), log.String("panic_type", fmt.Sprintf("%T", r)))
+				closeErr = errors.New("realtime close handshake panicked")
+			}
+		}()
 		closeErr = conn.Close(websocket.StatusCode(code), reason)
 	}()
 	timer := time.NewTimer(grace)

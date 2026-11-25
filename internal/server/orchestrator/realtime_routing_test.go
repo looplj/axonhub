@@ -296,3 +296,78 @@ func TestUnpricedQwenRealtimeChannelCanPrepareAndRecordUsage(t *testing.T) {
 	require.Nil(t, row.TotalCost)
 	require.Empty(t, row.CostItems)
 }
+
+func TestRealtimeAudioReservationTimeDoesNotInflateLoadBalancerLatency(t *testing.T) {
+	for _, mode := range []string{"manual", "server_vad"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, db := setupTest(t)
+			project := db.Project.Create().SetName("audio-latency-" + mode).SaveX(ctx)
+			ctx = contexts.WithProjectID(ctx, project.ID)
+			key := db.APIKey.Create().SetName("audio-latency-" + mode).SetKey("synthetic-" + mode).SetProjectID(project.ID).SetType("user").SaveX(ctx)
+			ctx = contexts.WithAPIKey(ctx, key)
+			channels := newTestChannelServiceForChannels(db)
+			system := newTestSystemService(db)
+			usage := biz.NewUsageLogService(db, system, channels)
+			requests := newTestRequestServiceForChannels(db, system)
+			service := &RealtimeService{Channels: channels, Usage: usage, Requests: requests}
+
+			channelID := 201
+			if mode == "server_vad" {
+				channelID = 202
+			}
+			ch := &biz.Channel{Channel: &ent.Channel{ID: channelID}}
+			channels.SetEnabledChannelsForTest([]*biz.Channel{ch})
+
+			state := rt.NewState()
+			require.NoError(t, state.Connecting())
+			require.NoError(t, state.ObserveServer("session.created"))
+			require.NoError(t, state.ObserveServer("session.updated"))
+			adapter, err := openairt.NewAdapter("gpt-realtime-2.1-mini")
+			require.NoError(t, err)
+			conv := &RealtimeConversation{
+				service: service,
+				ctx:     ctx,
+				state:   state,
+				adapter: adapter,
+				target: &RealtimeTarget{
+					Channel:     ch,
+					Model:       "gpt-realtime-2.1-mini",
+					ClientModel: "voice",
+					APIFormat:   llm.APIFormatOpenAIRealtimeWebSocket,
+					APIKey:      key,
+				},
+				started:   time.Now(),
+				responses: map[string]*realtimeResponse{},
+				lastCheck: time.Now(),
+			}
+
+			_, err = conv.Client([]byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`))
+			require.NoError(t, err)
+			require.NotNil(t, conv.pendingInput)
+			// Simulate a 10-second user utterance before generation begins.
+			conv.pendingInput.started = time.Now().Add(-10 * time.Second)
+
+			if mode == "manual" {
+				_, err = conv.Client([]byte(`{"type":"input_audio_buffer.commit"}`))
+				require.NoError(t, err)
+				_, err = conv.Client([]byte(`{"type":"response.create"}`))
+				require.NoError(t, err)
+			} else {
+				_, err = conv.Server([]byte(`{"type":"input_audio_buffer.committed"}`))
+				require.NoError(t, err)
+			}
+
+			_, err = conv.Server([]byte(`{"type":"response.created","response":{"id":"r-audio"}}`))
+			require.NoError(t, err)
+			_, err = conv.Server([]byte(`{"type":"response.output_audio.delta","response_id":"r-audio","delta":"AAA="}`))
+			require.NoError(t, err)
+			_, err = conv.Server([]byte(`{"type":"response.done","response":{"id":"r-audio","status":"completed","usage":{"input_tokens":10,"output_tokens":20,"total_tokens":30,"input_token_details":{"audio_tokens":10},"output_token_details":{"audio_tokens":20}}}}`))
+			require.NoError(t, err)
+
+			metrics, err := channels.GetChannelMetrics(ctx, channelID)
+			require.NoError(t, err)
+			require.EqualValues(t, 1, metrics.StreamingSampleCount)
+			require.Less(t, metrics.StreamingFirstTokenLatencyEWMA, float64(1000), "user audio reservation time must not inflate provider first-token latency")
+		})
+	}
+}

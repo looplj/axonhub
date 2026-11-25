@@ -19,6 +19,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	rt "github.com/looplj/axonhub/internal/server/realtime"
 	"github.com/looplj/axonhub/llm"
@@ -26,6 +27,14 @@ import (
 	protocol "github.com/looplj/axonhub/llm/realtime"
 	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 )
+
+func (p *TestChannelOrchestrator) realtimeProbeConfig(ep objects.ChannelEndpoint) rt.Config {
+	config := p.realtimeConfig.Defaults()
+	if ep.HandshakeTimeoutMs != nil && *ep.HandshakeTimeoutMs > 0 {
+		config.HandshakeTimeout = time.Duration(*ep.HandshakeTimeoutMs) * time.Millisecond
+	}
+	return config
+}
 
 func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *biz.Channel, model string, proxy *httpclient.ProxyConfig) (*TestChannelResult, error) {
 	start := time.Now()
@@ -59,10 +68,7 @@ func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *b
 		if proxy == nil && ch.Settings != nil {
 			proxy = ch.Settings.Proxy
 		}
-		config := rt.Config{}.Defaults()
-		if ep.HandshakeTimeoutMs != nil {
-			config.HandshakeTimeout = time.Duration(*ep.HandshakeTimeoutMs) * time.Millisecond
-		}
+		config := p.realtimeProbeConfig(ep)
 		dialCtx, cancel := context.WithTimeout(ctx, config.HandshakeTimeout)
 		defer cancel()
 		conn, err := rt.Dial(dialCtx, target, key, proxy, config.HandshakeTimeout)
