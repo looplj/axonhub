@@ -412,18 +412,7 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 		metrics.Metrics.RealtimeEvent(ctx, "connection_attempt")
 		target, err := prepare(ctx, c.Query("model"))
 		if err != nil {
-			metrics.Metrics.RealtimeEvent(ctx, "authorization_or_quota_rejected")
-			status := http.StatusForbidden
-			if errors.Is(err, biz.ErrInvalidModel) {
-				status = http.StatusNotFound
-			} else if errors.Is(err, orchestrator.ErrRealtimeCircuitBreakerOpen) {
-				status = http.StatusServiceUnavailable
-			}
-			message := "Realtime model unavailable, permission denied, quota exceeded, or invalid price configuration"
-			if errors.Is(err, orchestrator.ErrRealtimeCircuitBreakerOpen) {
-				message = err.Error()
-			}
-			JSONError(c, status, errors.New(message))
+			writeRealtimePrepareError(ctx, c, err)
 			return
 		}
 		defer h.service.ReleaseRealtimeProbe(target)
@@ -443,19 +432,7 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 		release, err := limiter.AcquireForReconnect(ctx, target.APIKey.ID, project, target.Channel.ID, target.SessionID)
 		setupTimings.AdmissionMs = time.Since(admissionStarted).Milliseconds()
 		if err != nil {
-			metrics.Metrics.RealtimeEvent(ctx, "admission_rejected")
-			if !errors.Is(err, rt.ErrAdmission) {
-				h.logSetupTimings(ctx, target, setupTimings)
-				JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime admission unavailable"))
-				return
-			}
-			message := err.Error()
-			h.logSetupTimings(ctx, target, setupTimings)
-			h.recordConnectionFailure(ctx, target, "admission_denied", message, attemptStarted)
-			log.Info(ctx, "realtime admission rejected", log.String("error_code", "admission_denied"), log.Int("channel_id", target.Channel.ID))
-			c.JSON(http.StatusTooManyRequests, gin.H{"error": gin.H{
-				"type": "rate_limit_exceeded", "code": "rate_limit_exceeded", "message": message,
-			}})
+			h.handleRealtimeAdmissionError(ctx, c, target, setupTimings, attemptStarted, err)
 			return
 		}
 		defer release()
@@ -473,42 +450,7 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 		)
 		setupTimings.AccountingMs = setupDurations.AccountingMs
 		setupTimings.DialMs = setupDurations.DialMs
-		if setup.AccountingErr != nil && !errors.Is(setup.AccountingErr, context.Canceled) {
-			h.logSetupTimings(ctx, target, setupTimings)
-			release()
-			JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime accounting storage is unavailable"))
-			return
-		}
-		if setup.DialErr != nil {
-			_, errorCode, message := realtimeHandshakeError(setup.DialErr)
-			h.logSetupTimings(ctx, target, setupTimings)
-			metrics.Metrics.RealtimeEvent(ctx, "upstream_handshake_failed")
-			if errorCode == "upstream_handshake_timeout" {
-				metrics.Metrics.RealtimeEvent(ctx, errorCode)
-			}
-			upstreamStatus := 0
-			if handshake, ok := errors.AsType[*rt.HandshakeError](setup.DialErr); ok {
-				upstreamStatus = handshake.Status
-			}
-			if upstreamStatus > 0 {
-				failureMessage := realtimeAPIKeyFailureMessage(setup.DialErr, message)
-				evaluateRealtimeAPIKeyFailure(ctx, h.service.Channels, target, upstreamStatus, failureMessage)
-			}
-			if !errors.Is(setup.DialErr, context.Canceled) {
-				h.service.RecordRealtimeFailureAt(ctx, target, attemptStarted)
-			}
-			release()
-			h.recordConnectionFailure(ctx, target, errorCode, message, attemptStarted)
-			log.Warn(ctx, "realtime upstream establishment failed",
-				log.String("error_code", errorCode), log.Int("channel_id", target.Channel.ID),
-				log.Int("upstream_status", upstreamStatus), log.Int64("elapsed_ms", setupTimings.DialMs))
-			writeRealtimeHandshakeError(c, setup.DialErr)
-			return
-		}
-		if setup.AccountingErr != nil {
-			h.logSetupTimings(ctx, target, setupTimings)
-			release()
-			JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime accounting storage is unavailable"))
+		if !h.handleRealtimeSetupOutcome(ctx, c, target, setup, setupTimings, attemptStarted, release) {
 			return
 		}
 		upstream, conversation, initial := setup.Upstream, setup.Conversation, setup.Initial
@@ -517,37 +459,12 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 		// Connection admission ends after both sockets/workers stop, before audit
 		// finalization, which may wait on storage. Keep the outer release for dial failures.
 		defer func() { _ = upstream.CloseNow(); release() }()
-		controller := http.NewResponseController(c.Writer)
-		_ = controller.SetReadDeadline(time.Time{})
-		_ = controller.SetWriteDeadline(time.Time{})
-		upgradeStarted := time.Now()
-		downstreamActivity := rt.NewActivity()
-		downstream, err := websocket.Accept(c.Writer, c.Request, &websocket.AcceptOptions{
-			OnPingReceived: func(context.Context, []byte) bool {
-				downstreamActivity.Touch()
-				return true
-			},
-			OnPongReceived: func(context.Context, []byte) {
-				downstreamActivity.Touch()
-			},
-		})
-		setupTimings.UpgradeMs = time.Since(upgradeStarted).Milliseconds()
+		downstream, downstreamActivity, err := acceptRealtimeDownstream(ctx, c, initial, &setupTimings)
 		if err != nil {
 			h.logSetupTimings(ctx, target, setupTimings)
 			return
 		}
 		defer func() { _ = downstream.CloseNow() }()
-		initialWriteCtx, cancelInitialWrite := context.WithTimeout(ctx, 5*time.Second)
-		for _, event := range initial {
-			if event != nil {
-				if err := downstream.Write(initialWriteCtx, websocket.MessageText, event); err != nil {
-					cancelInitialWrite()
-					h.logSetupTimings(ctx, target, setupTimings)
-					return
-				}
-			}
-		}
-		cancelInitialWrite()
 		h.logSetupTimings(ctx, target, setupTimings)
 		metrics.Metrics.RealtimeEvent(ctx, "connection_established")
 		metrics.Metrics.RealtimeActive(ctx, 1)
@@ -561,21 +478,146 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 			conversation.Close()
 		}
 		release() // Run has closed both peers and joined every worker.
-		metrics.Metrics.RealtimeDuration(context.WithoutCancel(ctx), time.Since(started).Seconds())
-		if err != nil {
-			metrics.Metrics.RealtimeEvent(context.WithoutCancel(ctx), "session_ended")
-			if rt.IsAbnormal(err) {
-				metrics.Metrics.RealtimeEvent(context.WithoutCancel(ctx), "session_abnormal")
-			}
-			if end, ok := errors.AsType[*rt.SessionError](err); ok {
-				metrics.Metrics.RealtimeEvent(context.WithoutCancel(ctx), end.Side+"_disconnected")
-			}
-			if errors.Is(err, rt.ErrBackpressure) {
-				metrics.Metrics.RealtimeEvent(context.WithoutCancel(ctx), "backpressure")
+		recordRealtimeSessionOutcome(ctx, target, started, err)
+	}
+}
+
+func writeRealtimePrepareError(ctx context.Context, c *gin.Context, err error) {
+	metrics.Metrics.RealtimeEvent(ctx, "authorization_or_quota_rejected")
+	status := http.StatusForbidden
+	if errors.Is(err, biz.ErrInvalidModel) {
+		status = http.StatusNotFound
+	} else if errors.Is(err, orchestrator.ErrRealtimeCircuitBreakerOpen) {
+		status = http.StatusServiceUnavailable
+	}
+	message := "Realtime model unavailable, permission denied, quota exceeded, or invalid price configuration"
+	if errors.Is(err, orchestrator.ErrRealtimeCircuitBreakerOpen) {
+		message = err.Error()
+	}
+	JSONError(c, status, errors.New(message))
+}
+
+func (h *RealtimeHandlers) handleRealtimeAdmissionError(
+	ctx context.Context,
+	c *gin.Context,
+	target *orchestrator.RealtimeTarget,
+	setupTimings realtimeSetupTimings,
+	attemptStarted time.Time,
+	err error,
+) {
+	metrics.Metrics.RealtimeEvent(ctx, "admission_rejected")
+	if !errors.Is(err, rt.ErrAdmission) {
+		h.logSetupTimings(ctx, target, setupTimings)
+		JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime admission unavailable"))
+		return
+	}
+	message := err.Error()
+	h.logSetupTimings(ctx, target, setupTimings)
+	h.recordConnectionFailure(ctx, target, "admission_denied", message, attemptStarted)
+	log.Info(ctx, "realtime admission rejected", log.String("error_code", "admission_denied"), log.Int("channel_id", target.Channel.ID))
+	c.JSON(http.StatusTooManyRequests, gin.H{"error": gin.H{
+		"type": "rate_limit_exceeded", "code": "rate_limit_exceeded", "message": message,
+	}})
+}
+
+func (h *RealtimeHandlers) handleRealtimeSetupOutcome(
+	ctx context.Context,
+	c *gin.Context,
+	target *orchestrator.RealtimeTarget,
+	setup realtimeSetupOutcome,
+	setupTimings realtimeSetupTimings,
+	attemptStarted time.Time,
+	release func(),
+) bool {
+	if setup.AccountingErr != nil && !errors.Is(setup.AccountingErr, context.Canceled) {
+		h.logSetupTimings(ctx, target, setupTimings)
+		release()
+		JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime accounting storage is unavailable"))
+		return false
+	}
+	if setup.DialErr != nil {
+		_, errorCode, message := realtimeHandshakeError(setup.DialErr)
+		h.logSetupTimings(ctx, target, setupTimings)
+		metrics.Metrics.RealtimeEvent(ctx, "upstream_handshake_failed")
+		if errorCode == "upstream_handshake_timeout" {
+			metrics.Metrics.RealtimeEvent(ctx, errorCode)
+		}
+		upstreamStatus := 0
+		if handshake, ok := errors.AsType[*rt.HandshakeError](setup.DialErr); ok {
+			upstreamStatus = handshake.Status
+		}
+		if upstreamStatus > 0 {
+			failureMessage := realtimeAPIKeyFailureMessage(setup.DialErr, message)
+			evaluateRealtimeAPIKeyFailure(ctx, h.service.Channels, target, upstreamStatus, failureMessage)
+		}
+		if !errors.Is(setup.DialErr, context.Canceled) {
+			h.service.RecordRealtimeFailureAt(ctx, target, attemptStarted)
+		}
+		release()
+		h.recordConnectionFailure(ctx, target, errorCode, message, attemptStarted)
+		log.Warn(ctx, "realtime upstream establishment failed",
+			log.String("error_code", errorCode), log.Int("channel_id", target.Channel.ID),
+			log.Int("upstream_status", upstreamStatus), log.Int64("elapsed_ms", setupTimings.DialMs))
+		writeRealtimeHandshakeError(c, setup.DialErr)
+		return false
+	}
+	if setup.AccountingErr != nil {
+		h.logSetupTimings(ctx, target, setupTimings)
+		release()
+		JSONError(c, http.StatusServiceUnavailable, errors.New("Realtime accounting storage is unavailable"))
+		return false
+	}
+	return true
+}
+
+func acceptRealtimeDownstream(ctx context.Context, c *gin.Context, initial [][]byte, setupTimings *realtimeSetupTimings) (*websocket.Conn, *rt.Activity, error) {
+	controller := http.NewResponseController(c.Writer)
+	_ = controller.SetReadDeadline(time.Time{})
+	_ = controller.SetWriteDeadline(time.Time{})
+	upgradeStarted := time.Now()
+	downstreamActivity := rt.NewActivity()
+	downstream, err := websocket.Accept(c.Writer, c.Request, &websocket.AcceptOptions{
+		OnPingReceived: func(context.Context, []byte) bool {
+			downstreamActivity.Touch()
+			return true
+		},
+		OnPongReceived: func(context.Context, []byte) {
+			downstreamActivity.Touch()
+		},
+	})
+	setupTimings.UpgradeMs = time.Since(upgradeStarted).Milliseconds()
+	if err != nil {
+		return nil, nil, err
+	}
+	initialWriteCtx, cancelInitialWrite := context.WithTimeout(ctx, 5*time.Second)
+	defer cancelInitialWrite()
+	for _, event := range initial {
+		if event != nil {
+			if err := downstream.Write(initialWriteCtx, websocket.MessageText, event); err != nil {
+				_ = downstream.CloseNow()
+				return nil, nil, err
 			}
 		}
-		log.Info(ctx, "realtime session closed", log.Int("channel_id", target.Channel.ID), log.Int("api_key_id", target.APIKey.ID), log.Int64("duration_ms", time.Since(started).Milliseconds()), log.Bool("interrupted", rt.IsAbnormal(err)))
 	}
+	return downstream, downstreamActivity, nil
+}
+
+func recordRealtimeSessionOutcome(ctx context.Context, target *orchestrator.RealtimeTarget, started time.Time, err error) {
+	metricsCtx := context.WithoutCancel(ctx)
+	metrics.Metrics.RealtimeDuration(metricsCtx, time.Since(started).Seconds())
+	if err != nil {
+		metrics.Metrics.RealtimeEvent(metricsCtx, "session_ended")
+		if rt.IsAbnormal(err) {
+			metrics.Metrics.RealtimeEvent(metricsCtx, "session_abnormal")
+		}
+		if end, ok := errors.AsType[*rt.SessionError](err); ok {
+			metrics.Metrics.RealtimeEvent(metricsCtx, end.Side+"_disconnected")
+		}
+		if errors.Is(err, rt.ErrBackpressure) {
+			metrics.Metrics.RealtimeEvent(metricsCtx, "backpressure")
+		}
+	}
+	log.Info(ctx, "realtime session closed", log.Int("channel_id", target.Channel.ID), log.Int("api_key_id", target.APIKey.ID), log.Int64("duration_ms", time.Since(started).Milliseconds()), log.Bool("interrupted", rt.IsAbnormal(err)))
 }
 
 // trackSession keeps the shutdown barrier open until connections and billing have drained.

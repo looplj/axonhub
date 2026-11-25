@@ -39,18 +39,20 @@ func flushDownstreamClose(ctx context.Context, conn *websocket.Conn, code int, r
 	}
 	// conn.Close serializes its Close frame behind any in-flight data write and
 	// awaits the peer Close ACK while the downstream reader drains input frames.
-	done := make(chan error, 1)
+	var closeErr error
+	done := make(chan struct{})
 	go func() {
-		done <- conn.Close(websocket.StatusCode(code), reason)
+		defer close(done)
+		closeErr = conn.Close(websocket.StatusCode(code), reason)
 	}()
 	timer := time.NewTimer(grace)
 	defer timer.Stop()
 	select {
-	case err := <-done:
+	case <-done:
 		switch {
-		case err == nil || websocket.CloseStatus(err) != -1:
+		case closeErr == nil || websocket.CloseStatus(closeErr) != -1:
 			log.Info(ctx, "realtime close acknowledged", log.Int("close_code", code))
-		case errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed):
+		case errors.Is(closeErr, io.EOF) || errors.Is(closeErr, net.ErrClosed):
 			log.Info(ctx, "realtime close peer disconnected", log.Int("close_code", code))
 		default:
 			log.Warn(ctx, "realtime close write failed", log.Int("close_code", code))

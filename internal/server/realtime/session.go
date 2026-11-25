@@ -60,7 +60,10 @@ const (
 // One configuration is in flight and at most four more are waiting.
 const maxQueuedUpdates = 4
 
-var errUpdateQueueFull = errors.New("session.update queue is full; wait for session.updated before retrying")
+var (
+	errUpdateQueueFull = errors.New("session.update queue is full; wait for session.updated before retrying")
+	errSessionStopped  = errors.New("realtime session context stopped")
+)
 
 // Activity tracks the latest peer data or control-frame activity timestamp.
 // Share an instance with websocket AcceptOptions/DialOptions callbacks and pass
@@ -342,6 +345,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 				}
 			}()
 			err := fn()
+			if errors.Is(err, errSessionStopped) {
+				return
+			}
 			if err != nil {
 				err = &SessionError{Side: side, Cause: err}
 			}
@@ -438,6 +444,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 						}
 						return failClient(err)
 					}
+					if ctx.Err() != nil && errors.Is(err, ctx.Err()) {
+						return errSessionStopped
+					}
 					return err
 				}
 				if !client && data != nil && hooks.ServerDone != nil && hooks.ServerDone(data) {
@@ -449,6 +458,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 						return err
 					}
 					if err := q.enqueue(ctx, followup); err != nil {
+						if ctx.Err() != nil && errors.Is(err, ctx.Err()) {
+							return errSessionStopped
+						}
 						return err
 					}
 				}
@@ -456,6 +468,9 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 					switch gjson.GetBytes(data, "type").String() {
 					case "session.updated", "error":
 						if err := replayUpdates(); err != nil {
+							if ctx.Err() != nil && errors.Is(err, ctx.Err()) {
+								return errSessionStopped
+							}
 							return err
 						}
 					}
@@ -467,16 +482,16 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 		return func() error {
 			for {
 				if ctx.Err() != nil {
-					return ctx.Err()
+					return errSessionStopped
 				}
 				select {
 				case <-ctx.Done():
-					return ctx.Err()
+					return errSessionStopped
 				case data := <-q:
 					if data == nil {
 						close(tailWritten)
 						<-ctx.Done()
-						return ctx.Err()
+						return errSessionStopped
 					}
 					wctx, wcancel := context.WithTimeout(writeParent, o.WriteTimeout)
 					err := conn.Write(wctx, websocket.MessageText, data)
