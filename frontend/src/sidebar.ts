@@ -153,6 +153,7 @@ export function useSidebarData(): SidebarData {
           params: { pluginId: page.pluginID, page: page.key },
           matchPath: `/plugins/${page.pluginID}/pages/${page.key}`,
           icon: IconAppWindow,
+          pluginBadge: page.badge,
         }) as NavLink
     );
 

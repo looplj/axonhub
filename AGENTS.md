@@ -10,6 +10,10 @@ This file provides guidance to AI coding assistants when working with code in th
 2. Do NOT restart the development server — it's already started and managed.
 3. All summary files should be stored in `.agents/summary` directory if available.
 
+## 本地项目背景
+
+涉及本机部署或提交分支时，若存在 `.agents/local/project-context.md`，先读取该文件。该目录仅供本地参考，里面的路径和命令不应复制到提交、PR 或公开文档。
+
 ## 文件头
 
 新增 Go、TypeScript、TSX 源文件时，在 `package` 子句或 `import` 之前写文件头。Go 文件已有 package 文档注释时，文件头放在文档注释之前，不要替换它。

@@ -345,6 +345,25 @@ The plugin details show the next trigger and the last 20 runs. Owners can pause 
 
 Upgrade every replica before installing a plugin that declares `tasks`.
 
+### GraphQL and navigation badges in scheduled tasks
+
+`ctx.graphql(query, variables?, { operationName }?)` returns the GraphQL response with `data` and `errors`. It supports queries and mutations under the installation's existing grants. A manual trigger uses the same installation identity as a scheduled trigger. Operations that require a signed-in user still require one.
+
+For catalog comparisons, `channels` exposes `supportedModels`, and `models` exposes `catalogAliases` and `catalogPrices`. `modelCatalogOffers(providers, first, after, refresh)` reads the site's configured catalog with the `read_channels` grant. Use `refresh: true` on the first page to fetch the upstream catalog. Continue with `nextCursor` and omit `refresh` on subsequent pages. Cursors remain valid across refreshes and replicas that serve the same catalog source and content. Restart pagination when either changes. Check `source` to distinguish `upstream` from `fallback`.
+
+`ctx.ui.setBadge(target, badge)` sets a badge on the installation's own declared page or top-bar action. A badge accepts a positive `count`, `dot: true`, and an optional `tone` of `accent`, `warning`, or `danger`. Use `null` to clear it. The badge is stored when the call succeeds, and the host refreshes badges even while the plugin page is closed.
+
+```js
+export function onTask(ctx) {
+  const result = ctx.graphql("{ channels(first: 10) { totalCount } }");
+  if (result.errors?.length) throw new Error(result.errors[0].message);
+  const count = result.data.channels.totalCount;
+  ctx.ui.setBadge({ type: "action", key: "report" }, count ? { count } : null);
+}
+```
+
+Use `type: "page"` and the page key to display a badge in the sidebar. The top bar displays badges on actions and highlights the overflow menu when a badged action is inside it.
+
 ### Dynamic SQL
 
 An Owner can grant `sql` to give `plugin.js` **all SQL privileges of the AxonHub primary database account**, including reads, writes, and DDL. This includes access to credentials and metadata visible to that account. Owner access is required to configure a plugin with this grant. The host checks the current activation status and grant before each call.
@@ -708,6 +727,7 @@ AxonHub uses the index to verify the downloaded package's SHA-256, plugin ID and
 | [Failover Guard](../../../plugins/examples/failover-guard/README.md) | `onEvent` with `ctx.counter`, `ctx.axonhub.channels.disable`, and `ctx.webhook.send` |
 | [Star history](../../../plugins/examples/star-history/README.md) | A page calling `axonhub.fetch` against granted `network` rules |
 | [Temperature Cap](../../../plugins/examples/temperature-cap/README.md) | `onRequest` returning the request with `temperature` set from config |
+| [Model catalog check](../../../plugins/examples/model-catalog-check/README.md) | A scheduled task using GraphQL and a toolbar badge to surface model catalog changes |
 | [DeepSeek Harness Session Trace](../../../plugins/examples/dsh-session-trace/README.md) | Server middleware supplying a trace ID from a client session header |
 
 ## Limits

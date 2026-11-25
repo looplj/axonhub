@@ -336,6 +336,25 @@ export function onTask(ctx, run) {
 
 多副本部署请在所有实例升级后安装声明 `tasks` 的插件。
 
+### 定时任务中的 GraphQL 和导航角标
+
+`ctx.graphql(query, variables?, { operationName }?)` 返回包含 `data` 和 `errors` 的 GraphQL 响应。查询和 mutation 都使用本次安装已有的授权。手动触发和定时触发使用同一插件身份。要求登录用户的操作仍须具备用户身份。
+
+比较目录时，`channels` 提供 `supportedModels`，`models` 提供 `catalogAliases` 和 `catalogPrices`。授权 `read_channels` 后，可用 `modelCatalogOffers(providers, first, after, refresh)` 查询站点配置的目录。第一页传 `refresh: true` 可以重新拉取上游，后续页传回 `nextCursor` 并省略 `refresh`。目录来源和内容相同时，刷新或切换副本后仍可继续翻页。任一变化时，从第一页重新查询。`source` 返回 `upstream` 或 `fallback`。
+
+`ctx.ui.setBadge(target, badge)` 为本次安装声明的页面或顶部动作设置角标。可以传正整数 `count` 或 `dot: true`，以及可选的 `tone`（`accent`、`warning`、`danger`）。传 `null` 清除。调用成功时保存角标，插件页面关闭时宿主也会刷新状态。
+
+```js
+export function onTask(ctx) {
+  const result = ctx.graphql("{ channels(first: 10) { totalCount } }");
+  if (result.errors?.length) throw new Error(result.errors[0].message);
+  const count = result.data.channels.totalCount;
+  ctx.ui.setBadge({ type: "action", key: "report" }, count ? { count } : null);
+}
+```
+
+使用 `type: "page"` 和页面键可以在侧栏入口展示角标。带角标的顶部动作收进更多菜单时，更多按钮会显示圆点。
+
 ### 动态 SQL
 
 Owner 授予 `sql` 后，`plugin.js` 可以使用 AxonHub **主数据库应用账号的全部 SQL 权限**，包括查询、写入和 DDL。它可以访问该账号可见的凭证和元数据。Owner 负责配置有此授权的插件，宿主在每次执行前复核当前启用状态和授权。
@@ -701,6 +720,7 @@ AxonHub 根据索引核对下载包的 SHA-256、插件 ID 和版本。Owner 在
 | [Failover Guard](../../../plugins/examples/failover-guard/README.md) | `onEvent` 使用 `ctx.counter`、`ctx.axonhub.channels.disable` 和 `ctx.webhook.send` |
 | [Star 历史](../../../plugins/examples/star-history/README.md) | 页面通过 `axonhub.fetch` 访问已授予的 `network` 规则 |
 | [Temperature Cap](../../../plugins/examples/temperature-cap/README.md) | `onRequest` 按配置返回带 `temperature` 的完整请求 |
+| [模型目录检查](../../../plugins/examples/model-catalog-check/README.md) | 定时任务使用 GraphQL 检查目录，并用顶部角标显示待复核数量 |
 | [DeepSeek Harness Session Trace](../../../plugins/examples/dsh-session-trace/README.md) | 用服务端中间件根据会话请求头提供 trace ID |
 
 ## 限制

@@ -872,6 +872,15 @@ models:
   PluginUIPage:
     model:
       - github.com/looplj/axonhub/internal/server/plugin.UIPage
+  PluginUIBadge:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.UIBadge
+  PluginUIBadgeTone:
+    model:
+      - github.com/looplj/axonhub/internal/server/plugin.UIBadgeTone
+  ModelCatalogOffersPage:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ModelCatalogOffersPage
   PluginUIAction:
     model:
       - github.com/looplj/axonhub/internal/server/plugin.UIAction

@@ -13,6 +13,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { PluginEntryBadge } from '@/features/plugins/components/plugin-entry-badge';
 import { Badge } from '../ui/badge';
 import {
   DropdownMenu,
@@ -72,8 +73,12 @@ const SidebarMenuLink = ({ item, href }: { item: NavLink; href: string }) => {
       <SidebarMenuButton asChild isActive={checkIsActive(href, item)} tooltip={item.title} className='h-8 rounded-lg transition-all'>
         <Link {...navLinkProps(item)} onClick={() => setOpenMobile(false)}>
           {item.icon && <item.icon className='text-xl' />}
-          <span>{item.title}</span>
+          <span className='min-w-0 truncate'>{item.title}</span>
           {item.badge && <NavBadge>{item.badge}</NavBadge>}
+          <PluginEntryBadge
+            badge={item.pluginBadge}
+            className='ml-auto group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:top-0 group-data-[collapsible=icon]:right-0'
+          />
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>

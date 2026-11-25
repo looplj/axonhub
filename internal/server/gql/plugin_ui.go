@@ -21,7 +21,7 @@ func (r *Resolver) pluginUIEntries(ctx context.Context) (*plugin.UIEntries, erro
 	if err != nil {
 		return nil, err
 	}
-	return manager.UIEntries(), nil
+	return manager.UIEntriesWithBadges(ctx)
 }
 
 func (r *Resolver) createPluginUISession(ctx context.Context, pluginID, entry string) (*plugin.UISession, error) {

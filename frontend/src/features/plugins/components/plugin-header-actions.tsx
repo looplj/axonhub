@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePluginUIEntries, type PluginUIAction } from '../data/plugin-ui';
 import { resolvePluginTitle } from '../plugin-ui';
+import { PluginEntryBadge } from './plugin-entry-badge';
 import { PluginFrame } from './plugin-frame';
 
 const icons = { puzzle: Puzzle, search: Search, activity: Activity, settings: Settings };
@@ -36,6 +37,7 @@ export function PluginHeaderActions({ isMobile }: { isMobile: boolean }) {
   const title = (action: PluginUIAction) => resolvePluginTitle(action.title, i18n.language, action.key);
   const direct = isMobile ? [] : actions.slice(0, 2);
   const overflow = isMobile ? actions : actions.slice(2);
+  const overflowBadge = overflow.find((action) => action.badge)?.badge;
 
   return (
     <>
@@ -60,12 +62,20 @@ export function PluginHeaderActions({ isMobile }: { isMobile: boolean }) {
               <Button
                 variant='ghost'
                 size='icon'
-                className='size-8'
-                aria-label={title(action)}
+                className='relative size-8'
+                aria-label={
+                  action.badge
+                    ? `${title(action)}, ${action.badge.count ? t('plugins.badge.count', { count: action.badge.count }) : t('plugins.badge.dot')}`
+                    : title(action)
+                }
                 data-testid='plugin-header-action'
                 onClick={(event) => open(action, event.currentTarget)}
               >
                 <Icon className='size-4' />
+                <PluginEntryBadge
+                  badge={action.badge}
+                  className='pointer-events-none absolute top-0 right-0 translate-x-1/4 -translate-y-1/4'
+                />
               </Button>
             </TooltipTrigger>
             <TooltipContent>{title(action)}</TooltipContent>
@@ -79,11 +89,17 @@ export function PluginHeaderActions({ isMobile }: { isMobile: boolean }) {
               ref={menuTrigger}
               variant='ghost'
               size='icon'
-              className='size-8'
-              aria-label={t('plugins.actions.more')}
+              className='relative size-8'
+              aria-label={overflowBadge ? `${t('plugins.actions.more')}, ${t('plugins.badge.dot')}` : t('plugins.actions.more')}
               data-testid='plugin-header-overflow'
             >
               {isMobile ? <Puzzle className='size-4' /> : <Ellipsis className='size-4' />}
+              {overflowBadge && (
+                <PluginEntryBadge
+                  badge={{ ...overflowBadge, count: null, dot: true }}
+                  className='pointer-events-none absolute top-0 right-0'
+                />
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -98,6 +114,7 @@ export function PluginHeaderActions({ isMobile }: { isMobile: boolean }) {
                 <DropdownMenuItem key={`${action.pluginID}:${action.key}`} onSelect={() => open(action, menuTrigger.current)}>
                   <Icon className='size-4' />
                   {title(action)}
+                  <PluginEntryBadge badge={action.badge} className='ml-auto' />
                 </DropdownMenuItem>
               );
             })}
