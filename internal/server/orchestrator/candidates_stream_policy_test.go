@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -117,15 +118,15 @@ func TestStreamPolicySelector_Select(t *testing.T) {
 			wantModels: []string{"default"},
 		},
 		{
-			name:      "mixed candidates, non-stream prefers native candidates only",
+			name:      "mixed candidates, non-stream keeps all compatible routes",
 			reqStream: lo.ToPtr(false),
 			candidates: []*ChannelModelsCandidate{
 				newCandidate("require", objects.CapabilityPolicyRequire),
 				newCandidate("forbid", objects.CapabilityPolicyForbid),
 				newCandidate("unlimited", objects.CapabilityPolicyUnlimited),
 			},
-			wantCount:  2,
-			wantModels: []string{"forbid", "unlimited"},
+			wantCount:  3,
+			wantModels: []string{"require", "forbid", "unlimited"},
 		},
 		{
 			name:      "require-only fallback is filtered for non-stream AI SDK text requests",
@@ -228,14 +229,14 @@ func TestStreamPolicySelector_Select(t *testing.T) {
 			wantModels: []string{"unlimited"},
 		},
 		{
-			name:      "mixed candidates for supported non-stream request keep native candidates ahead of require fallback",
+			name:      "mixed candidates for supported non-stream request keep both native and forced streaming",
 			reqStream: nil,
 			candidates: []*ChannelModelsCandidate{
 				newCandidate("require", objects.CapabilityPolicyRequire),
 				newCandidate("native", objects.CapabilityPolicyUnlimited),
 			},
-			wantCount:  1,
-			wantModels: []string{"native"},
+			wantCount:  2,
+			wantModels: []string{"require", "native"},
 			reqType:    llm.RequestTypeChat,
 			apiFormat:  llm.APIFormatOpenAIChatCompletion,
 		},
@@ -313,4 +314,32 @@ func TestStreamPolicySelector_Select(t *testing.T) {
 			require.Equal(t, tt.wantModels, candidateRequestModels(got))
 		})
 	}
+}
+
+func TestStreamPolicy_PrefersAvailableNativeBeforeForcedStream(t *testing.T) {
+	candidate := func(id, priority int, policy objects.CapabilityPolicy) *ChannelModelsCandidate {
+		return &ChannelModelsCandidate{
+			Channel: &biz.Channel{Channel: &ent.Channel{
+				ID: id, Policies: objects.ChannelPolicies{Stream: policy},
+			}},
+			Priority: priority,
+			Models:   []biz.ChannelModelEntry{{ActualModel: "model"}},
+		}
+	}
+	forced, native := candidate(1, 0, objects.CapabilityPolicyRequire), candidate(2, 1, objects.CapabilityPolicyUnlimited)
+	inner := WithStreamPolicySelector(&staticChannelSelector{candidates: []*ChannelModelsCandidate{forced, native}})
+	retry := &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 1}
+	req := &llm.Request{Model: "model", RequestType: llm.RequestTypeChat}
+	balanced := WithLoadBalancedSelector(inner, nil, retry)
+	candidates, err := balanced.Select(t.Context(), req)
+	require.NoError(t, err)
+	require.Equal(t, []*ChannelModelsCandidate{native, forced}, candidates)
+
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{
+		native.Channel.ID: {Status: providerquotastatus.StatusExhausted},
+	}}, biz.QuotaRoutingSettings{})
+	balanced.quotaGate = gate
+	candidates, err = balanced.Select(t.Context(), req)
+	require.NoError(t, err)
+	require.Equal(t, []*ChannelModelsCandidate{forced}, candidates)
 }
