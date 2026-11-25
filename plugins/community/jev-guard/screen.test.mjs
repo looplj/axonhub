@@ -192,3 +192,54 @@ test("the text sent to Jev keeps the omission marker", () => {
   assert.equal(extractText(req, 0).includes(OMITTED_MARKER), false);
   assert.equal(text.includes(OMITTED_MARKER), true);
 });
+
+test("choice mode asks every category in one question", () => {
+  const policy = readPolicy({ questionMode: "choice" });
+  assert.equal(policy.questionMode, "choice");
+  const request = buildRequest("jev-latest", "hello", policy);
+  assert.deepEqual(Object.keys(request.questions), ["screen"]);
+  const question = request.questions.screen;
+  assert.equal(question.type, "choice");
+  assert.equal(question.criteria["sexual content"] !== undefined, true);
+  assert.equal(question.criteria["jailbreak"] !== undefined, true);
+  assert.equal(question.criteria["harmless"] !== undefined, true);
+});
+
+test("choice mode reads one probability per category", () => {
+  const policy = readPolicy({ questionMode: "choice", blockThreshold: 0.7 });
+  const ids = Object.fromEntries(policy.categories.map((c) => [c.label, c.id]));
+  const judgment = readJudgment({
+    answers: { screen: { type: "choice", probabilities: { "sexual content": 0.31, jailbreak: 0.69, harmless: 0.0006 } } },
+  }, policy);
+  assert.equal(judgment.ok, true);
+  assert.equal(judgment.scores[ids["sexual content"]], 0.31);
+  assert.equal(judgment.scores[ids.jailbreak], 0.69);
+  assert.equal(judgment.scores[ids["violent or criminal assistance"]], 0);
+  assert.equal(decide(judgment.scores, policy).action, "pass");
+
+  const blocked = readJudgment({
+    answers: { screen: { probabilities: { "sexual content": 0.05, jailbreak: 0.99 } } },
+  }, policy);
+  const decision = decide(blocked.scores, policy);
+  assert.equal(decision.action, "block");
+  assert.equal(decision.reason, "jailbreak");
+});
+
+test("choice mode treats a missing probability as zero and fails without probabilities", () => {
+  const policy = readPolicy({ questionMode: "choice" });
+  const ids = Object.fromEntries(policy.categories.map((c) => [c.label, c.id]));
+  const partial = readJudgment({ answers: { screen: { probabilities: { jailbreak: 0.2 } } } }, policy);
+  assert.equal(partial.ok, true);
+  assert.equal(partial.scores[ids.jailbreak], 0.2);
+  assert.equal(partial.scores[ids["sexual content"]], 0);
+  assert.equal(readJudgment({ answers: {} }, policy).ok, false);
+  assert.equal(readJudgment({ answers: { screen: {} } }, policy).ok, false);
+  assert.equal(readJudgment({ answers: { screen: { probabilities: { jailbreak: 0.9 } } } }, policy).ok, true);
+});
+
+test("noul stays the default mode", () => {
+  assert.equal(readPolicy({}).questionMode, "noul");
+  assert.equal(manifest.configSchema.properties.questionMode.default, "noul");
+  const request = buildRequest("jev-latest", "hello", readPolicy({}));
+  assert.equal(Object.keys(request.questions).length, 6);
+});

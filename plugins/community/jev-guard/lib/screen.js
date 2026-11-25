@@ -36,6 +36,7 @@ export function readPolicy(config) {
     keep: whole(src.keep, 20, 1, 40),
     minChars: whole(src.minChars, 1, 0, 500),
     maxTurns: whole(src.maxTurns, 0, 0, 50),
+    questionMode: src.questionMode === "choice" ? "choice" : "noul",
   };
 }
 
@@ -131,8 +132,15 @@ export function fitText(text, maxChars) {
 }
 
 export function buildRequest(model, text, policy) {
-  const questions = {};
   const categories = policy && policy.categories ? policy.categories : [];
+  if (policy && policy.questionMode === "choice") {
+    return {
+      model: model,
+      state: { text: text },
+      questions: { screen: choice(categories) },
+    };
+  }
+  const questions = {};
   for (let i = 0; i < categories.length; i++) {
     const category = categories[i];
     questions[category.id] = noul(category.ask, category.yes, category.no);
@@ -150,6 +158,19 @@ export function readJudgment(payload, policy) {
     return { ok: false, error: "missing_answers" };
   }
   const categories = policy && policy.categories ? policy.categories : [];
+  if (policy && policy.questionMode === "choice") {
+    const answer = answers.screen;
+    const probabilities = answer && answer.probabilities;
+    if (!probabilities || typeof probabilities !== "object") {
+      return { ok: false, error: "missing_screen" };
+    }
+    const byLabel = {};
+    for (let i = 0; i < categories.length; i++) {
+      const category = categories[i];
+      byLabel[category.id] = clamp01(numberAt(probabilities, category.label));
+    }
+    return { ok: true, scores: byLabel };
+  }
   const scores = {};
   for (let i = 0; i < categories.length; i++) {
     const category = categories[i];
@@ -211,6 +232,26 @@ function noul(instructions, yes, no) {
     type: "noul",
     instructions: instructions,
     criteria: { true: yes, false: no },
+  };
+}
+
+// choice asks every category in one inference and returns one probability per
+// candidate, so N categories cost one round trip instead of N. The backend ranks
+// the candidates: a text that hits several categories spreads its probabilities
+// instead of collapsing to a single winner. The harmless option gives the model
+// something to pick when nothing applies; it is never a block reason.
+export const HARMLESS_LABEL = "harmless";
+
+function choice(categories) {
+  const criteria = {};
+  for (let i = 0; i < categories.length; i++) {
+    criteria[categories[i].label] = categories[i].ask;
+  }
+  criteria[HARMLESS_LABEL] = "The text is an ordinary request that asks for none of the other categories.";
+  return {
+    type: "choice",
+    instructions: "Pick the single best-fitting category for this text, then report how likely each category is.",
+    criteria: criteria,
   };
 }
 
@@ -401,6 +442,16 @@ function pushText(parts, value) {
     return;
   }
   parts.push(trimmed);
+}
+
+// numberAt reads one candidate probability. A missing entry counts as zero so a
+// model that omits a label cannot be read as a high score.
+function numberAt(source, label) {
+  if (!source || !Object.prototype.hasOwnProperty.call(source, label)) {
+    return 0;
+  }
+  const value = source[label];
+  return typeof value === "number" && isFinite(value) ? value : 0;
 }
 
 function noulOf(answer) {
