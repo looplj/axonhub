@@ -13,6 +13,17 @@ GenerateContent 请求也接受 `system_instruction`、`inline_data` 和 `mime_t
 - **自动转换**：AxonHub 在需要时自动在 API 格式之间进行转换
 - **多模态支持**：通过 Gemini API 格式访问文本和图像功能
 
+## Vertex AI 渠道凭证
+
+一个 **Gemini Vertex AI** 渠道可以同时保存多条以下两种凭证：
+
+- **API key（Express mode）**：填写 API key、所属 Google Cloud 项目 ID 或项目编号，以及 `global`、`us-central1` 等 location。
+- **服务账号 JSON**：粘贴为 Google Cloud service account 创建的 JSON 密钥，或选择本地 JSON 文件。浏览器读取文件后将内容作为字符串提交。项目从 `project_id` 自动预填，也可改为该服务账号有权访问的其他项目；location 单独设置。
+
+请在目标项目启用 Vertex AI API，并授予服务账号调用 Vertex AI 的权限，例如 `roles/aiplatform.user`。AxonHub 使用 `cloud-platform` scope，向 Google OAuth 端点交换访问令牌，并通过渠道配置的代理自动刷新。仅接受 service account JSON，不接受 Application Default Credentials 或其他 JSON 凭证类型。
+
+渠道凭证管理支持逐条添加、编辑、删除、测试、禁用和恢复。API key 与服务账号共同参与渠道的凭证选择策略，每次请求使用选中条目对应的认证、项目与 location。仅调整 JSON 格式、项目或 location 时，服务账号条目的身份保持不变；更换账号或 signing key 会产生新的凭证身份。
+
 ## 支持的端点
 
 **端点：**
