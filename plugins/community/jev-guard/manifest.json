@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "local.jev-guard",
   "name": "Jev 请求审查",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "在请求进入上游模型之前，用 Jev 判断一组可配置的分类。任一分类达到拦截阈值时返回 403，并写入拦截记录。低于阈值的请求继续，不落库。",
   "axonhubVersion": "^1.0.0",
   "pluginApiVersion": 1,
@@ -104,6 +104,13 @@
         "minimum": 0,
         "maximum": 50,
         "default": 0
+      },
+      "questionMode": {
+        "type": "string",
+        "title": "判断模式",
+        "enum": ["noul", "choice"],
+        "description": "noul 把每条分类当作一次独立的二元判断，每条分类各调用一次。choice 用一次调用同时给出所有分类的概率，分类多时能显著减少往返次数。",
+        "default": "noul"
       }
     },
     "required": [
