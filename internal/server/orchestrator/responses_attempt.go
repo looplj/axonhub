@@ -8,6 +8,7 @@ import (
 
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
@@ -154,41 +155,62 @@ func loadResponsesContinuationOwner(ctx context.Context, c *responsesContinuatio
 	return owner
 }
 
-func selectResponsesContinuationCandidate(ctx context.Context, p *PersistentOutboundTransformer, request *llm.Request) error {
-	c := p.state.ResponsesContinuation
+// Responses native continuation without a replay snapshot is a hard routing
+// constraint. Select the owner among already authorized, compatible channels
+// before quota preferences and load balancing can discard it.
+type responsesContinuationSelector struct {
+	wrapped      CandidateSelector
+	continuation *responsesContinuation
+}
+
+func (s *responsesContinuationSelector) Select(ctx context.Context, request *llm.Request) ([]*ChannelModelsCandidate, error) {
+	candidates, err := s.wrapped.Select(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	c := s.continuation
 	if c == nil || c.previous == "" {
-		return nil
+		return candidates, nil
 	}
 	if c.owner == nil {
 		c.owner = loadResponsesContinuationOwner(ctx, c)
 	}
 	if c.owner == nil || c.owner.Snapshot != nil {
-		return nil
+		return candidates, nil
 	}
 
-	for index := p.state.CurrentCandidateIndex; index < len(p.state.ChannelModelsCandidates); index++ {
-		candidate := p.state.ChannelModelsCandidates[index]
-		if candidate == nil || candidate.Channel == nil || len(candidate.Models) == 0 {
+	var selected *ChannelModelsCandidate
+	for _, candidate := range candidates {
+		if candidate == nil || candidate.Channel == nil || candidate.Channel.ID != c.owner.Origin.ChannelID {
 			continue
 		}
-		for modelIndex := range candidate.Models {
-			p.refreshCandidateAPIFormat(ctx, candidate, modelIndex, request)
+		for modelIndex, model := range candidate.Models {
+			if model.ActualModel != c.owner.Origin.Model {
+				continue
+			}
+			format := candidateAPIFormatForModel(ctx, candidate, modelIndex, request, request.Model)
 			origin := shared.ResponsesOrigin{
 				ChannelID: candidate.Channel.ID,
-				Format:    candidate.APIFormat,
-				Model:     candidate.Models[modelIndex].ActualModel,
+				Format:    format,
+				Model:     model.ActualModel,
 			}
 			if !originMatches(c.owner.Origin, origin) {
 				continue
 			}
-			p.state.CurrentCandidateIndex = index
-			p.state.CurrentModelIndex = modelIndex
-			p.state.CurrentCandidate = candidate
-			p.wrapped = selectOutboundForCandidate(candidate)
-			return nil
+			if selected == nil || candidate.Priority < selected.Priority {
+				copy := *candidate
+				copy.Models = []biz.ChannelModelEntry{model}
+				copy.APIFormat = format
+				copy.modelAPIFormats = []string{format}
+				selected = &copy
+			}
+			break
 		}
 	}
-	return nil
+	if selected == nil {
+		return nil, shared.ResponsesRecoveryError()
+	}
+	return []*ChannelModelsCandidate{selected}, nil
 }
 
 func (c *responsesContinuation) releaseRetention() {
@@ -214,9 +236,6 @@ func forwardsResponsesID(outbound transformer.Outbound) bool {
 func prepareResponsesAttempt(ctx context.Context, p *PersistentOutboundTransformer, request *llm.Request) (*llm.Request, error) {
 	if p.state.ResponsesContinuation == nil {
 		return request, nil
-	}
-	if err := selectResponsesContinuationCandidate(ctx, p, request); err != nil {
-		return nil, err
 	}
 	origin := shared.ResponsesOrigin{ChannelID: p.GetCurrentChannel().ID, Format: string(p.wrapped.APIFormat()), Model: request.Model}
 	if p.state.CurrentCandidate.APIFormat != "" {
