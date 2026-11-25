@@ -252,9 +252,13 @@ func (s *QuotaRoutingSelector) Select(ctx context.Context, req *llm.Request) ([]
 	}
 
 	preferred, lastResort := s.gate.Filter(ctx, candidates, req, 0)
+	preferred, streamFallback := preferNativeStreamCandidates(req, preferred)
 	if pinned, remaining := extractStickyCandidate(preferred, guardianReviewParentChannelID(ctx)); pinned != nil {
 		preferred = append([]*ChannelModelsCandidate{pinned}, remaining...)
 	}
+	preferred = append(preferred, streamFallback...)
+	quotaPreferred, quotaStreamFallback := preferNativeStreamCandidates(req, lastResort)
+	lastResort = append(quotaPreferred, quotaStreamFallback...)
 	if len(lastResort) == 0 {
 		return preferred, nil
 	}

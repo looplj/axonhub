@@ -27,12 +27,16 @@ func (s *StreamPolicySelector) Select(ctx context.Context, req *llm.Request) ([]
 		return candidates, nil
 	}
 
-	if req.Stream != nil && *req.Stream {
+	if req != nil && req.Stream != nil && *req.Stream {
 		filtered := lo.Filter(candidates, func(c *ChannelModelsCandidate, _ int) bool {
 			return streamPolicyOf(c) != objects.CapabilityPolicyForbid
 		})
 
 		return filtered, nil
+	}
+
+	if supportsAutoAggregateRequest(req) {
+		return candidates, nil
 	}
 
 	nativeCandidates := lo.Filter(candidates, func(c *ChannelModelsCandidate, _ int) bool {
@@ -41,16 +45,31 @@ func (s *StreamPolicySelector) Select(ctx context.Context, req *llm.Request) ([]
 	if len(nativeCandidates) > 0 {
 		return nativeCandidates, nil
 	}
-
-	if supportsAutoAggregateRequest(req) {
-		return candidates, nil
-	}
-
 	if req != nil && req.RequestType == llm.RequestTypeDecisions {
 		return nil, NewStreamPolicyConflictError(req.Model)
 	}
 
 	return nil, nil
+}
+
+// Prefer native non-streaming candidates, while keeping aggregate-capable
+// streaming routes for use after the preferred candidates are exhausted.
+// Call this after quota and circuit availability have been evaluated.
+func preferNativeStreamCandidates(req *llm.Request, candidates []*ChannelModelsCandidate) (preferred, fallback []*ChannelModelsCandidate) {
+	if req == nil || (req.Stream != nil && *req.Stream) || !supportsAutoAggregateRequest(req) {
+		return candidates, nil
+	}
+	for _, candidate := range candidates {
+		if streamPolicyOf(candidate) == objects.CapabilityPolicyRequire {
+			fallback = append(fallback, candidate)
+		} else {
+			preferred = append(preferred, candidate)
+		}
+	}
+	if len(preferred) == 0 {
+		return fallback, nil
+	}
+	return preferred, fallback
 }
 
 func streamPolicyOf(candidate *ChannelModelsCandidate) objects.CapabilityPolicy {

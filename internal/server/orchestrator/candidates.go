@@ -784,40 +784,33 @@ func (s *LoadBalancedSelector) Select(ctx context.Context, req *llm.Request) ([]
 	if s.quotaGate != nil {
 		var lastResort []*ChannelModelsCandidate
 		candidates, lastResort = s.quotaGate.Filter(ctx, candidates, req, stickyID)
-		quotaFallback = quotaFallbackCandidates(lastResort, quotaFallbackLimit(retryPolicy))
+		fallbackLimit := quotaFallbackLimit(retryPolicy)
+		quotaPreferred, quotaStreamFallback := preferNativeStreamCandidates(req, lastResort)
+		quotaFallback = quotaFallbackCandidates(quotaPreferred, fallbackLimit)
+		quotaFallback = append(quotaFallback, quotaFallbackCandidates(quotaStreamFallback, fallbackLimit-len(quotaFallback))...)
 	}
+
+	preferred, streamFallback := preferNativeStreamCandidates(req, candidates)
 
 	// Prefer the parent only after quota admission, before load balancing trims
 	// the candidate list to fit the retry budget.
-	pinned, remaining := extractStickyCandidate(candidates, guardianReviewParentChannelID(ctx))
+	pinned, remaining := extractStickyCandidate(preferred, guardianReviewParentChannelID(ctx))
 	if pinned == nil && stickyOK {
-		pinned, remaining = s.pinStickyCandidate(candidates, stickyID)
+		pinned, remaining = s.pinStickyCandidate(preferred, stickyID)
 		if pinned != nil {
 			pinned.TraceSticky = true
 		}
 	}
+	result := make([]*ChannelModelsCandidate, 0, min(requiredCount, len(candidates))+len(quotaFallback))
 	if pinned != nil {
-		fallbackCount := max(requiredCount-1, 0)
-		fallbackCandidates := s.sortCandidates(ctx, loadBalancer, remaining, req, fallbackCount, requiredCount, false)
-		result := make([]*ChannelModelsCandidate, 0, 1+len(fallbackCandidates)+len(quotaFallback))
 		result = append(result, pinned)
-		result = append(result, fallbackCandidates...)
-		result = append(result, quotaFallback...)
-
-		if loadBalancer != nil {
-			loadBalancer.TrackSelection(pinned)
-		}
-
-		return result, nil
+		preferred = remaining
 	}
-
-	preferred := s.sortCandidates(ctx, loadBalancer, candidates, req, requiredCount, requiredCount, true)
-	if len(quotaFallback) == 0 {
-		return preferred, nil
+	result = append(result, s.sortCandidates(ctx, loadBalancer, preferred, req, requiredCount-len(result), requiredCount, false)...)
+	result = append(result, s.sortCandidates(ctx, loadBalancer, streamFallback, req, requiredCount-len(result), requiredCount, false)...)
+	if len(result) > 0 && loadBalancer != nil {
+		loadBalancer.TrackSelection(result[0])
 	}
-
-	result := make([]*ChannelModelsCandidate, 0, len(preferred)+len(quotaFallback))
-	result = append(result, preferred...)
 	result = append(result, quotaFallback...)
 
 	return result, nil
