@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "local.jev-guard",
   "name": "Jev 请求审查",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "在请求进入上游模型之前，用 Jev 判断一组可配置的分类。任一分类达到拦截阈值时返回 403，并写入拦截记录。低于阈值的请求继续，不落库。",
   "axonhubVersion": "^1.0.0",
   "pluginApiVersion": 1,
@@ -72,8 +72,8 @@
       "failClosed": {
         "type": "boolean",
         "title": "检查失败时拦截",
-        "description": "关闭时，缺少 Key、网络失败或 Jev 返回异常都会放行。打开时这些情况返回 403。",
-        "default": false
+        "description": "打开时，缺少 Key、网络失败或 Jev 返回异常都会返回 403，审查不会静默失效。关闭时这些情况放行，插件看起来仍然启用，但实际上没有检查。宿主在 10 秒后终止钩子时不经过这里，那种情况始终放行。",
+        "default": true
       },
       "storeExcerpt": {
         "type": "boolean",

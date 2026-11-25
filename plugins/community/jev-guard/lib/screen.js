@@ -31,7 +31,7 @@ export function readPolicy(config) {
     model: textOr(src.model, "jev-latest"),
     blockThreshold: unit(src.blockThreshold, 0.7),
     categories: categoriesFrom(src.categories),
-    failClosed: flag(src.failClosed, false),
+    failClosed: flag(src.failClosed, true),
     storeExcerpt: flag(src.storeExcerpt, true),
     keep: whole(src.keep, 20, 1, 40),
     minChars: whole(src.minChars, 1, 0, 500),

@@ -192,3 +192,10 @@ test("the text sent to Jev keeps the omission marker", () => {
   assert.equal(extractText(req, 0).includes(OMITTED_MARKER), false);
   assert.equal(text.includes(OMITTED_MARKER), true);
 });
+
+test("a failed check blocks by default instead of passing silently", () => {
+  // Passing silently makes the guard look enabled while nothing is screened.
+  assert.equal(readPolicy({}).failClosed, true);
+  assert.equal(manifest.configSchema.properties.failClosed.default, true);
+  assert.equal(readPolicy({ failClosed: false }).failClosed, false);
+});
