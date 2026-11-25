@@ -331,11 +331,23 @@ func TestResponsesWarmupRetryAfterChannelQueueFull(t *testing.T) {
 	h.ChatCompletionOrchestrator.Inbound = responses.NewInboundTransformer()
 	engine := gin.New()
 	engine.Use(f.testContext)
-	engine.GET("/v1/responses", (&OpenAIHandlers{ResponseCompletionHandlers: h}).CreateResponseWebSocket(0))
+	handlerDone := make(chan struct{})
+	handle := (&OpenAIHandlers{ResponseCompletionHandlers: h}).CreateResponseWebSocket(0)
+	engine.GET("/v1/responses", func(c *gin.Context) {
+		defer close(handlerDone)
+		handle(c)
+	})
 	server := httptest.NewServer(engine)
 	t.Cleanup(server.Close)
 	conn := dialResponsesWebSocket(t, server.URL, nil)
-	defer conn.CloseNow()
+	t.Cleanup(func() {
+		_ = conn.CloseNow()
+		select {
+		case <-handlerDone:
+		case <-time.After(5 * time.Second):
+			t.Error("WebSocket handler did not finish after the client disconnected")
+		}
+	})
 	send := func(frame string) {
 		t.Helper()
 		require.NoError(t, conn.Write(ctx, websocket.MessageText, []byte(frame)))
