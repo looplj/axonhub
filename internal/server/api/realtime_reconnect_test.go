@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -52,8 +52,23 @@ func (d reconnectDialer) Connect(ctx context.Context, _ string, _ string, _ *htt
 	if d.err != nil {
 		return nil, d.err
 	}
-	c, _, err := websocket.DefaultDialer.DialContext(ctx, d.url, nil)
+	c, _, err := websocket.Dial(ctx, d.url, nil)
+	if err == nil {
+		c.SetReadLimit(rt.MaxMessageBytes)
+	}
 	return c, err
+}
+
+func apiRealtimeReadWithTimeout(conn *websocket.Conn, timeout time.Duration) (websocket.MessageType, []byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return conn.Read(ctx)
+}
+
+func apiRealtimeWriteText(conn *websocket.Conn, data []byte) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return conn.Write(ctx, websocket.MessageText, data)
 }
 
 func newRealtimeReconnectFixture(t *testing.T, configureKey ...func(*ent.APIKeyCreate)) (*ent.Client, func() (*websocket.Conn, *http.Response, error), *atomic.Int32, <-chan struct{}) {
@@ -125,22 +140,23 @@ func newRealtimeHTTPFixtureOptions(t *testing.T, maxDuration time.Duration, tran
 			http.Error(w, "synthetic upstream unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		c, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		c, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			return
 		}
-		defer c.Close()
+		defer func() { _ = c.CloseNow() }()
+		c.SetReadLimit(rt.MaxMessageBytes)
 		n := active.Add(1)
 		defer active.Add(-1)
 		for old := peak.Load(); n > old && !peak.CompareAndSwap(old, n); old = peak.Load() {
 		}
 		if translation {
-			serveTranslationFixture(c)
+			serveTranslationFixture(r.Context(), c)
 			return
 		}
-		_ = c.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.created","session":{"id":"s","type":"realtime","audio":{"input":{"format":{"type":"audio/pcm","rate":24000}},"output":{"format":{"type":"audio/pcm","rate":24000}}}}}`))
+		_ = c.Write(r.Context(), websocket.MessageText, []byte(`{"type":"session.created","session":{"id":"s","type":"realtime","audio":{"input":{"format":{"type":"audio/pcm","rate":24000}},"output":{"format":{"type":"audio/pcm","rate":24000}}}}}`))
 		for {
-			_, data, err := c.ReadMessage()
+			_, data, err := c.Read(r.Context())
 			if err != nil {
 				return
 			}
@@ -150,14 +166,14 @@ func newRealtimeHTTPFixtureOptions(t *testing.T, maxDuration time.Duration, tran
 					return
 				}
 				ack := []byte(`{"type":"session.updated","session":` + gjson.GetBytes(data, "session").Raw + `}`)
-				if c.WriteMessage(websocket.TextMessage, ack) != nil {
+				if c.Write(r.Context(), websocket.MessageText, ack) != nil {
 					return
 				}
 			}
 			if !withPrice && gjson.GetBytes(data, "type").String() == "response.create" {
 				created := []byte(`{"type":"response.created","response":{"id":"unpriced-response"}}`)
 				done := []byte(`{"type":"response.done","response":{"id":"unpriced-response","status":"completed","usage":{"input_tokens":11,"output_tokens":7,"total_tokens":18,"input_token_details":{"text_tokens":11,"audio_tokens":0},"output_token_details":{"text_tokens":7,"audio_tokens":0}}}}`)
-				if c.WriteMessage(websocket.TextMessage, created) != nil || c.WriteMessage(websocket.TextMessage, done) != nil {
+				if c.Write(r.Context(), websocket.MessageText, created) != nil || c.Write(r.Context(), websocket.MessageText, done) != nil {
 					return
 				}
 			}
@@ -195,7 +211,19 @@ func newRealtimeHTTPFixtureOptions(t *testing.T, maxDuration time.Duration, tran
 	})
 	url := "ws" + strings.TrimPrefix(server.URL, "http") + path + "?model=" + model
 	dial := func() (*websocket.Conn, *http.Response, error) {
-		return websocket.DefaultDialer.Dial(url, http.Header{"Authorization": []string{"Bearer " + key.Key}, "X-Client-Name": []string{"test-client"}, "X-Client-Version": []string{"2.1"}})
+		dialCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		c, resp, err := websocket.Dial(dialCtx, url, &websocket.DialOptions{
+			HTTPHeader: http.Header{
+				"Authorization":    []string{"Bearer " + key.Key},
+				"X-Client-Name":    []string{"test-client"},
+				"X-Client-Version": []string{"2.1"},
+			},
+		})
+		if err == nil {
+			c.SetReadLimit(rt.MaxMessageBytes)
+		}
+		return c, resp, err
 	}
 	return db, dial, &peak, observed
 }
@@ -204,8 +232,8 @@ func TestRealtimeHTTPReconnectWhileAuditStillDraining(t *testing.T) {
 	db, dial, peak, observed := newRealtimeReconnectFixture(t)
 	first, _, err := dial()
 	require.NoError(t, err)
-	defer first.Close()
-	_, _, err = first.ReadMessage()
+	defer func() { _ = first.CloseNow() }()
+	_, _, err = apiRealtimeReadWithTimeout(first, 5*time.Second)
 	require.NoError(t, err)
 	gate := make(chan struct{})
 	entered := make(chan struct{})
@@ -219,15 +247,14 @@ func TestRealtimeHTTPReconnectWhileAuditStillDraining(t *testing.T) {
 			return next.Mutate(ctx, m)
 		})
 	})
-	require.NoError(t, first.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
+	require.NoError(t, apiRealtimeWriteText(first, []byte(`{"type":"response.create"}`)))
 	select {
 	case <-observed:
 	case <-time.After(3 * time.Second):
-		_ = first.SetReadDeadline(time.Now().Add(time.Second))
-		_, rejected, readErr := first.ReadMessage()
+		_, rejected, readErr := apiRealtimeReadWithTimeout(first, time.Second)
 		t.Fatalf("client event was not forwarded: %s %v", rejected, readErr)
 	}
-	require.NoError(t, first.UnderlyingConn().Close())
+	require.NoError(t, first.CloseNow())
 	select {
 	case <-entered:
 	case <-time.After(3 * time.Second):
@@ -235,7 +262,7 @@ func TestRealtimeHTTPReconnectWhileAuditStillDraining(t *testing.T) {
 	}
 	next, response, err := dial()
 	if next != nil {
-		defer next.Close()
+		defer func() { _ = next.CloseNow() }()
 	}
 	status := 0
 	if response != nil {
@@ -250,8 +277,8 @@ func TestRealtimeHTTPImmediateReconnectWhileDisconnectDetectionIsPending(t *test
 	db, dial, peak, _ := newRealtimeReconnectFixture(t)
 	first, _, err := dial()
 	require.NoError(t, err)
-	defer first.Close()
-	_, _, err = first.ReadMessage()
+	defer func() { _ = first.CloseNow() }()
+	_, _, err = apiRealtimeReadWithTimeout(first, 5*time.Second)
 	require.NoError(t, err)
 	gate, entered := make(chan struct{}), make(chan struct{})
 	var gated, unblocked sync.Once
@@ -265,8 +292,8 @@ func TestRealtimeHTTPImmediateReconnectWhileDisconnectDetectionIsPending(t *test
 			return next.Mutate(ctx, m)
 		})
 	})
-	require.NoError(t, first.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
-	require.NoError(t, first.UnderlyingConn().Close())
+	require.NoError(t, apiRealtimeWriteText(first, []byte(`{"type":"response.create"}`)))
+	require.NoError(t, first.CloseNow())
 	select {
 	case <-entered:
 	case <-time.After(3 * time.Second):
@@ -304,7 +331,7 @@ func TestRealtimeHTTPImmediateReconnectWhileDisconnectDetectionIsPending(t *test
 		}
 	}
 	if r.conn != nil {
-		defer r.conn.Close()
+		defer func() { _ = r.conn.CloseNow() }()
 	}
 	require.False(t, early, "one handshake must wait for the old transport, not reject or overbook")
 	require.NoError(t, r.err, "the same single HTTP handshake must return 101, with no client retry")
@@ -316,10 +343,10 @@ func TestRealtimeHTTPLiveConcurrentSessionStillRejected(t *testing.T) {
 	db, dial, peak, _ := newRealtimeReconnectFixture(t)
 	first, _, err := dial()
 	require.NoError(t, err)
-	defer first.Close()
+	defer func() { _ = first.CloseNow() }()
 	second, response, err := dial()
 	if second != nil {
-		defer second.Close()
+		defer func() { _ = second.CloseNow() }()
 	}
 	require.Error(t, err)
 	require.NotNil(t, response)
@@ -340,11 +367,11 @@ func TestRealtimeHTTPLiveConcurrentSessionStillRejected(t *testing.T) {
 	require.NotNil(t, denied.MetricsLatencyMs)
 	require.Zero(t, db.UsageLog.Query().CountX(seed), "denied admissions must not create usage or affect quotas")
 
-	first.Close()
+	_ = first.CloseNow()
 	reconnected, reconnectResponse, reconnectErr := dial()
 	require.NoError(t, reconnectErr, "an audit row for a denied attempt must not retain an admission lease")
 	require.Equal(t, http.StatusSwitchingProtocols, reconnectResponse.StatusCode)
-	reconnected.Close()
+	_ = reconnected.CloseNow()
 }
 
 func TestRealtimeHTTPFailedRequestWithConfirmedUsageStillEnforcesQuota(t *testing.T) {
@@ -359,7 +386,7 @@ func TestRealtimeHTTPFailedRequestWithConfirmedUsageStillEnforcesQuota(t *testin
 	db.UsageLog.Create().SetRequestID(r.ID).SetAPIKeyID(key.ID).SetProjectID(key.ProjectID).SetChannelID(1).SetModelID(r.ModelID).SetFormat("openai/realtime").SetSource("api").SetPromptTokens(1).SetCompletionTokens(1).SetTotalTokens(2).SaveX(seed)
 	c, response, err := dial()
 	if c != nil {
-		defer c.Close()
+		defer func() { _ = c.CloseNow() }()
 	}
 	require.Error(t, err)
 	require.NotNil(t, response)
@@ -371,9 +398,8 @@ func TestRealtimeHTTPAuditInsertCancellationReleasesLease(t *testing.T) {
 	db, dial, peak, _ := newRealtimeReconnectFixtureWithDuration(t, 500*time.Millisecond)
 	first, _, err := dial()
 	require.NoError(t, err)
-	defer first.Close()
-	require.NoError(t, first.SetReadDeadline(time.Now().Add(3*time.Second)))
-	_, _, err = first.ReadMessage()
+	defer func() { _ = first.CloseNow() }()
+	_, _, err = apiRealtimeReadWithTimeout(first, 3*time.Second)
 	require.NoError(t, err)
 
 	entered := make(chan struct{})
@@ -395,7 +421,7 @@ func TestRealtimeHTTPAuditInsertCancellationReleasesLease(t *testing.T) {
 			}
 		})
 	})
-	require.NoError(t, first.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
+	require.NoError(t, apiRealtimeWriteText(first, []byte(`{"type":"response.create"}`)))
 	select {
 	case <-entered:
 	case <-time.After(2 * time.Second):
@@ -403,13 +429,13 @@ func TestRealtimeHTTPAuditInsertCancellationReleasesLease(t *testing.T) {
 	}
 
 	// The terminal diagnostic precedes the close handshake.
-	_, frame, err := first.ReadMessage()
+	_, frame, err := apiRealtimeReadWithTimeout(first, 3*time.Second)
 	require.NoError(t, err)
 	require.Equal(t, "internal_error", gjson.GetBytes(frame, "error.code").String())
-	_, _, err = first.ReadMessage()
-	var closed *websocket.CloseError
+	_, _, err = apiRealtimeReadWithTimeout(first, 3*time.Second)
+	var closed websocket.CloseError
 	require.ErrorAs(t, err, &closed)
-	require.Equal(t, websocket.CloseInternalServerErr, closed.Code)
+	require.Equal(t, websocket.StatusInternalError, closed.Code)
 	select {
 	case err = <-canceled:
 		require.ErrorIs(t, err, context.DeadlineExceeded)
@@ -419,20 +445,20 @@ func TestRealtimeHTTPAuditInsertCancellationReleasesLease(t *testing.T) {
 
 	second, response, err := dial()
 	if second != nil {
-		defer second.Close()
+		defer func() { _ = second.CloseNow() }()
 	}
 	require.NoError(t, err, "the same API key must immediately regain its lease")
 	require.Equal(t, http.StatusSwitchingProtocols, response.StatusCode)
 	require.Equal(t, int32(1), peak.Load())
 }
 
-func serveTranslationFixture(conn *websocket.Conn) {
+func serveTranslationFixture(ctx context.Context, conn *websocket.Conn) {
 	created := `{"type":"session.created","session":{"id":"s","type":"translation","model":"gpt-realtime-translate"}}`
-	if conn.WriteMessage(websocket.TextMessage, []byte(created)) != nil {
+	if conn.Write(ctx, websocket.MessageText, []byte(created)) != nil {
 		return
 	}
 	for {
-		_, event, err := conn.ReadMessage()
+		_, event, err := conn.Read(ctx)
 		if err != nil {
 			return
 		}
@@ -443,17 +469,17 @@ func serveTranslationFixture(conn *websocket.Conn) {
 		case "session.input_audio_buffer.append":
 			response = `{"type":"session.output_audio.delta","delta":"AAA="}`
 		case "session.close":
-			if conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.output_transcript.delta","delta":"hola"}`)) != nil {
+			if conn.Write(ctx, websocket.MessageText, []byte(`{"type":"session.output_transcript.delta","delta":"hola"}`)) != nil {
 				return
 			}
-			_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.closed"}`))
+			_ = conn.Write(ctx, websocket.MessageText, []byte(`{"type":"session.closed"}`))
 			// Leave transport closure to the gateway after it drains session.closed.
-			_, _, _ = conn.ReadMessage()
+			_, _, _ = conn.Read(ctx)
 			return
 		default:
 			return
 		}
-		if conn.WriteMessage(websocket.TextMessage, []byte(response)) != nil {
+		if conn.Write(ctx, websocket.MessageText, []byte(response)) != nil {
 			return
 		}
 	}
@@ -470,18 +496,17 @@ func testRealtimeHTTPTranslationBilling(t *testing.T, graceful, withPrice bool) 
 	db, dial, _, _ := newRealtimeHTTPFixtureWithPrice(t, 0, true, withPrice)
 	conn, response, err := dial()
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.CloseNow() }()
 	require.Equal(t, http.StatusSwitchingProtocols, response.StatusCode)
-	require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
 	expect := func(kind string) {
 		t.Helper()
-		_, data, err := conn.ReadMessage()
+		_, data, err := apiRealtimeReadWithTimeout(conn, 5*time.Second)
 		require.NoError(t, err)
 		require.Equal(t, kind, gjson.GetBytes(data, "type").String(), "%s", data)
 	}
 	send := func(data string) {
 		t.Helper()
-		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(data)))
+		require.NoError(t, apiRealtimeWriteText(conn, []byte(data)))
 	}
 	expect("session.created")
 	send(`{"type":"response.create"}`)
@@ -496,11 +521,11 @@ func testRealtimeHTTPTranslationBilling(t *testing.T, graceful, withPrice bool) 
 		send(`{"type":"session.close"}`)
 		expect("session.output_transcript.delta")
 		expect("session.closed")
-		_, _, err = conn.ReadMessage()
-		require.True(t, websocket.IsCloseError(err, websocket.CloseNormalClosure), "%v", err)
+		_, _, err = apiRealtimeReadWithTimeout(conn, 5*time.Second)
+		require.Equal(t, websocket.StatusNormalClosure, websocket.CloseStatus(err), "%v", err)
 		wantStatus = request.StatusCompleted
 	} else {
-		require.NoError(t, conn.Close())
+		require.NoError(t, conn.CloseNow())
 	}
 
 	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
@@ -531,17 +556,16 @@ func TestRealtimeHTTPDisconnectedInputStoresSessionAuditWithoutUsage(t *testing.
 	db, dial, _, observed := newRealtimeReconnectFixture(t)
 	conn, _, err := dial()
 	require.NoError(t, err)
-	defer conn.Close()
-	require.NoError(t, conn.SetReadDeadline(time.Now().Add(3*time.Second)))
-	_, _, err = conn.ReadMessage()
+	defer func() { _ = conn.CloseNow() }()
+	_, _, err = apiRealtimeReadWithTimeout(conn, 3*time.Second)
 	require.NoError(t, err)
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`)))
+	require.NoError(t, apiRealtimeWriteText(conn, []byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`)))
 	select {
 	case <-observed:
 	case <-time.After(2 * time.Second):
 		t.Fatal("provider did not receive input")
 	}
-	require.NoError(t, conn.Close())
+	require.NoError(t, conn.CloseNow())
 
 	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
 	var row *ent.Request
@@ -565,7 +589,7 @@ func TestRealtimeHTTPUpstreamHandshakeFailureIsAuditedWithoutHoldingLease(t *tes
 	for range 2 {
 		conn, response, err := dial()
 		if conn != nil {
-			conn.Close()
+			_ = conn.CloseNow()
 		}
 		require.Error(t, err)
 		require.NotNil(t, response)
@@ -591,7 +615,7 @@ func TestRealtimeHTTPHandshakeTimeoutReturns504AndReleasesLease(t *testing.T) {
 	for range 2 {
 		conn, response, err := dial()
 		if conn != nil {
-			_ = conn.Close()
+			_ = conn.CloseNow()
 		}
 		require.Error(t, err)
 		require.NotNil(t, response)
@@ -616,39 +640,38 @@ func TestRealtimeHTTPUnpricedOpenAIRecordsUsageWithoutCost(t *testing.T) {
 	db, dial, _, _ := newRealtimeHTTPFixtureWithPrice(t, 0, false, false)
 	conn, response, err := dial()
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.CloseNow() }()
 	require.Equal(t, http.StatusSwitchingProtocols, response.StatusCode)
-	require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
-	_, created, err := conn.ReadMessage()
+	_, created, err := apiRealtimeReadWithTimeout(conn, 5*time.Second)
 	require.NoError(t, err)
 	require.Equal(t, "session.created", gjson.GetBytes(created, "type").String())
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.cancel","event_id":"empty-cancel"}`)))
-	_, canceled, err := conn.ReadMessage()
+	require.NoError(t, apiRealtimeWriteText(conn, []byte(`{"type":"response.cancel","event_id":"empty-cancel"}`)))
+	_, canceled, err := apiRealtimeReadWithTimeout(conn, 5*time.Second)
 	require.NoError(t, err)
 	require.Equal(t, "response_cancel_not_active", gjson.GetBytes(canceled, "error.code").String())
 	require.Equal(t, "empty-cancel", gjson.GetBytes(canceled, "error.event_id").String())
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.update","event_id":"wrong-model","session":{"type":"realtime","model":"gpt-realtime-2.1"}}`)))
-	_, rejected, err := conn.ReadMessage()
+	require.NoError(t, apiRealtimeWriteText(conn, []byte(`{"type":"session.update","event_id":"wrong-model","session":{"type":"realtime","model":"gpt-realtime-2.1"}}`)))
+	_, rejected, err := apiRealtimeReadWithTimeout(conn, 5*time.Second)
 	require.NoError(t, err)
 	require.Equal(t, "model_switch_not_allowed", gjson.GetBytes(rejected, "error.code").String())
 	require.Equal(t, "wrong-model", gjson.GetBytes(rejected, "error.event_id").String())
 
 	update := []byte(`{"type":"session.update","session":{"type":"realtime","model":"gpt-realtime-2.1-mini","audio":{"input":{"format":{"type":"audio/pcm","rate":24000},"transcription":{"model":"gpt-4o-mini-transcribe"},"turn_detection":null}}}}`)
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, update))
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.update","session":{"type":"realtime","model":"gpt-realtime-2.1-mini","tracing":"auto"}}`)))
-	_, updated, err := conn.ReadMessage()
+	require.NoError(t, apiRealtimeWriteText(conn, update))
+	require.NoError(t, apiRealtimeWriteText(conn, []byte(`{"type":"session.update","session":{"type":"realtime","model":"gpt-realtime-2.1-mini","tracing":"auto"}}`)))
+	_, updated, err := apiRealtimeReadWithTimeout(conn, 5*time.Second)
 	require.NoError(t, err)
 	require.Equal(t, "session.updated", gjson.GetBytes(updated, "type").String())
 	require.EqualValues(t, 24000, gjson.GetBytes(updated, "session.audio.input.format.rate").Int())
-	_, updated, err = conn.ReadMessage()
+	_, updated, err = apiRealtimeReadWithTimeout(conn, 5*time.Second)
 	require.NoError(t, err)
 	require.Equal(t, "session.updated", gjson.GetBytes(updated, "type").String())
 	require.Equal(t, "auto", gjson.GetBytes(updated, "session.tracing").String())
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`)))
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"input_audio_buffer.commit"}`)))
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
+	require.NoError(t, apiRealtimeWriteText(conn, []byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`)))
+	require.NoError(t, apiRealtimeWriteText(conn, []byte(`{"type":"input_audio_buffer.commit"}`)))
+	require.NoError(t, apiRealtimeWriteText(conn, []byte(`{"type":"response.create"}`)))
 	for {
-		_, event, err := conn.ReadMessage()
+		_, event, err := apiRealtimeReadWithTimeout(conn, 5*time.Second)
 		require.NoError(t, err)
 		if gjson.GetBytes(event, "type").String() == "response.done" {
 			break

@@ -11,47 +11,59 @@ package realtime
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 
 	"github.com/looplj/axonhub/internal/log"
 )
 
-func flushDownstreamClose(ctx context.Context, conn *websocket.Conn, code int, reason string, ack, readerDone <-chan struct{}) {
+func flushDownstreamClose(ctx context.Context, conn *websocket.Conn, code int, reason string, killDownstream context.CancelFunc, readerDone <-chan struct{}) {
 	ctx = context.WithoutCancel(ctx)
 	started := time.Now()
 	grace := 250 * time.Millisecond
 	if reason == "backpressure" {
 		grace = time.Second
 	}
-	deadline := started.Add(grace)
 	log.Info(ctx, "realtime close initiated", log.Int("close_code", code), log.String("reason", reason), log.Int64("initiated_unix_ms", started.UnixMilli()))
-	// WriteControl serializes behind any in-flight data write. That writer must
-	// finish before a valid control frame can be appended to the TCP byte stream.
-	if err := conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(code, reason), deadline); err != nil {
-		var timeout net.Error
-		if (errors.As(err, &timeout) && timeout.Timeout()) || !time.Now().Before(deadline) {
-			log.Warn(ctx, "realtime close flush timed out", log.Int("close_code", code), log.String("stage", "write"))
-		} else {
-			log.Warn(ctx, "realtime close write failed", log.Int("close_code", code))
-		}
+	// If the downstream reader already exited (EOF, peer close, or protocol/size
+	// limit error already answered by coder/websocket), do not enter conn.Close's
+	// 5s handshake wait without an active cancellable reader.
+	select {
+	case <-readerDone:
+		log.Info(ctx, "realtime close peer disconnected", log.Int("close_code", code))
 		return
+	default:
 	}
-	awaitCloseAcknowledgement(ctx, code, deadline, ack, readerDone)
-}
-
-func awaitCloseAcknowledgement(ctx context.Context, code int, deadline time.Time, ack, readerDone <-chan struct{}) {
-	timer := time.NewTimer(max(time.Until(deadline), 0))
+	// conn.Close serializes its Close frame behind any in-flight data write and
+	// awaits the peer Close ACK while the downstream reader drains input frames.
+	done := make(chan error, 1)
+	go func() {
+		done <- conn.Close(websocket.StatusCode(code), reason)
+	}()
+	timer := time.NewTimer(grace)
 	defer timer.Stop()
 	select {
-	case <-ack:
-		log.Info(ctx, "realtime close acknowledged", log.Int("close_code", code))
-	case <-readerDone:
-		// EOF or a protocol read error means the peer can no longer acknowledge.
-		log.Info(ctx, "realtime close peer disconnected", log.Int("close_code", code))
+	case err := <-done:
+		switch {
+		case err == nil || websocket.CloseStatus(err) != -1:
+			log.Info(ctx, "realtime close acknowledged", log.Int("close_code", code))
+		case errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed):
+			log.Info(ctx, "realtime close peer disconnected", log.Int("close_code", code))
+		default:
+			log.Warn(ctx, "realtime close write failed", log.Int("close_code", code))
+		}
 	case <-timer.C:
 		log.Warn(ctx, "realtime close flush timed out", log.Int("close_code", code), log.String("stage", "acknowledgement"))
+		// Canceling downstreamCtx aborts any active Read/Write and closes the socket
+		// so conn.Close cannot outlive the bounded grace window.
+		killDownstream()
+		select {
+		case <-done:
+		case <-readerDone:
+		case <-time.After(100 * time.Millisecond):
+		}
 	}
 }

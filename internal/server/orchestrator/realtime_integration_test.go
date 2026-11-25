@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
@@ -34,20 +34,44 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
+func realtimeReadWithTimeout(conn *websocket.Conn, timeout time.Duration) (websocket.MessageType, []byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return conn.Read(ctx)
+}
+
+func realtimeWriteText(conn *websocket.Conn, data []byte) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return conn.Write(ctx, websocket.MessageText, data)
+}
+
+func realtimeWriteJSON(conn *websocket.Conn, v any) error {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return realtimeWriteText(conn, data)
+}
+
 func realtimeSocketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
 	t.Helper()
 	accepted := make(chan *websocket.Conn, 1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		conn, err := websocket.Accept(w, r, nil)
 		if err == nil {
+			conn.SetReadLimit(rt.MaxMessageBytes)
 			accepted <- conn
 		}
 	}))
 	t.Cleanup(srv.Close)
-	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	dialCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(srv.URL, "http"), nil)
 	require.NoError(t, err)
+	conn.SetReadLimit(rt.MaxMessageBytes)
 	peer := <-accepted
-	t.Cleanup(func() { conn.Close(); peer.Close() })
+	t.Cleanup(func() { _ = conn.CloseNow(); _ = peer.CloseNow() })
 	return conn, peer
 }
 
@@ -132,7 +156,7 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 			requestCtx, err = authz.WithPrincipal(requestCtx, authz.Principal{Type: authz.PrincipalTypeAPIKey, APIKeyID: &key.ID, ProjectID: &project.ID})
 			require.NoError(t, err)
 			upstream, provider := realtimeSocketPair(t)
-			require.NoError(t, provider.WriteJSON(map[string]any{"type": "session.created", "session": map[string]any{"id": "s1", "type": "realtime", "model": model}}))
+			require.NoError(t, realtimeWriteJSON(provider, map[string]any{"type": "session.created", "session": map[string]any{"id": "s1", "type": "realtime", "model": model}}))
 			c, initial, err := service.configure(requestCtx, upstream, &RealtimeTarget{Channel: ch, Model: model, ClientModel: "voice", APIFormat: llm.APIFormatOpenAIRealtimeWebSocket, APIKey: key, Price: &biz.RealtimePriceSnapshot{Price: price, ReferenceID: "test-price-v1"}}, rt.Config{}.Defaults())
 			require.NoError(t, err)
 			require.Len(t, initial, 1)
@@ -152,9 +176,8 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 				done <- rt.Run(sessionCtx, downstream, upstream, rt.Options{IdleTimeout: time.Second}, rt.Hooks{Client: c.Client, Server: c.Server})
 			}()
 			update := []byte(`{"type":"session.update","session":{"type":"realtime","output_modalities":["text"],"future_official_field":true}}`)
-			require.NoError(t, client.WriteMessage(websocket.TextMessage, update))
-			_ = provider.SetReadDeadline(time.Now().Add(time.Second))
-			_, wire, err := provider.ReadMessage()
+			require.NoError(t, realtimeWriteText(client, update))
+			_, wire, err := realtimeReadWithTimeout(provider, time.Second)
 			require.NoError(t, err)
 			require.Contains(t, string(wire), "future_official_field")
 			var sent struct {
@@ -162,84 +185,79 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 			}
 			require.NoError(t, json.Unmarshal(wire, &sent))
 			require.NotEmpty(t, sent.EventID)
-			require.NoError(t, provider.WriteJSON(map[string]any{"type": "error", "error": map[string]string{"event_id": sent.EventID, "code": "unknown_parameter", "message": "Unknown parameter: 'session.future_official_field'."}}))
-			_ = client.SetReadDeadline(time.Now().Add(time.Second))
-			_, rejected, err := client.ReadMessage()
+			require.NoError(t, realtimeWriteJSON(provider, map[string]any{"type": "error", "error": map[string]string{"event_id": sent.EventID, "code": "unknown_parameter", "message": "Unknown parameter: 'session.future_official_field'."}}))
+			_, rejected, err := realtimeReadWithTimeout(client, time.Second)
 			require.NoError(t, err)
 			require.Contains(t, string(rejected), "unknown_parameter")
 			require.Contains(t, string(rejected), "Unknown parameter: 'session.future_official_field'.")
-			require.NoError(t, client.WriteMessage(websocket.TextMessage, update))
-			_, retried, err := provider.ReadMessage()
+			require.NoError(t, realtimeWriteText(client, update))
+			_, retried, err := realtimeReadWithTimeout(provider, time.Second)
 			require.NoError(t, err)
 			previousID := sent.EventID
 			sent.EventID = ""
 			require.NoError(t, json.Unmarshal(retried, &sent))
 			require.NotEmpty(t, sent.EventID)
 			require.NotEqual(t, previousID, sent.EventID)
-			require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.updated","session":{"id":"s1","type":"realtime"}}`)))
-			_, _, err = client.ReadMessage()
+			require.NoError(t, realtimeWriteText(provider, []byte(`{"type":"session.updated","session":{"id":"s1","type":"realtime"}}`)))
+			_, _, err = realtimeReadWithTimeout(client, time.Second)
 			require.NoError(t, err)
 			read := func(expected string) {
 				t.Helper()
-				_ = client.SetReadDeadline(time.Now().Add(5 * time.Second))
-				_, raw, err := client.ReadMessage()
+				_, raw, err := realtimeReadWithTimeout(client, 5*time.Second)
 				require.NoError(t, err)
 				require.JSONEq(t, expected, string(raw))
 			}
 			for attempt := range 9 {
 				eventID := fmt.Sprintf("rejected-%d", attempt)
 				create := fmt.Sprintf(`{"type":"response.create","event_id":%q}`, eventID)
-				require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(create)))
-				_ = provider.SetReadDeadline(time.Now().Add(2 * time.Second))
-				_, forwarded, err := provider.ReadMessage()
+				require.NoError(t, realtimeWriteText(client, []byte(create)))
+				_, forwarded, err := realtimeReadWithTimeout(provider, 2*time.Second)
 				require.NoError(t, err)
 				require.JSONEq(t, create, string(forwarded))
-				require.NoError(t, provider.WriteJSON(map[string]any{"type": "error", "error": map[string]string{"event_id": eventID}}))
-				_, rejected, err := client.ReadMessage()
+				require.NoError(t, realtimeWriteJSON(provider, map[string]any{"type": "error", "error": map[string]string{"event_id": eventID}}))
+				_, rejected, err := realtimeReadWithTimeout(client, 2*time.Second)
 				require.NoError(t, err)
 				require.Contains(t, string(rejected), eventID)
 			}
 			require.Zero(t, db.UsageLog.Query().CountX(ctx))
 			require.Equal(t, 9, db.Request.Query().Where(request.StatusEQ(request.StatusFailed)).CountX(ctx))
-			require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create"}`)))
-			_ = provider.SetReadDeadline(time.Now().Add(5 * time.Second))
-			_, initialCreate, err := provider.ReadMessage()
+			require.NoError(t, realtimeWriteText(client, []byte(`{"type":"response.create"}`)))
+			_, initialCreate, err := realtimeReadWithTimeout(provider, 5*time.Second)
 			require.NoError(t, err)
 			require.Contains(t, string(initialCreate), `"event_id":"evt_axonhub_`)
 			require.Contains(t, string(initialCreate), `"type":"response.create"`)
 			for turn := 1; turn <= 2; turn++ {
 				created := fmt.Sprintf(`{"type":"response.created","response":{"id":"r%d","status":"in_progress"}}`, turn)
-				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(created)))
+				require.NoError(t, realtimeWriteText(provider, []byte(created)))
 				read(created)
 				events := []string{fmt.Sprintf(`{"type":"response.output_text.delta","response_id":"r%d","item_id":"item1","delta":"private transcript","future":true}`, turn), fmt.Sprintf(`{"type":"response.function_call_arguments.delta","response_id":"r%d","item_id":"item1","call_id":"call1","delta":"{}"}`, turn), fmt.Sprintf(`{"type":"response.function_call_arguments.done","response_id":"r%d","item_id":"item1","call_id":"call1","arguments":"{}"}`, turn)}
 				if turn == 2 {
 					events = events[:1]
 				}
 				for _, event := range events {
-					require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(event)))
+					require.NoError(t, realtimeWriteText(provider, []byte(event)))
 					read(event)
 				}
 				terminal := fmt.Sprintf(`{"type":"response.done","response":{"id":"r%d","status":"completed","usage":{"input_tokens":100,"output_tokens":30,"total_tokens":130,"input_token_details":{"text_tokens":40,"audio_tokens":50,"image_tokens":10,"cached_tokens":30,"cached_tokens_details":{"text_tokens":10,"audio_tokens":15,"image_tokens":5}},"output_token_details":{"text_tokens":10,"audio_tokens":20}}}}`, turn)
-				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(terminal)))
+				require.NoError(t, realtimeWriteText(provider, []byte(terminal)))
 				read(terminal)
-				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(terminal)))
+				require.NoError(t, realtimeWriteText(provider, []byte(terminal)))
 				barrier := fmt.Sprintf(`{"type":"rate_limits.updated","barrier":%d}`, turn)
-				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(barrier)))
+				require.NoError(t, realtimeWriteText(provider, []byte(barrier)))
 				read(barrier) // FIFO proves the duplicate frame has traversed the real Server hook.
 				require.Equal(t, turn, db.UsageLog.Query().CountX(ctx))
 				if turn == 1 {
 					executeTool := func(arguments string) string { require.JSONEq(t, "{}", arguments); return `{"ok":true}` }
 					result := map[string]any{"type": "conversation.item.create", "item": map[string]any{"type": "function_call_output", "call_id": "call1", "output": executeTool("{}")}}
-					require.NoError(t, client.WriteJSON(result))
-					_ = provider.SetReadDeadline(time.Now().Add(5 * time.Second))
-					_, raw, err := provider.ReadMessage()
+					require.NoError(t, realtimeWriteJSON(client, result))
+					_, raw, err := realtimeReadWithTimeout(provider, 5*time.Second)
 					require.NoError(t, err)
 					var forwarded map[string]any
 					require.NoError(t, json.Unmarshal(raw, &forwarded))
 					require.Equal(t, "call1", forwarded["item"].(map[string]any)["call_id"])
 					require.Equal(t, `{"ok":true}`, forwarded["item"].(map[string]any)["output"])
-					require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","event_id":"accepted-create"}`)))
-					_, raw, err = provider.ReadMessage()
+					require.NoError(t, realtimeWriteText(client, []byte(`{"type":"response.create","event_id":"accepted-create"}`)))
+					_, raw, err = realtimeReadWithTimeout(provider, 5*time.Second)
 					require.NoError(t, err)
 					require.JSONEq(t, `{"type":"response.create","event_id":"accepted-create"}`, string(raw))
 				}
@@ -265,12 +283,11 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 			}
 			// Disconnect immediately after upstream accepts response.create, before
 			// response.created or final usage arrives.
-			require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","event_id":"accepted-create"}`)))
-			_ = provider.SetReadDeadline(time.Now().Add(5 * time.Second))
-			_, pendingCreate, err := provider.ReadMessage()
+			require.NoError(t, realtimeWriteText(client, []byte(`{"type":"response.create","event_id":"accepted-create"}`)))
+			_, pendingCreate, err := realtimeReadWithTimeout(provider, 5*time.Second)
 			require.NoError(t, err)
 			require.JSONEq(t, `{"type":"response.create","event_id":"accepted-create"}`, string(pendingCreate))
-			require.NoError(t, client.Close())
+			require.NoError(t, client.CloseNow())
 			select {
 			case <-done:
 			case <-time.After(2 * time.Second):
@@ -282,7 +299,7 @@ func TestRealtimeNativeMultipleTurnsAccountingAndFunctionIDs(t *testing.T) {
 			require.NoError(t, usage.EnsureRealtimeUsageReconciled(requestCtx, key.ID))
 			require.Equal(t, 2, db.UsageLog.Query().CountX(ctx), "disconnect must not fabricate zero usage")
 			reconnected, reconnectedProvider := realtimeSocketPair(t)
-			require.NoError(t, reconnectedProvider.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf(`{"type":"session.created","session":{"id":"s2","type":"realtime","model":%q}}`, model))))
+			require.NoError(t, realtimeWriteText(reconnectedProvider, []byte(fmt.Sprintf(`{"type":"session.created","session":{"id":"s2","type":"realtime","model":%q}}`, model))))
 			next, initial, err := service.configure(requestCtx, reconnected, c.target, rt.Config{}.Defaults())
 			require.NoError(t, err, "the same key must be able to establish its next session")
 			require.Len(t, initial, 1)

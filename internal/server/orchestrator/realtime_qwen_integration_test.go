@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -29,7 +28,7 @@ func TestRealtimeQwenConfigurationDuplexAndTools(t *testing.T) {
 	for _, model := range []string{"qwen3.8-omni-flash-realtime", "qwen3.5-omni-plus-realtime", "qwen3.5-omni-flash-realtime"} {
 		t.Run(model, func(t *testing.T) {
 			upstream, provider := realtimeSocketPair(t)
-			require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.created","event_id":"created","session":{"id":"s1","model":"`+model+`","modalities":["text","audio"],"voice":"Tina","input_audio_format":"pcm","output_audio_format":"pcm"}}`)))
+			require.NoError(t, realtimeWriteText(provider, []byte(`{"type":"session.created","event_id":"created","session":{"id":"s1","model":"`+model+`","modalities":["text","audio"],"voice":"Tina","input_audio_format":"pcm","output_audio_format":"pcm"}}`)))
 			ack := `{"type":"session.updated","session":{"id":"s1","model":"` + model + `","modalities":["text","audio"],"voice":"Tina","turn_detection":null,"input_audio_format":"pcm","output_audio_format":"pcm"`
 			if model != "qwen3.8-omni-flash-realtime" {
 				ack += `,"audio":{"input":{"format":{"type":"pcm","sample_rate":24000}},"output":{"format":{"type":"pcm","sample_rate":24000}}}`
@@ -43,13 +42,12 @@ func TestRealtimeQwenConfigurationDuplexAndTools(t *testing.T) {
 						ackResult <- fmt.Errorf("mock panic: %T", r)
 					}
 				}()
-				_ = provider.SetReadDeadline(time.Now().Add(2 * time.Second))
-				_, data, err := provider.ReadMessage()
+				_, data, err := realtimeReadWithTimeout(provider, 2*time.Second)
 				if err == nil && gjson.GetBytes(data, "type").String() != "session.update" {
 					err = fmt.Errorf("configuration event missing")
 				}
 				if err == nil {
-					err = provider.WriteMessage(websocket.TextMessage, []byte(ack))
+					err = realtimeWriteText(provider, []byte(ack))
 				}
 				ackResult <- err
 			}()
@@ -73,10 +71,9 @@ func TestRealtimeQwenConfigurationDuplexAndTools(t *testing.T) {
 				}()
 				done <- rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: time.Second}, rt.Hooks{Client: conversation.adapter.Client, Server: conversation.adapter.Server, ServerFollowup: conversation.ServerFollowup})
 			}()
-			require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"conversation.item.created","event_id":"qwen-item","item":{"id":"i1","type":"message","role":"assistant","content":[{"type":"text","text":"hello"}]}}`)))
-			require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
+			require.NoError(t, realtimeWriteText(provider, []byte(`{"type":"conversation.item.created","event_id":"qwen-item","item":{"id":"i1","type":"message","role":"assistant","content":[{"type":"text","text":"hello"}]}}`)))
 			for _, kind := range []string{"conversation.item.added", "conversation.item.done"} {
-				_, frame, err := client.ReadMessage()
+				_, frame, err := realtimeReadWithTimeout(client, time.Second)
 				require.NoError(t, err)
 				require.Equal(t, kind, gjson.GetBytes(frame, "type").String())
 				require.Equal(t, "i1", gjson.GetBytes(frame, "item.id").String())
@@ -85,12 +82,11 @@ func TestRealtimeQwenConfigurationDuplexAndTools(t *testing.T) {
 
 			send := func(data string) {
 				t.Helper()
-				require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(data)))
+				require.NoError(t, realtimeWriteText(client, []byte(data)))
 			}
 			readProvider := func() []byte {
 				t.Helper()
-				_ = provider.SetReadDeadline(time.Now().Add(time.Second))
-				_, data, err := provider.ReadMessage()
+				_, data, err := realtimeReadWithTimeout(provider, time.Second)
 				require.NoError(t, err)
 				return data
 			}
@@ -109,16 +105,15 @@ func TestRealtimeQwenConfigurationDuplexAndTools(t *testing.T) {
 				require.JSONEq(t, data, string(got))
 			}
 			for _, event := range []struct{ from, to string }{{"response.audio.delta", "response.output_audio.delta"}, {"response.audio_transcript.delta", "response.output_audio_transcript.delta"}, {"response.text.delta", "response.output_text.delta"}, {"response.function_call_arguments.done", "response.function_call_arguments.done"}} {
-				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"`+event.from+`","response_id":"r1","item_id":"i1","call_id":"call1","delta":"AAA="}`)))
-				_ = client.SetReadDeadline(time.Now().Add(time.Second))
-				_, data, err := client.ReadMessage()
+				require.NoError(t, realtimeWriteText(provider, []byte(`{"type":"`+event.from+`","response_id":"r1","item_id":"i1","call_id":"call1","delta":"AAA="}`)))
+				_, data, err := realtimeReadWithTimeout(client, time.Second)
 				require.NoError(t, err)
 				var e map[string]any
 				require.NoError(t, json.Unmarshal(data, &e))
 				require.Equal(t, event.to, e["type"])
 				require.Equal(t, "call1", e["call_id"])
 			}
-			client.Close()
+			_ = client.CloseNow()
 			select {
 			case <-done:
 			case <-time.After(2 * time.Second):
@@ -132,21 +127,21 @@ func TestRealtimeProbeAcknowledgesProviderItemLifecycle(t *testing.T) {
 	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIRealtimeWebSocket, llm.APIFormatQwenRealtimeWebSocket} {
 		t.Run(string(format), func(t *testing.T) {
 			conn, provider := realtimeSocketPair(t)
-			require.NoError(t, conn.SetReadDeadline(time.Now().Add(time.Second)))
 			if format == llm.APIFormatOpenAIRealtimeWebSocket {
-				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"conversation.item.added"}`)))
-				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"conversation.item.done"}`)))
+				require.NoError(t, realtimeWriteText(provider, []byte(`{"type":"conversation.item.added"}`)))
+				require.NoError(t, realtimeWriteText(provider, []byte(`{"type":"conversation.item.done"}`)))
 			} else {
-				require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"conversation.item.created"}`)))
+				require.NoError(t, realtimeWriteText(provider, []byte(`{"type":"conversation.item.created"}`)))
 			}
-			require.NoError(t, waitRealtimeItemAcknowledgement(conn, format))
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			require.NoError(t, waitRealtimeItemAcknowledgement(ctx, conn, format))
 		})
 	}
 }
 
 func TestRealtimeTranslationProbeConfirmsUpdateAndClose(t *testing.T) {
 	upstream, provider := realtimeSocketPair(t)
-	require.NoError(t, provider.SetReadDeadline(time.Now().Add(time.Second)))
 	adapter := &openairt.Translation{}
 	_, err := adapter.Server([]byte(`{"type":"session.created","session":{"type":"translation","model":"gpt-realtime-translate"}}`))
 	require.NoError(t, err)
@@ -159,17 +154,17 @@ func TestRealtimeTranslationProbeConfirmsUpdateAndClose(t *testing.T) {
 				result <- fmt.Errorf("translation probe panic")
 			}
 		}()
-		result <- probeTranslationSession(upstream, adapter)
+		result <- probeTranslationSession(context.Background(), upstream, adapter)
 	}()
-	_, update, err := provider.ReadMessage()
+	_, update, err := realtimeReadWithTimeout(provider, time.Second)
 	require.NoError(t, err)
 	require.Equal(t, "session.update", gjson.GetBytes(update, "type").String())
 	require.Equal(t, "es", gjson.GetBytes(update, "session.audio.output.language").String())
-	require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.updated","session":{"type":"translation","model":"gpt-realtime-translate","audio":{"output":{"language":"es"}}}}`)))
-	_, closeEvent, err := provider.ReadMessage()
+	require.NoError(t, realtimeWriteText(provider, []byte(`{"type":"session.updated","session":{"type":"translation","model":"gpt-realtime-translate","audio":{"output":{"language":"es"}}}}`)))
+	_, closeEvent, err := realtimeReadWithTimeout(provider, time.Second)
 	require.NoError(t, err)
 	require.Equal(t, "session.close", gjson.GetBytes(closeEvent, "type").String())
-	require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.closed"}`)))
+	require.NoError(t, realtimeWriteText(provider, []byte(`{"type":"session.closed"}`)))
 	select {
 	case err := <-result:
 		require.NoError(t, err)
@@ -180,7 +175,7 @@ func TestRealtimeTranslationProbeConfirmsUpdateAndClose(t *testing.T) {
 
 func TestRealtimeTranslationHandoffClearsSharedConfigurationTimeout(t *testing.T) {
 	upstream, provider := realtimeSocketPair(t)
-	require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"session.created","session":{"type":"translation","model":"gpt-realtime-translate"}}`)))
+	require.NoError(t, realtimeWriteText(provider, []byte(`{"type":"session.created","session":{"type":"translation","model":"gpt-realtime-translate"}}`)))
 	target := &RealtimeTarget{
 		Translation: true,
 		Model:       "gpt-realtime-translate",

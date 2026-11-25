@@ -11,6 +11,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -21,7 +22,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 
 	protocol "github.com/looplj/axonhub/llm/realtime"
 )
@@ -65,7 +66,11 @@ func run() error {
 		u.Path = "/qwen/v1/realtime"
 	}
 	u.RawQuery = url.Values{"model": []string{*model}}.Encode()
-	conn, resp, err := (&websocket.Dialer{HandshakeTimeout: 15 * time.Second}).Dial(u.String(), http.Header{"Authorization": []string{"Bearer " + key}})
+	dialCtx, cancelDial := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancelDial()
+	conn, resp, err := websocket.Dial(dialCtx, u.String(), &websocket.DialOptions{
+		HTTPHeader: http.Header{"Authorization": []string{"Bearer " + key}},
+	})
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
 	}
@@ -75,16 +80,22 @@ func run() error {
 		}
 		return errors.New("gateway handshake failed")
 	}
-	defer conn.Close()
+	defer func() { _ = conn.CloseNow() }()
 	conn.SetReadLimit(256 << 10)
 	send := func(v any) error {
-		_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-		return conn.WriteJSON(v)
+		data, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		writeCtx, cancelWrite := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancelWrite()
+		return conn.Write(writeCtx, websocket.MessageText, data)
 	}
 	wait := func(want string) (map[string]any, error) {
-		_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		readCtx, cancelRead := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelRead()
 		for range 10000 {
-			_, data, err := conn.ReadMessage()
+			_, data, err := conn.Read(readCtx)
 			if err != nil {
 				return nil, errors.New("socket closed or timed out before " + want)
 			}
@@ -218,7 +229,7 @@ func run() error {
 		return err
 	}
 	fmt.Println("PASS function call, result and continuation")
-	return conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "smoke complete"), time.Now().Add(time.Second))
+	return conn.Close(websocket.StatusNormalClosure, "smoke complete")
 }
 
 func checkCompletedResponse(body map[string]any) error {

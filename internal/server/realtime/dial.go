@@ -27,14 +27,18 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func Dial(ctx context.Context, target, key string, proxy *httpclient.ProxyConfig, timeout time.Duration, safetyIdentifier ...string) (*websocket.Conn, error) {
-	d := &websocket.Dialer{HandshakeTimeout: timeout, TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12}, NetDialContext: publicDial}
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+		DialContext:     publicDial,
+	}
+	defer transport.CloseIdleConnections()
 	// An explicitly configured proxy is trusted administrative infrastructure.
 	// Only the fixed, validated provider target receives the upstream credential.
 	if proxy == nil {
@@ -53,8 +57,8 @@ func Dial(ctx context.Context, target, key string, proxy *httpclient.ProxyConfig
 				return nil, errors.New("invalid environment proxy")
 			}
 			if proxyURL != nil {
-				d.Proxy = http.ProxyURL(proxyURL)
-				d.NetDialContext = nil
+				transport.Proxy = http.ProxyURL(proxyURL)
+				transport.DialContext = nil
 			}
 		case httpclient.ProxyTypeURL:
 			u, err := url.Parse(proxy.URL)
@@ -64,8 +68,8 @@ func Dial(ctx context.Context, target, key string, proxy *httpclient.ProxyConfig
 			if proxy.Username != "" {
 				u.User = url.UserPassword(proxy.Username, proxy.Password)
 			}
-			d.Proxy = http.ProxyURL(u)
-			d.NetDialContext = nil
+			transport.Proxy = http.ProxyURL(u)
+			transport.DialContext = nil
 		case "", httpclient.ProxyTypeDisabled:
 		default:
 			return nil, errors.New("unsupported channel proxy")
@@ -75,8 +79,25 @@ func Dial(ctx context.Context, target, key string, proxy *httpclient.ProxyConfig
 	if len(safetyIdentifier) > 0 && safetyIdentifier[0] != "" {
 		headers.Set("Openai-Safety-Identifier", safetyIdentifier[0])
 	}
-	conn, response, err := d.DialContext(ctx, target, headers)
-	failureReason := handshakeFailureReason(response, key)
+	dialCtx := ctx
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		dialCtx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+	conn, response, err := websocket.Dial(dialCtx, target, &websocket.DialOptions{
+		HTTPClient: &http.Client{
+			Transport: transport,
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		HTTPHeader: headers,
+	})
+	var failureReason string
+	if err != nil {
+		failureReason = handshakeFailureReason(response, key)
+	}
 	if response != nil && response.Body != nil {
 		response.Body.Close()
 	}

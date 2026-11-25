@@ -28,8 +28,8 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/coder/websocket"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -62,10 +62,43 @@ const maxQueuedUpdates = 4
 
 var errUpdateQueueFull = errors.New("session.update queue is full; wait for session.updated before retrying")
 
+// Activity tracks the latest peer data or control-frame activity timestamp.
+// Share an instance with websocket AcceptOptions/DialOptions callbacks and pass
+// it in Options so peer-initiated pings count as session activity.
+type Activity struct {
+	lastUnixNano atomic.Int64
+}
+
+func NewActivity() *Activity {
+	a := &Activity{}
+	a.Touch()
+	return a
+}
+
+func (a *Activity) Touch() {
+	if a == nil {
+		return
+	}
+	a.lastUnixNano.Store(time.Now().UnixNano())
+}
+
+func (a *Activity) Last() time.Time {
+	if a == nil {
+		return time.Time{}
+	}
+	ns := a.lastUnixNano.Load()
+	if ns == 0 {
+		return time.Time{}
+	}
+	return time.Unix(0, ns)
+}
+
 type Options struct {
 	IdleTimeout, MaxDuration, WriteTimeout, PingInterval time.Duration
 	QueueSize                                            int
 	ClientEventsPerSecond                                int
+	DownstreamActivity                                   *Activity
+	UpstreamActivity                                     *Activity
 }
 
 func (o Options) defaults() Options {
@@ -206,8 +239,15 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 	o := options.defaults()
 	ctx, cancel := context.WithTimeout(parent, o.MaxDuration)
 	defer cancel()
-	defer downstream.Close()
-	defer upstream.Close()
+	// coder/websocket closes the underlying connection whenever a Read/Write
+	// context expires. Keep socket-lifetime contexts separate from session ctx
+	// so terminal error frames and classified close handshakes can still flush.
+	downstreamCtx, killDownstream := context.WithCancel(context.Background())
+	defer killDownstream()
+	upstreamCtx, killUpstream := context.WithCancel(context.Background())
+	defer killUpstream()
+	defer func() { _ = downstream.CloseNow() }()
+	defer func() { _ = upstream.CloseNow() }()
 	if hooks.BindContext != nil {
 		hooks.BindContext(ctx)
 	}
@@ -269,24 +309,26 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 		}
 		return ctx.Err()
 	}
-	started := time.Now()
-	var lastDownstream, lastUpstream atomic.Int64
+	downstreamActivity := o.DownstreamActivity
+	if downstreamActivity == nil {
+		downstreamActivity = NewActivity()
+	} else {
+		downstreamActivity.Touch()
+	}
+	upstreamActivity := o.UpstreamActivity
+	if upstreamActivity == nil {
+		upstreamActivity = NewActivity()
+	} else {
+		upstreamActivity.Touch()
+	}
 	// Give each peer time to receive and answer a gateway ping even when
 	// IdleTimeout is configured shorter than the heartbeat interval.
 	peerTimeout := max(o.IdleTimeout, 2*o.PingInterval)
 	errs := make(chan error, 4)
 	var wg sync.WaitGroup
 	var closing atomic.Bool
-	closeACK := make(chan struct{})
-	var closeOnce sync.Once
 	downstreamReaderDone := make(chan struct{})
 	tailWritten := make(chan struct{})
-	// The session owner sends the classified reply. Gorilla's default handler
-	// would send a close before that owner can serialize shutdown.
-	downstream.SetCloseHandler(func(int, string) error {
-		closeOnce.Do(func() { close(closeACK) })
-		return nil
-	})
 	launch := func(side string, fn func() error) {
 		wg.Go(func() {
 			defer func() {
@@ -312,23 +354,28 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 			}
 		})
 	}
-	read := func(conn *websocket.Conn, q *sendQueue, transform func([]byte) ([]byte, error), client bool) func() error {
+	read := func(conn *websocket.Conn, readCtx context.Context, activity *Activity, q *sendQueue, transform func([]byte) ([]byte, error), client bool) func() error {
 		return func() error {
-			last := &lastUpstream
-			if client {
-				last = &lastDownstream
-			}
-			touchActivity := func() { last.Store(int64(time.Since(started))) }
 			conn.SetReadLimit(MaxMessageBytes)
-			conn.SetPingHandler(func(payload string) error {
-				touchActivity()
-				return conn.WriteControl(websocket.PongMessage, []byte(payload), time.Now().Add(o.WriteTimeout))
-			})
-			conn.SetPongHandler(func(string) error { touchActivity(); return nil })
+			// Report local downstream errors without abandoning the read loop,
+			// so the socket keeps draining through the classified Close ACK or
+			// grace timeout in flushDownstreamClose.
+			failClient := func(cause error) error {
+				select {
+				case errs <- &SessionError{Side: "downstream", Cause: cause}:
+				default:
+				}
+				cancel()
+				for {
+					if _, _, readErr := conn.Read(readCtx); readErr != nil {
+						return cause
+					}
+				}
+			}
 			window := time.Now()
 			events, bytes := 0, 0
 			for {
-				kind, data, err := conn.ReadMessage()
+				kind, data, err := conn.Read(readCtx)
 				if err != nil {
 					if timeout, ok := errors.AsType[net.Error](err); ok && timeout.Timeout() {
 						return ErrIdleTimeout
@@ -338,7 +385,7 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 				if client && (closing.Load() || ctx.Err() != nil) {
 					continue // Drain unread input through the peer's Close ACK; avoid TCP RST.
 				}
-				touchActivity()
+				activity.Touch()
 				if client {
 					if time.Since(window) >= time.Second {
 						window = time.Now()
@@ -349,31 +396,31 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 					bytes += len(data)
 					if events > o.ClientEventsPerSecond {
 						log.Warn(ctx, "realtime client event rate exceeded", log.Int("events", events), log.Int("bytes", bytes), log.Int("limit", o.ClientEventsPerSecond))
-						return ErrClientRateLimited
+						return failClient(ErrClientRateLimited)
 					}
 					if bytes > 2<<20 {
-						return errors.New("realtime client data rate exceeded")
+						return failClient(errors.New("realtime client data rate exceeded"))
 					}
 				}
-				if kind != websocket.TextMessage {
+				if kind != websocket.MessageText {
 					if !client {
 						return ErrInvalidEvent
 					}
-					if err := toClient.enqueue(ctx, clientError(data, err)); err != nil {
+					if err := toClient.enqueue(ctx, clientError(data, ErrInvalidEvent)); err != nil {
 						if ctx.Err() != nil {
 							continue
 						}
-						return err
+						return failClient(err)
 					}
 					continue
 				}
 				if client && transform != nil {
 					if err := submitClient(data); err != nil && ctx.Err() == nil {
 						if errors.Is(err, ErrAccountingUnavailable) || errors.Is(err, ErrBackpressure) {
-							return err
+							return failClient(err)
 						}
 						if err := toClient.enqueue(ctx, clientError(data, err)); err != nil && ctx.Err() == nil {
-							return err
+							return failClient(err)
 						}
 					}
 					continue
@@ -385,13 +432,16 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 					}
 				}
 				if err := q.enqueue(ctx, data); err != nil {
-					if client && ctx.Err() != nil {
-						continue
+					if client {
+						if ctx.Err() != nil {
+							continue
+						}
+						return failClient(err)
 					}
 					return err
 				}
 				if !client && data != nil && hooks.ServerDone != nil && hooks.ServerDone(data) {
-					return &websocket.CloseError{Code: websocket.CloseNormalClosure}
+					return websocket.CloseError{Code: websocket.StatusNormalClosure}
 				}
 				if !client && data != nil && hooks.ServerFollowup != nil {
 					followup, err := hooks.ServerFollowup(data)
@@ -413,10 +463,8 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 			}
 		}
 	}
-	write := func(conn *websocket.Conn, q <-chan []byte) func() error {
+	write := func(conn *websocket.Conn, writeParent context.Context, q <-chan []byte) func() error {
 		return func() error {
-			ticker := time.NewTicker(o.PingInterval)
-			defer ticker.Stop()
 			for {
 				if ctx.Err() != nil {
 					return ctx.Err()
@@ -430,33 +478,69 @@ func Run(parent context.Context, downstream, upstream *websocket.Conn, options O
 						<-ctx.Done()
 						return ctx.Err()
 					}
-					if err := conn.SetWriteDeadline(time.Now().Add(o.WriteTimeout)); err != nil {
-						return err
-					}
-					if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+					wctx, wcancel := context.WithTimeout(writeParent, o.WriteTimeout)
+					err := conn.Write(wctx, websocket.MessageText, data)
+					wcancel()
+					if err != nil {
 						return err
 					}
 					if conn == upstream && hooks.UpstreamWritten != nil {
 						hooks.UpstreamWritten(data)
 					}
-				case <-ticker.C:
-					if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(o.WriteTimeout)); err != nil {
-						return err
-					}
 				}
 			}
 		}
 	}
-	readDownstream := read(downstream, toProvider, hooks.Client, true)
+	ping := func(conn *websocket.Conn, pingParent context.Context, activity *Activity) {
+		wg.Go(func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Error(ctx, "realtime ping worker panicked", log.Any("panic", fmt.Sprintf("%T", r)))
+				}
+			}()
+			ticker := time.NewTicker(o.PingInterval)
+			defer ticker.Stop()
+			pingTimeout := min(o.WriteTimeout, peerTimeout)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-pingParent.Done():
+					return
+				case <-ticker.C:
+					if ctx.Err() != nil || closing.Load() {
+						return
+					}
+					pctx, pcancel := context.WithTimeout(pingParent, pingTimeout)
+					err := conn.Ping(pctx)
+					pcancel()
+					if err == nil {
+						activity.Touch()
+						continue
+					}
+					if ctx.Err() != nil || closing.Load() {
+						return
+					}
+					// A missing pong is governed by the idle timeout check below.
+					if !errors.Is(err, context.DeadlineExceeded) {
+						return
+					}
+				}
+			}
+		})
+	}
+	readDownstream := read(downstream, downstreamCtx, downstreamActivity, toProvider, hooks.Client, true)
 	launch("downstream", func() error { defer close(downstreamReaderDone); return readDownstream() })
-	launch("upstream", read(upstream, toClient, hooks.Server, false))
+	launch("upstream", read(upstream, upstreamCtx, upstreamActivity, toClient, hooks.Server, false))
 	downstreamWriterDone := make(chan struct{})
-	writeDownstream := write(downstream, toClient.frames)
+	writeDownstream := write(downstream, downstreamCtx, toClient.frames)
 	launch("downstream", func() error {
 		defer close(downstreamWriterDone)
 		return writeDownstream()
 	})
-	launch("upstream", write(upstream, toProvider.frames))
+	launch("upstream", write(upstream, upstreamCtx, toProvider.frames))
+	ping(downstream, downstreamCtx, downstreamActivity)
+	ping(upstream, upstreamCtx, upstreamActivity)
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 	var result error
@@ -474,9 +558,9 @@ loop:
 			}
 			break loop
 		case <-tick.C:
-			elapsed := time.Since(started)
-			downstreamIdle := elapsed - time.Duration(lastDownstream.Load())
-			upstreamIdle := elapsed - time.Duration(lastUpstream.Load())
+			now := time.Now()
+			downstreamIdle := now.Sub(downstreamActivity.Last())
+			upstreamIdle := now.Sub(upstreamActivity.Last())
 			if min(downstreamIdle, upstreamIdle) > o.IdleTimeout || downstreamIdle > peerTimeout || upstreamIdle > peerTimeout {
 				result = ErrIdleTimeout
 				break loop
@@ -504,8 +588,9 @@ loop:
 	}
 	code, reason := CloseStatus(result)
 	cancel()
-	upstream.Close() // Stop provider work while the downstream completes its close handshake.
-	if code == websocket.CloseInternalServerErr || reason == "upstream_unavailable" {
+	killUpstream()
+	_ = upstream.CloseNow() // Stop provider work while the downstream completes its close handshake.
+	if code == int(websocket.StatusInternalError) || reason == "upstream_unavailable" {
 		// Let the sole writer exit before sending the terminal error.
 		// Reserve the existing Close handshake for slow consumers.
 		timer := time.NewTimer(time.Second)
@@ -518,9 +603,9 @@ loop:
 			frame, _ := json.Marshal(map[string]any{"type": "error", "error": map[string]string{
 				"type": "server_error", "code": reason, "message": message,
 			}})
-			if err := downstream.SetWriteDeadline(time.Now().Add(time.Second)); err == nil {
-				_ = downstream.WriteMessage(websocket.TextMessage, frame)
-			}
+			errCtx, errCancel := context.WithTimeout(downstreamCtx, time.Second)
+			_ = downstream.Write(errCtx, websocket.MessageText, frame)
+			errCancel()
 		case <-timer.C:
 			log.Warn(ctx, "realtime terminal error frame timed out")
 		}
@@ -534,8 +619,9 @@ loop:
 		// Provider close text and arbitrary nested errors can contain wire data.
 		log.Warn(ctx, "realtime session terminated", log.String("reason", reason), log.String("cause", safeCloseCause(cause)))
 	}
-	flushDownstreamClose(ctx, downstream, code, reason, closeACK, downstreamReaderDone)
-	downstream.Close()
+	flushDownstreamClose(ctx, downstream, code, reason, killDownstream, downstreamReaderDone)
+	killDownstream()
+	_ = downstream.CloseNow()
 	wg.Wait()
 	clear(updates)
 	return result
@@ -606,9 +692,9 @@ func drainUpstreamTail(ctx context.Context, frames chan<- []byte, written <-chan
 
 func isOrderlyUpstreamClose(err error) bool {
 	var side *SessionError
-	var closed *websocket.CloseError
-	return errors.As(err, &side) && side.Side == "upstream" && errors.As(err, &closed) &&
-		(closed.Code == websocket.CloseNormalClosure || closed.Code == websocket.CloseGoingAway)
+	code := websocket.CloseStatus(err)
+	return errors.As(err, &side) && side.Side == "upstream" &&
+		(code == websocket.StatusNormalClosure || code == websocket.StatusGoingAway)
 }
 
 // SessionError classifies the disconnected side without exposing provider payloads.
@@ -624,8 +710,8 @@ func IsAbnormal(err error) bool {
 	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, ErrIdleTimeout) {
 		return false
 	}
-	var closed *websocket.CloseError
-	if errors.As(err, &closed) && (closed.Code == websocket.CloseNormalClosure || closed.Code == websocket.CloseGoingAway) {
+	code := websocket.CloseStatus(err)
+	if code == websocket.StatusNormalClosure || code == websocket.StatusGoingAway {
 		return false
 	}
 	return true
@@ -634,43 +720,43 @@ func IsAbnormal(err error) bool {
 // CloseStatus returns only gateway-generated reasons suitable for clients and audit.
 func CloseStatus(err error) (int, string) {
 	if errors.Is(err, ErrIdleTimeout) {
-		return websocket.CloseNormalClosure, "idle_timeout"
+		return int(websocket.StatusNormalClosure), "idle_timeout"
 	}
 	if !IsAbnormal(err) {
-		return websocket.CloseNormalClosure, "normal_closure"
+		return int(websocket.StatusNormalClosure), "normal_closure"
 	}
 	if errors.Is(err, ErrBackpressure) {
-		return websocket.CloseTryAgainLater, "backpressure"
+		return int(websocket.StatusTryAgainLater), "backpressure"
 	}
 	if errors.Is(err, ErrClientRateLimited) {
-		return websocket.ClosePolicyViolation, "client_rate_limited"
+		return int(websocket.StatusPolicyViolation), "client_rate_limited"
 	}
 	var side *SessionError
-	var closeErr *websocket.CloseError
+	var closeErr websocket.CloseError
 	var networkErr net.Error
 	if errors.As(err, &side) && side.Side == "downstream" &&
-		(errors.As(err, &closeErr) || errors.As(err, &networkErr) || errors.Is(err, io.EOF)) {
-		return websocket.CloseGoingAway, "client_closed"
+		(errors.As(err, &closeErr) || errors.As(err, &networkErr) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, net.ErrClosed)) {
+		return int(websocket.StatusGoingAway), "client_closed"
 	}
 	if errors.As(err, &side) && side.Side == "upstream" {
 		if errors.As(err, &closeErr) {
 			switch closeErr.Code {
-			case websocket.CloseAbnormalClosure, websocket.CloseInternalServerErr, websocket.CloseServiceRestart, websocket.CloseTryAgainLater:
-				return websocket.CloseTryAgainLater, "upstream_unavailable"
+			case websocket.StatusAbnormalClosure, websocket.StatusInternalError, websocket.StatusServiceRestart, websocket.StatusTryAgainLater:
+				return int(websocket.StatusTryAgainLater), "upstream_unavailable"
 			}
-		} else if errors.As(err, &networkErr) || errors.Is(err, io.EOF) {
-			return websocket.CloseTryAgainLater, "upstream_unavailable"
+		} else if errors.As(err, &networkErr) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, net.ErrClosed) {
+			return int(websocket.StatusTryAgainLater), "upstream_unavailable"
 		}
 	}
-	return websocket.CloseInternalServerErr, "internal_error"
+	return int(websocket.StatusInternalError), "internal_error"
 }
 
 func safeCloseCause(err error) string {
 	if err == nil {
 		return ""
 	}
-	if closed, ok := errors.AsType[*websocket.CloseError](err); ok {
-		return fmt.Sprintf("websocket close code %d", closed.Code)
+	if code := websocket.CloseStatus(err); code != -1 {
+		return fmt.Sprintf("websocket close code %d", code)
 	}
 	for _, safe := range []error{ErrInvalidEvent, ErrAccountingUnavailable, ErrQuotaExceeded, ErrBackpressure, ErrClientRateLimited, io.EOF, context.DeadlineExceeded} {
 		if errors.Is(err, safe) {

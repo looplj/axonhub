@@ -14,21 +14,43 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
 	qwenrt "github.com/looplj/axonhub/llm/realtime"
 )
 
+func readWithTimeout(conn *websocket.Conn, timeout time.Duration) (websocket.MessageType, []byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return conn.Read(ctx)
+}
+
+func writeTextWithTimeout(conn *websocket.Conn, timeout time.Duration, data []byte) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return conn.Write(ctx, websocket.MessageText, data)
+}
+
 func TestSessionSlowConsumerReceivesBackpressureCloseAndFlushes(t *testing.T) {
-	client, downstream := socketPair(t)
-	require.NoError(t, client.UnderlyingConn().(*net.TCPConn).SetReadBuffer(1024))
-	require.NoError(t, downstream.UnderlyingConn().(*net.TCPConn).SetWriteBuffer(1024))
+	release := make(chan struct{})
+	var gate *gatedSessionWriteConn
+	downstream, client := socketPairWithNetDial(t, func(ctx context.Context, network, address string) (net.Conn, error) {
+		var dial net.Dialer
+		conn, err := dial.DialContext(ctx, network, address)
+		if err != nil {
+			return nil, err
+		}
+		gate = newGatedSessionWriteConn(conn, t.Context(), release)
+		return gate, nil
+	})
+	gate.nextWrite.Store(true)
 	upstream, provider := socketPair(t)
 	full := make(chan struct{})
 	var observed atomic.Int32
@@ -50,34 +72,36 @@ func TestSessionSlowConsumerReceivesBackpressureCloseAndFlushes(t *testing.T) {
 	// One frame in flight, one queued, the third blocks the production queue.
 	payload := []byte(strings.Repeat("x", 64<<10))
 	for range 3 {
-		require.NoError(t, provider.WriteMessage(websocket.TextMessage, payload))
+		require.NoError(t, writeTextWithTimeout(provider, time.Second, payload))
 	}
 	select {
 	case <-full:
 	case <-time.After(time.Second):
 		t.Fatal("queue did not fill")
 	}
+	select {
+	case <-gate.entered:
+	case <-time.After(time.Second):
+		t.Fatal("downstream writer did not start")
+	}
 	time.Sleep(1200 * time.Millisecond) // unchanged 1s backpressure wait, then resume within close flush grace
-	require.NoError(t, client.UnderlyingConn().(*net.TCPConn).SetReadBuffer(4<<20))
-	client.SetCloseHandler(func(int, string) error { return nil }) // real peer deliberately delays Close ACK
-	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
+	select {
+	case err := <-done:
+		t.Fatalf("TCP closed before slow consumer resumed and acknowledged Close: %v", err)
+	default:
+	}
+	close(release)
 	for {
-		_, _, err := client.ReadMessage()
+		_, _, err := readWithTimeout(client, time.Second)
 		if err == nil {
 			continue
 		}
-		var closed *websocket.CloseError
+		var closed websocket.CloseError
 		require.ErrorAs(t, err, &closed)
-		require.Equal(t, 1013, closed.Code)
-		require.Equal(t, "backpressure", closed.Text)
+		require.Equal(t, websocket.StatusTryAgainLater, closed.Code)
+		require.Equal(t, "backpressure", closed.Reason)
 		break
 	}
-	select {
-	case err := <-done:
-		t.Fatalf("TCP closed before peer Close ACK: %v", err)
-	case <-time.After(40 * time.Millisecond):
-	}
-	require.NoError(t, client.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(1013, ""), time.Now().Add(time.Second)))
 	select {
 	case err := <-done:
 		require.ErrorIs(t, err, ErrBackpressure)
@@ -102,11 +126,10 @@ func TestSessionNormalCloseFrame(t *testing.T) {
 		done <- Run(ctx, downstream, upstream, Options{}, Hooks{})
 	}()
 	cancel()
-	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
-	_, _, err := client.ReadMessage()
-	var closed *websocket.CloseError
+	_, _, err := readWithTimeout(client, time.Second)
+	var closed websocket.CloseError
 	require.ErrorAs(t, err, &closed)
-	require.Equal(t, 1000, closed.Code)
+	require.Equal(t, websocket.StatusNormalClosure, closed.Code)
 	select {
 	case <-done:
 	case <-time.After(time.Second):
@@ -120,14 +143,14 @@ func TestClientEventRateLimitDefaultAllowsMoreThanLegacy256(t *testing.T) {
 	done := make(chan error, 1)
 	go runSessionForTest(t, done, func() error { return Run(context.Background(), downstream, upstream, Options{}, Hooks{}) })
 	for range 300 {
-		require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"ping"}`)))
+		require.NoError(t, writeTextWithTimeout(client, time.Second, []byte(`{"type":"ping"}`)))
 	}
 	select {
 	case err := <-done:
 		t.Fatalf("default rate limit closed the session before 300 events: %v", err)
 	case <-time.After(100 * time.Millisecond):
 	}
-	require.NoError(t, client.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second)))
+	require.NoError(t, client.Close(websocket.StatusNormalClosure, ""))
 	select {
 	case <-done:
 	case <-time.After(time.Second):
@@ -144,14 +167,14 @@ func TestClientEventRateLimitDefaultAllows400EventsPerSecondForTenSeconds(t *tes
 	defer ticker.Stop()
 	for range 4000 {
 		<-ticker.C
-		require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"ping"}`)))
+		require.NoError(t, writeTextWithTimeout(client, time.Second, []byte(`{"type":"ping"}`)))
 	}
 	select {
 	case err := <-done:
 		t.Fatalf("default rate limit closed the session during 400 events/second: %v", err)
 	default:
 	}
-	require.NoError(t, client.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second)))
+	require.NoError(t, client.Close(websocket.StatusNormalClosure, ""))
 	select {
 	case <-done:
 	case <-time.After(time.Second):
@@ -165,14 +188,15 @@ func TestClientEventRateLimitDefaultClosesAfter1024Events(t *testing.T) {
 	done := make(chan error, 1)
 	go runSessionForTest(t, done, func() error { return Run(context.Background(), downstream, upstream, Options{}, Hooks{}) })
 	for range 1025 {
-		require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"ping"}`)))
+		if err := writeTextWithTimeout(client, time.Second, []byte(`{"type":"ping"}`)); err != nil {
+			break
+		}
 	}
-	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
-	_, _, err := client.ReadMessage()
-	var closed *websocket.CloseError
+	_, _, err := readWithTimeout(client, time.Second)
+	var closed websocket.CloseError
 	require.ErrorAs(t, err, &closed)
-	require.Equal(t, websocket.ClosePolicyViolation, closed.Code)
-	require.Equal(t, "client_rate_limited", closed.Text)
+	require.Equal(t, websocket.StatusPolicyViolation, closed.Code)
+	require.Equal(t, "client_rate_limited", closed.Reason)
 	select {
 	case <-done:
 	case <-time.After(time.Second):
@@ -188,14 +212,15 @@ func TestClientEventRateLimitUsesOverrideAndSendsPolicyClose(t *testing.T) {
 		return Run(context.Background(), downstream, upstream, Options{ClientEventsPerSecond: 300}, Hooks{})
 	})
 	for range 301 {
-		require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"ping"}`)))
+		if err := writeTextWithTimeout(client, time.Second, []byte(`{"type":"ping"}`)); err != nil {
+			break
+		}
 	}
-	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
-	_, _, err := client.ReadMessage()
-	var closed *websocket.CloseError
+	_, _, err := readWithTimeout(client, time.Second)
+	var closed websocket.CloseError
 	require.ErrorAs(t, err, &closed)
-	require.Equal(t, websocket.ClosePolicyViolation, closed.Code)
-	require.Equal(t, "client_rate_limited", closed.Text)
+	require.Equal(t, websocket.StatusPolicyViolation, closed.Code)
+	require.Equal(t, "client_rate_limited", closed.Reason)
 	select {
 	case <-done:
 	case <-time.After(time.Second):
@@ -216,16 +241,15 @@ func TestSessionInternalErrorCloseFrame(t *testing.T) {
 		}()
 		done <- Run(context.Background(), downstream, upstream, Options{}, Hooks{Server: func([]byte) ([]byte, error) { return nil, ErrAccountingUnavailable }})
 	}()
-	require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"error"}`)))
-	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
-	_, frame, err := client.ReadMessage()
+	require.NoError(t, writeTextWithTimeout(provider, time.Second, []byte(`{"type":"error"}`)))
+	_, frame, err := readWithTimeout(client, time.Second)
 	require.NoError(t, err)
 	require.Contains(t, string(frame), `"code":"internal_error"`)
-	_, _, err = client.ReadMessage()
-	var closed *websocket.CloseError
+	_, _, err = readWithTimeout(client, time.Second)
+	var closed websocket.CloseError
 	require.ErrorAs(t, err, &closed)
-	require.Equal(t, 1011, closed.Code)
-	require.Equal(t, "internal_error", closed.Text)
+	require.Equal(t, websocket.StatusInternalError, closed.Code)
+	require.Equal(t, "internal_error", closed.Reason)
 	select {
 	case err := <-done:
 		require.ErrorIs(t, err, ErrAccountingUnavailable)
@@ -242,12 +266,11 @@ func TestSessionIdleTimeoutClosesWithNormalStatusAndReason(t *testing.T) {
 		return Run(context.Background(), downstream, upstream, Options{IdleTimeout: 50 * time.Millisecond, PingInterval: time.Minute}, Hooks{})
 	})
 
-	require.NoError(t, client.SetReadDeadline(time.Now().Add(2*time.Second)))
-	_, _, err := client.ReadMessage()
-	var closed *websocket.CloseError
+	_, _, err := readWithTimeout(client, 2*time.Second)
+	var closed websocket.CloseError
 	require.ErrorAs(t, err, &closed)
-	require.Equal(t, websocket.CloseNormalClosure, closed.Code)
-	require.Equal(t, "idle_timeout", closed.Text)
+	require.Equal(t, websocket.StatusNormalClosure, closed.Code)
+	require.Equal(t, "idle_timeout", closed.Reason)
 	select {
 	case err := <-done:
 		require.ErrorIs(t, err, ErrIdleTimeout)
@@ -257,12 +280,29 @@ func TestSessionIdleTimeoutClosesWithNormalStatusAndReason(t *testing.T) {
 }
 
 func TestSessionClientPingCountsAsIdleActivity(t *testing.T) {
-	client, downstream := socketPair(t)
+	downstreamActivity := NewActivity()
+	client, downstream := socketPairWithActivity(t, downstreamActivity)
 	upstream, _ := socketPair(t)
 	done := make(chan error, 1)
 	go runSessionForTest(t, done, func() error {
-		return Run(context.Background(), downstream, upstream, Options{IdleTimeout: 1100 * time.Millisecond, PingInterval: time.Minute}, Hooks{})
+		return Run(context.Background(), downstream, upstream, Options{
+			IdleTimeout:        1100 * time.Millisecond,
+			PingInterval:       time.Minute,
+			DownstreamActivity: downstreamActivity,
+		}, Hooks{})
 	})
+
+	// coder/websocket Ping waits for the matching Pong read by a concurrent Reader.
+	clientReadErr := make(chan error, 1)
+	go func() {
+		for {
+			_, _, err := client.Read(t.Context())
+			if err != nil {
+				clientReadErr <- err
+				return
+			}
+		}
+	}()
 
 	stopPings := make(chan struct{})
 	pingsDone := make(chan struct{})
@@ -280,7 +320,10 @@ func TestSessionClientPingCountsAsIdleActivity(t *testing.T) {
 			case <-stopPings:
 				return
 			case <-ticker.C:
-				if err := client.WriteControl(websocket.PingMessage, []byte("client-activity"), time.Now().Add(time.Second)); err != nil {
+				pctx, pcancel := context.WithTimeout(t.Context(), time.Second)
+				err := client.Ping(pctx)
+				pcancel()
+				if err != nil {
 					return
 				}
 			}
@@ -294,12 +337,15 @@ func TestSessionClientPingCountsAsIdleActivity(t *testing.T) {
 	close(stopPings)
 	<-pingsDone
 
-	require.NoError(t, client.SetReadDeadline(time.Now().Add(4*time.Second)))
-	_, _, err := client.ReadMessage()
-	var closed *websocket.CloseError
-	require.ErrorAs(t, err, &closed)
-	require.Equal(t, websocket.CloseNormalClosure, closed.Code)
-	require.Equal(t, "idle_timeout", closed.Text)
+	select {
+	case err := <-clientReadErr:
+		var closed websocket.CloseError
+		require.ErrorAs(t, err, &closed)
+		require.Equal(t, websocket.StatusNormalClosure, closed.Code)
+		require.Equal(t, "idle_timeout", closed.Reason)
+	case <-time.After(4 * time.Second):
+		t.Fatal("client did not observe idle timeout close")
+	}
 	select {
 	case err := <-done:
 		require.ErrorIs(t, err, ErrIdleTimeout)
@@ -318,11 +364,11 @@ func TestSessionUpstreamPongsCannotKeepSilentClientAlive(t *testing.T) {
 		return Run(ctx, downstream, upstream, Options{IdleTimeout: 350 * time.Millisecond, PingInterval: 100 * time.Millisecond}, Hooks{})
 	})
 
-	// Read provider-side pings so Gorilla answers them with pongs. Leave the
+	// Read provider-side pings so coder/websocket answers them with pongs. Leave the
 	// client socket unread until shutdown, as with a silently lost connection.
 	providerDone := make(chan error, 1)
 	go runSessionForTest(t, providerDone, func() error {
-		_, _, err := provider.ReadMessage()
+		_, _, err := provider.Read(ctx)
 		return err
 	})
 	select {
@@ -344,23 +390,49 @@ func TestSafeCloseCauseSanitizesAndBoundsUnknownErrors(t *testing.T) {
 
 func socketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
 	t.Helper()
-	return socketPairWithDialer(t, websocket.DefaultDialer)
+	return socketPairWithOptions(t, nil, nil)
 }
 
-func socketPairWithDialer(t *testing.T, dialer *websocket.Dialer) (*websocket.Conn, *websocket.Conn) {
+func socketPairWithActivity(t *testing.T, serverActivity *Activity) (*websocket.Conn, *websocket.Conn) {
+	t.Helper()
+	return socketPairWithOptions(t, &websocket.AcceptOptions{
+		OnPingReceived: func(context.Context, []byte) bool {
+			serverActivity.Touch()
+			return true
+		},
+		OnPongReceived: func(context.Context, []byte) {
+			serverActivity.Touch()
+		},
+	}, nil)
+}
+
+func socketPairWithNetDial(t *testing.T, dialContext func(context.Context, string, string) (net.Conn, error)) (*websocket.Conn, *websocket.Conn) {
+	t.Helper()
+	transport := &http.Transport{DialContext: dialContext}
+	t.Cleanup(transport.CloseIdleConnections)
+	return socketPairWithOptions(t, nil, &websocket.DialOptions{
+		HTTPClient: &http.Client{Transport: transport},
+	})
+}
+
+func socketPairWithOptions(t *testing.T, acceptOpts *websocket.AcceptOptions, dialOpts *websocket.DialOptions) (*websocket.Conn, *websocket.Conn) {
 	t.Helper()
 	accepted := make(chan *websocket.Conn, 1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, e := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		c, e := websocket.Accept(w, r, acceptOpts)
 		if e == nil {
+			c.SetReadLimit(MaxMessageBytes)
 			accepted <- c
 		}
 	}))
 	t.Cleanup(srv.Close)
-	client, _, err := dialer.Dial("ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	dialCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	client, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(srv.URL, "http"), dialOpts)
 	require.NoError(t, err)
+	client.SetReadLimit(MaxMessageBytes)
 	server := <-accepted
-	t.Cleanup(func() { client.Close(); server.Close() })
+	t.Cleanup(func() { _ = client.CloseNow(); _ = server.CloseNow() })
 	return client, server
 }
 
@@ -384,12 +456,12 @@ func TestSessionBidirectionalAndCancellation(t *testing.T) {
 	go runSessionForTest(t, finished, func() error {
 		return Run(ctx, downstream, upstream, Options{IdleTimeout: time.Second, MaxDuration: time.Minute}, Hooks{})
 	})
-	require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`)))
-	_, data, err := provider.ReadMessage()
+	require.NoError(t, writeTextWithTimeout(client, time.Second, []byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`)))
+	_, data, err := readWithTimeout(provider, time.Second)
 	require.NoError(t, err)
 	require.Contains(t, string(data), "append")
-	require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.created"}`)))
-	_, data, err = client.ReadMessage()
+	require.NoError(t, writeTextWithTimeout(provider, time.Second, []byte(`{"type":"response.created"}`)))
+	_, data, err = readWithTimeout(client, time.Second)
 	require.NoError(t, err)
 	require.Contains(t, string(data), "response.created")
 	cancel()
@@ -398,8 +470,7 @@ func TestSessionBidirectionalAndCancellation(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("session goroutines did not exit")
 	}
-	provider.SetReadDeadline(time.Now().Add(time.Second))
-	_, _, err = provider.ReadMessage()
+	_, _, err = readWithTimeout(provider, time.Second)
 	require.Error(t, err)
 }
 
@@ -412,13 +483,11 @@ func TestSessionDoesNotForwardRejectedEvent(t *testing.T) {
 	go runSessionForTest(t, done, func() error {
 		return Run(ctx, downstream, upstream, Options{IdleTimeout: time.Second}, Hooks{Client: func([]byte) ([]byte, error) { return nil, ErrInvalidEvent }})
 	})
-	require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"invalid"}`)))
-	client.SetReadDeadline(time.Now().Add(time.Second))
-	_, data, err := client.ReadMessage()
+	require.NoError(t, writeTextWithTimeout(client, time.Second, []byte(`{"type":"invalid"}`)))
+	_, data, err := readWithTimeout(client, time.Second)
 	require.NoError(t, err)
 	require.Contains(t, string(data), "invalid_request_error")
-	provider.SetReadDeadline(time.Now().Add(20 * time.Millisecond))
-	_, _, err = provider.ReadMessage()
+	_, _, err = readWithTimeout(provider, 20*time.Millisecond)
 	require.Error(t, err)
 	cancel()
 	select {
@@ -439,25 +508,24 @@ func TestSessionClosesPeerOnEitherDisconnect(t *testing.T) {
 			})
 			peer := provider
 			if upstreamDisconnect {
-				provider.Close()
+				_ = provider.CloseNow()
 				peer = client
 			} else {
-				client.Close()
+				_ = client.CloseNow()
 			}
 			select {
 			case <-done:
 			case <-time.After(2 * time.Second):
 				t.Fatal("disconnected peer leaked workers")
 			}
-			peer.SetReadDeadline(time.Now().Add(time.Second))
-			_, frame, err := peer.ReadMessage()
+			_, frame, err := readWithTimeout(peer, time.Second)
 			if upstreamDisconnect {
 				require.NoError(t, err)
 				require.Contains(t, string(frame), `"code":"upstream_unavailable"`)
-				_, _, err = peer.ReadMessage()
-				var closed *websocket.CloseError
+				_, _, err = readWithTimeout(peer, time.Second)
+				var closed websocket.CloseError
 				require.ErrorAs(t, err, &closed)
-				require.Equal(t, 1013, closed.Code)
+				require.Equal(t, websocket.StatusTryAgainLater, closed.Code)
 			}
 			require.Error(t, err)
 		})
@@ -470,7 +538,7 @@ func TestSessionEnforcesMessageAndDurationBounds(t *testing.T) {
 		upstream, _ := socketPair(t)
 		done := make(chan error, 1)
 		go runSessionForTest(t, done, func() error { return Run(context.Background(), downstream, upstream, Options{}, Hooks{}) })
-		_ = client.WriteMessage(websocket.TextMessage, []byte(strings.Repeat("a", MaxMessageBytes+1)))
+		_ = writeTextWithTimeout(client, time.Second, []byte(strings.Repeat("a", MaxMessageBytes+1)))
 		select {
 		case err := <-done:
 			require.Error(t, err)
@@ -547,10 +615,18 @@ func TestSendQueueBlockedProducerResumesWithoutDropping(t *testing.T) {
 }
 
 func TestSessionSlowClientBoundedBackpressure(t *testing.T) {
-	client, downstream := socketPair(t)
-	// Prevent the loopback receive buffer from absorbing the whole burst while
-	// this client deliberately does not consume frames.
-	require.NoError(t, client.UnderlyingConn().(*net.TCPConn).SetReadBuffer(1024))
+	release := make(chan struct{})
+	var gate *gatedSessionWriteConn
+	downstream, _ := socketPairWithNetDial(t, func(ctx context.Context, network, address string) (net.Conn, error) {
+		var dial net.Dialer
+		conn, err := dial.DialContext(ctx, network, address)
+		if err != nil {
+			return nil, err
+		}
+		gate = newGatedSessionWriteConn(conn, t.Context(), release)
+		return gate, nil
+	})
+	gate.nextWrite.Store(true)
 	upstream, provider := socketPair(t)
 	var observed atomic.Int32
 	done := make(chan error, 1)
@@ -567,11 +643,10 @@ func TestSessionSlowClientBoundedBackpressure(t *testing.T) {
 	}()
 	// Upstream messages bypass the client-only input rate limiter. Session and
 	// socket deadlines are deliberately longer than the queue's one-second wait.
-	payload := []byte(strings.Repeat("x", 200<<10))
+	payload := []byte(strings.Repeat("x", 64<<10))
 	started := time.Now()
-	require.NoError(t, provider.SetWriteDeadline(started.Add(8*time.Second)))
-	for range 128 {
-		if err := provider.WriteMessage(websocket.TextMessage, payload); err != nil {
+	for range 4 {
+		if err := writeTextWithTimeout(provider, 8*time.Second, payload); err != nil {
 			break
 		}
 	}
@@ -600,9 +675,8 @@ func TestRejectedClientEventPreservesCorrelation(t *testing.T) {
 		}()
 		done <- Run(ctx, downstream, upstream, Options{}, Hooks{Client: func([]byte) ([]byte, error) { return nil, ErrInvalidEvent }})
 	}()
-	require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"event_id":"client-event-1","type":"unsupported"}`)))
-	_ = client.SetReadDeadline(time.Now().Add(time.Second))
-	_, data, err := client.ReadMessage()
+	require.NoError(t, writeTextWithTimeout(client, time.Second, []byte(`{"event_id":"client-event-1","type":"unsupported"}`)))
+	_, data, err := readWithTimeout(client, time.Second)
 	require.NoError(t, err)
 	var event struct {
 		ID    string `json:"event_id"`
@@ -628,6 +702,23 @@ type gatedSessionWriteConn struct {
 	entered   chan struct{}
 	release   <-chan struct{}
 	ctx       context.Context
+	closed    chan struct{}
+	closeOnce sync.Once
+}
+
+func newGatedSessionWriteConn(conn net.Conn, ctx context.Context, release <-chan struct{}) *gatedSessionWriteConn {
+	return &gatedSessionWriteConn{
+		Conn:    conn,
+		entered: make(chan struct{}),
+		release: release,
+		ctx:     ctx,
+		closed:  make(chan struct{}),
+	}
+}
+
+func (c *gatedSessionWriteConn) Close() error {
+	c.closeOnce.Do(func() { close(c.closed) })
+	return c.Conn.Close()
 }
 
 func (c *gatedSessionWriteConn) Write(data []byte) (int, error) {
@@ -635,6 +726,8 @@ func (c *gatedSessionWriteConn) Write(data []byte) (int, error) {
 		close(c.entered)
 		select {
 		case <-c.release:
+		case <-c.closed:
+			return 0, net.ErrClosed
 		case <-c.ctx.Done():
 			return 0, c.ctx.Err()
 		}
@@ -645,16 +738,15 @@ func (c *gatedSessionWriteConn) Write(data []byte) (int, error) {
 func TestSessionOrderlyUpstreamCloseDeliversQueuedTail(t *testing.T) {
 	release := make(chan struct{})
 	var gate *gatedSessionWriteConn
-	dialer := websocket.Dialer{NetDialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+	downstream, client := socketPairWithNetDial(t, func(ctx context.Context, network, address string) (net.Conn, error) {
 		var dial net.Dialer
 		conn, err := dial.DialContext(ctx, network, address)
 		if err != nil {
 			return nil, err
 		}
-		gate = &gatedSessionWriteConn{Conn: conn, ctx: t.Context(), entered: make(chan struct{}), release: release}
+		gate = newGatedSessionWriteConn(conn, t.Context(), release)
 		return gate, nil
-	}}
-	downstream, client := socketPairWithDialer(t, &dialer)
+	})
 	gate.nextWrite.Store(true)
 	upstream, provider := socketPair(t)
 	done := make(chan error, 1)
@@ -664,12 +756,9 @@ func TestSessionOrderlyUpstreamCloseDeliversQueuedTail(t *testing.T) {
 
 	frames := []string{`{"type":"response.output_audio.delta"}`, `{"type":"response.output_audio.done"}`, `{"type":"response.done"}`}
 	for _, frame := range frames {
-		require.NoError(t, provider.WriteMessage(websocket.TextMessage, []byte(frame)))
+		require.NoError(t, writeTextWithTimeout(provider, time.Second, []byte(frame)))
 	}
-	require.NoError(t, provider.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second)))
-	require.NoError(t, provider.SetReadDeadline(time.Now().Add(time.Second)))
-	_, _, err := provider.ReadMessage()
-	require.True(t, websocket.IsCloseError(err, websocket.CloseNormalClosure), "%v", err)
+	require.NoError(t, provider.Close(websocket.StatusNormalClosure, ""))
 
 	select {
 	case <-gate.entered:
@@ -677,15 +766,14 @@ func TestSessionOrderlyUpstreamCloseDeliversQueuedTail(t *testing.T) {
 		t.Fatal("downstream writer did not start")
 	}
 	close(release)
-	require.NoError(t, client.SetReadDeadline(time.Now().Add(2*time.Second)))
 	for i, expected := range frames {
-		kind, data, readErr := client.ReadMessage()
+		kind, data, readErr := readWithTimeout(client, 2*time.Second)
 		require.NoError(t, readErr, "frame %d", i)
-		require.Equal(t, websocket.TextMessage, kind)
+		require.Equal(t, websocket.MessageText, kind)
 		require.True(t, expected == string(data), "frame %d differed", i)
 	}
-	_, _, err = client.ReadMessage()
-	require.True(t, websocket.IsCloseError(err, websocket.CloseNormalClosure), "%v", err)
+	_, _, err := readWithTimeout(client, 2*time.Second)
+	require.Equal(t, websocket.StatusNormalClosure, websocket.CloseStatus(err), "%v", err)
 	select {
 	case result := <-done:
 		require.False(t, IsAbnormal(result), "%v", result)
@@ -748,24 +836,22 @@ func TestSessionQueuesConfigurationUpdates(t *testing.T) {
 					},
 				})
 			})
-			require.NoError(t, client.SetReadDeadline(time.Now().Add(5*time.Second)))
-			require.NoError(t, provider.SetReadDeadline(time.Now().Add(5*time.Second)))
 			for i := 1; i <= tc.count; i++ {
-				require.NoError(t, client.WriteMessage(websocket.TextMessage, fmt.Appendf(nil, `{"type":"session.update","event_id":"u%d"}`, i)))
+				require.NoError(t, writeTextWithTimeout(client, 5*time.Second, fmt.Appendf(nil, `{"type":"session.update","event_id":"u%d"}`, i)))
 			}
-			require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","event_id":"blocked"}`)))
+			require.NoError(t, writeTextWithTimeout(client, 5*time.Second, []byte(`{"type":"response.create","event_id":"blocked"}`)))
 			for i := tc.accepted; tc.accepted > 0 && i < tc.count; i++ {
-				_, rejected, err := client.ReadMessage()
+				_, rejected, err := readWithTimeout(client, 5*time.Second)
 				require.NoError(t, err)
 				require.Equal(t, "session_update_queue_full", gjson.GetBytes(rejected, "error.code").String())
 			}
-			_, blocked, err := client.ReadMessage()
+			_, blocked, err := readWithTimeout(client, 5*time.Second)
 			require.NoError(t, err)
 			require.Equal(t, "blocked", gjson.GetBytes(blocked, "error.event_id").String())
 			require.Equal(t, ErrUpdatePending.Error(), gjson.GetBytes(blocked, "error.message").String())
 			if !tc.cancelPending {
 				for i := 1; i <= tc.accepted; i++ {
-					_, data, err := provider.ReadMessage()
+					_, data, err := readWithTimeout(provider, 5*time.Second)
 					require.NoError(t, err)
 					id := fmt.Sprintf("u%d", i)
 					require.Equal(t, id, gjson.GetBytes(data, "event_id").String())
@@ -773,20 +859,20 @@ func TestSessionQueuesConfigurationUpdates(t *testing.T) {
 					if tc.rejectFirst && i == 1 {
 						kind = "error"
 					}
-					require.NoError(t, provider.WriteMessage(websocket.TextMessage, fmt.Appendf(nil, `{"type":"%s","event_id":"%s"}`, kind, id)))
-					_, ack, err := client.ReadMessage()
+					require.NoError(t, writeTextWithTimeout(provider, 5*time.Second, fmt.Appendf(nil, `{"type":"%s","event_id":"%s"}`, kind, id)))
+					_, ack, err := readWithTimeout(client, 5*time.Second)
 					require.NoError(t, err)
 					require.Equal(t, kind, gjson.GetBytes(ack, "type").String())
 					require.Equal(t, id, gjson.GetBytes(ack, "event_id").String())
 				}
 			} else {
-				require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.cancel"}`)))
-				_, firstUpdate, err := provider.ReadMessage()
+				require.NoError(t, writeTextWithTimeout(client, 5*time.Second, []byte(`{"type":"response.cancel"}`)))
+				_, firstUpdate, err := readWithTimeout(provider, 5*time.Second)
 				require.NoError(t, err)
 				require.Equal(t, "session.update", gjson.GetBytes(firstUpdate, "type").String())
-				_, cancel, err := provider.ReadMessage()
+				_, cancelFrame, err := readWithTimeout(provider, 5*time.Second)
 				require.NoError(t, err)
-				require.Equal(t, "response.cancel", gjson.GetBytes(cancel, "type").String())
+				require.Equal(t, "response.cancel", gjson.GetBytes(cancelFrame, "type").String())
 			}
 			cancel()
 			select {
@@ -812,15 +898,15 @@ func TestSessionRejectsDuplicateJSONKeysBeforeClientAdmission(t *testing.T) {
 		}})
 	})
 
-	require.NoError(t, client.WriteMessage(websocket.TextMessage, []byte(`{"type":"conversation.item.create","type":"input_audio_buffer.append","audio":"AAA="}`)))
-	_, rejected, err := client.ReadMessage()
+	require.NoError(t, writeTextWithTimeout(client, time.Second, []byte(`{"type":"conversation.item.create","type":"input_audio_buffer.append","audio":"AAA="}`)))
+	_, rejected, err := readWithTimeout(client, time.Second)
 	require.NoError(t, err)
 	require.Equal(t, "unsupported_event", gjson.GetBytes(rejected, "error.code").String())
 	require.Zero(t, admitted.Load(), "ambiguous event envelopes must be rejected before routing and accounting")
 
 	valid := []byte(`{"type":"input_audio_buffer.append","audio":"AAA="}`)
-	require.NoError(t, client.WriteMessage(websocket.TextMessage, valid))
-	_, forwarded, err := provider.ReadMessage()
+	require.NoError(t, writeTextWithTimeout(client, time.Second, valid))
+	_, forwarded, err := readWithTimeout(provider, time.Second)
 	require.NoError(t, err)
 	require.JSONEq(t, string(valid), string(forwarded))
 	require.EqualValues(t, 1, admitted.Load())

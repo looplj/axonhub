@@ -22,7 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 )
 
 func main() {
@@ -42,14 +42,14 @@ func run() error {
 			return
 		}
 		authenticated.Store(true)
-		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		conn, err := websocket.Accept(w, r, nil)
 		if err != nil {
 			return
 		}
-		defer conn.Close()
-		kind, data, err := conn.ReadMessage()
+		defer func() { _ = conn.CloseNow() }()
+		kind, data, err := conn.Read(r.Context())
 		if err == nil {
-			_ = conn.WriteMessage(kind, data)
+			_ = conn.Write(r.Context(), kind, data)
 		}
 	}))
 	defer upstream.Close()
@@ -87,8 +87,12 @@ func run() error {
 	}()
 	var conn *websocket.Conn
 	for range 50 {
+		dialCtx, dialCancel := context.WithTimeout(ctx, 2*time.Second)
 		var response *http.Response
-		conn, response, err = websocket.DefaultDialer.Dial("ws://"+address+"/v1/realtime?model=synthetic", http.Header{"Authorization": []string{"Bearer synthetic-proxy-check"}})
+		conn, response, err = websocket.Dial(dialCtx, "ws://"+address+"/v1/realtime?model=synthetic", &websocket.DialOptions{
+			HTTPHeader: http.Header{"Authorization": []string{"Bearer synthetic-proxy-check"}},
+		})
+		dialCancel()
 		if err == nil {
 			break
 		}
@@ -100,14 +104,16 @@ func run() error {
 	if err != nil {
 		return errors.New("Nginx WebSocket handshake failed")
 	}
-	defer conn.Close()
-	_ = conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
-	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	defer func() { _ = conn.CloseNow() }()
 	payload := `{"type":"proxy.probe","event_id":"synthetic"}`
-	if err := conn.WriteMessage(websocket.TextMessage, []byte(payload)); err != nil {
+	writeCtx, cancelWrite := context.WithTimeout(ctx, 3*time.Second)
+	defer cancelWrite()
+	if err := conn.Write(writeCtx, websocket.MessageText, []byte(payload)); err != nil {
 		return err
 	}
-	_, data, err := conn.ReadMessage()
+	readCtx, cancelRead := context.WithTimeout(ctx, 3*time.Second)
+	defer cancelRead()
+	_, data, err := conn.Read(readCtx)
 	if err != nil {
 		return err
 	}

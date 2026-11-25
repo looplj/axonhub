@@ -15,7 +15,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
 
@@ -69,7 +69,7 @@ func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *b
 		if err != nil {
 			return fail()
 		}
-		defer conn.Close()
+		defer func() { _ = conn.CloseNow() }()
 		service := &RealtimeService{Channels: p.channelService, Quota: nil, Usage: p.usageLogService, Requests: p.requestService}
 		conversation, _, err := service.configure(dialCtx, conn, &RealtimeTarget{Channel: ch, Model: entry.ActualModel, ClientModel: model, APIFormat: llm.APIFormat(ep.APIFormat), Translation: translation}, config)
 		if err != nil {
@@ -77,7 +77,7 @@ func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *b
 		}
 		defer conversation.Close()
 		if translation {
-			if err := probeTranslationSession(conn, conversation.adapter); err != nil {
+			if err := probeTranslationSession(ctx, conn, conversation.adapter); err != nil {
 				return fail()
 			}
 			return &TestChannelResult{Latency: time.Since(start).Seconds(), Success: true, Message: lo.ToPtr("Realtime Translation configuration and close acknowledged")}, nil
@@ -88,13 +88,15 @@ func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *b
 			if err != nil {
 				return fail()
 			}
-			_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-			_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-			if err := conn.WriteMessage(websocket.TextMessage, wire); err != nil {
+			stepCtx, stepCancel := context.WithTimeout(ctx, 5*time.Second)
+			err = conn.Write(stepCtx, websocket.MessageText, wire)
+			if err != nil {
+				stepCancel()
 				return fail()
 			}
-			kind, ack, err := conn.ReadMessage()
-			if err != nil || kind != websocket.TextMessage || gjson.GetBytes(ack, "type").String() != "session.updated" {
+			kind, ack, err := conn.Read(stepCtx)
+			stepCancel()
+			if err != nil || kind != websocket.MessageText || gjson.GetBytes(ack, "type").String() != "session.updated" {
 				return fail()
 			}
 		}
@@ -102,12 +104,15 @@ func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *b
 		if err != nil {
 			return fail()
 		}
-		_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-		_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-		if err := conn.WriteMessage(websocket.TextMessage, event); err != nil {
+		probeCtx, probeCancel := context.WithTimeout(ctx, 5*time.Second)
+		err = conn.Write(probeCtx, websocket.MessageText, event)
+		if err != nil {
+			probeCancel()
 			return fail()
 		}
-		if err := waitRealtimeItemAcknowledgement(conn, llm.APIFormat(ep.APIFormat)); err != nil {
+		err = waitRealtimeItemAcknowledgement(probeCtx, conn, llm.APIFormat(ep.APIFormat))
+		probeCancel()
+		if err != nil {
 			return fail()
 		}
 		return &TestChannelResult{Latency: time.Since(start).Seconds(), Success: true, Message: lo.ToPtr("Realtime WebSocket handshake, PCM configuration and conversation event acknowledged")}, nil
@@ -115,9 +120,9 @@ func (p *TestChannelOrchestrator) testRealtimeChannel(ctx context.Context, ch *b
 	return nil, errors.New("Realtime endpoint is not explicitly configured")
 }
 
-func waitRealtimeItemAcknowledgement(conn *websocket.Conn, format llm.APIFormat) error {
+func waitRealtimeItemAcknowledgement(ctx context.Context, conn *websocket.Conn, format llm.APIFormat) error {
 	for range 8 {
-		_, data, err := conn.ReadMessage()
+		_, data, err := conn.Read(ctx)
 		if err != nil {
 			return err
 		}
@@ -136,14 +141,9 @@ func waitRealtimeItemAcknowledgement(conn *websocket.Conn, format llm.APIFormat)
 	return errors.New("upstream did not acknowledge realtime probe item")
 }
 
-func probeTranslationSession(conn *websocket.Conn, adapter realtimeAdapter) error {
-	deadline := time.Now().Add(5 * time.Second)
-	if err := conn.SetWriteDeadline(deadline); err != nil {
-		return err
-	}
-	if err := conn.SetReadDeadline(deadline); err != nil {
-		return err
-	}
+func probeTranslationSession(ctx context.Context, conn *websocket.Conn, adapter realtimeAdapter) error {
+	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	update := []byte(`{"type":"session.update","session":{"audio":{"output":{"language":"es"}}}}`)
 	closeEvent := []byte(`{"type":"session.close"}`)
 	for _, step := range []struct {
@@ -154,14 +154,14 @@ func probeTranslationSession(conn *websocket.Conn, adapter realtimeAdapter) erro
 		if err != nil {
 			return err
 		}
-		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+		if err := conn.Write(probeCtx, websocket.MessageText, data); err != nil {
 			return err
 		}
-		kind, response, err := conn.ReadMessage()
+		kind, response, err := conn.Read(probeCtx)
 		if err != nil {
 			return err
 		}
-		if kind != websocket.TextMessage || gjson.GetBytes(response, "type").String() != step.want {
+		if kind != websocket.MessageText || gjson.GetBytes(response, "type").String() != step.want {
 			return errors.New("upstream did not acknowledge translation probe")
 		}
 		if _, err := adapter.Server(response); err != nil {

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
@@ -358,11 +358,11 @@ func TestRealtimeCloseMapsSessionTerminalStatus(t *testing.T) {
 		wantStatus request.Status
 		wantCode   string
 	}{
-		{name: "normal client disconnect", closeCode: websocket.CloseNormalClosure, reason: "normal_closure", wantStatus: request.StatusCanceled, wantCode: "client_closed"},
-		{name: "idle timeout", closeCode: websocket.CloseNormalClosure, reason: "idle_timeout", wantStatus: request.StatusCanceled, wantCode: "client_closed"},
-		{name: "upstream interruption", closeCode: websocket.CloseTryAgainLater, reason: "upstream_unavailable", wantStatus: request.StatusFailed, wantCode: "upstream_unavailable"},
-		{name: "backpressure", closeCode: websocket.CloseTryAgainLater, reason: "backpressure", wantStatus: request.StatusFailed, wantCode: "backpressure"},
-		{name: "internal error", closeCode: websocket.CloseInternalServerErr, reason: "internal_error", wantStatus: request.StatusFailed, wantCode: "internal_error"},
+		{name: "normal client disconnect", closeCode: int(websocket.StatusNormalClosure), reason: "normal_closure", wantStatus: request.StatusCanceled, wantCode: "client_closed"},
+		{name: "idle timeout", closeCode: int(websocket.StatusNormalClosure), reason: "idle_timeout", wantStatus: request.StatusCanceled, wantCode: "client_closed"},
+		{name: "upstream interruption", closeCode: int(websocket.StatusTryAgainLater), reason: "upstream_unavailable", wantStatus: request.StatusFailed, wantCode: "upstream_unavailable"},
+		{name: "backpressure", closeCode: int(websocket.StatusTryAgainLater), reason: "backpressure", wantStatus: request.StatusFailed, wantCode: "backpressure"},
+		{name: "internal error", closeCode: int(websocket.StatusInternalError), reason: "internal_error", wantStatus: request.StatusFailed, wantCode: "internal_error"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			ctx, db := setupTest(t)

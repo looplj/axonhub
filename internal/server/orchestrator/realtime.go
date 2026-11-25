@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -216,16 +216,20 @@ func (s *RealtimeService) ReleaseRealtimeProbe(target *RealtimeTarget) {
 }
 
 func (s *RealtimeService) RecordRealtimeSuccess(ctx context.Context, target *RealtimeTarget) {
-	s.RecordRealtimeSuccessAt(ctx, target, time.Now())
+	s.RecordRealtimeSuccessAt(ctx, target, time.Now(), nil, 0)
 }
 
-func (s *RealtimeService) RecordRealtimeSuccessAt(ctx context.Context, target *RealtimeTarget, started time.Time) {
+func (s *RealtimeService) RecordRealtimeSuccessAt(ctx context.Context, target *RealtimeTarget, started time.Time, firstOutput *time.Time, completionTokens int64) {
 	if target == nil || target.Channel == nil {
 		return
 	}
 	if s.Channels != nil {
-		perf := newRealtimePerformanceRecord(target, started)
+		perf := newRealtimePerformanceRecord(target, started, firstOutput, completionTokens)
 		perf.MarkSuccess()
+		if perf.FirstTokenTime == nil {
+			end := perf.EndTime
+			perf.FirstTokenTime = &end
+		}
 		s.Channels.RecordRealtimePerformance(ctx, perf)
 	}
 	if s.modelCircuitBreaker == nil || !target.CircuitBreakerEnabled {
@@ -244,7 +248,7 @@ func (s *RealtimeService) RecordRealtimeFailureAt(ctx context.Context, target *R
 		return
 	}
 	if s.Channels != nil {
-		perf := newRealtimePerformanceRecord(target, started)
+		perf := newRealtimePerformanceRecord(target, started, nil, 0)
 		perf.MarkFailed(0)
 		s.Channels.RecordRealtimePerformance(ctx, perf)
 	}
@@ -256,11 +260,26 @@ func (s *RealtimeService) RecordRealtimeFailureAt(ctx context.Context, target *R
 	s.modelCircuitBreaker.RecordError(ctx, target.Channel.ID, target.RoutingModel, wasProbe)
 }
 
-func newRealtimePerformanceRecord(target *RealtimeTarget, started time.Time) *biz.PerformanceRecord {
+func newRealtimePerformanceRecord(target *RealtimeTarget, started time.Time, firstOutput *time.Time, completionTokens int64) *biz.PerformanceRecord {
 	if started.IsZero() {
 		started = time.Now()
 	}
-	return &biz.PerformanceRecord{ChannelID: target.Channel.ID, StartTime: started}
+	perf := &biz.PerformanceRecord{
+		ChannelID: target.Channel.ID,
+		StartTime: started,
+		Stream:    true,
+	}
+	if firstOutput != nil && !firstOutput.IsZero() {
+		ts := *firstOutput
+		if ts.Before(started) {
+			ts = started
+		}
+		perf.FirstTokenTime = &ts
+	}
+	if completionTokens > 0 {
+		perf.CompletionTokens = completionTokens
+	}
+	return perf
 }
 
 func (s *RealtimeService) realtimeCandidateRoutes(ctx context.Context, candidate *ChannelModelsCandidate, native, translation bool) []realtimeCandidateRoute {
@@ -441,7 +460,7 @@ func (s *RealtimeService) Connect(ctx context.Context, target *RealtimeTarget, c
 	transferred := false
 	defer func() {
 		if !transferred {
-			_ = upstream.Close()
+			_ = upstream.CloseNow()
 		}
 	}()
 	conversation, initial, err := s.configure(ctx, upstream, target, config)
@@ -475,17 +494,15 @@ func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Con
 	_ = state.Connecting()
 	c := &RealtimeConversation{service: s, target: target, adapter: adapter, state: state, ctx: ctx, started: time.Now(), responses: map[string]*realtimeResponse{}}
 	upstream.SetReadLimit(rt.MaxMessageBytes)
-	deadline := time.Now().Add(config.HandshakeTimeout)
-	if parentDeadline, ok := ctx.Deadline(); ok && parentDeadline.Before(deadline) {
-		deadline = parentDeadline
-	}
-	stopCancel := context.AfterFunc(ctx, func() { _ = upstream.Close() })
-	defer stopCancel()
-	_ = upstream.SetReadDeadline(deadline)
-	kind, created, err := upstream.ReadMessage()
-	if err != nil || kind != websocket.TextMessage || gjson.GetBytes(created, "type").String() != "session.created" {
+	configCtx, cancelConfig := context.WithTimeout(ctx, config.HandshakeTimeout)
+	defer cancelConfig()
+	kind, created, err := upstream.Read(configCtx)
+	if err != nil || kind != websocket.MessageText || gjson.GetBytes(created, "type").String() != "session.created" {
 		if ctx.Err() != nil {
 			return nil, nil, ctx.Err()
+		}
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(configCtx.Err(), context.DeadlineExceeded) {
+			return nil, nil, context.DeadlineExceeded
 		}
 		if timeout, ok := errors.AsType[net.Error](err); ok && timeout.Timeout() {
 			return nil, nil, context.DeadlineExceeded
@@ -502,7 +519,6 @@ func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Con
 		}
 		c.translation = &translationAccounting{}
 		state.AwaitClientConfiguration()
-		_ = upstream.SetReadDeadline(time.Time{})
 		return c, [][]byte{first}, nil
 	}
 	if target.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket {
@@ -515,7 +531,6 @@ func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Con
 		} else {
 			state.AwaitClientConfiguration()
 		}
-		_ = upstream.SetReadDeadline(time.Time{})
 		return c, [][]byte{first}, nil
 	}
 	event := []byte(`{"type":"session.update","session":{"type":"realtime","output_modalities":["audio"],"audio":{"input":{"format":{"type":"audio/pcm","rate":24000},"turn_detection":null},"output":{"format":{"type":"audio/pcm","rate":24000}}}}}`)
@@ -526,11 +541,10 @@ func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Con
 	if err != nil {
 		return nil, nil, err
 	}
-	_ = upstream.SetWriteDeadline(deadline)
-	if err := upstream.WriteMessage(websocket.TextMessage, wire); err != nil {
+	if err := upstream.Write(configCtx, websocket.MessageText, wire); err != nil {
 		return nil, nil, errors.New("upstream configuration write failed")
 	}
-	_, updated, err := upstream.ReadMessage()
+	_, updated, err := upstream.Read(configCtx)
 	if err != nil || gjson.GetBytes(updated, "type").String() != "session.updated" {
 		return nil, nil, errors.New("upstream realtime configuration was not acknowledged")
 	}
@@ -548,8 +562,6 @@ func (s *RealtimeService) configure(ctx context.Context, upstream *websocket.Con
 	// Only gateway-facing model aliases are exposed to GA clients.
 	first = c.aliasModel(first)
 	second = c.aliasModel(second)
-	_ = upstream.SetReadDeadline(time.Time{})
-	_ = upstream.SetWriteDeadline(time.Time{})
 	var initialEvent map[string]json.RawMessage
 	if err := json.Unmarshal(second, &initialEvent); err != nil {
 		return nil, nil, err
@@ -575,6 +587,7 @@ type realtimeResponse struct {
 	auditSummary     map[string]any
 	started          time.Time
 	firstOutput      *int64
+	firstOutputAt    *time.Time
 	hadFunctionCall  bool
 	observedUsage    *llm.Usage
 }
@@ -981,10 +994,12 @@ func (c *RealtimeConversation) observeAudioOutput(kind string, data []byte) {
 }
 
 func (c *RealtimeConversation) observeResponseOutput(kind string, data []byte) {
-	if kind == "response.audio.delta" || kind == "response.text.delta" || kind == "response.output_audio.delta" || kind == "response.output_text.delta" {
+	if kind == "response.audio.delta" || kind == "response.text.delta" || kind == "response.output_audio.delta" || kind == "response.output_text.delta" || kind == "response.function_call_arguments.delta" {
 		responseID := gjson.GetBytes(data, "response_id").String()
 		if response := c.responses[responseID]; response != nil && response.firstOutput == nil {
-			response.firstOutput = lo.ToPtr(time.Since(response.started).Milliseconds())
+			now := time.Now()
+			response.firstOutput = lo.ToPtr(now.Sub(response.started).Milliseconds())
+			response.firstOutputAt = &now
 		}
 	}
 	if !isFunctionCallEvent(kind, data) {
@@ -1066,7 +1081,7 @@ func (c *RealtimeConversation) finishResponse(data []byte, id string) error {
 	response.auditFinalized = true
 	switch status {
 	case request.StatusCompleted:
-		c.service.RecordRealtimeSuccessAt(billingCtx, c.target, response.started)
+		c.service.RecordRealtimeSuccessAt(billingCtx, c.target, response.started, response.firstOutputAt, usage.CompletionTokens)
 		c.circuitBreakerFailureRecorded = false
 	case request.StatusFailed:
 		c.service.RecordRealtimeFailureAt(billingCtx, c.target, response.started)
@@ -1371,7 +1386,7 @@ func (c *RealtimeConversation) Close() {
 }
 
 func (c *RealtimeConversation) unfinishedAuditStatus() request.Status {
-	if c.closeStats != nil && c.closeStats.Code == websocket.CloseNormalClosure && c.closeAuditErrorCode() == "client_closed" {
+	if c.closeStats != nil && c.closeStats.Code == int(websocket.StatusNormalClosure) && c.closeAuditErrorCode() == "client_closed" {
 		return request.StatusCanceled
 	}
 	return request.StatusFailed

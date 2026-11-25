@@ -86,12 +86,53 @@ func TestRealtimeOutcomesFeedLoadBalancerMetrics(t *testing.T) {
 	require.EqualValues(t, 1, metrics.FailureCount)
 	require.EqualValues(t, 1, metrics.ConsecutiveFailures)
 
-	service.RecordRealtimeSuccessAt(ctx, target, time.Now().Add(-500*time.Millisecond))
+	started := time.Now().Add(-500 * time.Millisecond)
+	firstOutput := started.Add(120 * time.Millisecond)
+	service.RecordRealtimeSuccessAt(ctx, target, started, &firstOutput, 40)
 	metrics, err = channels.GetChannelMetrics(ctx, target.Channel.ID)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, metrics.SuccessCount)
 	require.Zero(t, metrics.ConsecutiveFailures)
-	require.Greater(t, metrics.NonStreamingLatencyEWMA, float64(0), "turn latency must feed the adaptive load balancer")
+	require.EqualValues(t, 1, metrics.StreamingSampleCount, "realtime responses must record streaming samples")
+	require.Greater(t, metrics.StreamingFirstTokenLatencyEWMA, float64(0), "first-output latency must feed the adaptive load balancer")
+	require.Greater(t, metrics.StreamingTokensPerSecondEWMA, float64(0), "completion token throughput must feed the adaptive load balancer")
+}
+
+func TestRealtimeLatencyAwareStrategyPrefersFasterChannel(t *testing.T) {
+	ctx, db := setupTest(t)
+	channels := newTestChannelServiceForChannels(db)
+	system := newTestSystemService(db)
+	require.NoError(t, system.SetRetryPolicy(ctx, &biz.RetryPolicy{LoadBalancerStrategy: biz.LoadBalancerStrategyAdaptive}))
+
+	slowChannel := &biz.Channel{Channel: &ent.Channel{ID: 101, OrderingWeight: 100}}
+	fastChannel := &biz.Channel{Channel: &ent.Channel{ID: 102, OrderingWeight: 100}}
+	selector := &staticChannelSelector{candidates: []*ChannelModelsCandidate{
+		{Channel: slowChannel, ModelRoutingPolicy: &ModelRoutingPolicy{LoadBalancerStrategy: biz.LoadBalancerStrategyAdaptive}},
+		{Channel: fastChannel, ModelRoutingPolicy: &ModelRoutingPolicy{LoadBalancerStrategy: biz.LoadBalancerStrategyAdaptive}},
+	}}
+	service := &RealtimeService{
+		Channels: channels,
+		Selector: selector,
+		System:   system,
+		LoadBalancers: map[string]*LoadBalancer{
+			biz.LoadBalancerStrategyAdaptive: NewLoadBalancer(channels, nil, NewLatencyAwareStrategy()),
+		},
+	}
+
+	now := time.Now()
+	slowStart := now.Add(-3 * time.Second)
+	slowFirst := slowStart.Add(2500 * time.Millisecond)
+	fastStart := now.Add(-300 * time.Millisecond)
+	fastFirst := fastStart.Add(80 * time.Millisecond)
+	for range 3 {
+		service.RecordRealtimeSuccessAt(ctx, &RealtimeTarget{Channel: slowChannel}, slowStart, &slowFirst, 10)
+		service.RecordRealtimeSuccessAt(ctx, &RealtimeTarget{Channel: fastChannel}, fastStart, &fastFirst, 80)
+	}
+
+	selected, _, err := service.selectCandidates(ctx, &ent.APIKey{}, "voice", func(*ChannelModelsCandidate) bool { return true })
+	require.NoError(t, err)
+	require.Len(t, selected, 2)
+	require.Equal(t, fastChannel.ID, selected[0].Channel.ID, "latency-aware routing must prefer the faster realtime channel")
 }
 
 func TestRealtimeModelAuthorizationAndMapping(t *testing.T) {

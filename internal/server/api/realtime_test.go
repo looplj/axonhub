@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 
@@ -130,8 +130,9 @@ func TestRealtimeAccountingFailureClosesSuccessfulDial(t *testing.T) {
 	require.ErrorIs(t, result.AccountingErr, accountingErr)
 	require.NoError(t, result.DialErr)
 	require.Nil(t, result.Upstream, "an upstream connection cannot escape a failed accounting check")
-	require.NoError(t, provider.SetReadDeadline(time.Now().Add(time.Second)))
-	_, _, err := provider.ReadMessage()
+	readCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	_, _, err := provider.Read(readCtx)
 	require.Error(t, err, "successful dial must be closed when accounting fails")
 }
 
@@ -196,16 +197,18 @@ func apiRealtimeSocketPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
 	t.Helper()
 	accepted := make(chan *websocket.Conn, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+		conn, err := websocket.Accept(w, r, nil)
 		if err == nil {
 			accepted <- conn
 		}
 	}))
 	t.Cleanup(server.Close)
-	client, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), nil)
+	dialCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	client, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(server.URL, "http"), nil)
 	require.NoError(t, err)
 	peer := <-accepted
-	t.Cleanup(func() { _ = client.Close(); _ = peer.Close() })
+	t.Cleanup(func() { _ = client.CloseNow(); _ = peer.CloseNow() })
 	return client, peer
 }
 

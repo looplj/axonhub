@@ -25,9 +25,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -98,7 +98,7 @@ func cleanupRealtimeSetupResult(part realtimeSetupPart) {
 	if part.upstream != nil {
 		func() {
 			defer func() { _ = recover() }()
-			_ = part.upstream.Close()
+			_ = part.upstream.CloseNow()
 		}()
 	}
 }
@@ -395,7 +395,7 @@ func (h *RealtimeHandlers) TranslationHandler(config rt.Config) gin.HandlerFunc 
 func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Context, string) (*orchestrator.RealtimeTarget, error)) gin.HandlerFunc {
 	config = config.Defaults()
 	return func(c *gin.Context) {
-		if !websocket.IsWebSocketUpgrade(c.Request) {
+		if !isWebSocketUpgrade(c.Request) {
 			JSONError(c, http.StatusBadRequest, errors.New("websocket upgrade required"))
 			return
 		}
@@ -516,33 +516,44 @@ func (h *RealtimeHandlers) handler(config rt.Config, prepare func(context.Contex
 		defer conversation.Close()
 		// Connection admission ends after both sockets/workers stop, before audit
 		// finalization, which may wait on storage. Keep the outer release for dial failures.
-		defer func() { _ = upstream.Close(); release() }()
+		defer func() { _ = upstream.CloseNow(); release() }()
 		controller := http.NewResponseController(c.Writer)
 		_ = controller.SetReadDeadline(time.Time{})
 		_ = controller.SetWriteDeadline(time.Time{})
 		upgradeStarted := time.Now()
-		downstream, err := (&websocket.Upgrader{ReadBufferSize: 4096, WriteBufferSize: 4096, HandshakeTimeout: config.HandshakeTimeout}).Upgrade(c.Writer, c.Request, nil)
+		downstreamActivity := rt.NewActivity()
+		downstream, err := websocket.Accept(c.Writer, c.Request, &websocket.AcceptOptions{
+			OnPingReceived: func(context.Context, []byte) bool {
+				downstreamActivity.Touch()
+				return true
+			},
+			OnPongReceived: func(context.Context, []byte) {
+				downstreamActivity.Touch()
+			},
+		})
 		setupTimings.UpgradeMs = time.Since(upgradeStarted).Milliseconds()
 		if err != nil {
 			h.logSetupTimings(ctx, target, setupTimings)
 			return
 		}
-		defer downstream.Close()
-		_ = downstream.SetWriteDeadline(time.Now().Add(5 * time.Second))
+		defer func() { _ = downstream.CloseNow() }()
+		initialWriteCtx, cancelInitialWrite := context.WithTimeout(ctx, 5*time.Second)
 		for _, event := range initial {
 			if event != nil {
-				if err := downstream.WriteMessage(websocket.TextMessage, event); err != nil {
+				if err := downstream.Write(initialWriteCtx, websocket.MessageText, event); err != nil {
+					cancelInitialWrite()
 					h.logSetupTimings(ctx, target, setupTimings)
 					return
 				}
 			}
 		}
+		cancelInitialWrite()
 		h.logSetupTimings(ctx, target, setupTimings)
 		metrics.Metrics.RealtimeEvent(ctx, "connection_established")
 		metrics.Metrics.RealtimeActive(ctx, 1)
 		defer metrics.Metrics.RealtimeActive(context.WithoutCancel(ctx), -1)
 		started := time.Now()
-		err = rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: config.IdleTimeout, MaxDuration: config.MaxDuration, ClientEventsPerSecond: target.ClientEventsPerSecond}, rt.Hooks{BindContext: conversation.WithContext, Client: conversation.Client, Server: conversation.Server, ServerFollowup: conversation.ServerFollowup, UpstreamWritten: conversation.UpstreamWritten, ServerDone: conversation.ServerDone, Check: conversation.Check})
+		err = rt.Run(ctx, downstream, upstream, rt.Options{IdleTimeout: config.IdleTimeout, MaxDuration: config.MaxDuration, ClientEventsPerSecond: target.ClientEventsPerSecond, DownstreamActivity: downstreamActivity}, rt.Hooks{BindContext: conversation.WithContext, Client: conversation.Client, Server: conversation.Server, ServerFollowup: conversation.ServerFollowup, UpstreamWritten: conversation.UpstreamWritten, ServerDone: conversation.ServerDone, Check: conversation.Check})
 		conversation.RecordSessionEnd(err)
 		// Translation bills at session end. Persist its usage before admitting the
 		// next session on this lease so it sees the previous session's cost.
@@ -649,4 +660,21 @@ func realtimeClientLabel(r *http.Request) string {
 		label = string(runes[:maxRunes])
 	}
 	return label
+}
+
+func isWebSocketUpgrade(r *http.Request) bool {
+	return r.Method == http.MethodGet &&
+		hasHeaderToken(r.Header, "Connection", "upgrade") &&
+		hasHeaderToken(r.Header, "Upgrade", "websocket")
+}
+
+func hasHeaderToken(headers http.Header, name, want string) bool {
+	for _, value := range headers.Values(name) {
+		for token := range strings.SplitSeq(value, ",") {
+			if strings.EqualFold(strings.TrimSpace(token), want) {
+				return true
+			}
+		}
+	}
+	return false
 }
