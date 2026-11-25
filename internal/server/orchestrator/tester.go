@@ -564,6 +564,13 @@ type TestAPIKeyResult struct {
 	Disabled  bool
 }
 
+func testCredentialPrefix(ref string) string {
+	if strings.HasPrefix(ref, "vertex-sa:") {
+		return "vertex-sa:****" + ref[len(ref)-4:]
+	}
+	return xsecret.MaskAPIKey(ref)
+}
+
 // TestChannelAPIKeysResult represents the aggregated result of testing all API keys.
 type TestChannelAPIKeysResult struct {
 	ChannelID    objects.GUID
@@ -586,12 +593,12 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 		return nil, xerrors.ForbiddenError("channel testing is not available to plugins")
 	}
 
-	ch, err := processor.channelService.GetChannel(ctx, channelID.ID)
+	ch, err := processor.channelService.GetChannelForCredentialTest(ctx, channelID.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	allKeys := ch.Credentials.GetAllAPIKeys()
+	allKeys := ch.Credentials.GetAllCredentialRefs()
 	if len(allKeys) == 0 {
 		return nil, fmt.Errorf("no API keys configured for channel")
 	}
@@ -634,7 +641,7 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 			case <-groupCtx.Done():
 				errMsg := groupCtx.Err().Error()
 				results[index] = &TestAPIKeyResult{
-					KeyPrefix: xsecret.MaskAPIKey(apiKey),
+					KeyPrefix: testCredentialPrefix(apiKey),
 					Success:   false,
 					Error:     &errMsg,
 				}
@@ -689,13 +696,13 @@ func (processor *TestChannelOrchestrator) TestSingleAPIKey(
 		return nil, xerrors.ForbiddenError("channel testing is not available to plugins")
 	}
 
-	ch, err := processor.channelService.GetChannel(ctx, channelID.ID)
+	ch, err := processor.channelService.GetChannelForCredentialTest(ctx, channelID.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Verify the provided key is actually configured for this channel.
-	channelKeys := ch.Credentials.GetAllAPIKeys()
+	channelKeys := ch.Credentials.GetAllCredentialRefs()
 	if len(channelKeys) == 0 {
 		return nil, fmt.Errorf("no API keys configured for channel")
 	}
@@ -743,7 +750,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 	userPrompt string,
 	apiFormat llm.APIFormat,
 ) *TestAPIKeyResult {
-	keyPrefix := xsecret.MaskAPIKey(key)
+	keyPrefix := testCredentialPrefix(key)
 
 	inbound, body, err := processor.buildChannelTestInput(ctx, testModel, useStream, systemPrompt, userPrompt, responsesWebSocket, apiFormat)
 	if err != nil {

@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -300,9 +301,13 @@ func credentialEventRef(oauth bool, key string) *events.CredentialRef {
 		return nil
 	}
 
+	masked := events.Mask(key)
+	if strings.HasPrefix(key, "vertex-sa:") {
+		masked = "vertex-sa:****" + key[len(key)-4:]
+	}
 	return &events.CredentialRef{
 		Fingerprint: events.Fingerprint(key),
-		Masked:      events.Mask(key),
+		Masked:      masked,
 	}
 }
 
