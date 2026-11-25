@@ -321,6 +321,11 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		llmRequest.Stream = originalStream
 
 		result, err := p.processRequest(ctx, llmRequest)
+		for i := len(p.middlewares) - 1; i >= 0; i-- {
+			if observer, ok := p.middlewares[i].(OutboundAttemptResultMiddleware); ok {
+				observer.OnOutboundAttemptResult(ctx, result, err)
+			}
+		}
 		if err == nil {
 			return result, nil
 		}

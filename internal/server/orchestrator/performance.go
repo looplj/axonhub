@@ -3,6 +3,8 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"net/http"
+	"sync"
 	"time"
 
 	"github.com/looplj/axonhub/internal/contexts"
@@ -13,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const errorMatchBodyLimit = 8 * 1024
@@ -83,6 +86,10 @@ func (m *performanceRecording) OnOutboundRawRequest(ctx context.Context, request
 	}
 
 	m.outbound.state.Perf = &perf
+	m.outbound.state.performanceAttempt = &performanceAttempt{
+		record:  &perf,
+		service: m.outbound.state.ChannelService,
+	}
 
 	log.Debug(ctx, "Started performance tracking",
 		log.Int("channel_id", channel.ID),
@@ -107,8 +114,9 @@ func (m *performanceRecording) OnOutboundLlmResponse(ctx context.Context, respon
 		}
 	}
 
+	// Preserve the response latency for persistence. The final attempt result
+	// can still reject this response (for example, during empty-response detection).
 	m.outbound.state.Perf.MarkSuccess()
-	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, m.outbound.state.Perf)
 
 	return response, nil
 }
@@ -119,40 +127,127 @@ func (m *performanceRecording) OnOutboundRawStream(ctx context.Context, stream s
 
 func (m *performanceRecording) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
 	return &recordPerformanceStream{
-		stream: stream,
-		state:  m.outbound.state,
-		onClose: func() {
-			enqueueCompletedPerformance(ctx, m.outbound.state)
-		},
+		stream:  stream,
+		perf:    m.outbound.state.Perf,
+		attempt: m.outbound.state.performanceAttempt,
 	}, nil
 }
 
-func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error) {
-	if isLocalAdmissionError(err) {
+func (m *performanceRecording) OnOutboundRawError(_ context.Context, err error) {
+	if attempt := m.outbound.state.performanceAttempt; attempt != nil {
+		attempt.rawError = err
+	}
+}
+
+func (m *performanceRecording) OnOutboundAttemptResult(ctx context.Context, result *pipeline.Result, err error) {
+	attempt := m.outbound.state.performanceAttempt
+	m.outbound.state.performanceAttempt = nil
+	if attempt == nil {
 		return
 	}
-	// Record performance metrics for failed requests
-	if m.outbound.state.Perf == nil {
+	if err == nil && result != nil && result.Stream {
+		attempt.acceptStream(ctx)
 		return
 	}
+	attempt.finish(ctx, err)
+}
 
-	perf := m.outbound.state.Perf
-	if errors.Is(err, context.Canceled) {
-		perf.MarkCanceled()
-	} else {
-		errorCode := ExtractErrorCode(err)
-		perf.MarkFailedWithMessage(errorCode, extractErrorMessageForMatching(err))
+// A stream can be closed before the pipeline decides whether it will be
+// returned, rejected or aggregated. Only its final attempt result may commit
+// the record to channel health.
+type performanceAttempt struct {
+	record      *biz.PerformanceRecord
+	service     *biz.ChannelService
+	rawError    error
+	streamError error
+
+	mu             sync.Mutex
+	streamAccepted bool
+	streamClosed   bool
+	finished       bool
+}
+
+func (a *performanceAttempt) acceptStream(ctx context.Context) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.streamAccepted = true
+	if a.streamClosed {
+		a.submit(ctx)
 	}
+}
 
-	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, perf)
+func (a *performanceAttempt) closeStream(ctx context.Context, decision streamOutcomeDecision, providerTerminal bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.finished {
+		return
+	}
+	a.streamClosed = true
+	switch {
+	case decision.state == streamTerminalCompleted || (providerTerminal && decision.state == streamTerminalIncomplete):
+		if !a.record.RequestCompleted || !a.record.Success {
+			a.record.MarkSuccess()
+		}
+	case decision.state == streamTerminalCanceled:
+		a.record.MarkCanceled()
+	default:
+		if decision.cause == nil {
+			decision.cause = ErrStreamIncomplete
+		}
+		detail := decision.cause
+		if ExtractStatusCodeFromError(a.streamError) > 0 {
+			detail = a.streamError
+		}
+		a.record.MarkFailedWithMessage(ExtractErrorCode(detail), extractErrorMessageForMatching(detail))
+	}
+	if a.streamAccepted {
+		a.submit(ctx)
+	}
+}
+
+func (a *performanceAttempt) finish(ctx context.Context, err error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.finished {
+		return
+	}
+	if isLocalAdmissionError(err) || shared.IsResponsesRecoveryError(err) {
+		a.finished = true
+		return
+	}
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			a.record.MarkCanceled()
+		} else {
+			detail := err
+			if ExtractStatusCodeFromError(a.rawError) > 0 {
+				detail = a.rawError
+			}
+			a.record.MarkFailedWithMessage(ExtractErrorCode(detail), extractErrorMessageForMatching(detail))
+		}
+	} else if !a.record.RequestCompleted {
+		a.record.MarkSuccess()
+	}
+	a.submit(ctx)
+}
+
+// submit is called with mu held. AsyncRecordPerformance takes a copy of the
+// finished record so that the metrics worker never reads live request state.
+func (a *performanceAttempt) submit(ctx context.Context) {
+	if a.finished {
+		return
+	}
+	a.finished = true
+	if a.service != nil {
+		a.service.AsyncRecordPerformance(ctx, a.record)
+	}
 }
 
 // recordPerformanceStream records performance metrics for a stream of responses.
 type recordPerformanceStream struct {
 	stream  streams.Stream[*llm.Response]
-	state   *PersistenceState
-	onClose func()
-	closed  bool
+	perf    *biz.PerformanceRecord
+	attempt *performanceAttempt
 
 	firstTokenSet     bool
 	reasoningStartSet bool
@@ -165,30 +260,30 @@ func (s *recordPerformanceStream) Current() *llm.Response {
 		return event
 	}
 
-	if !s.firstTokenSet && s.state.Perf != nil && hasMeaningfulStreamOutput(event) {
-		s.state.Perf.MarkFirstToken()
+	if !s.firstTokenSet && s.perf != nil && hasMeaningfulStreamOutput(event) {
+		s.perf.MarkFirstToken()
 		s.firstTokenSet = true
 	}
 
-	if s.state.Perf != nil && len(event.Choices) > 0 {
+	if s.perf != nil && len(event.Choices) > 0 {
 		delta := event.Choices[0].Delta
 		if delta != nil {
 			if delta.ReasoningContent != nil && *delta.ReasoningContent != "" {
 				if !s.reasoningStartSet {
-					s.state.Perf.MarkReasoningStart()
+					s.perf.MarkReasoningStart()
 					s.reasoningStartSet = true
 				}
 			} else if (delta.Content.Content != nil && *delta.Content.Content != "") || len(delta.Content.MultipleContent) > 0 || len(delta.ToolCalls) > 0 {
 				if s.reasoningStartSet && !s.reasoningEndSet {
-					s.state.Perf.MarkReasoningEnd()
+					s.perf.MarkReasoningEnd()
 					s.reasoningEndSet = true
 				}
 			}
 		}
 	}
 
-	if tokenCount := event.Usage.GetCompletionTokens(); tokenCount != nil && *tokenCount > 0 {
-		s.state.Perf.CompletionTokens = *tokenCount
+	if tokenCount := event.Usage.GetCompletionTokens(); s.perf != nil && tokenCount != nil && *tokenCount > 0 {
+		s.perf.CompletionTokens = *tokenCount
 	}
 
 	return event
@@ -225,30 +320,17 @@ func hasMeaningfulStreamOutput(event *llm.Response) bool {
 }
 
 func (s *recordPerformanceStream) Next() bool {
-	return s.stream.Next()
+	if s.stream.Next() {
+		return true
+	}
+	if s.attempt != nil {
+		s.attempt.streamError = s.stream.Err()
+	}
+	return false
 }
 
 func (s *recordPerformanceStream) Close() error {
-	if s.closed {
-		return nil
-	}
-
-	s.closed = true
-	if s.onClose != nil {
-		s.onClose()
-	}
-
 	return s.stream.Close()
-}
-
-// enqueueCompletedPerformance submits a completed stream only after its normalized
-// events have been consumed, so final usage is visible to the metrics worker.
-func enqueueCompletedPerformance(ctx context.Context, state *PersistenceState) {
-	if state == nil || state.Perf == nil || !state.Perf.RequestCompleted || state.ChannelService == nil {
-		return
-	}
-
-	state.ChannelService.AsyncRecordPerformance(ctx, state.Perf)
 }
 
 func (s *recordPerformanceStream) Err() error {
@@ -257,11 +339,12 @@ func (s *recordPerformanceStream) Err() error {
 
 // ExtractErrorCode extracts HTTP error code from error.
 func ExtractErrorCode(err error) int {
-	// Check if error is an HTTP error
-	httpErr := &httpclient.Error{}
-	if errors.As(err, &httpErr) {
-		code := httpErr.StatusCode
+	if code := ExtractStatusCodeFromError(err); code > 0 {
 		return code
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, pipeline.ErrStreamFirstEventTimeout) ||
+		errors.Is(err, pipeline.ErrNonStreamResponseTimeout) {
+		return http.StatusGatewayTimeout
 	}
 
 	// Default to 500

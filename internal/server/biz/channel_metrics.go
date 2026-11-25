@@ -570,7 +570,11 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 
 // AsyncRecordPerformance records performance metrics to in-memory cache asynchronously.
 func (svc *ChannelService) AsyncRecordPerformance(ctx context.Context, perr *PerformanceRecord) {
-	svc.perfCh <- perr
+	if perr == nil {
+		return
+	}
+	snapshot := *perr
+	svc.perfCh <- &snapshot
 }
 
 // cleanupExpiredSlots removes time slots older than the cutoff time.
@@ -737,6 +741,9 @@ func (m *PerformanceRecord) CalculateReasoningDurationMs() int64 {
 // MarkSuccess marks the request as completed.
 func (m *PerformanceRecord) MarkSuccess() {
 	m.Success = true
+	m.Canceled = false
+	m.ResponseStatusCode = 0
+	m.ErrorMessage = ""
 	m.RequestCompleted = true
 	m.EndTime = time.Now()
 }
@@ -768,6 +775,8 @@ func (m *PerformanceRecord) MarkReasoningEnd() {
 // MarkFailed marks the request as failed.
 func (m *PerformanceRecord) MarkFailed(errorCode int) {
 	m.Success = false
+	m.Canceled = false
+	m.ErrorMessage = ""
 	m.ResponseStatusCode = errorCode
 	m.RequestCompleted = true
 	m.EndTime = time.Now()
@@ -783,6 +792,8 @@ func (m *PerformanceRecord) MarkFailedWithMessage(errorCode int, errorMessage st
 func (m *PerformanceRecord) MarkCanceled() {
 	m.Success = false
 	m.Canceled = true
+	m.ResponseStatusCode = 0
+	m.ErrorMessage = ""
 	m.RequestCompleted = true
 	m.EndTime = time.Now()
 }

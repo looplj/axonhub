@@ -360,7 +360,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	}
 	middlewares = append(middlewares,
 		// Unified performance tracking middleware.
-		withoutResponsesRecoveryPenalty(withPerformanceRecording(outbound)),
+		withPerformanceRecording(outbound),
 
 		withoutResponsesRecoveryPenalty(withModelCircuitBreaker(outbound, processor.modelCircuitBreaker)),
 

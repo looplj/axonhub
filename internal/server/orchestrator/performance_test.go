@@ -349,7 +349,6 @@ func TestRecordPerformanceStream_UsageDoesNotMarkFirstTokenOrComplete(t *testing
 		StartTime: time.Now(),
 		Stream:    true,
 	}
-	state := &PersistenceState{Perf: perf}
 	stream := &responseSliceStream{
 		events: []*llm.Response{
 			{
@@ -361,7 +360,7 @@ func TestRecordPerformanceStream_UsageDoesNotMarkFirstTokenOrComplete(t *testing
 			},
 		},
 	}
-	recording := &recordPerformanceStream{stream: stream, state: state}
+	recording := &recordPerformanceStream{stream: stream, perf: perf}
 
 	require.True(t, recording.Next())
 	recording.Current()
@@ -381,7 +380,6 @@ func TestRecordPerformanceStream_QueuesCompletedPerformanceAfterFinalUsage(t *te
 		StartTime: time.Now(),
 		Stream:    true,
 	}
-	state := &PersistenceState{Perf: perf}
 	stream := &responseSliceStream{
 		events: []*llm.Response{
 			{Choices: []llm.Choice{{Delta: &llm.Message{}, FinishReason: lo.ToPtr("stop")}}},
@@ -389,34 +387,31 @@ func TestRecordPerformanceStream_QueuesCompletedPerformanceAfterFinalUsage(t *te
 		},
 	}
 
-	var recorded *biz.PerformanceRecord
-	recordCalls := 0
+	attempt := &performanceAttempt{record: perf}
 	recording := &recordPerformanceStream{
-		stream: stream,
-		state:  state,
-		onClose: func() {
-			recordCalls++
-			recorded = state.Perf
-		},
+		stream:  stream,
+		perf:    perf,
+		attempt: attempt,
 	}
 
 	// The raw terminal event is observed before the normalized finish and usage events.
 	perf.MarkSuccess()
+	attempt.acceptStream(t.Context())
 	require.True(t, recording.Next())
 	recording.Current()
-	assert.Nil(t, recorded, "finish event must not submit metrics before the final usage event")
+	assert.False(t, attempt.finished, "finish event must not submit metrics before the final usage event")
 
 	require.True(t, recording.Next())
 	recording.Current()
-	assert.Nil(t, recorded, "usage must be applied before metrics are submitted")
+	assert.False(t, attempt.finished, "usage must be applied before metrics are submitted")
 
 	require.NoError(t, recording.Close())
 
-	require.Same(t, perf, recorded)
-	assert.Equal(t, int64(9), recorded.CompletionTokens)
-	assert.Equal(t, 1, recordCalls)
+	attempt.closeStream(t.Context(), streamOutcomeDecision{state: streamTerminalCompleted}, true)
+	assert.Equal(t, int64(9), perf.CompletionTokens)
+	assert.True(t, attempt.finished)
 	require.NoError(t, recording.Close())
-	assert.Equal(t, 1, recordCalls)
+	assert.True(t, attempt.finished)
 }
 
 type responseSliceStream struct {

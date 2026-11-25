@@ -68,6 +68,13 @@ type Middleware interface {
 	OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error)
 }
 
+// OutboundAttemptResultMiddleware observes the final result of an attempt,
+// after response validation and before retry. For streaming results the stream
+// has been handed off, but has not necessarily reached a terminal event.
+type OutboundAttemptResultMiddleware interface {
+	OnOutboundAttemptResult(context.Context, *Result, error)
+}
+
 // OutboundLlmRequestMiddleware is an optional middleware extension for unified
 // requests that must be processed once per outbound attempt. Dynamic outbound
 // routers invoke it after selecting the attempt's API format and before the

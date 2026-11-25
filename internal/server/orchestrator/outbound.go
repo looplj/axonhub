@@ -50,19 +50,20 @@ type OutboundPersistentStream struct {
 	perf           *biz.PerformanceRecord
 	responseChunks []*httpclient.StreamEvent
 	// First reported model only. Intra-stream changes are not tracked.
-	upstreamModelID string
-	terminalState   streamTerminalState
-	terminalError   string
-	outcome         streamOutcome
-	closeOnce       sync.Once
-	closeErr        error
-	sourceCloseOnce sync.Once
-	sourceCloseErr  error
-	sourceEnd       llm.SourceEndReason
-	persistenceErr  error
-	state           *PersistenceState
-	terminalTracker *StreamTerminalTracker
-	lifecycle       *streamLifecycle
+	upstreamModelID    string
+	terminalState      streamTerminalState
+	terminalError      string
+	outcome            streamOutcome
+	closeOnce          sync.Once
+	closeErr           error
+	sourceCloseOnce    sync.Once
+	sourceCloseErr     error
+	sourceEnd          llm.SourceEndReason
+	persistenceErr     error
+	state              *PersistenceState
+	terminalTracker    *StreamTerminalTracker
+	lifecycle          *streamLifecycle
+	performanceAttempt *performanceAttempt
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*OutboundPersistentStream)(nil)
@@ -96,6 +97,9 @@ func NewOutboundPersistentStream(
 		state:           state,
 		terminalTracker: NewStreamTerminalTrackerForRequest(request, state),
 		lifecycle:       streamLifecycleFromContext(ctx),
+	}
+	if state != nil {
+		s.performanceAttempt = state.performanceAttempt
 	}
 	if s.lifecycle != nil {
 		s.lifecycle.trackAttempt(s)
@@ -182,6 +186,9 @@ func (ts *OutboundPersistentStream) Close() error {
 			ts.collectTail()
 		}
 		ts.closeErr = errors.Join(ts.finalizeClose(), ts.persistenceErr)
+		if ts.performanceAttempt != nil {
+			ts.performanceAttempt.closeStream(ts.ctx, ts.outcome.finalDecision(), ts.outcome.providerTerminal)
+		}
 	})
 
 	return ts.closeErr
@@ -273,7 +280,6 @@ func (ts *OutboundPersistentStream) finalizeClose() error {
 				ts.outcome.observeAggregatedCompletion(true)
 			}
 			ts.markPerformanceTerminal(streamTerminalCompleted, "")
-			enqueueCompletedPerformance(ts.ctx, ts.state)
 		}
 	} else {
 		ts.logFinalizationDecision(ctx, "no_outbound_chunks_to_aggregate", streamErr, ctxErr, false, nil)
@@ -282,7 +288,6 @@ func (ts *OutboundPersistentStream) finalizeClose() error {
 		aggregatedCompleted = true
 		ts.outcome.observeValidatedCompletion()
 		ts.markPerformanceTerminal(streamTerminalCompleted, "")
-		enqueueCompletedPerformance(ts.ctx, ts.state)
 	}
 	if ts.outcome.hasFinalEvidence() {
 		ts.terminalState = ts.outcome.finalState()
@@ -451,6 +456,11 @@ func (ts *OutboundPersistentStream) persistExecutionFailure(ctx context.Context,
 }
 
 func (ts *OutboundPersistentStream) persistAggregatedResponse(ctx context.Context, responseBody []byte, meta llm.ResponseMeta, sourceEnd llm.SourceEndReason) {
+	if ts.perf != nil && accountingMayBeFinal(ts.apiFormat, meta, sourceEnd) {
+		if tokens := meta.Usage.GetCompletionTokens(); tokens != nil && *tokens > 0 {
+			ts.perf.CompletionTokens = *tokens
+		}
+	}
 	if ts.requestExec == nil {
 		return
 	}
