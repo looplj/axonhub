@@ -46,7 +46,7 @@ func TestVertexChannelConstructionSelectsConfiguredCredentials(t *testing.T) {
 			tokenCalls := 0
 			client := httpclient.NewHttpClientWithClient(&http.Client{Transport: vertexTokenTransport(func(r *http.Request) (*http.Response, error) {
 				tokenCalls++
-				require.Equal(t, vertexTokenURL, r.URL.String())
+				require.Equal(t, vertexOAuthEndpoint, r.URL.String())
 				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"access_token":"synthetic-token","token_type":"Bearer","expires_in":3600}`))}, nil
 			})})
 			svc := &ChannelService{httpClient: client}

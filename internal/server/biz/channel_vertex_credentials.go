@@ -31,7 +31,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/gemini"
 )
 
-const vertexTokenURL = "https://oauth2.googleapis.com/token"
+const vertexOAuthEndpoint = "https://oauth2.googleapis.com/token"
 
 func parseVertexServiceAccount(credential objects.GCPCredential) (*jwt.Config, error) {
 	var identity struct {
@@ -69,7 +69,7 @@ func parseVertexServiceAccount(credential objects.GCPCredential) (*jwt.Config, e
 	}
 	return &jwt.Config{
 		Email: identity.Email, PrivateKeyID: identity.KeyID, PrivateKey: []byte(identity.Key),
-		Scopes: []string{"https://www.googleapis.com/auth/cloud-platform"}, TokenURL: vertexTokenURL,
+		Scopes: []string{"https://www.googleapis.com/auth/cloud-platform"}, TokenURL: vertexOAuthEndpoint,
 	}, nil
 }
 

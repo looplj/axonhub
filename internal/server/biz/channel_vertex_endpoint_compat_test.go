@@ -84,7 +84,7 @@ func TestVertexEndpointPreservesLegacyBaseAndBoundCredentialPairing(t *testing.T
 			tokenCalls := 0
 			client := httpclient.NewHttpClientWithClient(&http.Client{Transport: vertexTokenTransport(func(r *http.Request) (*http.Response, error) {
 				tokenCalls++
-				require.Equal(t, vertexTokenURL, r.URL.String())
+				require.Equal(t, vertexOAuthEndpoint, r.URL.String())
 				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"access_token":"synthetic-token","token_type":"Bearer","expires_in":3600}`))}, nil
 			})})
 			svc := &ChannelService{httpClient: client}
@@ -100,8 +100,10 @@ func TestVertexEndpointPreservesLegacyBaseAndBoundCredentialPairing(t *testing.T
 				ctx := contexts.EnsureContainer(t.Context())
 				input := vertexChatRequest("gemini-test")
 				if format == llm.APIFormatGeminiEmbedding {
-					input = &llm.Request{Model: "text-embedding-005", RequestType: llm.RequestTypeEmbedding, APIFormat: format,
-						Embedding: &llm.EmbeddingRequest{Input: llm.EmbeddingInput{StringArray: []string{"hello"}}}}
+					input = &llm.Request{
+						Model: "text-embedding-005", RequestType: llm.RequestTypeEmbedding, APIFormat: format,
+						Embedding: &llm.EmbeddingRequest{Input: llm.EmbeddingInput{StringArray: []string{"hello"}}},
+					}
 				}
 				request, err := peer.TransformRequest(ctx, input)
 				require.NoError(t, err)
@@ -122,14 +124,18 @@ func TestVertexLegacyResolvedURLsMatchConstructor(t *testing.T) {
 		for _, format := range []llm.APIFormat{llm.APIFormatGeminiContents, llm.APIFormatGeminiEmbedding} {
 			t.Run(version+"/"+format.String(), func(t *testing.T) {
 				svc := &ChannelService{}
-				entity := &ent.Channel{Type: channel.TypeGeminiVertex, BaseURL: "https://vertex.invalid" + version,
-					Credentials: objects.ChannelCredentials{APIKey: "legacy-key"}, SupportedModels: []string{"gemini-test"}}
+				entity := &ent.Channel{
+					Type: channel.TypeGeminiVertex, BaseURL: "https://vertex.invalid" + version,
+					Credentials: objects.ChannelCredentials{APIKey: "legacy-key"}, SupportedModels: []string{"gemini-test"},
+				}
 				built, err := svc.buildChannelWithTransformer(entity)
 				require.NoError(t, err)
 				input := vertexChatRequest("gemini-test")
 				if format == llm.APIFormatGeminiEmbedding {
-					input = &llm.Request{Model: "text-embedding-005", RequestType: llm.RequestTypeEmbedding, APIFormat: format,
-						Embedding: &llm.EmbeddingRequest{Input: llm.EmbeddingInput{StringArray: []string{"hello"}}}}
+					input = &llm.Request{
+						Model: "text-embedding-005", RequestType: llm.RequestTypeEmbedding, APIFormat: format,
+						Embedding: &llm.EmbeddingRequest{Input: llm.EmbeddingInput{StringArray: []string{"hello"}}},
+					}
 				}
 				legacy, err := gemini.NewOutboundTransformerWithConfig(gemini.Config{BaseURL: entity.BaseURL, PlatformType: gemini.PlatformVertex})
 				require.NoError(t, err)

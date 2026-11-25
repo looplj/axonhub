@@ -21,13 +21,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/stretchr/testify/require"
 )
 
 func syntheticVertexAccount(t *testing.T, id string) objects.GCPCredential {
@@ -52,7 +53,7 @@ func TestVertexMixedAuthenticationAndRenewal(t *testing.T) {
 	calls := 0
 	client := httpclient.NewHttpClientWithClient(&http.Client{Transport: vertexTokenTransport(func(r *http.Request) (*http.Response, error) {
 		calls++
-		require.Equal(t, vertexTokenURL, r.URL.String())
+		require.Equal(t, vertexOAuthEndpoint, r.URL.String())
 		require.NoError(t, r.Context().Err())
 		deadline, ok := r.Context().Deadline()
 		require.True(t, ok)
@@ -70,7 +71,7 @@ func TestVertexMixedAuthenticationAndRenewal(t *testing.T) {
 		if calls == 1 {
 			expiry = 1
 		}
-		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(fmt.Sprintf(`{"access_token":"synthetic-%d","token_type":"Bearer","expires_in":%d}`, calls, expiry)))}, nil
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(fmt.Sprintf(`{"access_token":"synthetic-%d","token_type":"Bearer","expires_in":%d}`, calls, expiry)))}, nil
 	})})
 	entity := &ent.Channel{Type: channel.TypeGeminiVertex, BaseURL: "https://vertex.invalid/v1", Credentials: objects.ChannelCredentials{
 		VertexAPIKeys: []objects.VertexAPIKey{{APIKey: "api-one", ProjectID: "key-project", Region: "us-central1"}}, VertexServiceAccounts: []objects.GCPCredential{account},
@@ -85,7 +86,7 @@ func TestVertexMixedAuthenticationAndRenewal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "api-one", first.Auth.APIKey)
 	require.Contains(t, first.URL, "/projects/key-project/locations/us-central1/")
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		peer, err := newVertexOutbound(ch, "https://peer.invalid/prefix/v1", "/custom")
 		require.NoError(t, err)
 		// Advance the shared request counter to the service-account slot.
