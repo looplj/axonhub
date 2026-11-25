@@ -718,8 +718,8 @@ func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, c
 		}
 
 		credentials := chData.Credentials
-		// Check if credentials are empty (no API key and no OAuth)
-		if credentials.APIKey == "" && len(credentials.APIKeys) == 0 && credentials.OAuth == nil {
+		if credentials.APIKey == "" && len(credentials.APIKeys) == 0 && credentials.OAuth == nil &&
+			len(credentials.VertexAPIKeys) == 0 && len(credentials.VertexServiceAccounts) == 0 {
 			continue
 		}
 

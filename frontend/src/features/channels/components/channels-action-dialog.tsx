@@ -6,7 +6,7 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { RESPONSE_TIMEOUT_MAX_SECONDS } from '@/config/retry-policy';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban } from 'lucide-react';
+import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { copyTextToClipboard } from '@/lib/clipboard';
@@ -57,6 +57,13 @@ import {
   type ModelCatalogFallbackReason,
 } from '../data/channels';
 import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
+import {
+  VERTEX_DEFAULT_REGION,
+  getVertexServiceAccountIdentity,
+  parseVertexServiceAccountJSON,
+  toVertexServiceAccountInputs,
+  vertexServiceAccountParseErrorMessage,
+} from '../data/vertex-service-account';
 import { codexDecodeAuthJSON, codexOAuthExchange, codexOAuthStart } from '../data/codex';
 import {
   getDefaultBaseURL,
@@ -287,12 +294,16 @@ function getResponsesTransportFromChannel(channel?: Pick<Channel, 'type' | 'base
 // the backend contract so project/region stay attached to their key.
 type VertexAPIKeyCredential = NonNullable<NonNullable<Channel['credentials']>['vertexApiKeys']>[number];
 
-function isVertexChannelType(channelType: ChannelType | undefined): boolean {
-  return channelType === 'gemini_vertex';
-}
-
 function emptyVertexAPIKey(): VertexAPIKeyCredential {
   return { projectID: '', apiKey: '', region: 'global' };
+}
+
+// Service account credentials are the second Vertex credential type: they keep the
+// same project/region binding, plus the JSON body the backend exchanges for a token.
+type VertexServiceAccountCredential = NonNullable<NonNullable<Channel['credentials']>['vertexServiceAccounts']>[number];
+
+function emptyVertexServiceAccount(): VertexServiceAccountCredential {
+  return { projectID: '', region: VERTEX_DEFAULT_REGION, jsonData: '' };
 }
 
 function getResponsesWebSocketBaseURL(channelType: ChannelType): string | undefined {
@@ -1024,6 +1035,8 @@ export function ChannelsActionDialog({
               apiKey: currentRow.credentials?.apiKey || undefined,
               apiKeys: currentRow.credentials?.apiKeys || [],
               vertexApiKeys: currentRow.type === 'gemini_vertex' ? (currentRow.credentials?.vertexApiKeys ?? undefined) : [],
+              vertexServiceAccounts:
+                currentRow.type === 'gemini_vertex' ? (currentRow.credentials?.vertexServiceAccounts ?? undefined) : [],
               managementApiKey: currentRow.credentials?.managementApiKey || undefined,
               gcp: {
                 region: currentRow.credentials?.gcp?.region || '',
@@ -1051,6 +1064,10 @@ export function ChannelsActionDialog({
                 apiKey: duplicateFromRow.credentials?.apiKey || undefined,
                 apiKeys: duplicateFromRow.credentials?.apiKeys || [],
                 vertexApiKeys: duplicateFromRow.type === 'gemini_vertex' ? (duplicateFromRow.credentials?.vertexApiKeys ?? undefined) : [],
+                vertexServiceAccounts:
+                  duplicateFromRow.type === 'gemini_vertex'
+                    ? (duplicateFromRow.credentials?.vertexServiceAccounts ?? undefined)
+                    : [],
                 managementApiKey: duplicateFromRow.credentials?.managementApiKey || undefined,
                 gcp: {
                   region: duplicateFromRow.credentials?.gcp?.region || '',
@@ -1066,7 +1083,8 @@ export function ChannelsActionDialog({
               policies: { stream: 'unlimited' },
               credentials: {
                 apiKeys: [],
-                vertexApiKeys: isVertexChannelType(derivedChannelType) ? [emptyVertexAPIKey()] : [],
+                vertexApiKeys: [],
+                vertexServiceAccounts: [],
                 managementApiKey: undefined,
                 gcp: {
                   region: '',
@@ -1128,6 +1146,21 @@ export function ChannelsActionDialog({
   }, [open, localSettingsSnapshot]);
 
   const vertexApiKeyFields = useFieldArray({ control: form.control, name: 'credentials.vertexApiKeys' });
+  const vertexServiceAccountFields = useFieldArray({ control: form.control, name: 'credentials.vertexServiceAccounts' });
+  const vertexServiceAccountRowsRef = useRef(vertexServiceAccountFields.fields);
+  const vertexJSONReads = useRef(new Map<string, symbol>());
+  useEffect(() => {
+    vertexServiceAccountRowsRef.current = vertexServiceAccountFields.fields;
+  }, [vertexServiceAccountFields.fields]);
+  useEffect(() => {
+    if (!open) {
+      vertexJSONReads.current.clear();
+      setRevealedServiceAccountIds(new Set());
+    }
+  }, [open]);
+  // A saved service account JSON holds a private key, so it stays collapsed until the
+  // operator explicitly reopens it; new and blank rows start revealed.
+  const [revealedServiceAccountIds, setRevealedServiceAccountIds] = useState<Set<string>>(new Set());
   const apiKeys = form.watch('credentials.apiKeys');
   const apiKeysCount = useMemo(() => (apiKeys || []).filter((k) => k.trim().length > 0).length, [apiKeys]);
   const isSubmitting = createChannel.isPending || duplicateChannel.isPending || updateChannelSettings.isPending;
@@ -1395,12 +1428,6 @@ export function ChannelsActionDialog({
       if (selectedApiFormat === 'gemini/contents') {
         const newChannelType = checked ? 'gemini_vertex' : 'gemini';
         form.setValue('type', newChannelType);
-
-        // Switching into Vertex mode needs a row to edit: an empty list would
-        // reject the submit with no visible field to fill in.
-        if (checked && !(form.getValues('credentials.vertexApiKeys') ?? []).length) {
-          form.setValue('credentials.vertexApiKeys', [emptyVertexAPIKey()]);
-        }
 
         if (!isEdit) {
           const baseURLFieldState = form.getFieldState('baseURL', form.formState);
@@ -1685,25 +1712,28 @@ export function ChannelsActionDialog({
 
       // Vertex credentials are project-bound triples and are the only credential for
       // that channel type: a leftover singular apiKey would still be selected at
-      // runtime and would not resolve to a project/region pair. Ordinary channels keep
-      // their flat apiKeys and never carry the Vertex field.
+      // runtime and would not resolve to a project/region pair. Both Vertex lists are
+      // submitted together so editing an API key never drops the service accounts.
+      // Ordinary channels keep their flat apiKeys and never carry the Vertex fields.
       const submittedCredentials = valuesForSubmit.credentials;
       const vertexApiKeys = submittedCredentials?.vertexApiKeys;
+      const vertexServiceAccounts = submittedCredentials?.vertexServiceAccounts;
       const credentials =
         valuesForSubmit.type === 'gemini_vertex'
-          ? vertexApiKeys?.length
-            ? {
-                ...submittedCredentials,
-                apiKey: undefined,
-                apiKeys: undefined,
-                vertexApiKeys: vertexApiKeys.map((credential) => ({
+          ? {
+              ...submittedCredentials,
+              apiKey: undefined,
+              apiKeys: undefined,
+              vertexApiKeys: vertexApiKeys
+                ?.filter((credential) => credential.apiKey.trim().length > 0 || credential.projectID.trim().length > 0)
+                .map((credential) => ({
                   projectID: credential.projectID.trim(),
                   apiKey: credential.apiKey.trim(),
                   region: credential.region.trim() || 'global',
                 })),
-              }
-            : { ...submittedCredentials, vertexApiKeys: undefined }
-          : { ...submittedCredentials, vertexApiKeys: undefined };
+              vertexServiceAccounts: toVertexServiceAccountInputs(vertexServiceAccounts),
+            }
+          : { ...submittedCredentials, vertexApiKeys: undefined, vertexServiceAccounts: undefined };
 
       // A third-party Codex channel authenticates with a plain API key: reject an
       // empty or inherited OAuth-shaped credential instead of saving it.
@@ -1836,9 +1866,15 @@ export function ChannelsActionDialog({
           values.credentials.gcp.jsonData.trim() !== '';
         const hasVertexApiKeys =
           values.credentials?.vertexApiKeys && values.credentials.vertexApiKeys.some((binding) => binding.apiKey.trim() !== '');
+        const hasVertexServiceAccounts =
+          values.credentials?.vertexServiceAccounts &&
+          values.credentials.vertexServiceAccounts.some((account) => account.jsonData.trim() !== '');
 
         // A catalog preview can refresh the saved credentials while the form is open.
-        if (keepSavedClaudeOAuth || (!hasApiKey && !hasApiKeys && !hasManagementApiKey && !hasGcpCredentials && !hasVertexApiKeys)) {
+        if (
+          keepSavedClaudeOAuth ||
+          (!hasApiKey && !hasApiKeys && !hasManagementApiKey && !hasGcpCredentials && !hasVertexApiKeys && !hasVertexServiceAccounts)
+        ) {
           delete updateInput.credentials;
         }
 
@@ -2101,7 +2137,10 @@ export function ChannelsActionDialog({
     const apiKeys = form.watch('credentials.apiKeys');
     const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
     const vertexApiKeys = form.watch('credentials.vertexApiKeys');
-    const hasVertexApiKey = vertexApiKeys?.some((credential) => credential.apiKey.trim().length > 0);
+    const vertexServiceAccounts = form.watch('credentials.vertexServiceAccounts');
+    const hasVertexCredential =
+      (vertexApiKeys?.some((credential) => (credential.apiKey?.trim().length ?? 0) > 0) ?? false) ||
+      (vertexServiceAccounts?.some((account) => (account.jsonData?.trim().length ?? 0) > 0) ?? false);
 
     if (isClaudeCodeType) {
       return !!baseURL && (authMode === 'official' || !!claudeCredential);
@@ -2121,7 +2160,7 @@ export function ChannelsActionDialog({
       return !!baseURL;
     }
 
-    return !!baseURL && (isGeminiVertex ? hasVertexApiKey : hasApiKey);
+    return !!baseURL && (isGeminiVertex ? hasVertexCredential : hasApiKey);
   };
   // Memoize quick models to avoid re-evaluating on every render
   const currentType = form.watch('type');
@@ -2456,7 +2495,7 @@ export function ChannelsActionDialog({
                     </div>
 
                     {/* Right Side - Form Fields */}
-                    <div className='flex-1 space-y-6 overflow-y-auto md:pr-4'>
+                    <div className='min-w-0 flex-1 space-y-6 overflow-y-auto md:pr-4 [&_[role=combobox]]:min-w-0 [&_[role=combobox]]:max-w-full [&_[data-slot=select-value]]:min-w-0'>
                       {selectedProvider !== 'jina' &&
                         selectedProvider !== 'codex' &&
                         selectedProvider !== 'claudecode' &&
@@ -2945,16 +2984,28 @@ export function ChannelsActionDialog({
                         <FormField
                           control={form.control}
                           name='credentials.vertexApiKeys'
-                          render={({ field }) => {
-                            const credentials = field.value || [];
+                          render={({ fieldState }) => {
+                            const apiKeyRows = vertexApiKeyFields.fields;
+                            const watchedServiceAccounts = form.watch('credentials.vertexServiceAccounts');
+                            const serviceAccountRows = vertexServiceAccountFields.fields.map((row, index) => ({
+                              ...row,
+                              ...watchedServiceAccounts?.[index],
+                            }));
                             return (
                               <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
                                 <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                                  {t('channels.dialogs.fields.vertexApiKey.label')}
+                                  {t('channels.dialogs.fields.vertexCredential.label')}
                                 </FormLabel>
-                                <div className='space-y-3 md:col-span-6'>
-                                  {credentials.map((_, index) => (
-                                    <div className='grid gap-3 rounded-md border p-3' key={vertexApiKeyFields.fields[index]?.id ?? index}>
+                                <div className='min-w-0 space-y-3 md:col-span-6'>
+                                  {/* API key entries render first so the list order matches the management dialog. */}
+                                  {apiKeyRows.map((_, index) => (
+                                    <div
+                                      className='grid gap-3 rounded-md border p-3'
+                                      key={vertexApiKeyFields.fields[index]?.id ?? index}
+                                    >
+                                      <div className='flex items-center gap-2'>
+                                        <Badge variant='secondary'>{t('channels.dialogs.fields.vertexCredential.apiKeyBadge')}</Badge>
+                                      </div>
                                       <div className='grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:items-end'>
                                         <FormField
                                           control={form.control}
@@ -2962,13 +3013,13 @@ export function ChannelsActionDialog({
                                           render={({ field: rowField }) => (
                                             <FormItem className='grid gap-1.5'>
                                               <FormLabel className='text-muted-foreground text-xs font-medium'>
-                                                {t('channels.dialogs.fields.vertexApiKey.projectIDLabel')}
+                                                {t('channels.dialogs.fields.vertexCredential.projectIDLabel')}
                                               </FormLabel>
                                               <FormControl>
                                                 <Input
                                                   value={rowField.value}
                                                   onChange={(event) => rowField.onChange(event.target.value)}
-                                                  placeholder={t('channels.dialogs.fields.vertexApiKey.projectIDPlaceholder')}
+                                                  placeholder={t('channels.dialogs.fields.vertexCredential.projectIDPlaceholder')}
                                                 />
                                               </FormControl>
                                               <FormMessage />
@@ -2981,13 +3032,13 @@ export function ChannelsActionDialog({
                                           render={({ field: rowField }) => (
                                             <FormItem className='grid gap-1.5'>
                                               <FormLabel className='text-muted-foreground text-xs font-medium'>
-                                                {t('channels.dialogs.fields.vertexApiKey.regionLabel')}
+                                                {t('channels.dialogs.fields.vertexCredential.regionLabel')}
                                               </FormLabel>
                                               <FormControl>
                                                 <Input
                                                   value={rowField.value}
                                                   onChange={(event) => rowField.onChange(event.target.value)}
-                                                  placeholder='global'
+                                                  placeholder={VERTEX_DEFAULT_REGION}
                                                 />
                                               </FormControl>
                                               <FormMessage />
@@ -2999,8 +3050,7 @@ export function ChannelsActionDialog({
                                           variant='ghost'
                                           size='icon'
                                           onClick={() => vertexApiKeyFields.remove(index)}
-                                          disabled={credentials.length <= 1}
-                                          aria-label={t('channels.dialogs.fields.vertexApiKey.remove')}
+                                          aria-label={t('channels.dialogs.fields.vertexCredential.remove')}
                                         >
                                           <Trash2 className='h-4 w-4' />
                                         </Button>
@@ -3011,14 +3061,14 @@ export function ChannelsActionDialog({
                                         render={({ field: rowField }) => (
                                           <FormItem className='grid gap-1.5'>
                                             <FormLabel className='text-muted-foreground text-xs font-medium'>
-                                              {t('channels.dialogs.fields.vertexApiKey.apiKeyLabel')}
+                                              {t('channels.dialogs.fields.vertexCredential.apiKeyLabel')}
                                             </FormLabel>
                                             <FormControl>
                                               <Input
                                                 type='password'
                                                 value={rowField.value}
                                                 onChange={(event) => rowField.onChange(event.target.value)}
-                                                placeholder={t('channels.dialogs.fields.vertexApiKey.apiKeyPlaceholder')}
+                                                placeholder={t('channels.dialogs.fields.vertexCredential.apiKeyPlaceholder')}
                                               />
                                             </FormControl>
                                             <FormMessage />
@@ -3027,16 +3077,214 @@ export function ChannelsActionDialog({
                                       />
                                     </div>
                                   ))}
-                                  <Button
-                                    type='button'
-                                    variant='secondary'
-                                    onClick={() => vertexApiKeyFields.append({ projectID: '', apiKey: '', region: 'global' })}
-                                  >
-                                    <Plus className='mr-2 h-4 w-4' />
-                                    {t('channels.dialogs.fields.vertexApiKey.add')}
-                                  </Button>
-                                  <FormDescription>{t('channels.dialogs.fields.vertexApiKey.description')}</FormDescription>
-                                  <FormMessage />
+
+                                  {/* Service account entries render second and keep the pasted JSON hidden until edited. */}
+                                  {serviceAccountRows.map((row, index) => {
+                                    const fieldID = vertexServiceAccountFields.fields[index]?.id ?? `service-account-${index}`;
+                                    const identity = getVertexServiceAccountIdentity(row.jsonData);
+                                    const isRevealed = row.jsonData.trim().length === 0 || revealedServiceAccountIds.has(fieldID);
+                                    const revealJSON = () =>
+                                      setRevealedServiceAccountIds((previous) => new Set(previous).add(fieldID));
+                                    return (
+                                      <div className='grid min-w-0 grid-cols-1 gap-3 rounded-md border p-3' key={fieldID}>
+                                        <div className='flex flex-wrap items-center justify-between gap-2'>
+                                          <Badge variant='secondary'>
+                                            {t('channels.dialogs.fields.vertexCredential.serviceAccountBadge')}
+                                          </Badge>
+                                          <span className='text-muted-foreground truncate text-xs'>
+                                            {identity.clientEmail ||
+                                              t('channels.dialogs.fields.vertexCredential.serviceAccountMissing')}
+                                          </span>
+                                        </div>
+                                        <div className='grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:items-end'>
+                                          <FormField
+                                            control={form.control}
+                                            name={`credentials.vertexServiceAccounts.${index}.projectID`}
+                                            render={({ field: rowField }) => (
+                                              <FormItem className='grid gap-1.5'>
+                                                <FormLabel className='text-muted-foreground text-xs font-medium'>
+                                                  {t('channels.dialogs.fields.vertexCredential.projectIDLabel')}
+                                                </FormLabel>
+                                                <FormControl>
+                                                  <Input
+                                                    value={rowField.value}
+                                                    onChange={(event) => rowField.onChange(event.target.value)}
+                                                    placeholder={t('channels.dialogs.fields.vertexCredential.projectIDPlaceholder')}
+                                                  />
+                                                </FormControl>
+                                                <FormMessage />
+                                              </FormItem>
+                                            )}
+                                          />
+                                          <FormField
+                                            control={form.control}
+                                            name={`credentials.vertexServiceAccounts.${index}.region`}
+                                            render={({ field: rowField }) => (
+                                              <FormItem className='grid gap-1.5'>
+                                                <FormLabel className='text-muted-foreground text-xs font-medium'>
+                                                  {t('channels.dialogs.fields.vertexCredential.regionLabel')}
+                                                </FormLabel>
+                                                <FormControl>
+                                                  <Input
+                                                    value={rowField.value}
+                                                    onChange={(event) => rowField.onChange(event.target.value)}
+                                                    placeholder={VERTEX_DEFAULT_REGION}
+                                                  />
+                                                </FormControl>
+                                                <FormMessage />
+                                              </FormItem>
+                                            )}
+                                          />
+                                          <Button
+                                            type='button'
+                                            variant='ghost'
+                                            size='icon'
+                                            onClick={() => vertexServiceAccountFields.remove(index)}
+                                            aria-label={t('channels.dialogs.fields.vertexCredential.remove')}
+                                          >
+                                            <Trash2 className='h-4 w-4' />
+                                          </Button>
+                                        </div>
+                                        <FormField
+                                          control={form.control}
+                                          name={`credentials.vertexServiceAccounts.${index}.jsonData`}
+                                          render={({ field: rowField }) => (
+                                            <FormItem className='grid min-w-0 grid-cols-1 gap-1.5'>
+                                              <FormLabel className='text-muted-foreground text-xs font-medium'>
+                                                {t('channels.dialogs.fields.vertexCredential.jsonLabel')}
+                                              </FormLabel>
+                                              {isRevealed ? (
+                                                <>
+                                                  <FormControl>
+                                                    <Textarea
+                                                      value={rowField.value}
+                                                      onChange={(event) => {
+                                                        revealJSON();
+                                                        vertexJSONReads.current.delete(fieldID);
+                                                        rowField.onChange(event.target.value);
+                                                        const parsed = parseVertexServiceAccountJSON(event.target.value);
+                                                        if (parsed.ok && !form.getValues(`credentials.vertexServiceAccounts.${index}.projectID`)?.trim()) {
+                                                          form.setValue(`credentials.vertexServiceAccounts.${index}.projectID`, parsed.value.projectID, {
+                                                            shouldDirty: true,
+                                                            shouldValidate: true,
+                                                          });
+                                                        }
+                                                      }}
+                                                      onBlur={rowField.onBlur}
+                                                      placeholder={t('channels.dialogs.fields.vertexCredential.jsonPlaceholder')}
+                                                      rows={3}
+                                                      wrap='off'
+                                                      className='field-sizing-fixed min-h-0 min-w-0 max-w-full resize overflow-x-auto whitespace-pre font-mono text-xs'
+                                                    />
+                                                  </FormControl>
+                                                  <div className='flex flex-wrap items-center gap-2'>
+                                                    <Button type='button' variant='outline' size='sm' asChild>
+                                                      <label className='cursor-pointer'>
+                                                        <input
+                                                          type='file'
+                                                          accept='.json,application/json'
+                                                          className='hidden'
+                                                          onChange={(event) => {
+                                                            const input = event.currentTarget;
+                                                            const file = event.target.files?.[0];
+                                                            event.target.value = '';
+                                                            if (!file) return;
+                                                            const readID = Symbol();
+                                                            vertexJSONReads.current.set(fieldID, readID);
+                                                            void file.text().then((text) => {
+                                                              const currentIndex = vertexServiceAccountRowsRef.current.findIndex((field) => field.id === fieldID);
+                                                              if (!input.isConnected || currentIndex < 0 || vertexJSONReads.current.get(fieldID) !== readID) return;
+                                                              const parsed = parseVertexServiceAccountJSON(text);
+                                                              if (!parsed.ok) {
+                                                                toast.error(vertexServiceAccountParseErrorMessage(parsed.error));
+                                                              }
+                                                              form.setValue(`credentials.vertexServiceAccounts.${currentIndex}.jsonData`, text, {
+                                                                shouldDirty: true,
+                                                                shouldValidate: true,
+                                                              });
+                                                              if (parsed.ok && !form.getValues(`credentials.vertexServiceAccounts.${currentIndex}.projectID`)?.trim()) {
+                                                                form.setValue(`credentials.vertexServiceAccounts.${currentIndex}.projectID`, parsed.value.projectID, {
+                                                                  shouldDirty: true,
+                                                                  shouldValidate: true,
+                                                                });
+                                                              }
+                                                              revealJSON();
+                                                            }).catch(() => {
+                                                              if (input.isConnected && vertexJSONReads.current.get(fieldID) === readID) {
+                                                                toast.error(t('channels.dialogs.fields.vertexCredential.readFileError'));
+                                                              }
+                                                            });
+                                                          }}
+                                                        />
+                                                        <Upload className='mr-2 h-4 w-4' />
+                                                        {t('channels.dialogs.fields.vertexCredential.loadFile')}
+                                                      </label>
+                                                    </Button>
+                                                    {row.jsonData.trim().length > 0 && (
+                                                      <Button
+                                                        type='button'
+                                                        variant='ghost'
+                                                        size='sm'
+                                                        onClick={() =>
+                                                          setRevealedServiceAccountIds((previous) => {
+                                                            const next = new Set(previous);
+                                                            next.delete(fieldID);
+                                                            return next;
+                                                          })
+                                                        }
+                                                      >
+                                                        {t('channels.dialogs.fields.vertexCredential.hideJSON')}
+                                                      </Button>
+                                                    )}
+                                                  </div>
+                                                </>
+                                              ) : (
+                                                <div className='flex flex-wrap items-center gap-2'>
+                                                  <span className='text-muted-foreground text-xs'>
+                                                    {t('channels.dialogs.fields.vertexCredential.jsonHidden')}
+                                                  </span>
+                                                  <Button type='button' variant='outline' size='sm' onClick={revealJSON}>
+                                                    {t('channels.dialogs.fields.vertexCredential.editJSON')}
+                                                  </Button>
+                                                </div>
+                                              )}
+                                              <FormMessage />
+                                            </FormItem>
+                                          )}
+                                        />
+                                      </div>
+                                    );
+                                  })}
+
+                                  <div className='flex flex-wrap gap-2'>
+                                    <Button
+                                      type='button'
+                                      variant='secondary'
+                                      onClick={() => vertexApiKeyFields.append(emptyVertexAPIKey())}
+                                    >
+                                      <Plus className='mr-2 h-4 w-4' />
+                                      {t('channels.dialogs.fields.vertexCredential.addApiKey')}
+                                    </Button>
+                                    <Button
+                                      type='button'
+                                      variant='secondary'
+                                      onClick={() => {
+                                        vertexServiceAccountFields.append(emptyVertexServiceAccount());
+                                        void form.trigger('credentials.vertexServiceAccounts');
+                                      }}
+                                    >
+                                      <Plus className='mr-2 h-4 w-4' />
+                                      {t('channels.dialogs.fields.vertexCredential.addServiceAccount')}
+                                    </Button>
+                                  </div>
+                                  <FormDescription>{t('channels.dialogs.fields.vertexCredential.description')}</FormDescription>
+                                  {fieldState.error?.root?.message ? (
+                                    <p className='text-destructive text-sm' role='alert'>
+                                      {fieldState.error.root.message}
+                                    </p>
+                                  ) : (
+                                    <FormMessage />
+                                  )}
                                 </div>
                               </FormItem>
                             );

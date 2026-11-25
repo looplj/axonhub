@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
@@ -134,7 +133,7 @@ func buildChannel(c *ent.Channel, httpClient *httpclient.HttpClient) *Channel {
 	// Precompute disabled key set for O(1) lookup
 	disabledKeySet := make(map[string]struct{}, len(c.DisabledAPIKeys))
 	for _, dk := range c.DisabledAPIKeys {
-		if dk.Key != "" {
+		if dk.Key != "" && !dk.IsExpired() {
 			disabledKeySet[dk.Key] = struct{}{}
 		}
 	}
@@ -144,6 +143,9 @@ func buildChannel(c *ent.Channel, httpClient *httpclient.HttpClient) *Channel {
 		HTTPClient:           httpClient,
 		cachedDisabledKeySet: disabledKeySet,
 		cachedEnabledAPIKeys: c.Credentials.GetEnabledAPIKeys(c.DisabledAPIKeys),
+	}
+	if c.Type == channel.TypeGeminiVertex {
+		ch.cachedEnabledAPIKeys = c.Credentials.GetEnabledCredentialRefs(c.DisabledAPIKeys)
 	}
 
 	// Precompute other caches
@@ -177,13 +179,16 @@ func getAPIKeyProvider(ch *Channel) (auth.APIKeyProvider, error) {
 	}
 
 	enabled := ch.cachedEnabledAPIKeys
+	if len(enabled) == 0 {
+		return nil, fmt.Errorf("no enabled api key configured for channel %s", ch.Name)
+	}
 
 	// Keep the configured policy active whenever the channel holds more than one
 	// key, even if only one is selectable right now. Falling back to a static
 	// provider drops the fixed cursor and the success counter, so traffic snaps
 	// back to a re-enabled key and round_robin_success loses the successes
 	// reported while the channel was down to one key.
-	if len(enabled) > 1 || len(ch.Credentials.APIKeys) > 1 {
+	if len(enabled) > 1 || len(ch.Credentials.GetAllCredentialRefs()) > 1 {
 		return NewChannelAPIKeyContextProvider(newMultiKeyProvider(ch)), nil
 	}
 
@@ -443,6 +448,10 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	ch *Channel,
 	ep objects.ChannelEndpoint,
 ) (transformer.Outbound, error) {
+	if c.Type == channel.TypeGeminiVertex && len(c.Credentials.VertexServiceAccounts) > 0 &&
+		ep.APIFormat != llm.APIFormatGeminiContents.String() && ep.APIFormat != llm.APIFormatGeminiEmbedding.String() {
+		return nil, errors.New("Vertex service accounts require Gemini endpoints")
+	}
 	// Codex and image endpoints authenticate with the channel's own token
 	// provider. Only the generic transformers below ask for an API key, and
 	// they must fail closed when the channel does not have one.
@@ -620,23 +629,27 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			})
 		})
 	case llm.APIFormatGeminiContents.String():
+		if c.Type == channel.TypeGeminiVertex {
+			return newVertexOutbound(ch, baseURL, ep.Path)
+		}
 		return withAPIKey(func(provider auth.APIKeyProvider) (transformer.Outbound, error) {
 			return gemini.NewOutboundTransformerWithConfig(gemini.Config{
-				BaseURL:         baseURL,
-				APIKeyProvider:  provider,
-				EndpointPath:    ep.Path,
-				PlatformType:    ch.platformTypeForGeminiEndpoint(),
-				BaseURLProvider: vertexEndpointBaseURLProvider(c, ch, baseURL),
+				BaseURL:        baseURL,
+				APIKeyProvider: provider,
+				EndpointPath:   ep.Path,
+				PlatformType:   ch.platformTypeForGeminiEndpoint(),
 			})
 		})
 	case llm.APIFormatGeminiEmbedding.String():
+		if c.Type == channel.TypeGeminiVertex {
+			return newVertexOutbound(ch, baseURL, ep.Path)
+		}
 		return withAPIKey(func(provider auth.APIKeyProvider) (transformer.Outbound, error) {
 			return gemini.NewOutboundTransformerWithConfig(gemini.Config{
-				BaseURL:         baseURL,
-				APIKeyProvider:  provider,
-				EndpointPath:    ep.Path,
-				PlatformType:    ch.platformTypeForGeminiEndpoint(),
-				BaseURLProvider: vertexEndpointBaseURLProvider(c, ch, baseURL),
+				BaseURL:        baseURL,
+				APIKeyProvider: provider,
+				EndpointPath:   ep.Path,
+				PlatformType:   ch.platformTypeForGeminiEndpoint(),
 			})
 		})
 	case llm.APIFormatJinaRerank.String(), llm.APIFormatJinaEmbedding.String():
@@ -775,6 +788,17 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 	//nolint:exhaustive // Checked.
 	switch c.Type {
+	case channel.TypeGeminiVertex:
+		if err := ValidateVertexAPIKeys(c.Type, c.Credentials); err != nil {
+			return nil, err
+		}
+		if overrideAPIKey != "" {
+			if !slices.Contains(c.Credentials.GetAllCredentialRefs(), overrideAPIKey) {
+				return nil, errors.New("specified Vertex credential is not configured")
+			}
+		} else if len(c.Credentials.GetEnabledCredentialRefs(c.DisabledAPIKeys)) == 0 {
+			return nil, errors.New("no enabled Vertex credential configured")
+		}
 	case channel.TypeCodex, channel.TypeClaudecode:
 		if !c.Credentials.IsOAuth() && len(enabledKeys) == 0 {
 			return nil, fmt.Errorf("missing credentials: oauth or api key required for channel %s", c.Name)
@@ -1599,25 +1623,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 		return ch, nil
 	case channel.TypeGeminiVertex:
-		var baseURLProvider func(context.Context) string
-		if len(c.Credentials.VertexAPIKeys) > 0 {
-			if err := ValidateVertexAPIKeys(c.Type, c.Credentials); err != nil {
-				return nil, fmt.Errorf("channel %s: %w", c.Name, err)
-			}
-
-			baseURLProvider = vertexBaseURLProvider(c)
-		}
-
-		apiKeyProvider, err := getAPIKeyProvider(ch)
-		if err != nil {
-			return nil, err
-		}
-		transformer, err := gemini.NewOutboundTransformerWithConfig(gemini.Config{
-			BaseURL:         c.BaseURL,
-			APIKeyProvider:  apiKeyProvider,
-			BaseURLProvider: baseURLProvider,
-			PlatformType:    gemini.PlatformVertex,
-		})
+		transformer, err := newVertexOutbound(ch, c.BaseURL, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 		}
@@ -1752,6 +1758,9 @@ func validVertexResourceSegment(value string) bool {
 // runtime looks a key up to find its project and region, so two entries sharing
 // a key would always resolve to whichever comes first.
 func ValidateVertexAPIKeys(channelType channel.Type, credentials objects.ChannelCredentials) error {
+	if err := validateVertexServiceAccounts(channelType, credentials); err != nil {
+		return err
+	}
 	if len(credentials.VertexAPIKeys) == 0 {
 		return nil
 	}
@@ -1809,50 +1818,6 @@ func vertexServiceBaseURL(baseURL string) string {
 	}
 
 	return strings.TrimSuffix(trimmed, "/v1")
-}
-
-// vertexEndpointBaseURLProvider is the override counterpart of
-// vertexBaseURLProvider. A user-configured Gemini endpoint replaces the primary
-// transformer, so it must rebuild the per-key resource root as well; otherwise a
-// saved endpoint silently falls back to the binding-less project root URL, and the
-// custom host is replaced by the channel Base URL.
-// Non-Vertex Gemini endpoints keep their configured Base URL and return nil.
-func vertexEndpointBaseURLProvider(c *ent.Channel, ch *Channel, resolvedBaseURL string) func(context.Context) string {
-	if c.Type != channel.TypeGeminiVertex && ch.platformTypeForGeminiEndpoint() != gemini.PlatformVertex {
-		return nil
-	}
-
-	if len(c.Credentials.VertexAPIKeys) == 0 {
-		return nil
-	}
-
-	return vertexBaseURLProviderWithBaseURL(resolvedBaseURL, c)
-}
-
-// vertexBaseURLProviderWithBaseURL resolves the Vertex resource root for the API key
-// the outbound pipeline selected for this request. Each key carries its own project and
-// region, so the URL can only be built once that selection is known. The base URL is
-// passed in because a custom Gemini endpoint supplies its own host and must keep it.
-func vertexBaseURLProviderWithBaseURL(baseURL string, c *ent.Channel) func(context.Context) string {
-	return func(ctx context.Context) string {
-		apiKey, ok := contexts.GetChannelAPIKey(ctx)
-		if !ok {
-			return ""
-		}
-
-		credential, ok := c.Credentials.VertexAPIKey(apiKey)
-		if !ok {
-			return ""
-		}
-
-		return fmt.Sprintf("%s/v1/projects/%s/locations/%s", vertexServiceBaseURL(baseURL), strings.TrimSpace(credential.ProjectID), strings.TrimSpace(credential.Region))
-	}
-}
-
-// vertexBaseURLProvider binds vertexBaseURLProviderWithBaseURL to the channel's own
-// Base URL, which is what the primary gemini_vertex outbound uses.
-func vertexBaseURLProvider(c *ent.Channel) func(context.Context) string {
-	return vertexBaseURLProviderWithBaseURL(c.BaseURL, c)
 }
 
 func isOAuthJSON(s string) bool {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { pageInfoSchema } from '@/gql/pagination';
+import { vertexServiceAccountCredentialSchema, vertexServiceAccountShapeSchema } from './vertex-service-account';
 
 export const apiFormatSchema = z.enum([
   'openai/chat_completions',
@@ -439,6 +440,20 @@ export const channelCredentialsSchema = z.object({
     )
     .optional()
     .nullable(),
+  // Service account credentials share the channel with the API key rows. credentialRef
+  // is issued by the backend and is read-only: it identifies a row for disable/test
+  // without exposing the JSON body.
+  vertexServiceAccounts: z
+    .array(
+      z.object({
+        projectID: z.string(),
+        region: z.string(),
+        jsonData: z.string(),
+        credentialRef: z.string().optional().nullable(),
+      })
+    )
+    .optional()
+    .nullable(),
   // Optional provider management/console API key (e.g. ZenMux) used only for
   // server-side quota checks; inference keeps using apiKey/apiKeys.
   managementApiKey: z.string().optional().nullable(),
@@ -761,34 +776,53 @@ const vertexAPIKeyShapeSchema = z.object({
   region: z.string().default('global'),
 });
 
-// Vertex rows only mean something on a gemini_vertex channel. Validating them behind
-// the type check keeps a leftover row from blocking an ordinary channel, whose submit
-// clears vertexApiKeys for the non-Vertex type.
-function validateVertexAPIKeys(
+// Vertex credentials only mean something on a gemini_vertex channel. Validating them
+// behind the type check keeps a leftover row from blocking an ordinary channel, whose
+// submit clears both Vertex lists for the non-Vertex type.
+function validateVertexCredentials(
   channelType: string | undefined,
-  credentials: { vertexApiKeys?: { projectID: string; apiKey: string; region?: string }[] | null } | undefined,
+  credentials:
+    | {
+        vertexApiKeys?: { projectID: string; apiKey: string; region?: string }[] | null;
+        vertexServiceAccounts?: { projectID: string; region?: string; jsonData: string }[] | null;
+      }
+    | undefined,
   ctx: z.RefinementCtx
 ) {
   if (channelType !== 'gemini_vertex') {
     return;
   }
 
-  const rowSchema = vertexAPIKeyCredentialSchema('global');
-  const rows = credentials?.vertexApiKeys;
+  const keyRows = credentials?.vertexApiKeys ?? [];
+  const accountRows = credentials?.vertexServiceAccounts ?? [];
 
-  // An empty list is itself an error: create always materialises the field, and an
-  // update that sends one is clearing the last binding.
-  if (rows && !rows.length) {
+  // The editor keeps one blank draft per credential type. A row with neither a secret
+  // nor a project is a draft and is dropped on submit; anything else must be complete.
+  const isKeyDraft = (row: { projectID: string; apiKey: string }) =>
+    row.apiKey.trim().length === 0 && row.projectID.trim().length === 0;
+  const isAccountDraft = (row: { projectID: string; jsonData: string }) =>
+    row.jsonData.trim().length === 0 && row.projectID.trim().length === 0;
+
+  const usableRows = keyRows.filter((row) => !isKeyDraft(row)).length + accountRows.filter((row) => !isAccountDraft(row)).length;
+
+  // Both lists are replaced wholesale on save, so leaving every row blank clears the
+  // channel's last credential.
+  if (usableRows === 0) {
     ctx.addIssue({
       code: 'custom' as const,
-      message: 'At least one Vertex API key is required',
+      message: 'At least one Vertex API key or service account JSON is required',
       path: ['credentials', 'vertexApiKeys'],
     });
     return;
   }
 
-  (rows ?? []).forEach((row, index) => {
-    const parsed = rowSchema.safeParse(row);
+  const keySchema = vertexAPIKeyCredentialSchema('global');
+  keyRows.forEach((row, index) => {
+    if (isKeyDraft(row)) {
+      return;
+    }
+
+    const parsed = keySchema.safeParse(row);
     if (parsed.success) {
       return;
     }
@@ -798,6 +832,26 @@ function validateVertexAPIKeys(
         code: 'custom' as const,
         message: issue.message,
         path: ['credentials', 'vertexApiKeys', index, ...issue.path],
+      });
+    });
+  });
+
+  const accountSchema = vertexServiceAccountCredentialSchema('global');
+  accountRows.forEach((row, index) => {
+    if (isAccountDraft(row)) {
+      return;
+    }
+
+    const parsed = accountSchema.safeParse(row);
+    if (parsed.success) {
+      return;
+    }
+
+    parsed.error.issues.forEach((issue) => {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: issue.message,
+        path: ['credentials', 'vertexServiceAccounts', index, ...issue.path],
       });
     });
   });
@@ -836,6 +890,8 @@ export const createChannelInputSchema = z
       apiKeys: z.array(z.string()).optional().default([]),
       // Vertex credentials are project-bound triples; an omitted region defaults to global.
       vertexApiKeys: z.array(vertexAPIKeyShapeSchema).optional().default([]),
+      // Service account rows: jsonData is validated per row on a gemini_vertex channel.
+      vertexServiceAccounts: z.array(vertexServiceAccountShapeSchema).optional().default([]),
       // Optional management key used only by the backend for quota checks
       managementApiKey: z.string().optional(),
       gcp: z
@@ -908,7 +964,7 @@ export const createChannelInputSchema = z
 
     // Vertex rows carry project and region, so their own rules report a missing field
     // or an invalid project/region, and an empty list is rejected.
-    validateVertexAPIKeys(data.type, data.credentials, ctx);
+    validateVertexCredentials(data.type, data.credentials, ctx);
   });
 export type CreateChannelInput = z.infer<typeof createChannelInputSchema>;
 
@@ -937,6 +993,8 @@ export const updateChannelInputSchema = z
         apiKeys: z.array(z.string()).optional(),
         // Vertex credentials are project-bound triples; an omitted region defaults to global.
         vertexApiKeys: z.array(vertexAPIKeyShapeSchema).optional(),
+        // Service account rows: jsonData is validated per row on a gemini_vertex channel.
+        vertexServiceAccounts: z.array(vertexServiceAccountShapeSchema).optional(),
         // Optional management key used only by the backend for quota checks
         managementApiKey: z.string().optional(),
         gcp: z
@@ -1028,7 +1086,7 @@ export const updateChannelInputSchema = z
     }
 
     // An update may clear the list, so an empty array is itself an error.
-    validateVertexAPIKeys(data.type, data.credentials, ctx);
+    validateVertexCredentials(data.type, data.credentials, ctx);
   });
 
 export type UpdateChannelInput = z.infer<typeof updateChannelInputSchema>;

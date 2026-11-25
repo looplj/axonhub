@@ -85,7 +85,7 @@ func TestTraceStickyKeyProvider_DifferentTraces_MaySelectDifferentKeys(t *testin
 	require.Greater(t, len(selectedKeys), 1, "different traces should select different keys")
 }
 
-func TestTraceStickyKeyProvider_EmptyEnabledKeys_FallbackToFirst(t *testing.T) {
+func TestTraceStickyKeyProvider_EmptyEnabledKeys_ReturnsEmpty(t *testing.T) {
 	ch := &Channel{
 		Channel: &ent.Channel{
 			Credentials: objects.ChannelCredentials{
@@ -99,7 +99,7 @@ func TestTraceStickyKeyProvider_EmptyEnabledKeys_FallbackToFirst(t *testing.T) {
 	ctx := context.Background()
 
 	key := provider.Get(ctx)
-	require.Equal(t, "fallback-key", key)
+	require.Empty(t, key)
 }
 
 func TestTraceStickyKeyProvider_AddKey_MinimalRemapping(t *testing.T) {
@@ -327,7 +327,7 @@ func TestTraceStickyKeyProvider_EnableKey_AfterDisable(t *testing.T) {
 	require.Contains(t, allKeys, keyAfterEnable)
 }
 
-func TestTraceStickyKeyProvider_AllKeysDisabled_FallbackToFirst(t *testing.T) {
+func TestTraceStickyKeyProvider_AllKeysDisabled_ReturnsEmpty(t *testing.T) {
 	ch := &Channel{
 		Channel: &ent.Channel{
 			Credentials: objects.ChannelCredentials{
@@ -341,7 +341,7 @@ func TestTraceStickyKeyProvider_AllKeysDisabled_FallbackToFirst(t *testing.T) {
 	ctx := context.Background()
 
 	key := provider.Get(ctx)
-	require.Equal(t, "key-1", key, "should fallback to first key when all disabled")
+	require.Empty(t, key, "disabled credentials must never be selected")
 }
 
 func TestRendezvousSelect_Deterministic(t *testing.T) {

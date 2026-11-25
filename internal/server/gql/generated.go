@@ -462,12 +462,13 @@ type ComplexityRoot struct {
 	}
 
 	ChannelCredentials struct {
-		APIKey        func(childComplexity int) int
-		APIKeys       func(childComplexity int) int
-		GCP           func(childComplexity int) int
-		IsOAuth       func(childComplexity int) int
-		OAuth         func(childComplexity int) int
-		VertexAPIKeys func(childComplexity int) int
+		APIKey                func(childComplexity int) int
+		APIKeys               func(childComplexity int) int
+		GCP                   func(childComplexity int) int
+		IsOAuth               func(childComplexity int) int
+		OAuth                 func(childComplexity int) int
+		VertexAPIKeys         func(childComplexity int) int
+		VertexServiceAccounts func(childComplexity int) int
 	}
 
 	ChannelEdge struct {
@@ -926,9 +927,10 @@ type ComplexityRoot struct {
 	}
 
 	GCPCredential struct {
-		JSONData  func(childComplexity int) int
-		ProjectID func(childComplexity int) int
-		Region    func(childComplexity int) int
+		CredentialRef func(childComplexity int) int
+		JSONData      func(childComplexity int) int
+		ProjectID     func(childComplexity int) int
+		Region        func(childComplexity int) int
 	}
 
 	GCS struct {
@@ -4424,6 +4426,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelCredentials.VertexAPIKeys(childComplexity), true
+	case "ChannelCredentials.vertexServiceAccounts":
+		if e.complexity.ChannelCredentials.VertexServiceAccounts == nil {
+			break
+		}
+
+		return e.complexity.ChannelCredentials.VertexServiceAccounts(childComplexity), true
 
 	case "ChannelEdge.cursor":
 		if e.complexity.ChannelEdge.Cursor == nil {
@@ -6094,6 +6102,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.FilterCondition.Value(childComplexity), true
 
+	case "GCPCredential.credentialRef":
+		if e.complexity.GCPCredential.CredentialRef == nil {
+			break
+		}
+
+		return e.complexity.GCPCredential.CredentialRef(childComplexity), true
 	case "GCPCredential.jsonData":
 		if e.complexity.GCPCredential.JSONData == nil {
 			break
@@ -25310,6 +25324,8 @@ func (ec *executionContext) fieldContext_Channel_credentials(_ context.Context, 
 				return ec.fieldContext_ChannelCredentials_apiKeys(ctx, field)
 			case "vertexApiKeys":
 				return ec.fieldContext_ChannelCredentials_vertexApiKeys(ctx, field)
+			case "vertexServiceAccounts":
+				return ec.fieldContext_ChannelCredentials_vertexServiceAccounts(ctx, field)
 			case "gcp":
 				return ec.fieldContext_ChannelCredentials_gcp(ctx, field)
 			case "oauth":
@@ -25630,6 +25646,45 @@ func (ec *executionContext) fieldContext_ChannelCredentials_vertexApiKeys(_ cont
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelCredentials_vertexServiceAccounts(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelCredentials_vertexServiceAccounts,
+		func(ctx context.Context) (any, error) {
+			return obj.VertexServiceAccounts, nil
+		},
+		nil,
+		ec.marshalOGCPCredential2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredentialᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelCredentials_vertexServiceAccounts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "credentialRef":
+				return ec.fieldContext_GCPCredential_credentialRef(ctx, field)
+			case "region":
+				return ec.fieldContext_GCPCredential_region(ctx, field)
+			case "projectID":
+				return ec.fieldContext_GCPCredential_projectID(ctx, field)
+			case "jsonData":
+				return ec.fieldContext_GCPCredential_jsonData(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GCPCredential", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelCredentials_gcp(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25654,6 +25709,8 @@ func (ec *executionContext) fieldContext_ChannelCredentials_gcp(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "credentialRef":
+				return ec.fieldContext_GCPCredential_credentialRef(ctx, field)
 			case "region":
 				return ec.fieldContext_GCPCredential_region(ctx, field)
 			case "projectID":
@@ -34313,6 +34370,35 @@ func (ec *executionContext) fieldContext_FilterCondition_value(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Any does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GCPCredential_credentialRef(ctx context.Context, field graphql.CollectedField, obj *objects.GCPCredential) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_GCPCredential_credentialRef,
+		func(ctx context.Context) (any, error) {
+			return obj.CredentialRef(), nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_GCPCredential_credentialRef(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GCPCredential",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -77035,7 +77121,7 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiKey", "apiKeys", "vertexApiKeys", "gcp", "oauth", "managementApiKey"}
+	fieldsInOrder := [...]string{"apiKey", "apiKeys", "vertexApiKeys", "vertexServiceAccounts", "gcp", "oauth", "managementApiKey"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77063,6 +77149,13 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 				return it, err
 			}
 			it.VertexAPIKeys = data
+		case "vertexServiceAccounts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vertexServiceAccounts"))
+			data, err := ec.unmarshalOGCPCredentialInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredentialᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VertexServiceAccounts = data
 		case "gcp":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("gcp"))
 			data, err := ec.unmarshalOGCPCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, v)
@@ -105424,6 +105517,8 @@ func (ec *executionContext) _ChannelCredentials(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._ChannelCredentials_apiKeys(ctx, field, obj)
 		case "vertexApiKeys":
 			out.Values[i] = ec._ChannelCredentials_vertexApiKeys(ctx, field, obj)
+		case "vertexServiceAccounts":
+			out.Values[i] = ec._ChannelCredentials_vertexServiceAccounts(ctx, field, obj)
 		case "gcp":
 			out.Values[i] = ec._ChannelCredentials_gcp(ctx, field, obj)
 		case "oauth":
@@ -109340,6 +109435,11 @@ func (ec *executionContext) _GCPCredential(ctx context.Context, sel ast.Selectio
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("GCPCredential")
+		case "credentialRef":
+			out.Values[i] = ec._GCPCredential_credentialRef(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "region":
 			out.Values[i] = ec._GCPCredential_region(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -128690,6 +128790,15 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) marshalNGCPCredential2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, sel ast.SelectionSet, v objects.GCPCredential) graphql.Marshaler {
+	return ec._GCPCredential(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNGCPCredentialInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, v any) (objects.GCPCredential, error) {
+	res, err := ec.unmarshalInputGCPCredentialInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNGcCleanupPreviewItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgcᚐGcCleanupPreviewItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*gc.GcCleanupPreviewItem) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -135941,11 +136050,76 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) marshalOGCPCredential2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredentialᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.GCPCredential) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGCPCredential2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalOGCPCredential2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, sel ast.SelectionSet, v *objects.GCPCredential) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._GCPCredential(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOGCPCredentialInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredentialᚄ(ctx context.Context, v any) ([]objects.GCPCredential, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.GCPCredential, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNGCPCredentialInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOGCPCredentialInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGCPCredential(ctx context.Context, v any) (*objects.GCPCredential, error) {

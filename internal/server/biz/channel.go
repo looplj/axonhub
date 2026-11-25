@@ -602,6 +602,9 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	}
 	input.Settings = normalizeModelProtocols(input.Settings, &ent.Channel{Type: input.Type, BaseURL: baseURL, Endpoints: input.Endpoints})
 	input.Endpoints = NormalizeEndpoints(input.Endpoints, baseURL)
+	if err := validateVertexCredentialEndpoints(input.Type, input.Credentials, input.Endpoints); err != nil {
+		return nil, err
+	}
 
 	if input.Settings != nil {
 		// A new channel may intentionally be created before its model list is
@@ -1075,11 +1078,11 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 	}
 
-	if input.Settings != nil || input.Endpoints != nil || input.Type != nil || input.BaseURL != nil {
+	if input.Settings != nil || input.Endpoints != nil || input.Type != nil || input.BaseURL != nil || input.Credentials != nil {
 		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
 			return svc.entFromContext(queryCtx).Channel.Query().
 				Where(channel.IDEQ(id)).
-				Select(channel.FieldType, channel.FieldBaseURL, channel.FieldEndpoints, channel.FieldSettings).
+				Select(channel.FieldType, channel.FieldBaseURL, channel.FieldEndpoints, channel.FieldSettings, channel.FieldCredentials).
 				Only(queryCtx)
 		})
 		if err != nil {
@@ -1100,6 +1103,13 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		if err := validateEndpointsForChannelType(channelType, endpoints, baseURL); err != nil {
 			return nil, fmt.Errorf("invalid endpoints: %w", err)
 		}
+		credentials := existing.Credentials
+		if input.Credentials != nil {
+			credentials = *input.Credentials
+		}
+		if err := validateVertexCredentialEndpoints(channelType, credentials, NormalizeEndpoints(endpoints, baseURL)); err != nil {
+			return nil, err
+		}
 		protocolSettings := input.Settings
 		protocolSource := &ent.Channel{Type: channelType, BaseURL: baseURL, Endpoints: endpoints}
 		if protocolSettings == nil {
@@ -1116,6 +1126,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		if input.Endpoints != nil {
 			input.Endpoints = NormalizeEndpoints(input.Endpoints, baseURL)
 		}
+	}
+
+	if input.Credentials != nil {
+		svc.apiKeyOpsLock.Lock()
 	}
 
 	var updated *ent.Channel
@@ -1175,11 +1189,11 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			mut.SetPolicies(*input.Policies)
 		}
 
-		if input.Credentials != nil {
-			credentials := *input.Credentials
+		if input.Credentials != nil || input.Type != nil {
 			existing, err := db.Channel.Query().
 				Where(channel.IDEQ(id)).
-				Select(channel.FieldType, channel.FieldCredentials).
+				Select(channel.FieldType, channel.FieldCredentials, channel.FieldDisabledAPIKeys,
+					channel.FieldStatus, channel.FieldErrorMessage, channel.FieldAutoDisabledAt, channel.FieldName).
 				Only(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to load existing channel credentials: %w", err)
@@ -1188,13 +1202,27 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			if input.Type != nil {
 				effectiveType = *input.Type
 			}
+			credentials := existing.Credentials
+			if input.Credentials != nil {
+				credentials = *input.Credentials
+			}
 			if credentials.ManagementAPIKey == "" && isZenmuxChannelType(effectiveType) {
 				credentials.ManagementAPIKey = existing.Credentials.ManagementAPIKey
 			}
 			if err := ValidateVertexAPIKeys(effectiveType, credentials); err != nil {
 				return err
 			}
-			mut.SetCredentials(credentials)
+			if input.Credentials != nil {
+				mut.SetCredentials(credentials)
+				if len(existing.Credentials.VertexServiceAccounts) > 0 || len(credentials.VertexServiceAccounts) > 0 {
+					refs := credentials.GetAllCredentialRefs()
+					disabledKeys := lo.Filter(existing.DisabledAPIKeys, func(disabled objects.DisabledAPIKey, _ int) bool {
+						return lo.Contains(refs, disabled.Key)
+					})
+					mut.SetDisabledAPIKeys(disabledKeys)
+					mut = applyRecoveredChannelStatus(ctx, mut, existing, credentials, disabledKeys)
+				}
+			}
 		}
 
 		if input.Remark != nil {
@@ -1241,6 +1269,9 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 		return nil
 	})
+	if input.Credentials != nil {
+		svc.apiKeyOpsLock.Unlock()
+	}
 	if err != nil {
 		return nil, err
 	}

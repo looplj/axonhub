@@ -18,6 +18,16 @@ import (
 
 const allKeysDisabledErrorPrefix = "All API keys disabled"
 
+// GetChannelForCredentialTest loads metadata before a forced credential is selected.
+// It deliberately avoids constructing an outbound from an all-disabled key set.
+func (svc *ChannelService) GetChannelForCredentialTest(ctx context.Context, channelID int) (*Channel, error) {
+	entity, err := svc.entFromContext(ctx).Channel.Get(ctx, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("channel not found: %w", err)
+	}
+	return buildChannel(entity, svc.httpClient), nil
+}
+
 // DisableAPIKey 禁用指定 key；若所有 key 都不可用则禁用 channel.
 func (svc *ChannelService) DisableAPIKey(
 	ctx context.Context,
@@ -351,6 +361,15 @@ func (svc *ChannelService) DeleteDisabledAPIKeys(ctx context.Context, channelID 
 	}
 
 	// Remove from credentials
+	result := &DeleteDisabledAPIKeysResult{Success: true}
+	allRefs := ch.Credentials.GetAllCredentialRefs()
+	if len(allRefs) > 0 && lo.EveryBy(allRefs, func(ref string) bool {
+		_, found := keysToDelete[ref]
+		return found
+	}) {
+		delete(keysToDelete, allRefs[0])
+		result.Message = "ONE_KEY_PRESERVED"
+	}
 	newCredentials := ch.Credentials
 	if len(newCredentials.APIKeys) > 0 {
 		filteredKeys := make([]string, 0, len(newCredentials.APIKeys))
@@ -369,42 +388,26 @@ func (svc *ChannelService) DeleteDisabledAPIKeys(ctx context.Context, channelID 
 		}
 	}
 
-	result := &DeleteDisabledAPIKeysResult{Success: true}
-
 	// Vertex keys are stored as project-bound triples and also surface through
 	// GetAllAPIKeys. Leaving the triple behind would keep the key selectable while
 	// its disable record is gone, so the channel would immediately route through the
 	// credential that was just deleted.
 	if len(newCredentials.VertexAPIKeys) > 0 {
 		keptVertices := make([]objects.VertexAPIKey, 0, len(newCredentials.VertexAPIKeys))
-		removedVertices := make([]objects.VertexAPIKey, 0, len(newCredentials.VertexAPIKeys))
 		for _, credential := range newCredentials.VertexAPIKeys {
 			if _, found := keysToDelete[credential.APIKey]; found {
-				removedVertices = append(removedVertices, credential)
 				continue
 			}
 			keptVertices = append(keptVertices, credential)
 		}
 
 		newCredentials.VertexAPIKeys = keptVertices
-
-		if len(newCredentials.GetAllAPIKeys()) == 0 && len(removedVertices) > 0 {
-			// Restore the first deleted triple in full so the project and region
-			// binding survives the preserve-last-key rule.
-			preservedVertex := removedVertices[0]
-			newCredentials.VertexAPIKeys = append(newCredentials.VertexAPIKeys, preservedVertex)
-			result.Message = "ONE_KEY_PRESERVED"
-		}
 	}
 
-	// Ensure at least one API key remains
-	if len(newCredentials.GetAllAPIKeys()) == 0 {
-		// Restore at least one key from the keys being deleted
-		// Prefer the first key that was supposed to be deleted
-		restoredKey := keys[0]
-		newCredentials.APIKeys = []string{restoredKey}
-		result.Message = "ONE_KEY_PRESERVED"
-	}
+	newCredentials.VertexServiceAccounts = lo.Filter(newCredentials.VertexServiceAccounts, func(credential objects.GCPCredential, _ int) bool {
+		_, found := keysToDelete[credential.CredentialRef()]
+		return !found
+	})
 
 	update := svc.entFromContext(ctx).Channel.UpdateOneID(channelID).
 		SetDisabledAPIKeys(newDisabledKeys).
