@@ -508,6 +508,9 @@ type ChannelCredentials struct {
 	// The project and region must remain paired with the API key when keys rotate.
 	VertexAPIKeys []VertexAPIKey `json:"vertexApiKeys,omitempty"`
 
+	// VertexServiceAccounts shares Vertex credential selection with API keys.
+	VertexServiceAccounts []GCPCredential `json:"vertexServiceAccounts,omitempty"`
+
 	// ManagementAPIKey is an optional provider management/console API key used only
 	// for server-side quota checks (e.g. ZenMux). It is never attached to inference
 	// requests and never exposed to clients beyond credential write APIs.
@@ -562,13 +565,9 @@ func (c *ChannelCredentials) GetAllAPIKeys() []string {
 const OAuthCredentialRef = "__oauth__"
 
 // GetAllCredentialRefs returns the identities of every credential the channel
-// can be disabled on. Key-based channels are identified by the API keys
-// themselves; an OAuth channel is represented by the single OAuthCredentialRef
-// so that auto-disable and scheduled recovery treat it as a one-key channel.
-//
-// This is deliberately separate from GetAllAPIKeys: the sentinel must never
-// reach outbound requests, credential management UI, the channel tester or
-// backups, all of which consume GetAllAPIKeys.
+// can be disabled on. API keys retain their original identities; service
+// accounts use stable signing-key references and OAuth uses its fixed sentinel.
+// References identify selections and must never be sent as authentication.
 func (c *ChannelCredentials) GetAllCredentialRefs() []string {
 	if c == nil {
 		return nil
@@ -578,7 +577,14 @@ func (c *ChannelCredentials) GetAllCredentialRefs() []string {
 		return []string{OAuthCredentialRef}
 	}
 
-	return c.GetAllAPIKeys()
+	refs := c.GetAllAPIKeys()
+	for _, credential := range c.VertexServiceAccounts {
+		if ref := credential.CredentialRef(); ref != "" {
+			refs = append(refs, ref)
+		}
+	}
+
+	return refs
 }
 
 // GetEnabledCredentialRefs returns the credential refs that are not disabled.
