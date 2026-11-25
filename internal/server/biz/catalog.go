@@ -2,6 +2,8 @@ package biz
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -47,6 +49,7 @@ type CatalogSnapshot struct {
 	Source      string                 `json:"source"`
 	Filtered    bool                   `json:"filtered"`
 	upstreamURL string
+	contentHash string
 }
 
 // catalogPayload is a finished JSON payload. Only encoded bytes are retained:
@@ -57,6 +60,7 @@ type catalogPayload struct {
 	fetchedAt   time.Time
 	source      string
 	upstreamURL string
+	contentHash string
 }
 
 type heldCatalog struct {
@@ -319,6 +323,7 @@ func snapshotFromPayload(payload *catalogPayload, filtered bool) CatalogSnapshot
 		Source:      source,
 		Filtered:    filtered,
 		upstreamURL: payload.upstreamURL,
+		contentHash: payload.contentHash,
 	}
 }
 
@@ -332,11 +337,13 @@ func (s *CatalogService) slot(filtered bool) *heldCatalog {
 
 // hold keeps the payload for holdTTL, then releases it.
 func (s *CatalogService) hold(filtered bool, data []byte, source, upstreamURL string, generation uint64) *catalogPayload {
+	digest := sha256.Sum256(data)
 	payload := &catalogPayload{
 		data:        data,
 		fetchedAt:   time.Now().UTC(),
 		source:      source,
 		upstreamURL: upstreamURL,
+		contentHash: hex.EncodeToString(digest[:]),
 	}
 
 	s.mu.Lock()

@@ -79,7 +79,7 @@ func (p Principal) String() string {
 		if p.UserID != nil {
 			return fmt.Sprintf("plugin:%d:user:%d", p.PluginInstallationID, *p.UserID)
 		}
-		return fmt.Sprintf("plugin:%d:user:unknown", p.PluginInstallationID)
+		return fmt.Sprintf("plugin:%d", p.PluginInstallationID)
 	case PrincipalTypeUnknown:
 		return "unknown"
 	case PrincipalTypeSystem:
@@ -254,6 +254,34 @@ func PluginGranted(ctx context.Context, userID int, scope string) bool {
 	}
 	d, ok := ctx.Value(delegationKey{}).(delegation)
 	return ok && d.grants[scope]
+}
+
+// ForPluginInstallation starts an internal plugin request carrying only its grants.
+// The parent contributes cancellation and deadline, never its identity or values.
+func ForPluginInstallation(parent context.Context, installationID int, grants []string) context.Context {
+	snapshot := delegation{installationID: installationID, grants: make(map[string]bool, len(grants))}
+	for _, grant := range grants {
+		snapshot.grants[grant] = true
+	}
+	ctx := context.WithValue(cancellationContext{parent}, delegationKey{}, snapshot)
+	return context.WithValue(ctx, principalKey{}, Principal{Type: PrincipalTypePlugin, PluginInstallationID: installationID})
+}
+
+type cancellationContext struct{ context.Context }
+
+func (c cancellationContext) Value(any) any { return nil }
+
+// PluginInstallationGranted is only true for the standalone plugin principal.
+func PluginInstallationGranted(ctx context.Context, scope string) bool {
+	p, ok := GetPrincipal(ctx)
+	d, exists := ctx.Value(delegationKey{}).(delegation)
+	return ok && exists && p.Type == PrincipalTypePlugin && p.UserID == nil && p.APIKeyID == nil &&
+		p.PluginInstallationID > 0 && p.PluginInstallationID == d.installationID && d.grants[scope]
+}
+
+func IsPluginInstallation(ctx context.Context) bool {
+	p, ok := GetPrincipal(ctx)
+	return ok && p.Type == PrincipalTypePlugin && p.UserID == nil
 }
 
 func (p Principal) IsPlugin() bool { return p.Type == PrincipalTypePlugin }

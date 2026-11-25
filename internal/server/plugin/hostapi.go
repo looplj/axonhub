@@ -147,6 +147,18 @@ func (h *hostCall) build(in callExportInput) (moejs.Value, error) {
 	if err := h.attachEventAPI(ctxObj); err != nil {
 		return moejs.Undefined(), err
 	}
+	if in.export == pluginTaskExport {
+		if err := defineHostFn(h.rt, ctxObj, "graphql", 1, h.graphql); err != nil {
+			return moejs.Undefined(), err
+		}
+		ui := realm.NewObject()
+		if err := defineHostFn(h.rt, ui, "setBadge", 2, h.setUIBadge); err != nil {
+			return moejs.Undefined(), err
+		}
+		if err := defineValue(h.rt, ctxObj, "ui", engine.ObjectValue(ui)); err != nil {
+			return moejs.Undefined(), err
+		}
+	}
 	if err := h.attachSQLAPI(ctxObj); err != nil {
 		return moejs.Undefined(), err
 	}

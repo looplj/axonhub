@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -385,6 +386,25 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 		headers.Set(webSocketSessionHeader, lane.ID())
 	}
 
+	hasContinuation := explicitPreviousResponseID(payload) != ""
+	stream, err := e.startWebSocketStream(ctx, request, wsURL, headers, payload)
+	if !errors.Is(err, errWebSocketClosedBeforeSend) {
+		return stream, err
+	}
+	if hasContinuation {
+		return nil, shared.ResponsesRecoveryError()
+	}
+
+	// The socket closed before any write. Rebuild from the original request
+	// so a delta derived for the old socket is never reused on the new one.
+	payload, err = buildWebSocketCreatePayload(request.Body)
+	if err != nil {
+		return nil, err
+	}
+	return e.startWebSocketStream(ctx, request, wsURL, headers, payload)
+}
+
+func (e *WebSocketExecutor) startWebSocketStream(ctx context.Context, request *httpclient.Request, wsURL string, headers http.Header, payload map[string]any) (streams.Stream[*httpclient.StreamEvent], error) {
 	lease, err := e.acquirePreparedLease(ctx, request, wsURL, headers, payload)
 	if err != nil {
 		if cause := httpclient.StreamContextError(ctx); cause != nil {
@@ -405,10 +425,9 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 	setWebSocketActivity(lease.activityConn, activity)
 
 	if err := lease.write(ctx, payload); err != nil {
-		// A write failure is ambiguous: the upstream may already have accepted and
-		// executed the request. Replaying response.create on a fresh connection is
-		// therefore unsafe, so the dead session is evicted and the error is surfaced
-		// for the caller to decide.
+		// Only a confirmed pre-send close allows reacquisition. A failed write
+		// can mean upstream accepted the request before the error surfaced.
+		setWebSocketActivity(lease.activityConn, nil)
 		lease.release(true)
 
 		if cause := httpclient.StreamContextError(ctx); cause != nil {
@@ -492,6 +511,7 @@ type webSocketPoolKey struct {
 }
 
 type pooledWebSocketConn struct {
+	receiver     *webSocketReceiver
 	key          webSocketPoolKey
 	conn         *websocket.Conn
 	activityConn *webSocketActivityConn
@@ -512,6 +532,8 @@ type pooledWebSocketConn struct {
 }
 
 type webSocketLease struct {
+	receiver      *webSocketReceiver
+	readTarget    *webSocketReadTarget
 	conn          *websocket.Conn
 	activityConn  *webSocketActivityConn
 	owner         *WebSocketExecutor
@@ -563,7 +585,7 @@ func (e *WebSocketExecutor) acquire(ctx context.Context, request *httpclient.Req
 		if err != nil {
 			return nil, err
 		}
-		return &webSocketLease{conn: conn, activityConn: activityConn}, nil
+		return &webSocketLease{conn: conn, activityConn: activityConn, receiver: newWebSocketReceiver(conn, nil)}, nil
 	}
 
 	for {
@@ -575,12 +597,12 @@ func (e *WebSocketExecutor) acquire(ctx context.Context, request *httpclient.Req
 		select {
 		case pc.inFlight <- struct{}{}:
 			closed, expired, used := pc.leaseState(time.Now(), e.maxLifetime)
-			if closed || expired {
+			if closed || expired || pc.receiver.ended() {
 				<-pc.inFlight
 				e.evict(pc)
 				continue
 			}
-			return &webSocketLease{conn: pc.conn, activityConn: pc.activityConn, owner: e, pooled: pc, reused: used, generation: pc.generation}, nil
+			return &webSocketLease{conn: pc.conn, activityConn: pc.activityConn, receiver: pc.receiver, owner: e, pooled: pc, reused: used, generation: pc.generation}, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
@@ -635,6 +657,7 @@ func (e *WebSocketExecutor) getOrDialPooled(ctx context.Context, request *httpcl
 		_ = conn.CloseNow()
 		return nil, fmt.Errorf("websocket session pool is full")
 	}
+	pc.receiver = newWebSocketReceiver(conn, func() { e.evict(pc) })
 	e.pool[key] = pc
 	e.generation++
 	pc.generation = e.generation
@@ -966,7 +989,7 @@ func (pc *pooledWebSocketConn) close() {
 	pc.lastInput = nil
 	pc.lastResponseID = ""
 	pc.mu.Unlock()
-	_ = pc.conn.CloseNow()
+	pc.receiver.close()
 }
 
 func (pc *pooledWebSocketConn) previousTurn() ([]json.RawMessage, string) {
@@ -980,8 +1003,11 @@ func (l *webSocketLease) release(evict bool) {
 		return
 	}
 	l.once.Do(func() {
+		if l.readTarget != nil {
+			l.receiver.detach(l.readTarget)
+		}
 		if l.pooled == nil {
-			_ = l.conn.CloseNow()
+			l.receiver.close()
 			return
 		}
 		if l.owner != nil {
@@ -1243,7 +1269,6 @@ type webSocketStream struct {
 	current   *httpclient.StreamEvent
 	err       error
 	closed    bool
-	sawEvent  bool
 	terminal  bool
 	stopIdle  func()
 }
@@ -1262,7 +1287,7 @@ func (s *webSocketStream) Next() bool {
 	lease := s.lease
 	s.mu.Unlock()
 	httpclient.SetStreamIdleWaiting(s.ctx, true)
-	_, msg, err := lease.conn.Read(s.ctx)
+	msg, err := lease.receiver.next(s.ctx, lease.readTarget)
 	httpclient.SetStreamIdleWaiting(s.ctx, false)
 	if err != nil {
 		s.mu.Lock()
@@ -1272,13 +1297,7 @@ func (s *webSocketStream) Next() bool {
 			return false
 		}
 		if websocket.CloseStatus(err) == websocket.StatusNormalClosure || strings.Contains(err.Error(), "use of closed network connection") {
-			if ctxErr := httpclient.StreamContextError(s.ctx); ctxErr != nil {
-				s.setErr(ctxErr)
-			} else if !s.hasSeenEvent() {
-				s.setErr(fmt.Errorf("websocket closed before response event"))
-			}
-			s.finish(true)
-			return false
+			err = fmt.Errorf("upstream websocket closed before terminal response event: %w: %w", llm.ErrStreamIncomplete, err)
 		}
 		s.setErr(err)
 		s.finish(true)
@@ -1380,14 +1399,7 @@ func (s *webSocketStream) isClosed() bool {
 func (s *webSocketStream) setCurrent(event *httpclient.StreamEvent) {
 	s.mu.Lock()
 	s.current = event
-	s.sawEvent = true
 	s.mu.Unlock()
-}
-
-func (s *webSocketStream) hasSeenEvent() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.sawEvent
 }
 
 func (s *webSocketStream) markTerminal() {

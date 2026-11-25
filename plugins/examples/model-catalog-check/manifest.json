@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "example.model-catalog-check",
+  "name": "Model catalog check",
+  "version": "1.0.0",
+  "description": "Check one provider for new models and changed reference prices.",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "permissions": ["read_channels"],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "provider": {
+        "type": "string",
+        "title": "Catalog provider ID",
+        "default": "openai"
+      }
+    }
+  },
+  "tasks": {
+    "check": { "schedule": { "cron": "0 8 * * *", "timezone": "UTC" } }
+  },
+  "ui": {
+    "actions": [
+      {
+        "key": "catalog-check",
+        "slot": "app.header.actions",
+        "title": { "en": "Model catalog check", "zh-CN": "模型目录检查" },
+        "icon": "activity",
+        "effect": { "type": "dialog", "entry": "ui/index.html" }
+      }
+    ]
+  }
+}

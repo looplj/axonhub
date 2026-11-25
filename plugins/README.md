@@ -11,6 +11,7 @@
 - [`examples/failover-guard/`](examples/failover-guard/README.md)：可安装的故障转移事件插件示例。
 - [`examples/star-history/`](examples/star-history/README.md)：可安装的 Star 历史示例，用来演示宿主代发的出站请求。
 - [`examples/temperature-cap/`](examples/temperature-cap/README.md)：可安装的请求钩子示例，按配置写入 `temperature`。
+- [`examples/model-catalog-check/`](examples/model-catalog-check/README.md)：定时检查模型目录，用顶部角标显示待复核数量。
 
 ## 打包示例
 

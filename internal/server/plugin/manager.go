@@ -178,6 +178,7 @@ type Manager struct {
 	// outboundTransport, when set, handles ctx.fetch and the page fetch route.
 	// Nil uses http.DefaultTransport. Redirects are never followed.
 	outboundTransport http.RoundTripper
+	graphqlExecutor   atomic.Pointer[GraphQLExecutor]
 
 	// callNow is the clock for the circuit breaker. Nil means time.Now.
 	// Tests in this package may set it. It is not the KV clock.

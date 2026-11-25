@@ -7,7 +7,7 @@
 // 注意事项:
 //
 //	coder 不暴露底层连接，必须在 HTTP 握手获取连接时单独保存观察器。
-//	上游消息保持无限读取，避免 coder 默认限制截断响应。
+//	上游单条消息的读取上限独立于响应队列的缓冲预算。
 //	ws:// 经过 HTTP(S) 代理时使用 CONNECT，兼容只接受隧道的代理。
 package responses
 
@@ -89,7 +89,7 @@ func (e *WebSocketExecutor) dial(ctx context.Context, request *httpclient.Reques
 		_ = conn.CloseNow()
 		return nil, nil, fmt.Errorf("websocket dial failed: %w", cause)
 	}
-	conn.SetReadLimit(-1)
+	conn.SetReadLimit(maxWebSocketResponseMessageBytes)
 	setWebSocketActivity(activityConn, nil)
 	return conn, activityConn, nil
 }

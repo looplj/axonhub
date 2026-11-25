@@ -32,6 +32,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/plugin"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 const (
@@ -387,7 +388,7 @@ type pluginEndpointFixture struct {
 	other          *ent.Plugin
 }
 
-func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture {
+func newPluginEndpointFixture(t *testing.T, name string, catalogHTTP ...*http.Client) *pluginEndpointFixture {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
@@ -470,6 +471,13 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 	channelSvc := biz.NewChannelServiceForTest(db)
 	t.Cleanup(channelSvc.Stop)
 
+	var catalog *biz.CatalogService
+	var client *httpclient.HttpClient
+	if len(catalogHTTP) != 0 {
+		require.NoError(t, systemSvc.SetCatalogSettings(setupCtx, biz.CatalogSettings{UpstreamURL: "https://catalog.example.invalid/models"}))
+		client = httpclient.NewHttpClientWithClient(catalogHTTP[0])
+		catalog = biz.NewCatalogService(systemSvc, client)
+	}
 	handler := NewGraphqlHandlers(Dependencies{
 		Ent:                            db,
 		AuthService:                    authSvc,
@@ -477,6 +485,8 @@ func newPluginEndpointFixture(t *testing.T, name string) *pluginEndpointFixture 
 		UserService:                    userSvc,
 		SystemService:                  systemSvc,
 		ChannelService:                 channelSvc,
+		CatalogService:                 catalog,
+		HttpClient:                     client,
 		ChannelOverrideTemplateService: biz.NewChannelOverrideTemplateService(biz.ChannelOverrideTemplateServiceParams{Client: db, ChannelService: channelSvc}),
 		PluginManager:                  manager,
 		QuotaService:                   biz.NewQuotaService(db, systemSvc),
