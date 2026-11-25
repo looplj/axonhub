@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import ts from 'typescript';
+import { loadChannelSchema } from '../data/load-channel-schema.mjs';
 
 // Regression coverage for the Codex third-party credential modes: a copied or
 // edited OAuth/auth.json row switched to third-party must not keep leaking the
@@ -170,10 +171,7 @@ test('Claude Code fetch uses the selected authentication mode on the official UR
 });
 
 test('Claude Code create and edit schemas accept access-only OAuth and validate the selected third-party key', async () => {
-  const source = schemaSource.replace("from 'zod'", `from '${import.meta.resolve('zod')}'`)
-    .replace("import { pageInfoSchema } from '@/gql/pagination'", 'const pageInfoSchema = z.object({})');
-  const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 } });
-  const { createChannelInputSchema, updateChannelInputSchema } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
+  const { createChannelInputSchema, updateChannelInputSchema } = await loadChannelSchema();
   const input = { type: 'claudecode', name: 'Fixture', baseURL: 'https://api.anthropic.com/v1', supportedModels: ['fixture'], defaultTestModel: 'fixture' };
   for (const schema of [createChannelInputSchema, updateChannelInputSchema]) {
     assert.ok(schema.safeParse({ ...input, credentials: { apiKey: '{"access_token":"fixture"}' } }).success);
