@@ -95,14 +95,18 @@ func TestCacheReadStatusAnthropicOutboundStream(t *testing.T) {
 	for _, tc := range []struct {
 		name, first, final string
 		status             llm.CacheReadStatus
-		cached             int64
+		prompt, cached     int64
 	}{
-		{"zero then output only", `"cache_read_input_tokens":0`, `"output_tokens":2`, llm.CacheReadReported, 0},
-		{"nonzero then output only", `"cache_read_input_tokens":3`, `"output_tokens":2`, llm.CacheReadReported, 3},
-		{"explicit zero replaces nonzero", `"cache_read_input_tokens":3`, `"output_tokens":2,"cache_read_input_tokens":0`, llm.CacheReadReported, 0},
-		{"alias then explicit zero", `"cached_tokens":3`, `"output_tokens":2,"cache_read_input_tokens":0`, llm.CacheReadReported, 0},
-		{"unknown remains unknown", `"cache_creation_input_tokens":2`, `"output_tokens":2`, llm.CacheReadUnknown, 0},
-		{"negative survives output only", `"cache_read_input_tokens":-1`, `"output_tokens":2`, llm.CacheReadReported, -1},
+		{"zero then output only", `"cache_read_input_tokens":0`, `"output_tokens":2`, llm.CacheReadReported, 10, 0},
+		{"nonzero then output only", `"cache_read_input_tokens":3`, `"output_tokens":2`, llm.CacheReadReported, 13, 3},
+		{"alias then output only", `"cached_tokens":3`, `"output_tokens":2`, llm.CacheReadReported, 13, 3},
+		{"explicit zero replaces nonzero", `"cache_read_input_tokens":3`, `"output_tokens":2,"cache_read_input_tokens":0`, llm.CacheReadReported, 10, 0},
+		{"alias then explicit zero", `"cached_tokens":3`, `"output_tokens":2,"cache_read_input_tokens":0`, llm.CacheReadReported, 10, 0},
+		{"null leaves counted reads unchanged", `"cache_read_input_tokens":3`, `"output_tokens":2,"cache_read_input_tokens":null`, llm.CacheReadReported, 13, 3},
+		{"cache read correction preserves write count", `"cache_read_input_tokens":3,"cache_creation_input_tokens":4`, `"output_tokens":2,"cache_read_input_tokens":1`, llm.CacheReadReported, 15, 1},
+		{"input and cache writes explicitly corrected to zero", `"cache_read_input_tokens":3,"cache_creation_input_tokens":4`, `"output_tokens":2,"input_tokens":0,"cache_creation_input_tokens":0`, llm.CacheReadReported, 3, 3},
+		{"unknown remains unknown", `"cache_creation_input_tokens":2`, `"output_tokens":2`, llm.CacheReadUnknown, 12, 0},
+		{"negative survives output only", `"cache_read_input_tokens":-1`, `"output_tokens":2`, llm.CacheReadReported, 9, -1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			transformer, err := NewOutboundTransformerWithConfig(&Config{
@@ -132,8 +136,15 @@ func TestCacheReadStatusAnthropicOutboundStream(t *testing.T) {
 				cached = final.PromptTokensDetails.CachedTokens
 			}
 			require.Equal(t, tc.cached, cached)
+			require.Equal(t, tc.prompt, final.PromptTokens)
 			require.Equal(t, int64(2), final.CompletionTokens)
-			require.Equal(t, final.PromptTokens+2, final.TotalTokens)
+			require.Equal(t, tc.prompt+2, final.TotalTokens)
+			wire, meta, err := AggregateStreamChunks(t.Context(), chunks, PlatformDirect)
+			require.NoError(t, err)
+			require.Equal(t, final, meta.Usage)
+			var aggregate Message
+			require.NoError(t, json.Unmarshal(wire, &aggregate))
+			require.Equal(t, final, convertToLlmUsage(aggregate.Usage, PlatformDirect))
 			// 后续覆盖不能反向修改已经发出的 message_start usage。
 			if tc.name == "explicit zero replaces nonzero" {
 				require.Equal(t, int64(3), responses[0].Usage.PromptTokensDetails.CachedTokens)
