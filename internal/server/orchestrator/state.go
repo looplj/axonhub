@@ -15,14 +15,14 @@ import (
 type PersistenceState struct {
 	APIKey *ent.APIKey
 
-	RequestService      *biz.RequestService
-	UsageLogService     *biz.UsageLogService
-	ChannelService      *biz.ChannelService
-	PromptProvider      PromptProvider
-	PromptProtecter     PromptProtecter
-	CandidateSelector   CandidateSelector
-	LoadBalancers       map[string]*LoadBalancer
-	RoutingPolicy       EffectiveRoutingPolicy
+	RequestService    *biz.RequestService
+	UsageLogService   *biz.UsageLogService
+	ChannelService    *biz.ChannelService
+	PromptProvider    PromptProvider
+	PromptProtecter   PromptProtecter
+	CandidateSelector CandidateSelector
+	LoadBalancers     map[string]*LoadBalancer
+	RoutingPolicy     EffectiveRoutingPolicy
 	// Settings is the system settings snapshot taken when the request started.
 	Settings *RequestSettings
 
@@ -69,7 +69,8 @@ type PersistenceState struct {
 	// Perf records channel health and latency for the current request. For stream
 	// terminals, incomplete (token limit or content filtering) counts as channel
 	// success: it must not trigger channel failure counts or auto-disable rules.
-	Perf *biz.PerformanceRecord
+	Perf               *biz.PerformanceRecord
+	performanceAttempt *performanceAttempt
 
 	// StreamCompleted tracks a successful generation outcome, not channel health.
 	// A recognized incomplete terminal keeps this false and is persisted as Failed
