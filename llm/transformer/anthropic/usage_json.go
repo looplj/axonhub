@@ -12,7 +12,7 @@ func (u Usage) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		alias
 		CacheReadInputTokens *int64 `json:"cache_read_input_tokens,omitempty"`
-	}{alias: alias(u), CacheReadInputTokens: u.CacheReadStatus.ReportedCount(u.CacheReadInputTokens)})
+	}{alias: alias(u), CacheReadInputTokens: u.CacheReadStatus.ReportedCount(u.cacheReadTokens())})
 }
 
 func (u *Usage) UnmarshalJSON(data []byte) error {

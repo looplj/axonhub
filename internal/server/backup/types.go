@@ -152,6 +152,7 @@ func (l BackupUsageLog) MarshalJSON() ([]byte, error) {
 		TotalTokens                        int64              `json:"total_tokens,omitempty"`
 		PromptAudioTokens                  int64              `json:"prompt_audio_tokens,omitempty"`
 		PromptCachedTokens                 int64              `json:"prompt_cached_tokens,omitempty"`
+		CacheReadStatus                    string             `json:"cache_read_status,omitempty"`
 		PromptWriteCachedTokens            int64              `json:"prompt_write_cached_tokens,omitempty"`
 		PromptWriteCachedTokens5m          int64              `json:"prompt_write_cached_tokens_5m,omitempty"`
 		PromptWriteCachedTokens1h          int64              `json:"prompt_write_cached_tokens_1h,omitempty"`
@@ -182,6 +183,7 @@ func (l BackupUsageLog) MarshalJSON() ([]byte, error) {
 		TotalTokens:                        l.TotalTokens,
 		PromptAudioTokens:                  l.PromptAudioTokens,
 		PromptCachedTokens:                 l.PromptCachedTokens,
+		CacheReadStatus:                    l.CacheReadStatus,
 		PromptWriteCachedTokens:            l.PromptWriteCachedTokens,
 		PromptWriteCachedTokens5m:          l.PromptWriteCachedTokens5m,
 		PromptWriteCachedTokens1h:          l.PromptWriteCachedTokens1h,

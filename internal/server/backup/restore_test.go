@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
 )
 
 func TestBackupService_Restore_SystemConfigs(t *testing.T) {
@@ -788,6 +789,63 @@ func TestBackupService_Restore_UsageStats(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, usageLogsAfterSecondRestore, 1)
 	require.Equal(t, restoredRequest.ID, usageLogsAfterSecondRestore[0].RequestID)
+}
+
+func TestBackupService_Restore_UsageStatsCacheReadStatus(t *testing.T) {
+	for _, tt := range []struct {
+		name         string
+		status       llm.CacheReadStatus
+		cachedTokens int64
+		omitStatus   bool
+		wantStatus   llm.CacheReadStatus
+	}{
+		{name: "reported zero", status: llm.CacheReadReported, wantStatus: llm.CacheReadReported},
+		{name: "reported count", status: llm.CacheReadReported, cachedTokens: 20, wantStatus: llm.CacheReadReported},
+		{name: "unknown status", status: llm.CacheReadUnknown, cachedTokens: 20, wantStatus: llm.CacheReadUnknown},
+		{name: "legacy backup", status: llm.CacheReadReported, cachedTokens: 20, omitStatus: true, wantStatus: llm.CacheReadUnknown},
+		{name: "unrecognized status", status: "unexpected", cachedTokens: 20, wantStatus: llm.CacheReadUnknown},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			client, service, ctx := setupBackupTest(t)
+			defer client.Close()
+
+			user, err := client.User.Query().Only(ctx)
+			require.NoError(t, err)
+			proj := createBackupTestProject(t, client, ctx, "Project1", "Test Project")
+			ch := createBackupTestChannel(t, client, ctx, "Channel 1", channel.TypeOpenai)
+			ak := createBackupTestAPIKey(t, client, ctx, user, proj, "API Key 1", "sk-test-key-1")
+			req, usage := createBackupTestUsage(t, client, ctx, proj, ch, ak)
+			err = usage.Update().
+				SetCacheReadStatus(string(tt.status)).
+				SetPromptCachedTokens(tt.cachedTokens).
+				Exec(ctx)
+			require.NoError(t, err)
+
+			data, err := service.Backup(ctx, BackupOptions{IncludeUsageStats: true})
+			require.NoError(t, err)
+			if tt.omitStatus {
+				var payload map[string]json.RawMessage
+				require.NoError(t, json.Unmarshal(data, &payload))
+				var logs []map[string]json.RawMessage
+				require.NoError(t, json.Unmarshal(payload["usage_logs"], &logs))
+				require.Len(t, logs, 1)
+				delete(logs[0], "cache_read_status")
+				payload["usage_logs"], err = json.Marshal(logs)
+				require.NoError(t, err)
+				data, err = json.Marshal(payload)
+				require.NoError(t, err)
+			}
+
+			require.NoError(t, client.UsageLog.DeleteOne(usage).Exec(ctx))
+			require.NoError(t, client.Request.DeleteOne(req).Exec(ctx))
+			require.NoError(t, service.Restore(ctx, bytes.NewReader(data), RestoreOptions{IncludeUsageStats: true}))
+
+			restored, err := client.UsageLog.Query().Only(ctx)
+			require.NoError(t, err)
+			require.Equal(t, string(tt.wantStatus), restored.CacheReadStatus)
+			require.Equal(t, tt.cachedTokens, restored.PromptCachedTokens)
+		})
+	}
 }
 
 func TestBackupService_Restore_UsageStatsWithRequestLogs(t *testing.T) {
