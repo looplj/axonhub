@@ -49,12 +49,11 @@ func TestStreamDeliveryE2E_2616ConvertedResponsesOrdering(t *testing.T) {
 		t.Fatal("converted Responses handler did not return")
 	}
 
-	wire := string(body)
-	require.Equal(t, 1, strings.Count(wire, "event:response.completed"))
-	require.Contains(t, wire, `"input_tokens":12`)
-	require.Contains(t, wire, `"output_tokens":34`)
-	require.Contains(t, wire, `"total_tokens":46`)
-	require.NotContains(t, wire, `"input_tokens":0,"output_tokens":0`)
+	// response.created 可以携带全零的占位用量；只有唯一完成事件必须携带最终值。
+	terminalUsage := completedResponsesUsage(t, string(body))
+	require.EqualValues(t, 12, terminalUsage.InputTokens)
+	require.EqualValues(t, 34, terminalUsage.OutputTokens)
+	require.EqualValues(t, 46, terminalUsage.TotalTokens)
 	fixture.assertDatabase(t, request.StatusCompleted, true)
 	usage, err := fixture.client.UsageLog.Query().Only(fixture.ctx)
 	require.NoError(t, err)
@@ -82,14 +81,35 @@ func TestStreamDeliveryE2E_2616PrematureTerminalGuardSensitivity(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 
-	wire := string(body)
-	require.Equal(t, 1, strings.Count(wire, "event:response.completed"))
-	terminal := wire[strings.LastIndex(wire, "event:response.completed"):]
-	require.Contains(t, terminal, `"input_tokens":0`)
-	require.Contains(t, terminal, `"output_tokens":0`)
+	terminalUsage := completedResponsesUsage(t, string(body))
+	require.Zero(t, terminalUsage.InputTokens)
+	require.Zero(t, terminalUsage.OutputTokens)
 	logs, err := fixture.client.UsageLog.Query().All(fixture.ctx)
 	require.NoError(t, err)
 	require.Empty(t, logs)
+}
+
+func completedResponsesUsage(t *testing.T, wire string) *responses.Usage {
+	t.Helper()
+	const completed = "event:response.completed\n"
+	var usage *responses.Usage
+	count := 0
+	for frame := range strings.SplitSeq(wire, "\n\n") {
+		payload, ok := strings.CutPrefix(frame, completed)
+		if !ok {
+			continue
+		}
+		count++
+		data, ok := strings.CutPrefix(payload, "data: ")
+		require.True(t, ok, "completed event must carry a JSON payload")
+		var event responses.StreamEvent
+		require.NoError(t, json.Unmarshal([]byte(data), &event))
+		require.NotNil(t, event.Response)
+		usage = event.Response.Usage
+	}
+	require.Equal(t, 1, count, "the completed event must be emitted exactly once")
+	require.NotNil(t, usage)
+	return usage
 }
 
 func TestStreamDeliveryE2E_2616ConvertedAnthropicOrdering(t *testing.T) {
