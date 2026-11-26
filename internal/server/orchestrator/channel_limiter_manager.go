@@ -12,9 +12,12 @@ import (
 // The manager only allocates a limiter when MaxConcurrent > 0. Channels without
 // a concurrency limit return nil from GetOrCreate so callers can fast-path past
 // admission control entirely.
+// Request/token windows and provider cooldown are shared across the protocol
+// handlers that use this manager.
 type ChannelLimiterManager struct {
-	mu      sync.RWMutex
-	entries map[int]*limiterEntry // key = channel.ID
+	mu             sync.RWMutex
+	entries        map[int]*limiterEntry // key = channel.ID
+	requestTracker *ChannelRequestTracker
 }
 
 type limiterEntry struct {
@@ -25,7 +28,10 @@ type limiterEntry struct {
 
 // NewChannelLimiterManager returns an empty manager.
 func NewChannelLimiterManager() *ChannelLimiterManager {
-	return &ChannelLimiterManager{entries: make(map[int]*limiterEntry)}
+	return &ChannelLimiterManager{
+		entries:        make(map[int]*limiterEntry),
+		requestTracker: NewChannelRequestTracker(),
+	}
 }
 
 // limiterConfig is the runtime view of ChannelRateLimit, normalized for the

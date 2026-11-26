@@ -41,7 +41,7 @@ func NewChatCompletionOrchestrator(
 ) *ChatCompletionOrchestrator {
 	responsesStore := newResponsesSessionStore(requestService.LoadCompletedResponsesSession)
 	responsesStore.known = requestService.HasCompletedResponsesOrigin
-	rateLimitTracker := NewChannelRequestTracker()
+	rateLimitTracker := channelLimiterManager.requestTracker
 
 	channelService.SetChannelLimiterForgetter(channelLimiterManager)
 
