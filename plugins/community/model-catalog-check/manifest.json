@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "local.model-catalog-check",
+  "name": "Model catalog check",
+  "version": "0.1.0",
+  "description": "Check configured models and followed reference prices. Signed-in users can view the scope and counts.",
+  "axonhubVersion": "^1.0.0",
+  "pluginApiVersion": 1,
+  "permissions": [
+    "read_channels"
+  ],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "channels": {
+        "type": "boolean",
+        "title": "Include configured channel models",
+        "default": true
+      },
+      "providers": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "title": "Additional catalog provider IDs",
+        "default": []
+      },
+      "ignorePrefix": {
+        "type": "boolean",
+        "title": "Match channel models by the last ID segment",
+        "default": false
+      }
+    }
+  },
+  "tasks": {
+    "check": {
+      "schedule": {
+        "cron": "30 8 * * *",
+        "timezone": "UTC"
+      }
+    }
+  },
+  "ui": {
+    "actions": [
+      {
+        "key": "catalog-check",
+        "slot": "app.header.actions",
+        "title": {
+          "en": "Model catalog check",
+          "zh-CN": "模型目录检查"
+        },
+        "icon": "activity",
+        "effect": {
+          "type": "dialog",
+          "entry": "ui/index.html"
+        }
+      }
+    ]
+  }
+}
