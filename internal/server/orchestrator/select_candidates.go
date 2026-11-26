@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // selectCandidates creates a middleware that selects available channel model candidates for the model.
@@ -61,6 +62,9 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 		}
 
 		selector = WithStreamPolicySelector(selector)
+		if continuation := inbound.state.ResponsesContinuation; continuation != nil && continuation.previous != "" {
+			selector = &responsesContinuationSelector{wrapped: selector, continuation: continuation}
+		}
 
 		settings := inbound.state.settings()
 		gate := NewQuotaRoutingGate(quotaProvider, settings.QuotaRouting)
@@ -80,6 +84,11 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 		}
 
 		candidates, err := selector.Select(ctx, llmRequest)
+		if shared.IsResponsesRecoveryError(err) {
+			// Persist the request without creating an upstream execution.
+			inbound.state.routingError = err
+			return llmRequest, nil
+		}
 		if err != nil {
 			return nil, err
 		}

@@ -15,16 +15,18 @@ import (
 type PersistenceState struct {
 	APIKey *ent.APIKey
 
-	RequestService      *biz.RequestService
-	UsageLogService     *biz.UsageLogService
-	ChannelService      *biz.ChannelService
-	PromptProvider      PromptProvider
-	PromptProtecter     PromptProtecter
-	CandidateSelector   CandidateSelector
-	LoadBalancers       map[string]*LoadBalancer
-	RoutingPolicy       EffectiveRoutingPolicy
+	RequestService    *biz.RequestService
+	UsageLogService   *biz.UsageLogService
+	ChannelService    *biz.ChannelService
+	PromptProvider    PromptProvider
+	PromptProtecter   PromptProtecter
+	CandidateSelector CandidateSelector
+	LoadBalancers     map[string]*LoadBalancer
+	RoutingPolicy     EffectiveRoutingPolicy
 	// Settings is the system settings snapshot taken when the request started.
 	Settings *RequestSettings
+
+	routingError error
 
 	// Request state
 	ModelMapper *ModelMapper

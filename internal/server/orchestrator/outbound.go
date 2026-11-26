@@ -616,27 +616,32 @@ func (p *PersistentOutboundTransformer) refreshCandidateAPIFormat(
 	if candidate == nil || candidate.Channel == nil || modelIndex < 0 || modelIndex >= len(candidate.Models) {
 		return
 	}
+	requestModel := ""
+	if p != nil && p.state != nil {
+		requestModel = p.state.OriginalModel
+	}
+	candidate.APIFormat = candidateAPIFormatForModel(ctx, candidate, modelIndex, req, requestModel)
+}
 
+func candidateAPIFormatForModel(ctx context.Context, candidate *ChannelModelsCandidate, modelIndex int, req *llm.Request, requestModel string) string {
 	if len(candidate.modelAPIFormats) == len(candidate.Models) {
-		candidate.APIFormat = candidate.modelAPIFormats[modelIndex]
-		return
+		return candidate.modelAPIFormats[modelIndex]
 	}
 
 	// Preserve an explicitly populated format when no per-model table is
 	// available. This covers legacy/specified selectors that already selected
 	// their endpoint before entering the persistent transformer.
 	if candidate.APIFormat != "" || req == nil {
-		return
+		return candidate.APIFormat
 	}
 
-	requestModel := req.Model
-	if p != nil && p.state != nil && p.state.OriginalModel != "" {
-		requestModel = p.state.OriginalModel
+	if requestModel == "" {
+		requestModel = req.Model
 	}
 
 	entry := candidate.Models[modelIndex]
 	endpoints, forced := applyForcedAPIFormats(ctx, candidate.Channel, []biz.ChannelModelEntry{entry}, requestModel, candidate.Channel.ResolveEndpoints())
-	candidate.APIFormat = selectEndpointAPIFormat(ctx, candidate.Channel, endpoints, req, forced)
+	return selectEndpointAPIFormat(ctx, candidate.Channel, endpoints, req, forced)
 }
 
 // APIFormat returns the API format of the transformer.
@@ -656,18 +661,15 @@ func (p *PersistentOutboundTransformer) TransformError(ctx context.Context, rawE
 }
 
 func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, llmRequest *llm.Request) (*httpclient.Request, error) {
+	if p.state.routingError != nil {
+		return nil, p.state.routingError
+	}
 	hasAdditionalTools := containsAdditionalToolsInputItems(llmRequest)
 
 	// Candidates should already be selected by inbound transformer
 	if len(p.state.ChannelModelsCandidates) == 0 {
 		return nil, errors.New("no candidates available: candidates should be selected by inbound transformer")
 	}
-	if p.state.ResponsesContinuation != nil {
-		if err := selectResponsesContinuationCandidate(ctx, p, llmRequest); err != nil {
-			return nil, err
-		}
-	}
-
 	// Select current candidate for this attempt
 	if p.state.CurrentCandidateIndex >= len(p.state.ChannelModelsCandidates) {
 		return nil, fmt.Errorf("%w: all candidates exhausted", biz.ErrInternal)
