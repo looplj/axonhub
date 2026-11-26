@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -175,12 +176,18 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 				block := &contentBlocks[index]
 				if isAnthropicToolUseLike(block.Type) {
-					if !json.Valid(block.Input) {
+					if len(bytes.TrimSpace(block.Input)) == 0 {
+						block.Input = json.RawMessage("{}")
+					} else if !json.Valid(block.Input) {
 						slog.WarnContext(ctx, "invalid tool use input", slog.String("input", string(block.Input)))
 
 						repaired, err := jsonrepair.Repair(string(block.Input))
 						if err == nil {
-							block.Input = []byte(repaired)
+							if len(bytes.TrimSpace([]byte(repaired))) == 0 {
+								block.Input = json.RawMessage("{}")
+							} else {
+								block.Input = []byte(repaired)
+							}
 						}
 					}
 				}

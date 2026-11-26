@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -411,6 +412,11 @@ type TextCitation struct {
 }
 
 func (b MessageContentBlock) MarshalJSON() ([]byte, error) {
+	if isAnthropicToolUseLike(b.Type) && len(bytes.TrimSpace(b.Input)) == 0 {
+		// Anthropic requires "input" on every tool_use/*_tool_use block even when empty.
+		b.Input = json.RawMessage("{}")
+	}
+
 	type blockAlias MessageContentBlock
 
 	if b.Type == "thinking" {
