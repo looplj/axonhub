@@ -424,6 +424,7 @@ type ChannelCredentials {
   apiKey: String
   apiKeys: [String!]
   vertexApiKeys: [VertexAPIKey!]
+  vertexServiceAccounts: [GCPCredential!]
   gcp: GCPCredential
   oauth: OAuthCredentials
 }
@@ -457,6 +458,7 @@ type VertexAPIKey {
 }
 
 type GCPCredential {
+  credentialRef: String!
   region: String!
   projectID: String!
   jsonData: String!
@@ -466,6 +468,7 @@ input ChannelCredentialsInput {
   apiKey: String
   apiKeys: [String!]
   vertexApiKeys: [VertexAPIKeyInput!]
+  vertexServiceAccounts: [GCPCredentialInput!]
   gcp: GCPCredentialInput
   oauth: OAuthCredentialsInput
   managementApiKey: String

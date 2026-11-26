@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
@@ -31,6 +32,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 type streamDeliveryE2ESelector struct {
@@ -119,6 +121,7 @@ func TestStreamDeliveryE2E(t *testing.T) {
 }
 
 type streamDeliveryE2EFixture struct {
+	limiter         *orchestrator.ChannelLimiterManager
 	ctx             context.Context
 	client          *ent.Client
 	channel         *ent.Channel
@@ -196,7 +199,8 @@ func (f *streamDeliveryE2EFixture) handler(t *testing.T) *ChatCompletionHandlers
 	channelService.SetEnabledChannelsForTest([]*biz.Channel{built})
 	selector := &streamDeliveryE2ESelector{candidates: []*orchestrator.ChannelModelsCandidate{{Channel: built, Models: []biz.ChannelModelEntry{{RequestModel: "gpt-test", ActualModel: "gpt-test", Source: "direct"}}}}}
 	inbound := openai.NewInboundTransformer()
-	orch := orchestrator.NewChatCompletionOrchestrator(channelService, nil, requestService, httpclient.NewHttpClient(), inbound, systemService, usageService, promptService, nil, promptProtection, biz.NewLiveStreamRegistry(), orchestrator.NewChannelLimiterManager(), nil, orchestrator.PluginIntegration{}).WithChannelSelector(selector)
+	f.limiter = orchestrator.NewChannelLimiterManager()
+	orch := orchestrator.NewChatCompletionOrchestrator(channelService, nil, requestService, httpclient.NewHttpClient(), inbound, systemService, usageService, promptService, nil, promptProtection, biz.NewLiveStreamRegistry(), f.limiter, nil, orchestrator.PluginIntegration{}).WithChannelSelector(selector)
 	h := NewChatCompletionHandlers(orch)
 	if f.format == llm.APIFormatOpenAIResponse {
 		h.streamAdapterFactory = newResponsesStreamAdapter
@@ -296,4 +300,96 @@ func streamDeliveryChat2616() string {
 
 func streamDeliveryResponses(input, output int, status string) string {
 	return fmt.Sprintf("event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp\",\"status\":\"in_progress\",\"output\":[]}}\n\nevent: response.%s\ndata: {\"type\":\"response.%s\",\"response\":{\"id\":\"resp\",\"status\":\"%s\",\"output\":[],\"usage\":{\"input_tokens\":%d,\"output_tokens\":%d,\"total_tokens\":%d}}}\n\n", status, status, status, input, output, input+output)
+}
+
+func TestResponsesWarmupRetryAfterChannelQueueFull(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	release := make(chan struct{})
+	bodies := make(chan string, 3)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		bodies <- string(body)
+		select {
+		case <-release:
+		case <-ctx.Done():
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, streamDeliveryResponses(12, 34, "completed"))
+	}))
+	t.Cleanup(upstream.Close)
+	f := newStreamDeliveryE2EFixture(t, llm.APIFormatOpenAIResponse, "", false)
+	var err error
+	f.channel, err = f.channel.Update().SetBaseURL(upstream.URL).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: f.format.String(), BaseURL: upstream.URL, Transport: objects.ChannelEndpointTransportHTTP}}).SetSettings(&objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{MaxConcurrent: new(int64(1)), QueueSize: new(int64(1))}}).Save(f.ctx)
+	require.NoError(t, err)
+	h := f.handler(t)
+	h.ChatCompletionOrchestrator.Inbound = responses.NewInboundTransformer()
+	engine := gin.New()
+	engine.Use(f.testContext)
+	handlerDone := make(chan struct{})
+	handle := (&OpenAIHandlers{ResponseCompletionHandlers: h}).CreateResponseWebSocket(0)
+	engine.GET("/v1/responses", func(c *gin.Context) {
+		defer close(handlerDone)
+		handle(c)
+	})
+	server := httptest.NewServer(engine)
+	t.Cleanup(server.Close)
+	conn := dialResponsesWebSocket(t, server.URL, nil)
+	t.Cleanup(func() {
+		_ = conn.CloseNow()
+		select {
+		case <-handlerDone:
+		case <-time.After(5 * time.Second):
+			t.Error("WebSocket handler did not finish after the client disconnected")
+		}
+	})
+	send := func(frame string) {
+		t.Helper()
+		require.NoError(t, conn.Write(ctx, websocket.MessageText, []byte(frame)))
+	}
+	read := func() []byte { t.Helper(); _, event, err := conn.Read(ctx); require.NoError(t, err); return event }
+	send(`{"type":"response.create","generate":false,"model":"gpt-test","input":"saved input"}`)
+	var id string
+	for range 3 {
+		event := read()
+		if gjson.GetBytes(event, "type").String() == "response.completed" {
+			id = gjson.GetBytes(event, "response.id").String()
+		}
+	}
+	require.NotEmpty(t, id)
+	for _, lane := range []string{"busy", "waiting"} {
+		send(fmt.Sprintf(`{"type":"response.create","stream_id":%q,"model":"gpt-test","input":"blocker"}`, lane))
+	}
+	require.Eventually(t, func() bool { active, waiting, _ := f.limiter.Stats(f.channel.ID); return active == 1 && waiting == 1 }, 3*time.Second, 5*time.Millisecond)
+	continuation := fmt.Sprintf(`{"type":"response.create","previous_response_id":%q,"input":"followup"}`, id)
+	send(continuation)
+	rejected := read()
+	require.Equal(t, "channel_queue_full", gjson.GetBytes(rejected, "error.code").String(), string(rejected))
+	close(release)
+	for completed := 0; completed < 2; {
+		if gjson.GetBytes(read(), "type").String() == "response.completed" {
+			completed++
+		}
+	}
+	send(continuation)
+	for {
+		event := read()
+		kind := gjson.GetBytes(event, "type").String()
+		require.NotEqual(t, "error", kind, string(event))
+		if kind == "response.completed" {
+			break
+		}
+	}
+	require.Len(t, bodies, 3)
+	<-bodies
+	<-bodies
+	body := <-bodies
+	require.Equal(t, "saved input", gjson.Get(body, "input.0.content").String())
+	require.Equal(t, "followup", gjson.Get(body, "input.1.content").String())
+	require.False(t, gjson.Get(body, "previous_response_id").Exists())
 }

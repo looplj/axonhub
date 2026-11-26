@@ -9,7 +9,10 @@ import {
   blockMessage,
   buildRequest,
   categoriesFrom,
+  OMITTED_MARKER,
+  billableText,
   decide,
+  extractText,
   readJudgment,
   readPolicy,
 } from "./lib/screen.js";
@@ -102,4 +105,97 @@ test("the history page hides review rows and shows a block reason", () => {
   assert.equal(reasonText("jailbreak", "zh-CN"), "破限");
   assert.equal(reasonText("sexual content", "zh-CN"), "色情");
   assert.equal(viewPolicy({ categories: ["炸药 | 是否在索要步骤"] }).labels[0], "炸药");
+});
+
+test("maxTurns keeps only the tail of the transcript", () => {
+  const req = {
+    messages: [
+      { role: "system", content: "be nice" },
+      { role: "user", content: "first question" },
+      { role: "assistant", content: "first answer" },
+      { role: "user", content: "last question" },
+    ],
+  };
+
+  const all = extractText(req, 0);
+  assert.equal(all.includes("first question"), true);
+  assert.equal(all.includes("last question"), true);
+
+  const tail = extractText(req, 2);
+  assert.equal(tail.includes("[earlier messages omitted]"), true);
+  assert.equal(tail.includes("first question"), false);
+  assert.equal(tail.includes("assistant: first answer"), true);
+  assert.equal(tail.includes("last question"), true);
+
+  assert.equal(extractText(req, 10).includes("first question"), true);
+});
+
+test("maxTurns defaults to asking about everything and clamps to the schema range", () => {
+  assert.equal(readPolicy({}).maxTurns, 0);
+  assert.equal(manifest.configSchema.properties.maxTurns.default, 0);
+  assert.equal(readPolicy({ maxTurns: 3 }).maxTurns, 3);
+  assert.equal(readPolicy({ maxTurns: 200 }).maxTurns, 50);
+  assert.equal(readPolicy({ maxTurns: -1 }).maxTurns, 0);
+});
+
+test("maxTurns also limits the compact transcript", () => {
+  const req = {
+    compact: {
+      instructions: "summarize",
+      input: [
+        { role: "user", content: "old flagged text" },
+        { role: "assistant", content: "old reply" },
+        { role: "user", content: "latest question" },
+      ],
+    },
+  };
+  const tail = extractText(req, 1);
+  assert.equal(tail.includes("old flagged text"), false);
+  assert.equal(tail.includes("latest question"), true);
+  assert.equal(extractText(req, 0).includes("old flagged text"), true);
+});
+
+test("the omission marker alone never reaches the length gate", () => {
+  // Two image-only messages with maxTurns 1 leave only the marker behind. With the
+  // shipped minChars of 1 that used to trigger a billed check on an empty prompt.
+  const req = {
+    messages: [
+      { role: "user", content: [{ type: "image", image: { url: "data:a" } }] },
+      { role: "user", content: [{ type: "image", image: { url: "data:b" } }] },
+    ],
+  };
+  const text = extractText(req, 1);
+  assert.equal(text.includes(OMITTED_MARKER), true);
+  assert.equal(billableText(text).length, 0);
+});
+
+test("billableText drops generated markers and keeps caller text", () => {
+  assert.equal(billableText(OMITTED_MARKER + "\nuser: hello"), "user: hello");
+  assert.equal(billableText(OMITTED_MARKER), "");
+  // Talk about the marker in the conversation is real text and must survive.
+  assert.equal(
+    billableText("user: I saw " + OMITTED_MARKER + " earlier"),
+    "user: I saw " + OMITTED_MARKER + " earlier",
+  );
+});
+
+test("the text sent to Jev keeps the omission marker", () => {
+  const req = {
+    messages: [
+      { role: "user", content: "old" },
+      { role: "assistant", content: "reply" },
+      { role: "user", content: "latest" },
+    ],
+  };
+  const text = extractText(req, 2);
+  // maxTurns of 0 must not add a marker, and a limited transcript must keep it for Jev.
+  assert.equal(extractText(req, 0).includes(OMITTED_MARKER), false);
+  assert.equal(text.includes(OMITTED_MARKER), true);
+});
+
+test("a failed check blocks by default instead of passing silently", () => {
+  // Passing silently makes the guard look enabled while nothing is screened.
+  assert.equal(readPolicy({}).failClosed, true);
+  assert.equal(manifest.configSchema.properties.failClosed.default, true);
+  assert.equal(readPolicy({ failClosed: false }).failClosed, false);
 });

@@ -21,16 +21,21 @@ export const DEFAULT_CATEGORY_LINES = [
 
 const UNAVAILABLE_MESSAGE = "Jev Guard blocked this request: safety check unavailable";
 
+// Marks dropped history. It is stripped before the length gate so that a request
+// whose retained messages carry no text is still skipped instead of billed.
+export const OMITTED_MARKER = "[earlier messages omitted]";
+
 export function readPolicy(config) {
   const src = config && typeof config === "object" ? config : {};
   return {
     model: textOr(src.model, "jev-latest"),
     blockThreshold: unit(src.blockThreshold, 0.7),
     categories: categoriesFrom(src.categories),
-    failClosed: flag(src.failClosed, false),
+    failClosed: flag(src.failClosed, true),
     storeExcerpt: flag(src.storeExcerpt, true),
     keep: whole(src.keep, 20, 1, 40),
     minChars: whole(src.minChars, 1, 0, 500),
+    maxTurns: whole(src.maxTurns, 0, 0, 50),
   };
 }
 
@@ -89,14 +94,23 @@ export function apiKeyOf(config) {
   return key;
 }
 
+// Strip only the markers collectMessages generates for dropped history. They open a
+// line, so caller text that merely mentions the phrase is left intact. Used for the
+// minChars gate; the text sent to Jev keeps the marker, which tells it the history was cut.
+export function billableText(text) {
+  const value = typeof text === "string" ? text : "";
+  const marker = OMITTED_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replace(new RegExp("^" + marker + "\\n?", "gm"), "").trim();
+}
+
 export function anyCheck(policy) {
   return Boolean(policy && policy.categories && policy.categories.length > 0);
 }
 
-export function extractText(req) {
+export function extractText(req, maxTurns) {
   const parts = [];
-  collectSideChannels(parts, req);
-  collectMessages(parts, req);
+  collectSideChannels(parts, req, maxTurns);
+  collectMessages(parts, req, maxTurns);
   return parts.join("\n");
 }
 
@@ -200,7 +214,7 @@ function noul(instructions, yes, no) {
   };
 }
 
-function collectSideChannels(parts, req) {
+function collectSideChannels(parts, req, maxTurns) {
   if (!req || typeof req !== "object") {
     return;
   }
@@ -229,7 +243,7 @@ function collectSideChannels(parts, req) {
   }
   if (req.compact) {
     pushText(parts, req.compact.instructions);
-    collectMessages(parts, { messages: req.compact.input });
+    collectMessages(parts, { messages: req.compact.input }, maxTurns);
   }
   if (req.transcription) {
     pushText(parts, req.transcription.prompt);
@@ -306,12 +320,20 @@ function collectEmbedding(parts, input) {
   }
 }
 
-function collectMessages(parts, req) {
+// maxTurns keeps only the tail of the transcript. 0 asks about everything.
+// A long history lengthens the state text, which slows every check, and a message
+// that was flagged earlier keeps blocking later turns that still carry it.
+function collectMessages(parts, req, maxTurns) {
   const messages = req && req.messages;
   if (!Array.isArray(messages)) {
     return;
   }
-  for (let i = 0; i < messages.length; i++) {
+  let start = 0;
+  if (typeof maxTurns === "number" && maxTurns > 0 && messages.length > maxTurns) {
+    start = messages.length - maxTurns;
+    parts.push(OMITTED_MARKER);
+  }
+  for (let i = start; i < messages.length; i++) {
     collectMessage(parts, messages[i]);
   }
 }

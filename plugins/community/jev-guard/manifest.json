@@ -2,11 +2,13 @@
   "schemaVersion": 1,
   "id": "local.jev-guard",
   "name": "Jev 请求审查",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "description": "在请求进入上游模型之前，用 Jev 判断一组可配置的分类。任一分类达到拦截阈值时返回 403，并写入拦截记录。低于阈值的请求继续，不落库。",
   "axonhubVersion": "^1.0.0",
   "pluginApiVersion": 1,
-  "network": ["https://api.typesafe.ai/v1/systemone"],
+  "network": [
+    "https://api.typesafe.ai/v1/systemone"
+  ],
   "hooks": {
     "request": {
       "enabled": true,
@@ -53,7 +55,9 @@
       },
       "categories": {
         "type": "array",
-        "items": { "type": "string" },
+        "items": {
+          "type": "string"
+        },
         "title": "分类",
         "description": "每行一条，最多使用 32 条。格式：名称 | 问题 | 符合时 | 不符合时。只写一句话时，这句话同时作为名称和问题。清空后不再检查。",
         "default": [
@@ -68,8 +72,8 @@
       "failClosed": {
         "type": "boolean",
         "title": "检查失败时拦截",
-        "description": "关闭时，缺少 Key、网络失败或 Jev 返回异常都会放行。打开时这些情况返回 403。",
-        "default": false
+        "description": "打开时，缺少 Key、网络失败或 Jev 返回异常都会返回 403，审查不会静默失效。关闭时这些情况放行，插件看起来仍然启用，但实际上没有检查。宿主在 10 秒后终止钩子时不经过这里，那种情况始终放行。",
+        "default": true
       },
       "storeExcerpt": {
         "type": "boolean",
@@ -92,16 +96,29 @@
         "minimum": 0,
         "maximum": 500,
         "default": 1
+      },
+      "maxTurns": {
+        "type": "integer",
+        "title": "追踪轮次",
+        "description": "只检查最近几条消息，更早的消息用 [earlier messages omitted] 代替。0 表示检查全部上下文。历史越长，单次判断越慢，而且前面被拦下的内容会让后续普通提问继续被拦。",
+        "minimum": 0,
+        "maximum": 50,
+        "default": 0
       }
     },
-    "required": ["apiKey"]
+    "required": [
+      "apiKey"
+    ]
   },
   "ui": {
     "pages": [
       {
         "key": "guard",
         "entry": "ui/guard/index.html",
-        "title": { "en": "Jev Guard", "zh-CN": "请求审查" }
+        "title": {
+          "en": "Jev Guard",
+          "zh-CN": "请求审查"
+        }
       }
     ]
   }

@@ -93,6 +93,7 @@ func (r *channelResolver) Credentials(ctx context.Context, obj *ent.Channel) (*o
 
 	if obj.Type != channel.TypeGeminiVertex {
 		creds.VertexAPIKeys = nil
+		creds.VertexServiceAccounts = nil
 	}
 
 	if len(apiKeys) == 0 {

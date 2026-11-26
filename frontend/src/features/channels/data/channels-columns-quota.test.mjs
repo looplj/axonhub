@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
+import { loadChannelSchema } from './load-channel-schema.mjs';
 
 const dataDir = import.meta.dirname;
 const srcRoot = join(dataDir, '..', '..', '..');
@@ -11,8 +12,7 @@ function read(relativePath) {
   return readFileSync(join(srcRoot, relativePath), 'utf8');
 }
 
-// Load the real parser and channel schema through TypeScript transpilation so
-// the tests exercise the exact contract the channel table consumes. Bare
+// Load the quota parser through TypeScript transpilation. Bare
 // imports are resolved by stubbing the imported bindings on globalThis before
 // evaluation via an injected prelude.
 function loadModule(relativePath, transform = (s) => s) {
@@ -40,7 +40,7 @@ const { parseAPIKeyQuotas, parseQuotaBalances, parseQuotaLimits, applyDisabledKe
   (s) => s.replace(/export function useProviderQuotaStatuses[\s\S]*$/m, '')
 );
 
-const { channelSchema } = await loadModule('features/channels/data/schema.ts', (s) => s.replace(/z\.url\(/g, 'z.string().url('));
+const { channelSchema } = await loadChannelSchema();
 
 const channelQuerySource = read('features/channels/data/channels.ts').replace(/^import(?:.|\n)*?;\n/gm, '');
 const channelQueryTranspiled = ts.transpileModule(channelQuerySource, {

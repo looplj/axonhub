@@ -57,7 +57,7 @@ func NewTraceStickyKeyProvider(channel *Channel) *TraceStickyKeyProvider {
 func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
 	enabled := p.channel.cachedEnabledAPIKeys
 	if len(enabled) == 0 {
-		return p.channel.Credentials.APIKeys[0]
+		return ""
 	}
 
 	if len(enabled) == 1 {

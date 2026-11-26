@@ -33,6 +33,9 @@ type Config struct {
 	// provider has selected a credential.
 	BaseURLProvider func(context.Context) string `json:"-"`
 
+	// CredentialResolver selects authentication and its resource root together.
+	CredentialResolver func(context.Context) (string, *httpclient.AuthConfig, error) `json:"-"`
+
 	// APIKeyProvider provides API keys for authentication.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
 
@@ -54,6 +57,11 @@ type Config struct {
 // OutboundTransformer implements transformer.Outbound for Gemini format.
 type OutboundTransformer struct {
 	config Config
+}
+
+// CredentialResolver allows peer endpoints to share the snapshot's token cache.
+func (t *OutboundTransformer) CredentialResolver() func(context.Context) (string, *httpclient.AuthConfig, error) {
+	return t.config.CredentialResolver
 }
 
 // NewOutboundTransformer creates a new Gemini OutboundTransformer with legacy parameters.
@@ -108,6 +116,26 @@ func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	if llmReq == nil {
 		return nil, fmt.Errorf("request is nil")
+	}
+
+	if t.config.CredentialResolver != nil {
+		baseURL, credentials, err := t.config.CredentialResolver(ctx)
+		if err != nil {
+			return nil, err
+		}
+		// Keep the resolved pair local to this request, including concurrent calls.
+		resolved := *t
+		resolved.config.CredentialResolver = nil
+		resolved.config.APIKeyProvider = nil
+		resolved.config.BaseURLProvider = nil
+		resolved.config.BaseURL = baseURL
+		resolved.config = clenupConfig(resolved.config)
+		request, err := resolved.TransformRequest(ctx, llmReq)
+		if err != nil {
+			return nil, err
+		}
+		request.Auth = credentials
+		return request, nil
 	}
 
 	var apiKey string

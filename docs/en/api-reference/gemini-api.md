@@ -13,6 +13,17 @@ GenerateContent requests also accept `system_instruction`, `inline_data`, and `m
 - **Automatic Translation**: AxonHub automatically converts between API formats when needed
 - **Multi-modal Support**: Access text and image capabilities through the Gemini API format
 
+## Vertex AI channel credentials
+
+A **Gemini Vertex AI** channel can hold multiple credentials of both types:
+
+- **API key (Express mode)**: enter the API key, its Google Cloud project ID or project number, and a location such as `global` or `us-central1`.
+- **Service account JSON**: paste a JSON key created for a Google Cloud service account, or choose a local JSON file. The browser reads the file and submits its contents as a string. The project is prefilled from `project_id` and can be edited to use another project the service account can access. Choose the location separately.
+
+Grant the service account permission to invoke Vertex AI in the target project, for example `roles/aiplatform.user`, and enable the Vertex AI API in that project. AxonHub exchanges the signed service account assertion at Google's OAuth endpoint using the `cloud-platform` scope and refreshes access tokens automatically through the channel's configured proxy. Application Default Credentials and other JSON credential types are not accepted.
+
+Add, edit, delete, test, disable, or re-enable each credential individually in channel credential management. API keys and service accounts participate in the same credential selection strategy. Each request uses the selected credential's project and location together with its authentication. Service account entries retain their identity when only JSON formatting, project, or location changes; replacing the account or signing key creates a new credential identity.
+
 ## Supported Endpoints
 
 **Endpoints:**

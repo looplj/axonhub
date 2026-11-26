@@ -40,6 +40,7 @@ func vertexCredentialsContext(t *testing.T, ctx context.Context, client *ent.Cli
 func TestChannelResolver_Credentials_KeepsVertexKeysAsTriples(t *testing.T) {
 	_, ctx, client := setupTestQueryResolver(t)
 	defer client.Close()
+	account := objects.GCPCredential{ProjectID: "project-json", Region: "global", JSONData: `{"client_email":"account@example.test","private_key_id":"key-one"}`}
 
 	vertexChannel, err := client.Channel.Create().
 		SetType(channel.TypeGeminiVertex).
@@ -50,6 +51,7 @@ func TestChannelResolver_Credentials_KeepsVertexKeysAsTriples(t *testing.T) {
 				{ProjectID: "project-alpha", APIKey: "vertex-key-alpha", Region: "us-central1"},
 				{ProjectID: "project-beta", APIKey: "vertex-key-beta", Region: "global"},
 			},
+			VertexServiceAccounts: []objects.GCPCredential{account},
 		}).
 		SetSupportedModels([]string{"gemini-2.5-pro"}).
 		SetDefaultTestModel("gemini-2.5-pro").
@@ -71,6 +73,7 @@ func TestChannelResolver_Credentials_KeepsVertexKeysAsTriples(t *testing.T) {
 	// The Vertex keys are returned only as triples, never duplicated into the flat list.
 	require.Empty(t, creds.APIKeys)
 	require.Empty(t, creds.APIKey)
+	require.Equal(t, []objects.GCPCredential{account}, creds.VertexServiceAccounts)
 }
 
 // An ordinary channel keeps the flat apiKeys path and carries no Vertex triples.
@@ -111,6 +114,9 @@ func TestChannelCredentialsInput_CarriesVertexKeys(t *testing.T) {
 			map[string]any{"projectID": "project-alpha", "apiKey": "vertex-key-alpha", "region": "us-central1"},
 		},
 		"managementApiKey": "sk-mg",
+		"vertexServiceAccounts": []any{
+			map[string]any{"projectID": "project-json", "region": "global", "jsonData": `{"type":"service_account"}`},
+		},
 	})
 	require.NoError(t, err)
 
@@ -118,6 +124,7 @@ func TestChannelCredentialsInput_CarriesVertexKeys(t *testing.T) {
 		{ProjectID: "project-alpha", APIKey: "vertex-key-alpha", Region: "us-central1"},
 	}, creds.VertexAPIKeys)
 	require.Equal(t, "sk-mg", creds.ManagementAPIKey)
+	require.Equal(t, []objects.GCPCredential{{ProjectID: "project-json", Region: "global", JSONData: `{"type":"service_account"}`}}, creds.VertexServiceAccounts)
 }
 
 // A non-Vertex channel must never expose a Vertex key. Legacy rows can still carry
@@ -136,6 +143,7 @@ func TestChannelResolver_Credentials_DropsVertexKeysOnOtherChannelTypes(t *testi
 			VertexAPIKeys: []objects.VertexAPIKey{
 				{ProjectID: "project-alpha", APIKey: "vertex-key-alpha", Region: "global"},
 			},
+			VertexServiceAccounts: []objects.GCPCredential{{ProjectID: "project-json", Region: "global", JSONData: `{"type":"service_account"}`}},
 		}).
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
@@ -150,5 +158,16 @@ func TestChannelResolver_Credentials_DropsVertexKeysOnOtherChannelTypes(t *testi
 	require.NotNil(t, creds)
 
 	require.Empty(t, creds.VertexAPIKeys, "an ordinary channel must not surface Vertex credentials")
+	require.Empty(t, creds.VertexServiceAccounts)
 	require.Equal(t, []string{"sk-plain"}, creds.APIKeys)
+}
+
+func TestChannelResolver_Credentials_ServiceAccountsRequireWriteScope(t *testing.T) {
+	resolver := &channelResolver{&Resolver{}}
+	result, err := resolver.Credentials(context.Background(), &ent.Channel{
+		Type:        channel.TypeGeminiVertex,
+		Credentials: objects.ChannelCredentials{VertexServiceAccounts: []objects.GCPCredential{{JSONData: "synthetic-private-material"}}},
+	})
+	require.NoError(t, err)
+	require.Nil(t, result)
 }

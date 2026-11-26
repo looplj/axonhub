@@ -154,6 +154,9 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 // buildEmbeddingURL constructs the embedding API URL for the credential selected by
 // the API key provider, so a Vertex key resolves to its own project and region.
 func (t *OutboundTransformer) buildEmbeddingURL(ctx context.Context, model string, isBatch bool) string {
+	if t.config.EndpointPath != "" {
+		return strings.TrimRight(t.resolveBaseURL(ctx), "/") + t.config.EndpointPath
+	}
 	version := t.config.APIVersion
 	if version == "" {
 		version = DefaultAPIVersion

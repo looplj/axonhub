@@ -80,14 +80,9 @@ func newMultiKeyProvider(ch *Channel) auth.APIKeyProvider {
 	}
 }
 
-// selectableKeys returns the enabled keys snapshot plus the fallback used when
-// no key is enabled (mirrors TraceStickyKeyProvider's edge handling).
+// selectableKeys returns the enabled credential references of this snapshot.
 func selectableKeys(ch *Channel) []string {
-	enabled := ch.cachedEnabledAPIKeys
-	if len(enabled) == 0 {
-		return []string{ch.Credentials.APIKeys[0]}
-	}
-	return enabled
+	return ch.cachedEnabledAPIKeys
 }
 
 // positionOf returns the index of cursorKey inside all. When the key is absent
@@ -103,9 +98,7 @@ func positionOf(all []string, cursorKey string, cursorIdx int) int {
 
 // firstSelectableFrom walks the full key array forward from start (wrapping
 // around) and returns the first key without an active disable record, together
-// with its index. When every key is disabled it returns the first key as a
-// defensive fallback: the channel itself is taken out of service in that case,
-// so this selection is never actually used.
+// with its index. An empty result means every credential is disabled.
 func firstSelectableFrom(all []string, disabled map[string]struct{}, start int) (string, int) {
 	n := len(all)
 	if n == 0 {
@@ -123,7 +116,7 @@ func firstSelectableFrom(all []string, disabled map[string]struct{}, start int) 
 		}
 	}
 
-	return all[0], 0
+	return "", -1
 }
 
 // RandomKeyProvider selects an API key uniformly at random on every call,
@@ -138,6 +131,9 @@ func NewRandomKeyProvider(channel *Channel) *RandomKeyProvider {
 
 func (p *RandomKeyProvider) Get(ctx context.Context) string {
 	enabled := selectableKeys(p.channel)
+	if len(enabled) == 0 {
+		return ""
+	}
 
 	//nolint:gosec // not a security issue, just a random selection.
 	selectedKey := enabled[rand.IntN(len(enabled))]
@@ -174,7 +170,7 @@ func (p *sharedStickyKeyProvider) Get(ctx context.Context) string {
 
 	enabled := ch.cachedEnabledAPIKeys
 	if len(enabled) == 0 {
-		return ch.Credentials.APIKeys[0]
+		return ""
 	}
 
 	if len(enabled) == 1 {
@@ -243,6 +239,9 @@ func (p *RoundRobinKeyProvider) Get(ctx context.Context) string {
 		selectedKey = p.state.nextRoundRobinKey(ch, p.per)
 	} else {
 		enabled := selectableKeys(ch)
+		if len(enabled) == 0 {
+			return ""
+		}
 
 		//nolint:gosec // G115 - per is normalized to >= 1 at construction.
 		index := (p.fallback.Add(1) - 1) / uint64(p.per) % uint64(len(enabled))
@@ -276,6 +275,9 @@ func (p *RoundRobinSuccessKeyProvider) Get(ctx context.Context) string {
 		// Defensive: without shared state there is nothing to advance, so behave
 		// like a static first-key selection.
 		enabled := selectableKeys(p.channel)
+		if len(enabled) == 0 {
+			return ""
+		}
 		contexts.WithChannelAPIKey(ctx, enabled[0])
 
 		return enabled[0]
@@ -301,6 +303,9 @@ func NewPriorityKeyProvider(channel *Channel) *PriorityKeyProvider {
 
 func (p *PriorityKeyProvider) Get(ctx context.Context) string {
 	enabled := selectableKeys(p.channel)
+	if len(enabled) == 0 {
+		return ""
+	}
 	selectedKey := enabled[0]
 
 	contexts.WithChannelAPIKey(ctx, selectedKey)
@@ -331,6 +336,9 @@ func (p *FixedKeyProvider) Get(ctx context.Context) string {
 		// Defensive: without shared state there is nothing to remember, so fall
 		// back to the first selectable key.
 		enabled := selectableKeys(p.channel)
+		if len(enabled) == 0 {
+			return ""
+		}
 		contexts.WithChannelAPIKey(ctx, enabled[0])
 
 		return enabled[0]

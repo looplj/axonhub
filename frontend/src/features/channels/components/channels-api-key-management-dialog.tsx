@@ -6,6 +6,7 @@ import {
   IconCopy,
   IconKey,
   IconLoader2,
+  IconPencil,
   IconPlayerPlay,
   IconRefresh,
   IconTrash,
@@ -32,6 +33,7 @@ import {
   useUpdateChannel,
 } from '../data/channels';
 import { ChannelCredentials, TestAPIKeyResult } from '../data/schema';
+import { getVertexServiceAccountIdentity, maskVertexCredentialRef, toVertexServiceAccountInputs } from '../data/vertex-service-account';
 
 interface ChannelsAPIKeyManagementDialogProps {
   open: boolean;
@@ -70,6 +72,11 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
   // Vertex 密钥是项目绑定的三元组：列表里展示 apiKey，但每次提交都必须把绑定原样带回，
   // 否则后端整体替换 credentials 时会丢掉 projectID/region。
   const [vertexBindings, setVertexBindings] = useState<NonNullable<ChannelCredentials['vertexApiKeys']>>([]);
+  // Service account rows keep their server-issued credentialRef: it is the identity the
+  // disable/enable/test mutations and the disabled-key list use, and it never leaks the
+  // JSON body. Removal rewrites the list without the removed row.
+  const [serviceAccounts, setServiceAccounts] = useState<NonNullable<ChannelCredentials['vertexServiceAccounts']>>([]);
+  const [confirmDeleteServiceAccount, setConfirmDeleteServiceAccount] = useState<string | null>(null);
   const abortRef = useRef(false);
 
   const testSingleKey = useTestChannelAPIKey();
@@ -101,7 +108,14 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
     () => validKeys.filter((key) => !effectivelyDisabledSet.has(key)).length,
     [validKeys, effectivelyDisabledSet]
   );
-  const isLastKey = validKeys.length <= 1;
+  const isVertexChannel = currentRow?.type === 'gemini_vertex';
+  const enabledServiceAccountCount = serviceAccounts.filter(
+    (account) => !!account.credentialRef && !effectivelyDisabledSet.has(account.credentialRef)
+  ).length;
+  // Disabling is blocked when it would leave the channel with no enabled credential of
+  // either type, which is the same rule the backend applies to the combined refs.
+  const enabledCredentialCount = enabledKeysCount + enabledServiceAccountCount;
+  const isLastKey = validKeys.length + serviceAccounts.length <= 1;
 
   const isPending =
     testingKey !== null || disableAPIKey.isPending || enableAPIKey.isPending || updateChannel.isPending || deleteDisabledAPIKeys.isPending;
@@ -116,6 +130,8 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
       const boundKeys = (currentRow?.credentials?.vertexApiKeys ?? []).map((binding) => binding.apiKey);
       setLocalKeys([...flatKeys, ...boundKeys]);
       setVertexBindings(currentRow?.credentials?.vertexApiKeys ?? []);
+      setServiceAccounts(currentRow?.credentials?.vertexServiceAccounts ?? []);
+      setConfirmDeleteServiceAccount(null);
       setSelectedKeys(new Set());
       setTestingKey(null);
       setTestResults({});
@@ -134,11 +150,10 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
   if (!currentRow) {
     return null;
   }
-  const isVertexChannel = currentRow.type === 'gemini_vertex';
 
   // Vertex 密钥只能作为三元组提交：平铺进 apiKeys 会变成没有项目绑定的密钥，
   // 所以列表里的 Vertex 密钥要从 apiKeys 里排除，绑定则按存活的 key 过滤后原样带回。
-  const buildCredentials = (keys: string[]) => {
+  const buildCredentials = (keys: string[], accounts = serviceAccounts) => {
     if (!isVertexChannel) {
       return { apiKeys: keys };
     }
@@ -147,6 +162,9 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
     return {
       apiKeys: keys.filter((key) => !boundKeys.has(key)),
       vertexApiKeys: vertexBindings.filter((binding) => keptKeys.has(binding.apiKey)),
+      // Both Vertex lists are replaced wholesale on save, so the untouched list has to
+      // be echoed back; credentialRef stays server-owned and is never submitted.
+      vertexServiceAccounts: toVertexServiceAccountInputs(accounts),
     };
   };
 
@@ -329,9 +347,29 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
   const handleToggleEnable = async (key: string) => {
     try {
       await enableAPIKey.mutateAsync({ channelID: currentRow.id, key });
+      setTestResults((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
       setConfirmEnableKey(null);
     } catch {
       // handled by hooks
+    }
+  };
+
+  /** Removes one service account row; disabled records for its ref are pruned server-side. */
+  const handleDeleteServiceAccount = async (credentialRef: string) => {
+    const remaining = serviceAccounts.filter((account) => account.credentialRef !== credentialRef);
+    try {
+      await updateChannel.mutateAsync({
+        id: currentRow.id,
+        input: { credentials: buildCredentials(validKeys, remaining) },
+      });
+      setServiceAccounts(remaining);
+      setConfirmDeleteServiceAccount(null);
+    } catch {
+      // handled by hook
     }
   };
 
@@ -360,10 +398,10 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
           <DialogDescription>{t('channels.dialogs.keyManagement.description', { name: currentRow.name })}</DialogDescription>
         </DialogHeader>
 
-        <div className='flex min-h-0 flex-1 flex-col gap-4'>
+        <div className='min-h-0 flex-1 space-y-4 overflow-y-auto'>
           {/* 批量导入区 */}
           <div className='rounded-md border bg-muted/40 p-3'>
-            <div className='flex items-center justify-between gap-2'>
+            <div className='flex flex-wrap items-center justify-between gap-2'>
               <div className='flex items-center gap-2 text-sm font-medium'>
                 <IconUpload className='h-4 w-4' />
                 {t('channels.dialogs.keyManagement.importTitle')}
@@ -388,7 +426,7 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
           {/* 表格 */}
           <div className='flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border'>
             {/* 批量操作头 */}
-            <div className='flex items-center justify-between gap-4 rounded-t-lg border-b bg-muted/40 px-4 py-2'>
+            <div className='flex flex-wrap items-center justify-between gap-4 rounded-t-lg border-b bg-muted/40 px-4 py-2'>
               <div className='flex items-center gap-2'>
                 <Checkbox
                   checked={isAllSelected || (isSomeSelected && 'indeterminate')}
@@ -601,7 +639,7 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
                               ) : (
                                 <Popover open={confirmDisableKey === key} onOpenChange={(o) => setConfirmDisableKey(o ? key : null)}>
                                   <PopoverTrigger asChild>
-                                    <Button size='sm' variant='ghost' className='h-7 w-7 p-0' disabled={isPending || enabledKeysCount <= 1}>
+                                    <Button size='sm' variant='ghost' className='h-7 w-7 p-0' disabled={isPending || enabledCredentialCount <= 1}>
                                       <IconAlertTriangle className='h-4 w-4' />
                                     </Button>
                                   </PopoverTrigger>
@@ -651,6 +689,206 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
               </Table>
             </div>
           </div>
+
+          {/* Service account rows come after the API keys and act on credentialRef only:
+              the JSON body never appears in the table, the copy action, or a tooltip. */}
+          {isVertexChannel && (
+            <div className='flex shrink-0 flex-col overflow-hidden rounded-lg border'>
+              <div className='flex flex-wrap items-center justify-between gap-4 border-b bg-muted/40 px-4 py-2'>
+                <div className='flex items-center gap-2'>
+                  <IconKey className='text-muted-foreground h-4 w-4' />
+                  <span className='text-sm font-medium'>{t('channels.dialogs.keyManagement.serviceAccountTitle')}</span>
+                  <span className='text-muted-foreground text-xs'>
+                    {t('channels.dialogs.keyManagement.serviceAccountCount', { count: serviceAccounts.length })}
+                  </span>
+                </div>
+                <Button size='sm' variant='outline' onClick={() => setOpen('edit')}>
+                  <IconPencil className='mr-1 h-3.5 w-3.5' />
+                  {t('channels.dialogs.keyManagement.serviceAccountManage')}
+                </Button>
+              </div>
+
+              <div className='max-h-64 overflow-y-auto'>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('channels.dialogs.keyManagement.serviceAccountColumn')}</TableHead>
+                      <TableHead className='w-32'>{t('channels.dialogs.keyManagement.serviceAccountProjectColumn')}</TableHead>
+                      <TableHead className='w-40'>{t('channels.dialogs.keyManagement.statusColumn')}</TableHead>
+                      <TableHead className='w-28'>{t('channels.dialogs.keyManagement.latencyColumn')}</TableHead>
+                      <TableHead className='w-36'>{t('channels.dialogs.keyManagement.actionsColumn')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {serviceAccounts.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className='h-20 text-center text-sm text-muted-foreground'>
+                          {t('channels.dialogs.keyManagement.serviceAccountEmpty')}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      serviceAccounts.map((account, index) => {
+                        const credentialRef = account.credentialRef ?? '';
+                        const identity = getVertexServiceAccountIdentity(account.jsonData);
+                        const isTesting = credentialRef.length > 0 && testingKey === credentialRef;
+                        const isDisabled = credentialRef.length > 0 && isKeyDisabled(credentialRef);
+                        const result = credentialRef.length > 0 ? getKeyResult(credentialRef) : undefined;
+                        const displayName = identity.clientEmail || maskVertexCredentialRef(credentialRef);
+                        return (
+                          <TableRow key={credentialRef || `${identity.clientEmail}-${index}`}>
+                            <TableCell className='font-medium'>
+                              <div className='flex items-center gap-2'>
+                                {isTesting && <IconLoader2 className='h-3 w-3 animate-spin text-muted-foreground' />}
+                                <code className='bg-muted rounded px-2 py-0.5 font-mono text-xs'>
+                                  {result ? result.keyPrefix : displayName}
+                                </code>
+                              </div>
+                              {result?.error && (
+                                <div className='mt-1 flex items-start gap-1 text-xs text-destructive'>
+                                  <IconAlertTriangle className='mt-0.5 h-3 w-3 shrink-0' />
+                                  <span className='whitespace-normal break-all'>{result.error}</span>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className='font-mono text-xs'>{account.projectID || '-'}</div>
+                              <div className='text-muted-foreground text-xs'>{account.region || 'global'}</div>
+                            </TableCell>
+                            <TableCell>
+                              {isDisabled ? (
+                                <Badge variant='secondary'>{t('channels.dialogs.keyManagement.disabled')}</Badge>
+                              ) : result ? (
+                                result.success ? (
+                                  <Badge variant='default' className='border-green-200 bg-green-100 text-green-800'>
+                                    {t('channels.dialogs.keyManagement.success')}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant='destructive'>{t('channels.dialogs.keyManagement.failed')}</Badge>
+                                )
+                              ) : (
+                                <span className='text-muted-foreground'>-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{result && result.latency > 0 ? `${result.latency.toFixed(2)}s` : '-'}</TableCell>
+                            <TableCell>
+                              <div className='flex items-center gap-0.5'>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size='sm'
+                                      variant='ghost'
+                                      className='h-7 w-7 p-0'
+                                      onClick={() => handleTestSingle(credentialRef)}
+                                      aria-label={t('channels.dialogs.keyManagement.test')}
+                                      disabled={isPending || credentialRef.length === 0}
+                                    >
+                                      <IconPlayerPlay className='h-4 w-4' />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{t('channels.dialogs.keyManagement.test')}</TooltipContent>
+                                </Tooltip>
+
+                                {isDisabled ? (
+                                  <Popover
+                                    open={confirmEnableKey === credentialRef}
+                                    onOpenChange={(o) => setConfirmEnableKey(o ? credentialRef : null)}
+                                  >
+                                    <PopoverTrigger asChild>
+                                      <Button size='sm' variant='ghost' className='h-7 w-7 p-0' disabled={isPending} aria-label={t('channels.dialogs.keyManagement.enable')}>
+                                        <IconRefresh className='h-4 w-4' />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className='w-64'>
+                                      <div className='flex flex-col gap-3'>
+                                        <p className='text-sm'>{t('channels.dialogs.keyManagement.confirmEnable')}</p>
+                                        <div className='flex justify-end gap-2'>
+                                          <Button size='sm' variant='outline' onClick={() => setConfirmEnableKey(null)}>
+                                            {t('common.buttons.cancel')}
+                                          </Button>
+                                          <Button size='sm' onClick={() => handleToggleEnable(credentialRef)} disabled={isPending}>
+                                            {t('common.buttons.confirm')}
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                ) : (
+                                  <Popover
+                                    open={confirmDisableKey === credentialRef}
+                                    onOpenChange={(o) => setConfirmDisableKey(o ? credentialRef : null)}
+                                  >
+                                    <PopoverTrigger asChild>
+                                      <Button
+                                        size='sm'
+                                        variant='ghost'
+                                        className='h-7 w-7 p-0'
+                                        disabled={isPending || enabledCredentialCount <= 1 || credentialRef.length === 0}
+                                        aria-label={t('channels.dialogs.keyManagement.disable')}
+                                      >
+                                        <IconAlertTriangle className='h-4 w-4' />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className='w-64'>
+                                      <div className='flex flex-col gap-3'>
+                                        <p className='text-sm'>{t('channels.dialogs.keyManagement.confirmDisable')}</p>
+                                        <div className='flex justify-end gap-2'>
+                                          <Button size='sm' variant='outline' onClick={() => setConfirmDisableKey(null)}>
+                                            {t('common.buttons.cancel')}
+                                          </Button>
+                                          <Button size='sm' onClick={() => handleToggleDisable(credentialRef)} disabled={isPending}>
+                                            {t('common.buttons.confirm')}
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
+
+                                <Popover
+                                  open={confirmDeleteServiceAccount === credentialRef}
+                                  onOpenChange={(o) => setConfirmDeleteServiceAccount(o ? credentialRef : null)}
+                                >
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      size='sm'
+                                      variant='ghost'
+                                      className='text-destructive h-7 w-7 p-0'
+                                      disabled={isPending || isLastKey || credentialRef.length === 0}
+                                      aria-label={t('channels.dialogs.keyManagement.delete')}
+                                    >
+                                      <IconTrash className='h-4 w-4' />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className='w-64'>
+                                    <div className='flex flex-col gap-3'>
+                                      <p className='text-sm'>{t('channels.dialogs.keyManagement.confirmDelete')}</p>
+                                      <div className='flex justify-end gap-2'>
+                                        <Button size='sm' variant='outline' onClick={() => setConfirmDeleteServiceAccount(null)}>
+                                          {t('common.buttons.cancel')}
+                                        </Button>
+                                        <Button
+                                          size='sm'
+                                          variant='destructive'
+                                          onClick={() => handleDeleteServiceAccount(credentialRef)}
+                                          disabled={isPending}
+                                        >
+                                          {t('common.buttons.confirm')}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter align='between' className='items-center'>

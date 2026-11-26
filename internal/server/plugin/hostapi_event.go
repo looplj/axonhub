@@ -435,7 +435,7 @@ func matchingCredentialKeys(row *ent.Channel, fingerprint string) []string {
 	}
 	seen := map[string]struct{}{}
 	var matches []string
-	for _, key := range row.Credentials.GetAllAPIKeys() {
+	for _, key := range row.Credentials.GetAllCredentialRefs() {
 		if key == "" {
 			continue
 		}
