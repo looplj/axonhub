@@ -6,6 +6,7 @@ import {
   buildCodexResponsesEndpoints,
   getApiFormatsForProvider,
   getAvailableProtocolFormats,
+  getModelProtocolValidationFormats,
   getChannelTypeForApiFormat,
   getCodexResponsesWebSocketState,
   getCodexResponsesWebSocketURL,
@@ -48,6 +49,35 @@ const channelConfigs = {
 
 const configs = { providerConfigs, channelConfigs };
 
+test('Realtime protocol selection belongs to provider configuration, never custom endpoints', () => {
+  assert.ok(getApiFormatsForProvider('openai', configs).includes('openai/realtime-ws'));
+  const bailian = { providerConfigs: { bailian: { channelTypes: ['bailian'] } }, channelConfigs: { bailian: { apiFormat: 'openai/chat_completions' } } };
+  assert.ok(getApiFormatsForProvider('bailian', bailian).includes('qwen/realtime-ws'));
+  assert.equal(getChannelTypeForApiFormat('openai', 'openai/realtime-ws', configs), 'openai');
+  assert.equal(getChannelTypeForApiFormat('bailian', 'qwen/realtime-ws', bailian), 'bailian');
+  for (const channelType of ['openai', 'bailian', 'zenmux']) {
+    assert.deepEqual(getConfigurableApiFormatsForChannelType(channelType, ['openai/chat_completions', 'openai/realtime-ws', 'qwen/realtime-ws']), ['openai/chat_completions']);
+  }
+});
+
+test('endpoint saves validate but never offer migrated channel Realtime references', () => {
+  const defaults = [{ apiFormat: 'openai/chat_completions' }];
+  const realtime = { enabled: false, protocol: 'qwen/realtime-ws', baseURL: 'wss://llm-workspace.cn-beijing.maas.aliyuncs.com', path: '/api-ws/v1/realtime' };
+  assert.deepEqual(getAvailableProtocolFormats(defaults, []), ['openai/chat_completions']);
+  assert.deepEqual([...getModelProtocolValidationFormats(defaults, [], realtime)], ['openai/chat_completions', 'qwen/realtime-ws']);
+  assert.equal(getModelProtocolValidationFormats(defaults, []).has('qwen/realtime-ws'), false);
+});
+
+test('Realtime endpoint display keeps ordinary channel defaults available to model-protocol validation', () => {
+  const channelDefaults = [{ apiFormat: 'openai/chat_completions' }];
+  const realtime = { enabled: true, protocol: 'openai/realtime-ws', baseURL: 'wss://api.openai.com', path: '/v1/realtime' };
+  assert.equal(getModelProtocolValidationFormats(channelDefaults, [], realtime).has('openai/chat_completions'), true);
+
+  const dialog = read('features/channels/components/channels-endpoints-dialog.tsx');
+  assert.match(dialog, /const modelProtocolValidationDefaults = realtimeDefaultEndpoint && !isCodexChannel \? channel\.defaultEndpoints \?\? \[\] : defaultEndpoints;/);
+  assert.match(dialog, /getModelProtocolValidationFormats\(modelProtocolValidationDefaults, savedEndpoints, channel\.settings\?\.realtime\)/);
+});
+
 test('includes ZenMux native video in the add-channel provider formats', () => {
   assert.deepEqual(getApiFormatsForProvider('zenmux', configs), ['openai/chat_completions', 'openai/responses', 'zenmux/video']);
 });
@@ -61,7 +91,7 @@ test('exposes the native video default endpoint to model protocol editing', () =
 });
 
 test('does not expose ZenMux native video to unrelated providers', () => {
-  assert.deepEqual(getApiFormatsForProvider('openai', configs), ['openai/chat_completions', 'openai/responses']);
+  assert.deepEqual(getApiFormatsForProvider('openai', configs), ['openai/chat_completions', 'openai/responses', 'openai/realtime-ws']);
   assert.equal(getChannelTypeForApiFormat('openai', 'zenmux/video', configs), undefined);
 });
 

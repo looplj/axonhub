@@ -131,6 +131,12 @@ func (m *Migrator) Run(ctx context.Context) error {
 		log.Info(ctx, "completed migration", log.String("version", version))
 	}
 
+	// This structural migration also runs when the stored version already equals
+	// the binary's version, before ChannelService can populate its caches.
+	if err := biz.MigrateChannelRealtime(ctx, m.client); err != nil {
+		return err
+	}
+
 	// Set system version if newer or unset.
 	currentVersion, err := m.systemService.Version(ctx)
 	if err != nil {

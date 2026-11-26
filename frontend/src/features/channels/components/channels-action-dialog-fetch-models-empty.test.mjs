@@ -13,21 +13,18 @@ import ts from 'typescript';
 const source = readFileSync(new URL('./channels-action-dialog.tsx', import.meta.url), 'utf8');
 
 const START_MARKER = 'const models = result.models.map((m) => m.id);';
-const END_MARKER = 'const handleSyncNow = useCallback';
+const handlerStart = source.indexOf('const handleFetchModels = useCallback');
+const handlerEnd = source.indexOf('const handleSyncNow = useCallback', handlerStart);
+assert.ok(handlerStart >= 0 && handlerEnd > handlerStart, 'the model fetch handler must exist');
+const fetchHandler = source.slice(handlerStart, handlerEnd);
+const start = fetchHandler.indexOf(START_MARKER);
+assert.notEqual(start, -1, 'the fetch-result state block must be in the model fetch handler');
 
-const start = source.indexOf(START_MARKER);
-const end = source.indexOf(END_MARKER);
-assert.notEqual(start, -1, 'the fetch-result state block must stay in channels-action-dialog.tsx');
-assert.notEqual(end, -1, 'the handleFetchModels dependency list must stay in channels-action-dialog.tsx');
-assert.ok(end > start, 'the fetch-result state block must precede the handleFetchModels close');
-
-// The block ends at the setApplyPatternFilter call; the catch clause that
-// follows is not part of the state update. Search after the block start: the
-// same call appears earlier in the component (state init / reopen reset).
+// Skip the catch clause by ending at the last setter in the state update.
 const BLOCK_END_MARKER = 'setApplyPatternFilter(false);';
-const blockEnd = source.indexOf(BLOCK_END_MARKER, start);
+const blockEnd = fetchHandler.indexOf(BLOCK_END_MARKER, start);
 assert.ok(blockEnd > start, 'the state-update block must end at its setApplyPatternFilter call');
-const blockSource = source.slice(start, blockEnd + BLOCK_END_MARKER.length);
+const blockSource = fetchHandler.slice(start, blockEnd + BLOCK_END_MARKER.length);
 
 const SETTER_NAMES = [
   'setFetchedModels',
@@ -118,10 +115,9 @@ test('a successful non-empty fetch replaces the previous models and prices', () 
 });
 
 test('the extracted block stays the dialog real handleFetchModels state update', () => {
-  const fetch = source.slice(source.indexOf('const handleFetchModels = useCallback'), source.indexOf('const handleSyncNow = useCallback'));
-  assert.match(fetch, /const result = await fetchModels\.mutateAsync\(/, 'the handler must fetch via the mutation');
-  assert.match(fetch, /setFetchedModels\(models\);/, 'the handler must reflect the fetched models');
-  assert.match(fetch, /setFetchedModelPrices\(nextFetchedModelPrices\);/, 'the handler must reflect the fetched prices');
+  assert.match(fetchHandler, /const result = await fetchModels\.mutateAsync\(/, 'the handler must fetch via the mutation');
+  assert.match(fetchHandler, /setFetchedModels\(models\);/, 'the handler must reflect the fetched models');
+  assert.match(fetchHandler, /setFetchedModelPrices\(nextFetchedModelPrices\);/, 'the handler must reflect the fetched prices');
 
   // The empty state the cleared data renders: no fetched models => noModels hint.
   assert.match(source, /fetchedModels\.length === 0 && \(/, 'the fetched-models panel must render an empty state');

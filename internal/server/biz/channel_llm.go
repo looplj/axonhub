@@ -262,6 +262,10 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 	}
 
 	for i, ep := range userEndpoints {
+		// Realtime owns a bidirectional session and must never instantiate an HTTP transformer.
+		if ep.APIFormat == llm.APIFormatQwenRealtimeWebSocket.String() || ep.APIFormat == llm.APIFormatOpenAIRealtimeWebSocket.String() {
+			continue
+		}
 		if ep.APIFormat == "" {
 			continue
 		}

@@ -52,6 +52,10 @@ responseText := completion.Choices[0].Message.Content
 fmt.Println(responseText)
 ```
 
+### OpenAI Realtime API
+
+Connect with a WebSocket Upgrade to `GET /v1/realtime?model={model}`. For speech-to-speech translation, use `GET /v1/realtime/translations?model=gpt-realtime-translate`. Channel setup, SDK Base URLs, event behavior, and billing are covered in the [Realtime API Guide](../guides/realtime.md).
+
 ### OpenAI Responses API
 
 AxonHub supports the OpenAI Responses API over HTTP and WebSocket. The two

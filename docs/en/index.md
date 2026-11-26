@@ -24,6 +24,7 @@ Welcome to the AxonHub documentation center! This index will help you quickly fi
 | [Request Tracing](guides/tracing.md) | Complete request traceability and database request body deduplication |
 | [Request Override](guides/request-override.md) | Dynamically modify request parameters |
 | [Security](guides/security.md) | IP access control, IP blocklist, and API key IP restriction |
+| [Realtime API](guides/realtime.md) | Configure Realtime channels, clients, and usage limits |
 | [Prompt Protection Rules](guides/prompt-protection-rules.md) | Sensitive information filtering and protection |
 | [Antigravity](guides/antigravity.md) | Advanced routing and optimization features |
 

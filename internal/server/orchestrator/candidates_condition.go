@@ -73,7 +73,7 @@ func filterResolvedCandidatesForRequest(
 func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate, req *llm.Request) []*ChannelModelsCandidate {
 	filtered := make([]*ChannelModelsCandidate, 0, len(candidates))
 	for _, c := range candidates {
-		if c == nil || c.Channel == nil {
+		if c == nil || c.Channel == nil || (req.RequestType != llm.RequestTypeRealtime && c.Channel.RealtimeOnly()) {
 			continue
 		}
 
@@ -86,6 +86,9 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 			selectedModels := make([]biz.ChannelModelEntry, 0, len(c.Models))
 			selectedFormats := make([]string, 0, len(c.Models))
 			for _, entry := range c.Models {
+				if !allowsChannelModelForRequest(c.Channel, entry, req.RequestType) {
+					continue
+				}
 				endpoints, forced := applyForcedAPIFormatsForRequest(ctx, c.Channel, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, baseEndpoints)
 				format := selectEndpointAPIFormat(ctx, c.Channel, endpoints, req, forced)
 				// Explicit protocols have no generic fallback. A model whose forced protocol
@@ -104,7 +107,7 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 				continue
 			}
 
-			if requiresExplicitEndpoint(req.RequestType) {
+			if len(selectedModels) != len(c.Models) {
 				c.Models = selectedModels
 			}
 			c.modelAPIFormats = selectedFormats

@@ -13,6 +13,7 @@ import (
 
 // _Metrics holds all the metrics for the server.
 type _Metrics struct {
+	realtime *realtimeMetrics
 	// HTTP metrics
 	HTTPRequestCount    metric.Int64Counter
 	HTTPRequestDuration metric.Float64Histogram
@@ -161,6 +162,10 @@ func newMetrics(meter metric.Meter) (*_Metrics, error) {
 
 	m.ChatFailureCount = chatFailureCount
 
+	m.realtime, err = newRealtimeMetrics(meter)
+	if err != nil {
+		return nil, err
+	}
 	return m, nil
 }
 

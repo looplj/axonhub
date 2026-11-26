@@ -149,6 +149,7 @@
     "models.dialogs.association.conditions.formatOptions.openai/chat_completions": "OpenAI (Chat Completions)",
     "models.dialogs.association.conditions.formatOptions.openai/completions": "OpenAI (Completions)",
     "models.dialogs.association.conditions.formatOptions.openai/responses": "OpenAI (Responses)",
+    "models.dialogs.association.conditions.formatOptions.openai/realtime": "OpenAI (Realtime)",
     "models.dialogs.association.conditions.formatOptions.openai/responses_compact": "OpenAI (Responses Compact)",
     "models.dialogs.association.conditions.formatOptions.openai/image_generation": "OpenAI (Image Generation)",
     "models.dialogs.association.conditions.formatOptions.openai/image_edit": "OpenAI (Image Edit)",

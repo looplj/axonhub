@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.34.5",
   "type": "module",
   "scripts": {
+    "test": "vitest run",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
@@ -123,7 +124,8 @@
     "prettier-plugin-tailwindcss": "^0.8.1",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.73.0",
-    "vite": "^8.3.8"
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
   },
   "pnpm": {
     "overrides": {

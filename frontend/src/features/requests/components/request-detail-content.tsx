@@ -27,6 +27,7 @@ import { ResponseFlow } from './response-flow';
 import { parseResponse } from '../utils/response-parser';
 import { parseRequestConversation } from '../utils/request-conversation';
 import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-generator';
+import { getRealtimeAuditRecordKind } from '../utils/realtime-record';
 import { getVideoLastFrameURL, isVideoRequestFormat } from '../utils/video-display';
 import { getExecutionModelAuditVerdict, MODEL_AUDIT_VERDICT_CLASS } from '../utils/upstream-model-audit';
 
@@ -362,8 +363,38 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
     );
   }
 
+  const realtimeRecordKind = getRealtimeAuditRecordKind(request.format, request.responseBody);
+  const realtimeSession = request.format === 'openai/realtime' ? request.requestBody?.realtime : undefined;
+
   return (
     <div className='space-y-8'>
+      {realtimeSession && typeof realtimeSession === 'object' && (
+        <Card className='border-0 shadow-sm'>
+          <CardHeader className='pb-2'>
+            <CardTitle className='text-base'>
+              {t(realtimeRecordKind === 'response' ? 'requests.detail.realtimeResponseRecord' : 'requests.detail.realtimeSession')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {request.userAgent && (
+              <p className='text-muted-foreground mb-2 break-all text-xs'>
+                {t('requests.columns.userAgent')} <span className='font-mono'>{request.userAgent}</span>
+              </p>
+            )}
+            <JsonViewer
+              data={{
+                ...realtimeSession,
+                error_code: request.responseBody?.error_code ?? undefined,
+                error: request.responseBody?.error ?? undefined,
+              }}
+              rootName=''
+              defaultExpanded={true}
+              className='text-sm'
+            />
+          </CardContent>
+        </Card>
+      )}
+
       <Card className='border-0 shadow-sm'>
         <CardHeader className='pb-2'>
           <CardTitle className='flex items-center justify-between'>

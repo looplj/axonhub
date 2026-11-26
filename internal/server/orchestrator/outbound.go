@@ -590,7 +590,7 @@ func shouldForceStreamingForCandidate(candidate *ChannelModelsCandidate, req *ll
 }
 
 func selectOutboundForCandidate(candidate *ChannelModelsCandidate) transformer.Outbound {
-	if candidate == nil || candidate.Channel == nil {
+	if candidate == nil || candidate.Channel == nil || candidate.Channel.RealtimeOnly() {
 		return nil
 	}
 

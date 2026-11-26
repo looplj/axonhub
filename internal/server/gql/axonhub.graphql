@@ -106,6 +106,7 @@ type ChannelEndpoint {
   path: String
   baseURL: String
   transport: String
+  handshakeTimeoutMs: Int
 }
 
 input ChannelEndpointInput {
@@ -113,6 +114,7 @@ input ChannelEndpointInput {
   path: String
   baseURL: String
   transport: String
+  handshakeTimeoutMs: Int
 }
 
 input SaveChannelEndpointsInput {
@@ -198,7 +200,26 @@ input ChannelProviderQuotaSettingsInput {
   ollama: OllamaQuotaSettingsInput
 }
 
+type ChannelRealtimeConfig {
+  enabled: Boolean!
+  protocol: String!
+  baseURL: String!
+  path: String!
+  handshakeTimeoutMs: Int
+  clientEventsPerSecond: Int
+}
+
+input ChannelRealtimeConfigInput {
+  enabled: Boolean!
+  protocol: String!
+  baseURL: String!
+  path: String!
+  handshakeTimeoutMs: Int
+  clientEventsPerSecond: Int
+}
+
 type ChannelSettings {
+  realtime: ChannelRealtimeConfig
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
   autoTrimedModelPrefixes: [String!]
@@ -325,6 +346,7 @@ input ModelMappingInput {
 }
 
 input ChannelSettingsInput {
+  realtime: ChannelRealtimeConfigInput
   extraModelPrefix: String
   modelMappings: [ModelMappingInput!]
   autoTrimedModelPrefixes: [String!]
@@ -356,6 +378,7 @@ input ChannelSettingsInput {
 # values; nested objects replace the stored value as a whole. Use this
 # instead of updateChannel's settings input when only some settings change.
 input UpdateChannelSettingsInput {
+  realtime: ChannelRealtimeConfigInput
   extraModelPrefix: String
   modelMappings: [ModelMappingInput!]
   autoTrimedModelPrefixes: [String!]

@@ -28,6 +28,7 @@ import { useDetectChannelEndpoints, useUpdateChannelSettings } from '../data/cha
 import {
   buildCodexResponsesEndpoints,
   getAvailableProtocolFormats,
+  getModelProtocolValidationFormats,
   getCodexResponsesWebSocketState,
   getCodexResponsesWebSocketURL,
   hasCodexResponsesWebSocketOverrideReplacement,
@@ -51,6 +52,18 @@ import {
   isRelayProtocol,
   type RelayProtocol,
 } from '../data/relay-protocols';
+import {
+  QWEN_REALTIME_API_FORMAT,
+  QWEN_REALTIME_REGIONS,
+  buildQwenRealtimeBaseURL,
+  buildQwenRealtimeEndpoint,
+  isQwenRealtimeEndpointAllowed,
+  isValidQwenRealtimeRegion,
+  isValidQwenRealtimeWorkspace,
+  parseQwenRealtimeBaseURL,
+  type QwenRealtimeRegion,
+} from '../data/qwen-realtime';
+import { getRealtimeDefaultEndpoint, hasLegacyRealtimeEndpoints, isRealtimeProtocol } from '../data/channel-realtime';
 import { ChatProtocolIcon, MessagesProtocolIcon, ResponsesProtocolIcon } from './endpoint-protocol-icons';
 
 const RELAY_PROTOCOL_ICONS: Record<RelayProtocol, React.ComponentType<{ size?: number | string; className?: string }>> = {
@@ -114,6 +127,11 @@ interface Props {
 const ALLOWED_API_FORMATS = configurableChannelEndpointApiFormatSchema.options;
 const OPENAI_RESPONSES = 'openai/responses';
 const OPENAI_RESPONSES_WEBSOCKET = 'openai/responses-ws';
+const OPENAI_REALTIME_WEBSOCKET = 'openai/realtime-ws';
+// The official OpenAI Realtime upstream is fixed: the channel credentials and
+// model selection carry the rest of the configuration.
+const OPENAI_REALTIME_BASE_URL = 'wss://api.openai.com';
+const OPENAI_REALTIME_PATH = '/v1/realtime';
 // WebSocket Responses endpoints are valid persisted endpoints, but they are not
 // offered as custom endpoints: Codex manages them with its WebSocket checkbox.
 const RECOGNIZED_API_FORMATS: readonly string[] = [...ALLOWED_API_FORMATS, OPENAI_RESPONSES_WEBSOCKET];
@@ -239,17 +257,24 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   const wasOpenRef = useRef(false);
 
   const isCodexChannel = channel.type === 'codex';
+  const realtimeDefaultEndpoint = useMemo(() => getRealtimeDefaultEndpoint(channel.settings?.realtime), [channel.settings?.realtime]);
   // Codex Responses defaults are projected by the WebSocket checkbox, so only the
   // remaining built-in defaults are listed and validated as defaults.
   const defaultEndpoints = useMemo(() => {
+    if (realtimeDefaultEndpoint) return [realtimeDefaultEndpoint];
     const defaults = channel.defaultEndpoints ?? [];
     return channel.type === 'codex' ? defaults.filter((ep) => !isResponsesFamilyFormat(ep.apiFormat)) : defaults;
-  }, [channel.defaultEndpoints, channel.type]);
+  }, [channel.defaultEndpoints, channel.type, realtimeDefaultEndpoint]);
 
   const [endpoints, setEndpoints] = useState<ChannelEndpoint[]>(() => channel.endpoints ?? []);
+  const legacyRealtimeEndpoints = hasLegacyRealtimeEndpoints(channel.endpoints ?? []);
   const [newApiFormat, setNewApiFormat] = useState('');
   const [newPath, setNewPath] = useState('');
   const [newBaseURL, setNewBaseURL] = useState('');
+  const [newHandshakeTimeout, setNewHandshakeTimeout] = useState('');
+  const [newQwenRegion, setNewQwenRegion] = useState<QwenRealtimeRegion>(QWEN_REALTIME_REGIONS[0]);
+  const [newQwenWorkspace, setNewQwenWorkspace] = useState('');
+  const [editingQwenIndex, setEditingQwenIndex] = useState<number | null>(null);
   const [modelProtocols, setModelProtocols] = useState<ModelProtocol[]>(() => getInitialModelProtocols(channel));
   const [newProtocolModel, setNewProtocolModel] = useState('');
   const [newProtocolFormats, setNewProtocolFormats] = useState<string[]>([]);
@@ -284,6 +309,10 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     setNewApiFormat('');
     setNewPath('');
     setNewBaseURL('');
+    setNewHandshakeTimeout('');
+    setNewQwenRegion(QWEN_REALTIME_REGIONS[0]);
+    setNewQwenWorkspace('');
+    setEditingQwenIndex(null);
     setModelProtocols(getInitialModelProtocols(channel));
     setNewProtocolModel('');
     setNewProtocolFormats([]);
@@ -296,8 +325,11 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   const usedApiFormats = useMemo(() => new Set(endpoints.map((ep) => ep.apiFormat)), [endpoints]);
 
   const availableApiFormats = useMemo(
-    () => getConfigurableApiFormatsForChannelType(channel.type, configurableChannelEndpointApiFormats).filter((f) => !usedApiFormats.has(f)),
-    [usedApiFormats, channel.type]
+    () =>
+      getConfigurableApiFormatsForChannelType(channel.type, configurableChannelEndpointApiFormats).filter(
+        (f) => !usedApiFormats.has(f) || f === newApiFormat
+      ),
+    [usedApiFormats, channel.type, newApiFormat]
   );
 
   // Codex saves its Responses family from the checkbox through the same routine as
@@ -309,12 +341,94 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   const codexWebSocketURL =
     isCodexChannel && codexResponsesWebSocket ? getCodexResponsesWebSocketURL(toHttpBaseURL(channel.baseURL), endpoints) : undefined;
 
+  const isQwenRealtimeFormat = newApiFormat === QWEN_REALTIME_API_FORMAT;
+  const isOpenAIRealtimeFormat = newApiFormat === OPENAI_REALTIME_WEBSOCKET;
+
+  const qwenRealtimePreview = useMemo(() => {
+    if (!isQwenRealtimeFormat) return undefined;
+    if (!isValidQwenRealtimeWorkspace(newQwenWorkspace) || !isValidQwenRealtimeRegion(newQwenRegion)) return undefined;
+    try {
+      return buildQwenRealtimeBaseURL(newQwenWorkspace, newQwenRegion);
+    } catch {
+      return undefined;
+    }
+  }, [isQwenRealtimeFormat, newQwenRegion, newQwenWorkspace]);
+
+  const handleNewApiFormatChange = useCallback((format: string) => {
+    if (isRealtimeProtocol(format)) { setError(t('channels.realtime.legacyEndpoint')); return; }
+    setNewApiFormat(format);
+    setError(null);
+    if (format === OPENAI_REALTIME_WEBSOCKET) {
+      setNewBaseURL(OPENAI_REALTIME_BASE_URL);
+      setNewPath(OPENAI_REALTIME_PATH);
+    } else {
+      setNewBaseURL('');
+      setNewPath('');
+    }
+    if (format !== QWEN_REALTIME_API_FORMAT && format !== OPENAI_REALTIME_WEBSOCKET) {
+      setEditingQwenIndex(null);
+    }
+  }, [t]);
+
   const handleAddEndpoint = useCallback(() => {
     setError(null);
     if (!newApiFormat) return;
+    if (isRealtimeProtocol(newApiFormat)) { setError(t('channels.realtime.legacyEndpoint')); return; }
 
-    if (usedApiFormats.has(newApiFormat)) {
+    if (endpoints.some((ep, index) => ep.apiFormat === newApiFormat && index !== editingQwenIndex)) {
       setError(t('channels.endpoints.duplicateError'));
+      return;
+    }
+
+    const handshakeTimeoutMs = newHandshakeTimeout.trim() ? Number(newHandshakeTimeout) : undefined;
+    if ((newApiFormat === QWEN_REALTIME_API_FORMAT || newApiFormat === OPENAI_REALTIME_WEBSOCKET) && handshakeTimeoutMs !== undefined && (!Number.isInteger(handshakeTimeoutMs) || handshakeTimeoutMs < 1000 || handshakeTimeoutMs > 60000)) {
+      setError(t('channels.endpoints.realtime.invalidTimeout'));
+      return;
+    }
+    if (newApiFormat === QWEN_REALTIME_API_FORMAT) {
+      if (!isQwenRealtimeEndpointAllowed(channel.type)) {
+        setError(t('channels.endpoints.qwenRealtime.notAllowed'));
+        return;
+      }
+      const workspace = newQwenWorkspace.trim();
+      if (!isValidQwenRealtimeWorkspace(workspace)) {
+        setError(t('channels.endpoints.qwenRealtime.invalidWorkspace'));
+        return;
+      }
+      const endpoint = { ...buildQwenRealtimeEndpoint(workspace, newQwenRegion), ...(handshakeTimeoutMs !== undefined ? { handshakeTimeoutMs } : {}) };
+      if (editingQwenIndex !== null) {
+        setEndpoints((prev) => prev.map((ep, index) => (index === editingQwenIndex ? endpoint : ep)));
+      } else {
+        setEndpoints((prev) => [...prev, endpoint]);
+      }
+      setNewApiFormat('');
+      setNewHandshakeTimeout('');
+      setNewQwenWorkspace('');
+      setNewQwenRegion(QWEN_REALTIME_REGIONS[0]);
+      setEditingQwenIndex(null);
+      return;
+    }
+
+    if (newApiFormat === OPENAI_REALTIME_WEBSOCKET) {
+      if (channel.type !== 'openai') {
+        setError(t('channels.endpoints.openAIRealtime.notAllowed'));
+        return;
+      }
+      const parsed = channelEndpointSchema.safeParse({
+        apiFormat: newApiFormat,
+        baseURL: OPENAI_REALTIME_BASE_URL,
+        path: OPENAI_REALTIME_PATH,
+        handshakeTimeoutMs,
+        transport: 'websocket',
+      });
+      if (!parsed.success) {
+        setError(t('channels.endpoints.openAIRealtime.invalid'));
+        return;
+      }
+      setEndpoints((prev) => (editingQwenIndex !== null ? prev.map((ep, index) => (index === editingQwenIndex ? parsed.data : ep)) : [...prev, parsed.data]));
+      setNewApiFormat('');
+      setNewHandshakeTimeout('');
+      setEditingQwenIndex(null);
       return;
     }
 
@@ -338,14 +452,44 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
       return;
     }
 
-    setEndpoints((prev) => [...prev, parsed.data]);
+    if (editingQwenIndex !== null) {
+      setEndpoints((prev) => prev.map((ep, index) => (index === editingQwenIndex ? parsed.data : ep)));
+    } else {
+      setEndpoints((prev) => [...prev, parsed.data]);
+    }
     setNewApiFormat('');
     setNewPath('');
     setNewBaseURL('');
-  }, [newApiFormat, newPath, newBaseURL, usedApiFormats, t]);
+    setEditingQwenIndex(null);
+  }, [newApiFormat, newPath, newBaseURL, newHandshakeTimeout, t, channel.type, newQwenRegion, newQwenWorkspace, editingQwenIndex, endpoints]);
+
+  const handleEditQwenEndpoint = useCallback((index: number, apiFormat: string) => {
+    if (isRealtimeProtocol(apiFormat)) { setError(t('channels.realtime.legacyEndpoint')); return; }
+    setError(null);
+    setEditingQwenIndex(index);
+    setNewHandshakeTimeout(String(endpoints[index]?.handshakeTimeoutMs ?? ''));
+    if (apiFormat === QWEN_REALTIME_API_FORMAT) {
+      // Only the generated wss://{workspace}.{region}.maas.aliyuncs.com host is
+      // echoed back; any other override is hidden until a valid one is set.
+      setNewApiFormat(QWEN_REALTIME_API_FORMAT);
+      const parsed = (endpoints[index] as ChannelEndpoint | undefined)?.baseURL
+        ? parseQwenRealtimeBaseURL((endpoints[index] as ChannelEndpoint).baseURL)
+        : null;
+      setNewQwenWorkspace(parsed?.workspace ?? '');
+      setNewQwenRegion(parsed?.region ?? QWEN_REALTIME_REGIONS[0]);
+    } else if (apiFormat === OPENAI_REALTIME_WEBSOCKET) {
+      setNewApiFormat(OPENAI_REALTIME_WEBSOCKET);
+    }
+  }, [endpoints, t]);
 
   const handleRemoveEndpoint = useCallback((apiFormat: string) => {
     setEndpoints((prev) => prev.filter((ep) => ep.apiFormat !== apiFormat));
+    // Removing the endpoint being edited closes the editor instead of leaving a
+    // dangling override target.
+    setEditingQwenIndex((index) => (index === null ? null : null));
+    setNewApiFormat((format) => (format === apiFormat ? '' : format));
+    setNewQwenWorkspace('');
+    setNewQwenRegion(QWEN_REALTIME_REGIONS[0]);
     setBlockedEndpointRemoval(null);
     setError(null);
   }, []);
@@ -485,6 +629,10 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
 
   const handleSave = useCallback(async () => {
     setError(null);
+    if (legacyRealtimeEndpoints || hasLegacyRealtimeEndpoints(savedEndpoints)) {
+      setError(t('channels.realtime.legacyEndpoint'));
+      return;
+    }
 
     const apiFormats = savedEndpoints.map((ep) => ep.apiFormat);
     const duplicates = apiFormats.filter((f, i) => apiFormats.indexOf(f) !== i);
@@ -499,10 +647,27 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
       return;
     }
 
+    // Upstream realtime endpoints are channel-type specific: the Qwen endpoint
+    // only exists on Bailian, and the official OpenAI endpoint only on OpenAI.
+    const qwenEndpoint = savedEndpoints.find((ep) => ep.apiFormat === QWEN_REALTIME_API_FORMAT);
+    if (qwenEndpoint && !isQwenRealtimeEndpointAllowed(channel.type)) {
+      setError(t('channels.endpoints.qwenRealtime.notAllowed'));
+      return;
+    }
+    if (qwenEndpoint && !parseQwenRealtimeBaseURL(qwenEndpoint.baseURL)) {
+      setError(t('channels.endpoints.qwenRealtime.invalidWorkspace'));
+      return;
+    }
+    if (savedEndpoints.some((ep) => ep.apiFormat === OPENAI_REALTIME_WEBSOCKET) && channel.type !== 'openai') {
+      setError(t('channels.endpoints.openAIRealtime.notAllowed'));
+      return;
+    }
+
     // Every model protocol must reference an endpoint that exists after this save.
     // The backend validates against resolved endpoints (type defaults + custom), so
     // the check here must include the default endpoints too.
-    const savedFormats = new Set([...defaultEndpoints.map((ep) => ep.apiFormat), ...apiFormats]);
+    const modelProtocolValidationDefaults = realtimeDefaultEndpoint && !isCodexChannel ? channel.defaultEndpoints ?? [] : defaultEndpoints;
+    const savedFormats = getModelProtocolValidationFormats(modelProtocolValidationDefaults, savedEndpoints, channel.settings?.realtime);
     const invalidProtocolFormat = modelProtocols.find((mp) => mp.enabled !== false && mp.apiFormats.some((f) => !savedFormats.has(f)));
     if (invalidProtocolFormat) {
       setError(t('channels.endpoints.modelProtocols.formatsRequired'));
@@ -528,6 +693,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
             path: ep.path || undefined,
             baseURL: ep.baseURL || undefined,
             transport: ep.transport || undefined,
+            handshakeTimeoutMs: ep.handshakeTimeoutMs ?? undefined,
           })),
         },
         patch: { modelProtocols, preferResponsesWebSocket },
@@ -542,6 +708,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     channel,
     defaultEndpoints,
     isCodexChannel,
+    legacyRealtimeEndpoints,
     savedEndpoints,
     modelProtocols,
     preferResponsesWebSocket,
@@ -570,6 +737,8 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
         </DialogHeader>
 
         <div className='min-h-0 flex-1 space-y-6 overflow-y-auto py-4'>
+          {realtimeDefaultEndpoint && <p className='text-muted-foreground rounded-md bg-muted/50 px-3 py-2 text-xs'>{t('channels.realtime.endpointsInactive')}</p>}
+          {legacyRealtimeEndpoints && <div role='alert' className='text-destructive bg-destructive/10 rounded-md p-3 text-sm'>{t('channels.realtime.legacyEndpoint')}</div>}
           {isCodexChannel && (
             <div className='space-y-3'>
               <label className='text-sm font-medium'>{t('channels.dialogs.fields.apiFormat.label')}</label>
@@ -667,20 +836,34 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
               </div>
             ) : (
               <EndpointTable endpoints={savedEndpoints}>
-                {(ep) =>
+                {(ep, index) =>
                   isCodexChannel && isResponsesFamilyFormat(ep.apiFormat) ? (
                     <span className='text-muted-foreground text-right text-[10px]'>{t('channels.endpoints.readOnly')}</span>
                   ) : (
-                    <Button
-                      type='button'
-                      variant='ghost'
-                      size='sm'
-                      className='hover:text-destructive hover:bg-destructive/10 h-7 w-7 p-0'
-                      onClick={() => handleRequestRemoveEndpoint(ep.apiFormat)}
-                      aria-label={t('channels.endpoints.removeEndpoint', { apiFormat: ep.apiFormat })}
-                    >
-                      <X className='h-3.5 w-3.5' />
-                    </Button>
+                    <div className='flex items-center justify-end gap-1'>
+                      {(ep.apiFormat === QWEN_REALTIME_API_FORMAT || ep.apiFormat === OPENAI_REALTIME_WEBSOCKET) && (
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='sm'
+                          className='hover:bg-accent h-7 w-7 p-0'
+                          onClick={() => handleEditQwenEndpoint(index, ep.apiFormat)}
+                          aria-label={t('channels.endpoints.editEndpoint', { apiFormat: ep.apiFormat })}
+                        >
+                          <Pencil className='h-3.5 w-3.5' />
+                        </Button>
+                      )}
+                      <Button
+                        type='button'
+                        variant='ghost'
+                        size='sm'
+                        className='hover:text-destructive hover:bg-destructive/10 h-7 w-7 p-0'
+                        onClick={() => handleRequestRemoveEndpoint(ep.apiFormat)}
+                        aria-label={t('channels.endpoints.removeEndpoint', { apiFormat: ep.apiFormat })}
+                      >
+                        <X className='h-3.5 w-3.5' />
+                      </Button>
+                    </div>
                   )
                 }
               </EndpointTable>
@@ -697,6 +880,12 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
             )}
           </div>
 
+          {(isQwenRealtimeFormat || isOpenAIRealtimeFormat) && (
+            <div className='space-y-1'>
+              <label htmlFor='endpoint-handshake-timeout' className='text-sm font-medium'>{t('channels.endpoints.realtime.handshakeTimeout')}</label>
+              <Input id='endpoint-handshake-timeout' type='number' min={1000} max={60000} value={newHandshakeTimeout} onChange={(event) => setNewHandshakeTimeout(event.target.value)} placeholder={t('channels.endpoints.realtime.handshakeTimeoutHint')} />
+            </div>
+          )}
           {/* Add new endpoint */}
           <div className='space-y-3'>
             <label className='text-sm font-medium'>{t('channels.endpoints.addEndpoint')}</label>
@@ -705,7 +894,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                 <label htmlFor='endpoint-api-format' className='text-muted-foreground block text-xs'>
                   {t('channels.endpoints.apiFormat')}
                 </label>
-                <Select value={newApiFormat} onValueChange={setNewApiFormat}>
+                <Select value={newApiFormat} onValueChange={handleNewApiFormatChange}>
                   <SelectTrigger id='endpoint-api-format' className='w-full'>
                     <SelectValue placeholder={t('channels.endpoints.apiFormat')} />
                   </SelectTrigger>
@@ -722,42 +911,91 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                   </SelectContent>
                 </Select>
               </div>
-              <div className='min-w-0 space-y-1'>
-                <label htmlFor='endpoint-base-url' className='text-muted-foreground block text-xs'>
-                  {t('channels.endpoints.baseURL')}
-                </label>
-                <Input
-                  id='endpoint-base-url'
-                  placeholder={newApiFormat ? t('channels.endpoints.baseURLPlaceholder') : t('channels.endpoints.selectFormatFirst')}
-                  value={newBaseURL}
-                  onChange={(e) => setNewBaseURL(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  disabled={!newApiFormat}
-                  aria-describedby='endpoint-base-url-hint'
-                  className='disabled:opacity-50'
-                />
-                <p id='endpoint-base-url-hint' className='text-muted-foreground text-[11px] leading-4 break-words'>
-                  {t('channels.endpoints.baseURLHint')}
-                </p>
-              </div>
-              <div className='min-w-0 space-y-1'>
-                <label htmlFor='endpoint-path' className='text-muted-foreground block text-xs'>
-                  {t('channels.endpoints.path')}
-                </label>
-                <Input
-                  id='endpoint-path'
-                  placeholder={newApiFormat ? t('channels.endpoints.pathPlaceholder') : t('channels.endpoints.selectFormatFirst')}
-                  value={newPath}
-                  onChange={(e) => setNewPath(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  disabled={!newApiFormat}
-                  aria-describedby='endpoint-path-hint'
-                  className='disabled:opacity-50'
-                />
-                <p id='endpoint-path-hint' className='text-muted-foreground text-[11px] leading-4 break-words'>
-                  {t('channels.endpoints.pathHint')}
-                </p>
-              </div>
+              {isQwenRealtimeFormat ? (
+                <>
+                  <div className='min-w-0 space-y-1'>
+                    <label htmlFor='endpoint-qwen-region' className='text-muted-foreground block text-xs'>
+                      {t('channels.endpoints.qwenRealtime.region')}
+                    </label>
+                    <Select
+                      value={newQwenRegion}
+                      onValueChange={(value) => {
+                        if (isValidQwenRealtimeRegion(value)) setNewQwenRegion(value);
+                      }}
+                    >
+                      <SelectTrigger id='endpoint-qwen-region' className='w-full'>
+                        <SelectValue placeholder={t('channels.endpoints.qwenRealtime.region')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {QWEN_REALTIME_REGIONS.map((region) => (
+                          <SelectItem key={region} value={region}>
+                            {region}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className='min-w-0 space-y-1'>
+                    <label htmlFor='endpoint-qwen-workspace' className='text-muted-foreground block text-xs'>
+                      {t('channels.endpoints.qwenRealtime.workspace')}
+                    </label>
+                    <Input
+                      id='endpoint-qwen-workspace'
+                      placeholder={t('channels.endpoints.qwenRealtime.workspacePlaceholder')}
+                      value={newQwenWorkspace}
+                      onChange={(e) => setNewQwenWorkspace(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      aria-describedby='endpoint-qwen-workspace-hint'
+                    />
+                    <p id='endpoint-qwen-workspace-hint' className='text-muted-foreground text-[11px] leading-4 break-words'>
+                      {qwenRealtimePreview
+                        ? t('channels.endpoints.qwenRealtime.derivedURL', { url: qwenRealtimePreview })
+                        : t('channels.endpoints.qwenRealtime.workspaceHint')}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className='min-w-0 space-y-1'>
+                    <label htmlFor='endpoint-base-url' className='text-muted-foreground block text-xs'>
+                      {t('channels.endpoints.baseURL')}
+                    </label>
+                    <Input
+                      id='endpoint-base-url'
+                      placeholder={newApiFormat ? t('channels.endpoints.baseURLPlaceholder') : t('channels.endpoints.selectFormatFirst')}
+                      value={newBaseURL}
+                      onChange={(e) => setNewBaseURL(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      disabled={!newApiFormat || isOpenAIRealtimeFormat}
+                      readOnly={isOpenAIRealtimeFormat}
+                      aria-describedby='endpoint-base-url-hint'
+                      className='disabled:opacity-70'
+                    />
+                    <p id='endpoint-base-url-hint' className='text-muted-foreground text-[11px] leading-4 break-words'>
+                      {isOpenAIRealtimeFormat ? t('channels.endpoints.openAIRealtime.fixedHint') : t('channels.endpoints.baseURLHint')}
+                    </p>
+                  </div>
+                  <div className='min-w-0 space-y-1'>
+                    <label htmlFor='endpoint-path' className='text-muted-foreground block text-xs'>
+                      {t('channels.endpoints.path')}
+                    </label>
+                    <Input
+                      id='endpoint-path'
+                      placeholder={newApiFormat ? t('channels.endpoints.pathPlaceholder') : t('channels.endpoints.selectFormatFirst')}
+                      value={newPath}
+                      onChange={(e) => setNewPath(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      disabled={!newApiFormat || isOpenAIRealtimeFormat}
+                      readOnly={isOpenAIRealtimeFormat}
+                      aria-describedby='endpoint-path-hint'
+                      className='disabled:opacity-70'
+                    />
+                    <p id='endpoint-path-hint' className='text-muted-foreground text-[11px] leading-4 break-words'>
+                      {isOpenAIRealtimeFormat ? t('channels.endpoints.openAIRealtime.pathHint') : t('channels.endpoints.pathHint')}
+                    </p>
+                  </div>
+                </>
+              )}
               <Button
                 type='button'
                 variant='default'
@@ -848,6 +1086,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                   >
                     <div className='flex min-w-0 items-center gap-2'>
                       <Switch
+                        disabled={mp.apiFormats.some(isRealtimeProtocol)}
                         checked={mp.enabled !== false}
                         onCheckedChange={(checked) => handleToggleModelProtocol(mp.model, checked)}
                         aria-label={t('channels.endpoints.modelProtocols.toggle', { model: mp.model })}
@@ -866,6 +1105,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                         size='sm'
                         className='hover:bg-accent h-7 w-7 p-0'
                         onClick={() => handleStartEditModelProtocol(mp)}
+                        disabled={mp.apiFormats.some(isRealtimeProtocol)}
                         aria-label={t('channels.endpoints.modelProtocols.edit', { model: mp.model })}
                       >
                         <Pencil className='h-3.5 w-3.5' />
@@ -876,6 +1116,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                         size='sm'
                         className='hover:text-destructive hover:bg-destructive/10 h-7 w-7 p-0'
                         onClick={() => handleRemoveModelProtocol(mp.model)}
+                        disabled={mp.apiFormats.some(isRealtimeProtocol)}
                         aria-label={t('channels.endpoints.modelProtocols.remove', { model: mp.model })}
                       >
                         <X className='h-3.5 w-3.5' />
@@ -899,7 +1140,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             {t('common.buttons.cancel')}
           </Button>
-          <Button onClick={handleSave} disabled={updateChannelSettings.isPending}>
+          <Button onClick={handleSave} disabled={updateChannelSettings.isPending || legacyRealtimeEndpoints}>
             {updateChannelSettings.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
           </Button>
         </DialogFooter>

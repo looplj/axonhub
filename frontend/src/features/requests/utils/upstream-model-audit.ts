@@ -15,6 +15,12 @@ interface ModelAuditVerdict {
   message: string;
 }
 
+export function getRealtimeRouteModel(requestFormat: string | undefined, usageModelID: string | null | undefined): string | undefined {
+  if (requestFormat !== 'openai/realtime') return undefined;
+  const model = usageModelID?.trim();
+  return model || undefined;
+}
+
 export const MODEL_AUDIT_VERDICT_CLASS: Record<ModelAuditVerdictTone, string> = {
   success: 'font-mono text-xs text-emerald-600 dark:text-emerald-400',
   danger: 'text-xs font-medium text-destructive',

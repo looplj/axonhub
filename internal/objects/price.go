@@ -242,6 +242,9 @@ func (p *PriceTier) Equals(other *PriceTier) bool {
 
 type PriceItemCode string
 
+// PriceItemCodeRealtimeTranslationAudioSamples is the rate code for Realtime Translation audio, priced per minute.
+const PriceItemCodeRealtimeTranslationAudioSamples PriceItemCode = "realtime_translation_audio_samples"
+
 const (
 	// PriceItemCodeUsage is the price item code for the token usage.
 	PriceItemCodeUsage PriceItemCode = "prompt_tokens"
@@ -255,7 +258,109 @@ const (
 	// PriceItemCodeWriteCachedTokens is the price item code for the cached token write.
 	//nolint:gosec // not token.
 	PriceItemCodeWriteCachedTokens PriceItemCode = "prompt_write_cached_tokens"
+
+	// PriceItemCodeRealtimeInputText is the first realtime price item code.
+	// The realtime codes bill a session by input/output modality.
+	// They are independent of prompt_tokens/completion_tokens: a realtime price
+	// uses only these codes, and the legacy codes keep their historical meaning.
+	PriceItemCodeRealtimeInputText   PriceItemCode = "realtime_input_text_tokens"
+	PriceItemCodeRealtimeInputAudio  PriceItemCode = "realtime_input_audio_tokens"
+	PriceItemCodeRealtimeOutputText  PriceItemCode = "realtime_output_text_tokens"
+	PriceItemCodeRealtimeOutputAudio PriceItemCode = "realtime_output_audio_tokens"
 )
+
+// RealtimePriceItemCodes returns the four realtime billing codes in audit order.
+func RealtimePriceItemCodes() []PriceItemCode {
+	return []PriceItemCode{
+		PriceItemCodeRealtimeInputText,
+		PriceItemCodeRealtimeInputAudio,
+		PriceItemCodeRealtimeOutputText,
+		PriceItemCodeRealtimeOutputAudio,
+	}
+}
+
+// IsRealtimePriceItemCode reports whether code is one of the four realtime codes.
+func IsRealtimePriceItemCode(code PriceItemCode) bool {
+	switch code {
+	case PriceItemCodeRealtimeTranslationAudioSamples, PriceItemCodeRealtimeInputImage, PriceItemCodeRealtimeCachedInputText, PriceItemCodeRealtimeCachedInputAudio, PriceItemCodeRealtimeCachedInputImage, PriceItemCodeRealtimeInputText,
+		PriceItemCodeRealtimeInputAudio,
+		PriceItemCodeRealtimeOutputText,
+		PriceItemCodeRealtimeOutputAudio:
+		return true
+	default:
+		return false
+	}
+}
+
+// ValidateRealtimePrice checks configured Realtime price items. Each present
+// Realtime code must appear once and have positive pricing; absent codes remain
+// unpriced and are not charged.
+func ValidateRealtimePrice(price ModelPrice) error {
+	if err := price.Validate(); err != nil {
+		return fmt.Errorf("price: %w", err)
+	}
+
+	if err := validateRealtimePriceItems("items", price.Items); err != nil {
+		return err
+	}
+
+	if price.Schedule != nil {
+		for i := range price.Schedule.Overrides {
+			label := fmt.Sprintf("schedule.overrides[%d].items", i)
+			if err := validateRealtimePriceItems(label, price.Schedule.Overrides[i].Items); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func validateRealtimePriceItems(label string, items []ModelPriceItem) error {
+	seen := make(map[PriceItemCode]struct{}, len(RealtimePriceItemCodes()))
+
+	for i := range items {
+		item := &items[i]
+		if !IsRealtimePriceItemCode(item.ItemCode) {
+			continue
+		}
+
+		if _, exists := seen[item.ItemCode]; exists {
+			return fmt.Errorf("%s[%d]: duplicate realtime item code %q", label, i, item.ItemCode)
+		}
+		seen[item.ItemCode] = struct{}{}
+
+		if !hasPositivePricing(item.Pricing) {
+			return fmt.Errorf("%s[%d]: realtime item %q requires a positive price", label, i, item.ItemCode)
+		}
+	}
+
+	return nil
+}
+
+// hasPositivePricing reports whether every effective unit price is greater than zero.
+func hasPositivePricing(p Pricing) bool {
+	switch p.Mode {
+	case PricingModeFlatFee:
+		return p.FlatFee != nil && p.FlatFee.IsPositive()
+	case PricingModeUsagePerUnit:
+		return p.UsagePerUnit != nil && p.UsagePerUnit.IsPositive()
+	case PricingModeTiered, PricingModeVolume:
+		if p.UsageTiered == nil || len(p.UsageTiered.Tiers) == 0 {
+			return false
+		}
+
+		for i := range p.UsageTiered.Tiers {
+			if !p.UsageTiered.Tiers[i].PricePerUnit.IsPositive() {
+				return false
+			}
+		}
+
+		return true
+	default:
+		return false
+	}
+}
 
 type PromptWriteCacheVariantCode string
 

@@ -533,27 +533,38 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		svc.evaluateAutoDisableForFailure(ctx, perf)
 	}
 
-	windowSize := svc.performanceWindowSeconds()
+	svc.recordPerformanceMetrics(ctx, perf)
+}
 
+// RecordRealtimePerformance updates load-balancer metrics without applying the
+// ordinary HTTP path's API-key success rotation or automatic channel disable policy.
+func (svc *ChannelService) RecordRealtimePerformance(ctx context.Context, perf *PerformanceRecord) {
+	if perf == nil || !perf.IsValid() {
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error(ctx, "panic in record realtime performance", log.Any("panic", r))
+		}
+	}()
+	svc.recordPerformanceMetrics(ctx, perf)
+}
+
+func (svc *ChannelService) recordPerformanceMetrics(ctx context.Context, perf *PerformanceRecord) {
+	windowSize := svc.performanceWindowSeconds()
 	cm := svc.getOrCreateChannelMetrics(perf.ChannelID, windowSize)
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 
-	ts := perf.EndTime.Unix()
-
-	// Get or create time slot for this second
-	slot := cm.getOrCreateTimeSlot(ts, perf.EndTime, windowSize)
+	slot := cm.getOrCreateTimeSlot(perf.EndTime.Unix(), perf.EndTime, windowSize)
 	if slot == nil {
 		return
 	}
-
-	// Record success or failure
 	if perf.Success {
 		cm.recordSuccess(slot, perf)
 	} else if !perf.Canceled {
 		cm.recordFailure(slot, perf)
 	}
-
 	if log.DebugEnabled(ctx) {
 		keySuffix := ""
 		if len(perf.APIKey) >= 4 {
@@ -561,7 +572,7 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		}
 		log.Debug(ctx, "recorded performance metrics",
 			log.Int("channel_id", perf.ChannelID),
-			log.String("key_suffix", keySuffix), // Only log last 4 chars for security
+			log.String("key_suffix", keySuffix),
 			log.Bool("success", perf.Success),
 			log.Any("error_code", perf.ResponseStatusCode),
 		)

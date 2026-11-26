@@ -1,4 +1,7 @@
 import type { ApiFormat, ChannelEndpoint, ChannelType, ModelProtocol } from './schema';
+import { QWEN_REALTIME_API_FORMAT } from './qwen-realtime.ts';
+import type { ChannelRealtime } from './schema';
+import { isRealtimeProtocol } from './channel-realtime.ts';
 
 type ProtocolEndpoint = {
   readonly apiFormat?: string | null;
@@ -11,12 +14,22 @@ export function getAvailableProtocolFormats(
   const formats = new Set<string>();
 
   for (const endpoint of [...defaultEndpoints, ...endpoints]) {
-    if (typeof endpoint.apiFormat === 'string' && endpoint.apiFormat.length > 0) {
+    if (typeof endpoint.apiFormat === 'string' && endpoint.apiFormat.length > 0 && !isRealtimeProtocol(endpoint.apiFormat)) {
       formats.add(endpoint.apiFormat);
     }
   }
 
   return Array.from(formats);
+}
+
+// Saving HTTP endpoints must preserve migrated channel-owned Realtime mappings;
+// this validation set is deliberately separate from the endpoint dropdown.
+export function getModelProtocolValidationFormats(
+  defaults: readonly ProtocolEndpoint[], endpoints: readonly ProtocolEndpoint[], realtime?: ChannelRealtime | null
+): Set<string> {
+  const formats = new Set(getAvailableProtocolFormats(defaults, endpoints));
+  if (realtime && isRealtimeProtocol(realtime.protocol)) formats.add(realtime.protocol);
+  return formats;
 }
 
 type ProviderConfig = {
@@ -43,6 +56,9 @@ export function getApiFormatsForProvider(provider: string, configs: ProtocolConf
       formats.push(apiFormat);
     }
   }
+
+  if (provider === 'openai' && providerConfig.channelTypes.includes('openai')) formats.push('openai/realtime-ws');
+  if (provider === 'bailian' && providerConfig.channelTypes.includes('bailian')) formats.push('qwen/realtime-ws');
 
   return formats;
 }
@@ -76,7 +92,8 @@ export function getConfigurableApiFormatsForChannelType(
   const filtered = configurableFormats
     .filter((format) => supportsSystemOne || format !== 'typesafe/systemone')
     .filter((format) => channelType === 'openai' || format !== 'openai/decisions')
-    .filter((format) => channelType !== 'codex' || !isResponsesFamilyFormat(format));
+    .filter((format) => channelType !== 'codex' || !isResponsesFamilyFormat(format))
+    .filter((format) => format !== QWEN_REALTIME_API_FORMAT && format !== 'openai/realtime-ws' && format !== 'openai/realtime');
   if (['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(channelType)) {
     return [...filtered];
   }
@@ -86,6 +103,9 @@ export function getConfigurableApiFormatsForChannelType(
 export function getChannelTypeForApiFormat(provider: string, apiFormat: ApiFormat, configs: ProtocolConfigs): ChannelType | undefined {
   const providerConfig = configs.providerConfigs[provider];
   if (!providerConfig) return undefined;
+
+  if (provider === 'openai' && apiFormat === 'openai/realtime-ws' && providerConfig.channelTypes.includes('openai')) return 'openai';
+  if (provider === 'bailian' && apiFormat === 'qwen/realtime-ws' && providerConfig.channelTypes.includes('bailian')) return 'bailian';
 
   // Native video is a ZenMux channel type, so it is only mappable back to a
   // channel type when the provider config actually includes the ZenMux
@@ -133,8 +153,10 @@ export function getModelProtocolsForApiFormat(
 export function getInitialApiFormatForChannel(
   channelType: ChannelType,
   defaultApiFormat: ApiFormat,
-  modelProtocols: readonly ModelProtocol[] | null | undefined
+  modelProtocols: readonly ModelProtocol[] | null | undefined,
+  realtime?: ChannelRealtime | null
 ): ApiFormat {
+  if (realtime?.enabled && ((channelType === 'openai' && realtime.protocol === 'openai/realtime-ws') || (channelType === 'bailian' && realtime.protocol === 'qwen/realtime-ws'))) return realtime.protocol;
   if (
     channelType === 'zenmux' &&
     modelProtocols?.some((protocol) => protocol.enabled !== false && protocol.apiFormats.includes('zenmux/video'))

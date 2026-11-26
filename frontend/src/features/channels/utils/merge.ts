@@ -111,6 +111,7 @@ export function mergeChannelSettingsForUpdate(
   };
 
   return {
+    realtime: pick('realtime', existing?.realtime ?? null),
     extraModelPrefix: pick('extraModelPrefix', existing?.extraModelPrefix ?? ''),
     modelMappings: pick('modelMappings', existing?.modelMappings ?? []),
     autoTrimedModelPrefixes: pick('autoTrimedModelPrefixes', existing?.autoTrimedModelPrefixes ?? []),

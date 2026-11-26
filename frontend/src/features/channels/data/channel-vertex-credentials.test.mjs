@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadChannelSchema } from './load-channel-schema.mjs';
 
-const { createChannelInputSchema, updateChannelInputSchema } = await loadChannelSchema();
+const { createChannelInputSchema, updateChannelInputSchema, channelRealtimeSchema } = await loadChannelSchema();
 
 function vertexRow(overrides = {}) {
   return { projectID: 'miguo-vertex-prod-1', apiKey: 'AQ.key-1', region: 'global', ...overrides };
@@ -32,6 +32,16 @@ test('a Vertex channel rejects a row with a missing project ID', () => {
     paths.some((entry) => entry.startsWith('credentials.vertexApiKeys.0.projectID::')),
     `expected a projectID error at the row path, got ${JSON.stringify(paths)}`
   );
+});
+
+test('Realtime client event limit accepts only nullable integers from 256 to 4096', () => {
+  const base = { enabled: true, protocol: 'openai/realtime-ws', baseURL: 'wss://api.openai.com', path: '/v1/realtime' };
+  for (const clientEventsPerSecond of [null, 256, 1024, 4096]) {
+    assert.equal(channelRealtimeSchema.safeParse({ ...base, clientEventsPerSecond }).success, true);
+  }
+  for (const clientEventsPerSecond of [100, 255, 4097, 5000, 300.5]) {
+    assert.equal(channelRealtimeSchema.safeParse({ ...base, clientEventsPerSecond }).success, false);
+  }
 });
 
 test('a Vertex channel rejects a row with a missing API key', () => {

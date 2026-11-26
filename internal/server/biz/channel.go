@@ -568,6 +568,16 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 // createChannel creates a new channel without triggering a reload.
 // This is useful for batch operations where reload should happen once at the end.
 func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
+	// The xAI Subscription provider owns its URL and ignores custom endpoints.
+	// Reject channel-only Realtime input before that provider normalization so a
+	// direct biz caller cannot have an unsupported protocol silently discarded.
+	if input.Type == channel.TypeXaiSubscription {
+		for _, endpoint := range input.Endpoints {
+			if objects.IsRealtimeAPIFormat(endpoint.APIFormat) {
+				return nil, objects.RealtimeEndpointInputError()
+			}
+		}
+	}
 	sanitizedSettings, err := normalizeCommandCodeQuotaCookieSettings(input.Settings, input.Type)
 	if err != nil {
 		return nil, err
@@ -599,6 +609,11 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	baseURL := lo.FromPtr(input.BaseURL)
 	if err := validateEndpointsForChannelType(input.Type, input.Endpoints, baseURL); err != nil {
 		return nil, fmt.Errorf("invalid endpoints: %w", err)
+	}
+	if input.Settings != nil {
+		if err := ValidateChannelRealtime(input.Type, input.Settings.Realtime); err != nil {
+			return nil, err
+		}
 	}
 	input.Settings = normalizeModelProtocols(input.Settings, &ent.Channel{Type: input.Type, BaseURL: baseURL, Endpoints: input.Endpoints})
 	input.Endpoints = NormalizeEndpoints(input.Endpoints, baseURL)
@@ -928,6 +943,17 @@ func normalizeAutoDisableRules(rules []objects.APIKeyAutoDisableRule, allowDelet
 // the update is then optimistic-locked against that version and fails with
 // ErrChannelUpdatedConcurrently when the channel was updated concurrently.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
+	// Reject Realtime before provider normalization can discard submitted endpoints.
+	if slices.ContainsFunc(input.Endpoints, func(endpoint objects.ChannelEndpoint) bool {
+		return objects.IsRealtimeAPIFormat(endpoint.APIFormat)
+	}) {
+		return nil, objects.RealtimeEndpointInputError()
+	}
+	// Explicitly validate append payloads as well: SetInput must never silently
+	// swallow a forbidden realtime protocol at an endpoint boundary.
+	if err := ValidateEndpoints(input.AppendEndpoints); err != nil {
+		return nil, err
+	}
 	log.Debug(ctx, "UpdateChannel", log.Int("id", id))
 	expectedUpdatedAt, _ := ctx.Value(channelExpectedVersionKey{}).(*time.Time)
 	// Snapshot the provider identity before normalizing Command Code settings.
@@ -1091,6 +1117,15 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		channelType := existing.Type
 		if input.Type != nil {
 			channelType = *input.Type
+		}
+		realtimeSettings := input.Settings
+		if realtimeSettings == nil {
+			realtimeSettings = existing.Settings
+		}
+		if realtimeSettings != nil {
+			if err := ValidateChannelRealtime(channelType, realtimeSettings.Realtime); err != nil {
+				return nil, err
+			}
 		}
 		baseURL := existing.BaseURL
 		if input.BaseURL != nil {

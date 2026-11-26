@@ -48,6 +48,12 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint, baseURL ...string) e
 	}
 	seen := make(map[string]bool, len(endpoints))
 	for i, ep := range endpoints {
+		if objects.IsRealtimeAPIFormat(ep.APIFormat) {
+			return objects.RealtimeEndpointInputError()
+		}
+		if ep.HandshakeTimeoutMs != nil && (*ep.HandshakeTimeoutMs < 1000 || *ep.HandshakeTimeoutMs > 60000) {
+			return fmt.Errorf("endpoint[%d]: handshake timeout must be between 1000 and 60000 ms", i)
+		}
 		if ep.Transport != "" && ep.Transport != objects.ChannelEndpointTransportHTTP && ep.Transport != objects.ChannelEndpointTransportWebSocket {
 			return fmt.Errorf("endpoint[%d]: unsupported transport %q", i, ep.Transport)
 		}
@@ -95,7 +101,7 @@ func supportsWebSocketTransport(apiFormat string) bool {
 // user-configured endpoints. A manually disabled entry for a model that still
 // exists may keep its protocol choices while inactive.
 func ValidateModelProtocols(settings *objects.ChannelSettings, channelType channel.Type, endpoints []objects.ChannelEndpoint) error {
-	source := &ent.Channel{Type: channelType, Endpoints: endpoints}
+	source := &ent.Channel{Type: channelType, Endpoints: endpoints, Settings: settings}
 	return validateModelProtocols(normalizeModelProtocols(settings, source), source)
 }
 
@@ -105,7 +111,12 @@ func validateModelProtocols(settings *objects.ChannelSettings, source *ent.Chann
 	}
 
 	available := make(map[string]struct{})
-	for _, ep := range (&Channel{Channel: source}).ResolveEndpoints() {
+	if settings.Realtime != nil && settings.Realtime.Protocol != "" {
+		// An explicit channel protocol may remain selected for a model while
+		// the channel's realtime capability is temporarily disabled.
+		available[settings.Realtime.Protocol] = struct{}{}
+	}
+	for _, ep := range (&Channel{Channel: source}).resolveOrdinaryEndpoints() {
 		available[ep.APIFormat] = struct{}{}
 	}
 
@@ -465,16 +476,30 @@ func mergeEndpoints(defaultEndpoints, userEndpoints []objects.ChannelEndpoint) [
 	return merged
 }
 
-// ResolveEndpoints returns the runtime-effective endpoints used for API format
-// selection. Built-in default endpoints define the channel's capability
-// surface, and user-configured endpoints override matching api_format entries
-// or append additional ones.
+// ResolveEndpoints returns the active endpoint surface. Ordinary endpoints are
+// retained in storage so switching away from Realtime restores them.
 func (c *Channel) ResolveEndpoints() []objects.ChannelEndpoint {
+	if c.RealtimeOnly() {
+		if endpoint := c.RealtimeEndpoint(); endpoint != nil {
+			return []objects.ChannelEndpoint{*endpoint}
+		}
+		return nil
+	}
+	return c.resolveOrdinaryEndpoints()
+}
+
+func (c *Channel) resolveOrdinaryEndpoints() []objects.ChannelEndpoint {
 	if c.Channel == nil {
 		return nil
 	}
-
-	return mergeEndpoints(c.DefaultEndpoints(), NormalizeEndpoints(c.Endpoints, c.BaseURL))
+	userEndpoints := NormalizeEndpoints(c.Endpoints, c.BaseURL)
+	ordinary := userEndpoints[:0]
+	for _, ep := range userEndpoints {
+		if !objects.IsRealtimeAPIFormat(ep.APIFormat) {
+			ordinary = append(ordinary, ep)
+		}
+	}
+	return mergeEndpoints(c.DefaultEndpoints(), ordinary)
 }
 
 // ForcedAPIFormats returns the api formats force-specified for the given request

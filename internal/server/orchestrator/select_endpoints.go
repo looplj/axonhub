@@ -4,10 +4,12 @@ import (
 	"context"
 	"slices"
 
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	openairt "github.com/looplj/axonhub/llm/transformer/openai/realtime"
 )
 
 // SelectAPIFormat selects the most appropriate APIFormat from a channel's resolved endpoints
@@ -109,7 +111,20 @@ func selectAPIFormat(
 		}
 	}
 
-	return endpoints[0].APIFormat
+	for _, ep := range endpoints {
+		if req.RequestType == llm.RequestTypeRealtime || !objects.IsRealtimeAPIFormat(ep.APIFormat) {
+			return ep.APIFormat
+		}
+	}
+	return ""
+}
+
+// A model scoped to the OpenAI translation protocol cannot serve an ordinary API.
+func allowsChannelModelForRequest(ch *biz.Channel, entry biz.ChannelModelEntry, requestType llm.RequestType) bool {
+	if requestType == llm.RequestTypeRealtime {
+		return true
+	}
+	return !ch.RealtimeOnly() && (entry.ActualModel != openairt.TranslationModel || ch.Channel == nil || ch.Type != channel.TypeOpenai)
 }
 
 func compatibleResponsesAPIFormat(format llm.APIFormat) string {
@@ -124,7 +139,8 @@ func compatibleResponsesAPIFormat(format llm.APIFormat) string {
 }
 
 func requiresExplicitEndpoint(requestType llm.RequestType) bool {
-	return requestType == llm.RequestTypeAlphaSearch ||
+	return requestType == llm.RequestTypeRealtime ||
+		requestType == llm.RequestTypeAlphaSearch ||
 		requestType == llm.RequestTypeDecisions ||
 		requestType == llm.RequestTypeSystemOne
 }
@@ -240,6 +256,25 @@ func applyForcedAPIFormatsForRequest(
 	requestType llm.RequestType,
 	endpoints []objects.ChannelEndpoint,
 ) ([]objects.ChannelEndpoint, bool) {
+	if requestType == llm.RequestTypeRealtime {
+		if ch == nil {
+			return nil, true
+		}
+
+		configuredRealtime := ch.RealtimeEndpoint()
+		if configuredRealtime == nil {
+			return nil, true
+		}
+
+		for _, endpoint := range endpoints {
+			if endpoint.APIFormat == configuredRealtime.APIFormat {
+				return []objects.ChannelEndpoint{endpoint}, true
+			}
+		}
+
+		return nil, true
+	}
+
 	forced := forcedAPIFormatsForCandidate(ch, entries, requestModel)
 	filtered, forcedActive := applyForcedAPIFormats(ctx, ch, entries, requestModel, endpoints)
 	if len(forced) > 0 && len(filtered) == len(endpoints) && requiresExplicitEndpoint(requestType) && len(FilterEndpointsByAPIFormats(endpoints, forced)) == 0 {

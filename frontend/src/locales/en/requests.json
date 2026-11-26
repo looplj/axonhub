@@ -1,4 +1,6 @@
 {
+  "requests.detail.realtimeSession": "Realtime session record",
+  "requests.detail.realtimeResponseRecord": "Realtime response record",
   "requests.title": "Request Logs",
   "requests.description": "View and manage LLM call request logs",
   "requests.columns.modelId": "Model ID",
@@ -155,6 +157,7 @@
   "requests.tooltips.upstreamModelMatchedAfterRetries": "Upstream model names match the channel models on successful executions ({{model}}); {{unknown}} failed or canceled executions lack model information. See execution details.",
   "requests.tooltips.upstreamModelMismatch": "Upstream model name differs from the channel model: {{model}}",
   "requests.tooltips.upstreamModelUnknown": "Channel model or upstream-reported model was not recorded; name consistency is unknown",
+  "requests.tooltips.realtimeRoutedModel": "AxonHub routed this Realtime request to upstream model {{model}}.",
   "requests.tooltips.upstreamModelRequestProcessing": "Request is still processing; waiting for completion and the upstream model information",
   "requests.tooltips.upstreamModelRequestFailed": "Request did not succeed; model consistency is not a successful result. See the failure reason",
   "requests.tooltips.upstreamModelPartial": "Only some executions can be audited: {{compared}} compared, {{unknown}} unknown",

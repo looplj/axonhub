@@ -8,12 +8,13 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 // DuplicateChannel creates a new channel from input, inherits the source custom
-// endpoints when the input does not specify them, and copies current model prices
-// from the source channel in the same transaction.
+// endpoints when the input does not specify them, inherits only Realtime when
+// settings are omitted, and copies current model prices in the same transaction.
 func (svc *ChannelService) DuplicateChannel(ctx context.Context, sourceID int, input ent.CreateChannelInput) (*ent.Channel, error) {
 	var duplicated *ent.Channel
 
@@ -26,6 +27,20 @@ func (svc *ChannelService) DuplicateChannel(ctx context.Context, sourceID int, i
 		}
 		if input.Endpoints == nil {
 			input.Endpoints = source.Endpoints
+		}
+		if input.Settings == nil && source.Settings != nil && source.Settings.Realtime != nil {
+			// Realtime used to be inherited through Endpoints. Preserve only that
+			// capability, leaving all other settings' no-inheritance behavior intact.
+			realtime := *source.Settings.Realtime
+			if realtime.HandshakeTimeoutMs != nil {
+				timeout := *realtime.HandshakeTimeoutMs
+				realtime.HandshakeTimeoutMs = &timeout
+			}
+			if realtime.ClientEventsPerSecond != nil {
+				rate := *realtime.ClientEventsPerSecond
+				realtime.ClientEventsPerSecond = &rate
+			}
+			input.Settings = &objects.ChannelSettings{Realtime: &realtime}
 		}
 		if isZenmuxChannelType(source.Type) && isZenmuxChannelType(input.Type) && input.Credentials.ManagementAPIKey == "" {
 			input.Credentials.ManagementAPIKey = source.Credentials.ManagementAPIKey

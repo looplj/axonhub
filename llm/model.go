@@ -867,7 +867,23 @@ type ResponseMeta struct {
 }
 
 // Usage Represents the total token usage per request to OpenAI.
+// RealtimeUsageDetails preserves modality and cache intersections for independent billing.
+// Input modality totals include their cached subsets.
+type RealtimeUsageDetails struct {
+	UnbilledOutputTextTokens int64 `json:"unbilled_output_text_tokens,omitempty"`
+	InputTextTokens          int64 `json:"input_text_tokens"`
+	InputAudioTokens         int64 `json:"input_audio_tokens"`
+	InputImageTokens         int64 `json:"input_image_tokens"`
+	CachedInputTextTokens    int64 `json:"cached_input_text_tokens"`
+	CachedInputAudioTokens   int64 `json:"cached_input_audio_tokens"`
+	CachedInputImageTokens   int64 `json:"cached_input_image_tokens"`
+	OutputTextTokens         int64 `json:"output_text_tokens"`
+	OutputAudioTokens        int64 `json:"output_audio_tokens"`
+}
+
 type Usage struct {
+	Realtime *RealtimeUsageDetails `json:"realtime_details,omitempty"`
+
 	// Number of tokens in the prompt, including cached tokens.
 	PromptTokens int64 `json:"prompt_tokens"`
 

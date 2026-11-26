@@ -29,7 +29,21 @@ import {
   type SaveChannelModelPriceInput,
 } from '../data/schema';
 
-const priceItemCodes = ['prompt_tokens', 'completion_tokens', 'prompt_cached_tokens', 'prompt_write_cached_tokens'] as const;
+const priceItemCodes = [
+  'prompt_tokens',
+  'completion_tokens',
+  'prompt_cached_tokens',
+  'prompt_write_cached_tokens',
+  'realtime_input_text_tokens',
+  'realtime_input_audio_tokens',
+  'realtime_output_text_tokens',
+  'realtime_output_audio_tokens',
+  'realtime_input_image_tokens',
+  'realtime_cached_input_text_tokens',
+  'realtime_cached_input_audio_tokens',
+  'realtime_translation_audio_samples',
+  'realtime_cached_input_image_tokens',
+] as const;
 const pricingModes = ['flat_fee', 'usage_per_unit', 'usage_tiered', 'usage_volume'] as const;
 const promptWriteCacheVariantCodes = ['five_min', 'one_hour'] as const;
 

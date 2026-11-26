@@ -114,6 +114,7 @@ const CREATE_CHANNEL_MUTATION = `
       tags
       defaultTestModel
       settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs clientEventsPerSecond }
         extraModelPrefix
         modelMappings {
           from
@@ -176,12 +177,14 @@ const CREATE_CHANNEL_MUTATION = `
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
     }
   }
@@ -224,6 +227,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
       tags
       defaultTestModel
       settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs clientEventsPerSecond }
         extraModelPrefix
         modelMappings {
           from
@@ -286,12 +290,14 @@ const DUPLICATE_CHANNEL_MUTATION = `
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
     }
   }
@@ -334,6 +340,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       tags
       defaultTestModel
       settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs clientEventsPerSecond }
         extraModelPrefix
         modelMappings {
           from
@@ -396,12 +403,14 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
     }
   }
@@ -443,6 +452,7 @@ const CHANNEL_FIELDS_FRAGMENT = `
       tags
       defaultTestModel
       settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs clientEventsPerSecond }
         extraModelPrefix
         modelMappings {
           from
@@ -506,12 +516,14 @@ const CHANNEL_FIELDS_FRAGMENT = `
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
   }
 `;
@@ -596,12 +608,14 @@ const SAVE_CHANNEL_ENDPOINTS_MUTATION = `
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
       endpoints {
         apiFormat
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
     }
   }
@@ -687,14 +701,17 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           path
           baseURL
           transport
+          handshakeTimeoutMs
         }
         endpoints {
           apiFormat
           path
           baseURL
           transport
+          handshakeTimeoutMs
         }
         settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs clientEventsPerSecond }
           extraModelPrefix
           modelMappings {
             from
@@ -938,14 +955,17 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           path
           baseURL
           transport
+          handshakeTimeoutMs
         }
         endpoints {
           apiFormat
           path
           baseURL
           transport
+          handshakeTimeoutMs
         }
         settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs clientEventsPerSecond }
           extraModelPrefix
           modelMappings {
             from
@@ -1014,6 +1034,7 @@ const ALL_CHANNEL_SUMMARYS_QUERY = `
         path
         baseURL
         transport
+        handshakeTimeoutMs
       }
       allModelEntries {
         requestModel
@@ -1233,6 +1254,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
           tags
           defaultTestModel
           settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs clientEventsPerSecond }
             extraModelPrefix
             modelMappings {
               from
@@ -1331,12 +1353,14 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             path
             baseURL
             transport
+            handshakeTimeoutMs
           }
           endpoints {
             apiFormat
             path
             baseURL
             transport
+            handshakeTimeoutMs
           }
           disabledAPIKeys {
             key
@@ -1384,6 +1408,7 @@ const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
 
 const CHANNEL_QUERY_ROUTING_STATUS_SELECTION = `
            settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs clientEventsPerSecond }
              quotaRoutingMode
              syncModelPrices
            }
@@ -1405,6 +1430,7 @@ const CHANNEL_QUERY_TAGS_SELECTION = `
 
 const CHANNEL_QUERY_PROXY_SELECTION = `
           settings {
+        realtime { enabled protocol baseURL path handshakeTimeoutMs clientEventsPerSecond }
             quotaRoutingMode
             syncModelPrices
             proxy {
@@ -1447,12 +1473,14 @@ const CHANNEL_QUERY_ENDPOINTS_SELECTION = `
             path
             baseURL
             transport
+            handshakeTimeoutMs
           }
           endpoints {
             apiFormat
             path
             baseURL
             transport
+            handshakeTimeoutMs
           }
 `;
 
@@ -1876,7 +1904,7 @@ export function useUpdateChannelSettings() {
 
 export interface SaveChannelEndpointsInput {
   channelID: string;
-  endpoints: Array<{ apiFormat: string; path?: string; baseURL?: string; transport?: string }>;
+  endpoints: Array<{ apiFormat: string; path?: string; baseURL?: string; transport?: string; handshakeTimeoutMs?: number | null }>;
 }
 
 export function useSaveChannelEndpoints() {
