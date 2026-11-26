@@ -43,6 +43,8 @@ func TestInboundTransformer_CleanEOFReasoningWithUsageSynthesizesFinishAndDone(t
 
 	events := collectOpenAIInboundEvents(t, stream)
 	require.NoError(t, stream.Err())
+	require.Contains(t, string(events[0].Data), `"reasoning_content":"thinking"`)
+	require.NotContains(t, string(events[0].Data), `"reasoning":`)
 	require.Equal(t, "stop", inboundFinishReason(t, events[2]))
 	require.Equal(t, "[DONE]", string(events[3].Data))
 }
