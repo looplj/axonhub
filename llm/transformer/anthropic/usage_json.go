@@ -3,8 +3,17 @@ package anthropic
 import (
 	"encoding/json"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 )
+
+func (u Usage) MarshalJSON() ([]byte, error) {
+	type alias Usage
+	return json.Marshal(struct {
+		alias
+		CacheReadInputTokens *int64 `json:"cache_read_input_tokens,omitempty"`
+	}{alias: alias(u), CacheReadInputTokens: u.CacheReadStatus.ReportedCount(u.cacheReadTokens())})
+}
 
 func (u *Usage) UnmarshalJSON(data []byte) error {
 	type alias Usage
@@ -18,5 +27,6 @@ func (u *Usage) UnmarshalJSON(data []byte) error {
 	}
 
 	u.Cost = xjson.ParseOptionalFloat64(aux.Cost)
+	u.CacheReadStatus = llm.ParseCacheReadStatus(data, []string{"cache_read_input_tokens"}, []string{"cached_tokens"})
 	return nil
 }

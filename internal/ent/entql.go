@@ -736,6 +736,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			usagelog.FieldTotalTokens:                        {Type: field.TypeInt64, Column: usagelog.FieldTotalTokens},
 			usagelog.FieldPromptAudioTokens:                  {Type: field.TypeInt64, Column: usagelog.FieldPromptAudioTokens},
 			usagelog.FieldPromptCachedTokens:                 {Type: field.TypeInt64, Column: usagelog.FieldPromptCachedTokens},
+			usagelog.FieldCacheReadStatus:                    {Type: field.TypeString, Column: usagelog.FieldCacheReadStatus},
 			usagelog.FieldPromptWriteCachedTokens:            {Type: field.TypeInt64, Column: usagelog.FieldPromptWriteCachedTokens},
 			usagelog.FieldPromptWriteCachedTokens5m:          {Type: field.TypeInt64, Column: usagelog.FieldPromptWriteCachedTokens5m},
 			usagelog.FieldPromptWriteCachedTokens1h:          {Type: field.TypeInt64, Column: usagelog.FieldPromptWriteCachedTokens1h},
@@ -5147,6 +5148,11 @@ func (f *UsageLogFilter) WherePromptAudioTokens(p entql.Int64P) {
 // WherePromptCachedTokens applies the entql int64 predicate on the prompt_cached_tokens field.
 func (f *UsageLogFilter) WherePromptCachedTokens(p entql.Int64P) {
 	f.Where(p.Field(usagelog.FieldPromptCachedTokens))
+}
+
+// WhereCacheReadStatus applies the entql string predicate on the cache_read_status field.
+func (f *UsageLogFilter) WhereCacheReadStatus(p entql.StringP) {
+	f.Where(p.Field(usagelog.FieldCacheReadStatus))
 }
 
 // WherePromptWriteCachedTokens applies the entql int64 predicate on the prompt_write_cached_tokens field.

@@ -449,6 +449,7 @@ func TestInboundStream_UsesUsageFromFinalUsageOnlyChunk(t *testing.T) {
 			Model:   "deepseek-v4.1-flash",
 			Choices: []llm.Choice{},
 			Usage: &llm.Usage{
+				CacheReadStatus:  llm.CacheReadReported,
 				PromptTokens:     338678,
 				CompletionTokens: 5795,
 				TotalTokens:      344473,

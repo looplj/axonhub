@@ -129,6 +129,12 @@ func AggregateStreamChunks(
 
 		// Extract usage information if present
 		if geminiResp.UsageMetadata != nil {
+			if usage != nil && usage.CacheReadStatus == llm.CacheReadReported &&
+				geminiResp.UsageMetadata.CacheReadStatus != llm.CacheReadReported &&
+				usage.PromptTokenCount == geminiResp.UsageMetadata.PromptTokenCount {
+				geminiResp.UsageMetadata.CacheReadStatus = llm.CacheReadReported
+				geminiResp.UsageMetadata.CachedContentTokenCount = usage.CachedContentTokenCount
+			}
 			usage = geminiResp.UsageMetadata
 		}
 

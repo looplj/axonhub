@@ -154,6 +154,20 @@ func (_u *UsageLogUpdate) ClearPromptCachedTokens() *UsageLogUpdate {
 	return _u
 }
 
+// SetCacheReadStatus sets the "cache_read_status" field.
+func (_u *UsageLogUpdate) SetCacheReadStatus(v string) *UsageLogUpdate {
+	_u.mutation.SetCacheReadStatus(v)
+	return _u
+}
+
+// SetNillableCacheReadStatus sets the "cache_read_status" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableCacheReadStatus(v *string) *UsageLogUpdate {
+	if v != nil {
+		_u.SetCacheReadStatus(*v)
+	}
+	return _u
+}
+
 // SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
 func (_u *UsageLogUpdate) SetPromptWriteCachedTokens(v int64) *UsageLogUpdate {
 	_u.mutation.ResetPromptWriteCachedTokens()
@@ -457,6 +471,11 @@ func (_u *UsageLogUpdate) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *UsageLogUpdate) check() error {
+	if v, ok := _u.mutation.CacheReadStatus(); ok {
+		if err := usagelog.CacheReadStatusValidator(v); err != nil {
+			return &ValidationError{Name: "cache_read_status", err: fmt.Errorf(`ent: validator failed for field "UsageLog.cache_read_status": %w`, err)}
+		}
+	}
 	if _u.mutation.RequestCleared() && len(_u.mutation.RequestIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "UsageLog.request"`)
 	}
@@ -525,6 +544,9 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.PromptCachedTokensCleared() {
 		_spec.ClearField(usagelog.FieldPromptCachedTokens, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.CacheReadStatus(); ok {
+		_spec.SetField(usagelog.FieldCacheReadStatus, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.PromptWriteCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64, value)
@@ -757,6 +779,20 @@ func (_u *UsageLogUpdateOne) AddPromptCachedTokens(v int64) *UsageLogUpdateOne {
 // ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
 func (_u *UsageLogUpdateOne) ClearPromptCachedTokens() *UsageLogUpdateOne {
 	_u.mutation.ClearPromptCachedTokens()
+	return _u
+}
+
+// SetCacheReadStatus sets the "cache_read_status" field.
+func (_u *UsageLogUpdateOne) SetCacheReadStatus(v string) *UsageLogUpdateOne {
+	_u.mutation.SetCacheReadStatus(v)
+	return _u
+}
+
+// SetNillableCacheReadStatus sets the "cache_read_status" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableCacheReadStatus(v *string) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetCacheReadStatus(*v)
+	}
 	return _u
 }
 
@@ -1076,6 +1112,11 @@ func (_u *UsageLogUpdateOne) defaults() error {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *UsageLogUpdateOne) check() error {
+	if v, ok := _u.mutation.CacheReadStatus(); ok {
+		if err := usagelog.CacheReadStatusValidator(v); err != nil {
+			return &ValidationError{Name: "cache_read_status", err: fmt.Errorf(`ent: validator failed for field "UsageLog.cache_read_status": %w`, err)}
+		}
+	}
 	if _u.mutation.RequestCleared() && len(_u.mutation.RequestIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "UsageLog.request"`)
 	}
@@ -1161,6 +1202,9 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if _u.mutation.PromptCachedTokensCleared() {
 		_spec.ClearField(usagelog.FieldPromptCachedTokens, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.CacheReadStatus(); ok {
+		_spec.SetField(usagelog.FieldCacheReadStatus, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.PromptWriteCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64, value)

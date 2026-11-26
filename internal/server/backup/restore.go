@@ -25,6 +25,7 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
 )
 
 // Restore decodes the backup from data. It reads the whole payload into memory
@@ -1393,6 +1394,12 @@ func (svc *BackupService) restoreUsageLogs(
 			)
 		}
 
+		// 旧备份中的缓存计数不能证明上游曾显式报送。
+		cacheReadStatus := llm.CacheReadUnknown
+		if usageData.CacheReadStatus == string(llm.CacheReadReported) {
+			cacheReadStatus = llm.CacheReadReported
+		}
+
 		builders = append(builders, db.UsageLog.Create().
 			SetCreatedAt(usageData.CreatedAt).
 			SetUpdatedAt(usageData.UpdatedAt).
@@ -1406,6 +1413,7 @@ func (svc *BackupService) restoreUsageLogs(
 			SetTotalTokens(usageData.TotalTokens).
 			SetPromptAudioTokens(usageData.PromptAudioTokens).
 			SetPromptCachedTokens(usageData.PromptCachedTokens).
+			SetCacheReadStatus(string(cacheReadStatus)).
 			SetPromptWriteCachedTokens(usageData.PromptWriteCachedTokens).
 			SetPromptWriteCachedTokens5m(usageData.PromptWriteCachedTokens5m).
 			SetPromptWriteCachedTokens1h(usageData.PromptWriteCachedTokens1h).

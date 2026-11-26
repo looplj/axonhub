@@ -115,6 +115,11 @@ func PromptCachedTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldPromptCachedTokens, v))
 }
 
+// CacheReadStatus applies equality check predicate on the "cache_read_status" field. It's identical to CacheReadStatusEQ.
+func CacheReadStatus(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldCacheReadStatus, v))
+}
+
 // PromptWriteCachedTokens applies equality check predicate on the "prompt_write_cached_tokens" field. It's identical to PromptWriteCachedTokensEQ.
 func PromptWriteCachedTokens(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldPromptWriteCachedTokens, v))
@@ -648,6 +653,71 @@ func PromptCachedTokensIsNil() predicate.UsageLog {
 // PromptCachedTokensNotNil applies the NotNil predicate on the "prompt_cached_tokens" field.
 func PromptCachedTokensNotNil() predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotNull(FieldPromptCachedTokens))
+}
+
+// CacheReadStatusEQ applies the EQ predicate on the "cache_read_status" field.
+func CacheReadStatusEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldCacheReadStatus, v))
+}
+
+// CacheReadStatusNEQ applies the NEQ predicate on the "cache_read_status" field.
+func CacheReadStatusNEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldCacheReadStatus, v))
+}
+
+// CacheReadStatusIn applies the In predicate on the "cache_read_status" field.
+func CacheReadStatusIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldCacheReadStatus, vs...))
+}
+
+// CacheReadStatusNotIn applies the NotIn predicate on the "cache_read_status" field.
+func CacheReadStatusNotIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldCacheReadStatus, vs...))
+}
+
+// CacheReadStatusGT applies the GT predicate on the "cache_read_status" field.
+func CacheReadStatusGT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldCacheReadStatus, v))
+}
+
+// CacheReadStatusGTE applies the GTE predicate on the "cache_read_status" field.
+func CacheReadStatusGTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldCacheReadStatus, v))
+}
+
+// CacheReadStatusLT applies the LT predicate on the "cache_read_status" field.
+func CacheReadStatusLT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldCacheReadStatus, v))
+}
+
+// CacheReadStatusLTE applies the LTE predicate on the "cache_read_status" field.
+func CacheReadStatusLTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldCacheReadStatus, v))
+}
+
+// CacheReadStatusContains applies the Contains predicate on the "cache_read_status" field.
+func CacheReadStatusContains(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContains(FieldCacheReadStatus, v))
+}
+
+// CacheReadStatusHasPrefix applies the HasPrefix predicate on the "cache_read_status" field.
+func CacheReadStatusHasPrefix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasPrefix(FieldCacheReadStatus, v))
+}
+
+// CacheReadStatusHasSuffix applies the HasSuffix predicate on the "cache_read_status" field.
+func CacheReadStatusHasSuffix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasSuffix(FieldCacheReadStatus, v))
+}
+
+// CacheReadStatusEqualFold applies the EqualFold predicate on the "cache_read_status" field.
+func CacheReadStatusEqualFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEqualFold(FieldCacheReadStatus, v))
+}
+
+// CacheReadStatusContainsFold applies the ContainsFold predicate on the "cache_read_status" field.
+func CacheReadStatusContainsFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContainsFold(FieldCacheReadStatus, v))
 }
 
 // PromptWriteCachedTokensEQ applies the EQ predicate on the "prompt_write_cached_tokens" field.

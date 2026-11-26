@@ -608,6 +608,9 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 				TextTokens:   imgResp.Usage.InputTokensDetails.TextTokens,
 				CachedTokens: lo.FromPtr(imgResp.Usage.InputTokensDetails.CachedTokens),
 			}
+			if imgResp.Usage.InputTokensDetails.CachedTokens != nil {
+				resp.Usage.CacheReadStatus = llm.CacheReadReported
+			}
 		}
 
 		if imgResp.Usage.OutputTokensDetails != nil {
