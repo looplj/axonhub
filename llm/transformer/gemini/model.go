@@ -531,7 +531,7 @@ type PromptFeedback struct {
 
 // UsageMetadata contains usage metadata about the response.
 type UsageMetadata struct {
-	CacheReadStatus llm.CacheReadStatus `json:"cache_read_status"`
+	CacheReadStatus llm.CacheReadStatus `json:"-"`
 	// PromptTokenCount is the number of tokens in the prompt.
 	// When cachedContent is set, this is still the total effective prompt size meaning this includes the number of tokens in the cached content.
 	PromptTokenCount int64 `json:"promptTokenCount,omitempty"`

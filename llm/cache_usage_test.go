@@ -28,9 +28,7 @@ func TestParseCacheReadStatus(t *testing.T) {
 		{"null", `{"prompt_tokens_details":{"cached_tokens":null}}`, CacheReadUnknown},
 		{"top level zero", `{"cached_tokens":0}`, CacheReadReported},
 		{"wrong type", `{"cached_tokens":"0"}`, CacheReadUnknown},
-		{"unknown roundtrip", `{"cache_read_status":"unknown","prompt_tokens_details":{"cached_tokens":0}}`, CacheReadUnknown},
-		{"empty roundtrip", `{"cache_read_status":"","cached_tokens":0}`, CacheReadUnknown},
-		{"reported roundtrip", `{"cache_read_status":"reported","cached_tokens":0}`, CacheReadReported},
+		{"ignore private marker", `{"cache_read_status":"unknown","prompt_tokens_details":{"cached_tokens":0}}`, CacheReadReported},
 		{"bare reported marker", `{"cache_read_status":"reported"}`, CacheReadUnknown},
 		{"reported null", `{"cache_read_status":"reported","cached_tokens":null}`, CacheReadUnknown},
 	} {

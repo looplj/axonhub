@@ -5,7 +5,7 @@ import "github.com/looplj/axonhub/llm"
 // Usage represents usage information in Anthropic format.
 // Total input tokens in a request is the summation of input_tokens, cache_creation_input_tokens, and cache_read_input_tokens.
 type Usage struct {
-	CacheReadStatus llm.CacheReadStatus `json:"cache_read_status"`
+	CacheReadStatus llm.CacheReadStatus `json:"-"`
 	// The number of input tokens which were used to bill.
 	InputTokens int64 `json:"input_tokens"`
 
@@ -104,7 +104,9 @@ func convertToAnthropicUsage(llmUsage *llm.Usage) *Usage {
 
 	// Map detailed token information from unified model to Anthropic format
 	if llmUsage.PromptTokensDetails != nil {
-		usage.CacheReadInputTokens = llmUsage.PromptTokensDetails.CachedTokens
+		if usage.CacheReadStatus == llm.CacheReadReported {
+			usage.CacheReadInputTokens = llmUsage.PromptTokensDetails.CachedTokens
+		}
 		usage.CacheCreationInputTokens = llmUsage.PromptTokensDetails.WriteCachedTokens
 		usage.CacheCreation = CacheCreation{
 			Ephemeral5mInputTokens: llmUsage.PromptTokensDetails.WriteCached5MinTokens,

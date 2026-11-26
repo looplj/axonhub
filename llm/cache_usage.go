@@ -19,15 +19,6 @@ const (
 	CacheReadReported CacheReadStatus = "reported"
 )
 
-// MarshalJSON preserves unknown through provider-shaped JSON containing
-// synthetic cached_tokens:0 fields, including when status is the old zero value.
-func (status CacheReadStatus) MarshalJSON() ([]byte, error) {
-	if status == CacheReadReported {
-		return json.Marshal(string(CacheReadReported))
-	}
-	return json.Marshal(string(CacheReadUnknown))
-}
-
 // CacheReadReporting normalizes missing/unsupported metadata conservatively.
 func (u *Usage) CacheReadReporting() CacheReadStatus {
 	if u != nil && u.CacheReadStatus == CacheReadReported {
@@ -36,29 +27,20 @@ func (u *Usage) CacheReadReporting() CacheReadStatus {
 	return CacheReadUnknown
 }
 
-// MarshalJSON emits an explicit zero when a provider reported it without any
-// other prompt details, including in aggregated Chat Completion responses.
-func (u Usage) MarshalJSON() ([]byte, error) {
-	if u.CacheReadStatus == CacheReadReported && u.PromptTokensDetails == nil {
-		u.PromptTokensDetails = &PromptTokensDetails{}
+// ReportedCount returns the count to serialize in a provider's native cache
+// field. A nil pointer omits a count that was not reported.
+func (status CacheReadStatus) ReportedCount(count int64) *int64 {
+	if status != CacheReadReported {
+		return nil
 	}
-	type usageAlias Usage
-	return json.Marshal(usageAlias(u))
+	return &count
 }
 
 // ParseCacheReadStatus detects a non-null integer field, including explicit zero.
-// Unknown metadata suppresses synthetic counts after a JSON round trip. Reported
-// metadata still requires a provider count so a bare marker cannot create a zero.
 func ParseCacheReadStatus(data []byte, paths ...[]string) CacheReadStatus {
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(data, &fields) != nil {
 		return CacheReadUnknown
-	}
-	if raw, ok := fields["cache_read_status"]; ok {
-		var status CacheReadStatus
-		if json.Unmarshal(raw, &status) != nil || status != CacheReadReported {
-			return CacheReadUnknown
-		}
 	}
 	for _, path := range paths {
 		current := fields

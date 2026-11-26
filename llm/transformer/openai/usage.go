@@ -26,7 +26,7 @@ type CompletionTokensDetails struct {
 // Usage represents the usage response from OpenAI compatible format.
 // Difference provider may have different format, so we use this to convert to unified format.
 type Usage struct {
-	CacheReadStatus         llm.CacheReadStatus     `json:"cache_read_status"`
+	CacheReadStatus         llm.CacheReadStatus     `json:"-"`
 	PromptTokens            int64                   `json:"prompt_tokens"`
 	CompletionTokens        int64                   `json:"completion_tokens"`
 	TotalTokens             int64                   `json:"total_tokens"`
@@ -49,6 +49,25 @@ type Usage struct {
 	// Cost is the request cost calculated by AxonHub from channel model prices.
 	// Omitted when no matching price is configured.
 	Cost *float64 `json:"cost,omitempty"`
+}
+
+func (u Usage) MarshalJSON() ([]byte, error) {
+	type usageAlias Usage
+	type detailsAlias PromptTokensDetails
+	type details struct {
+		detailsAlias
+		CachedTokens *int64 `json:"cached_tokens,omitempty"`
+	}
+	return json.Marshal(struct {
+		usageAlias
+		PromptTokensDetails details `json:"prompt_tokens_details"`
+	}{
+		usageAlias: usageAlias(u),
+		PromptTokensDetails: details{
+			detailsAlias: detailsAlias(u.PromptTokensDetails),
+			CachedTokens: u.CacheReadStatus.ReportedCount(u.PromptTokensDetails.CachedTokens),
+		},
+	})
 }
 
 func (u *Usage) UnmarshalJSON(data []byte) error {

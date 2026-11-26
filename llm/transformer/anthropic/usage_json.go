@@ -7,6 +7,14 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 )
 
+func (u Usage) MarshalJSON() ([]byte, error) {
+	type alias Usage
+	return json.Marshal(struct {
+		alias
+		CacheReadInputTokens *int64 `json:"cache_read_input_tokens,omitempty"`
+	}{alias: alias(u), CacheReadInputTokens: u.CacheReadStatus.ReportedCount(u.CacheReadInputTokens)})
+}
+
 func (u *Usage) UnmarshalJSON(data []byte) error {
 	type alias Usage
 	aux := struct {

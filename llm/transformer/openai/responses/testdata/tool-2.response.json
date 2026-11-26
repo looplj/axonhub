@@ -46,7 +46,6 @@
     }
   ],
   "usage": {
-    "cache_read_status": "reported",
     "input_tokens": 8,
     "input_tokens_details": {
       "cached_tokens": 0

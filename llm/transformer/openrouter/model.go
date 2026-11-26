@@ -41,12 +41,31 @@ type ImageGenerationData struct {
 }
 
 type ImageGenerationUsage struct {
-	CacheReadStatus         llm.CacheReadStatus           `json:"cache_read_status"`
+	CacheReadStatus         llm.CacheReadStatus           `json:"-"`
 	PromptTokens            int64                         `json:"prompt_tokens"`
 	CompletionTokens        int64                         `json:"completion_tokens"`
 	TotalTokens             int64                         `json:"total_tokens"`
 	PromptTokensDetails     *ImagePromptTokensDetails     `json:"prompt_tokens_details,omitempty"`
 	CompletionTokensDetails *ImageCompletionTokensDetails `json:"completion_tokens_details,omitempty"`
+}
+
+func (u ImageGenerationUsage) MarshalJSON() ([]byte, error) {
+	type usageAlias ImageGenerationUsage
+	type details struct {
+		*ImagePromptTokensDetails
+		CachedTokens *int64 `json:"cached_tokens,omitempty"`
+	}
+	var promptDetails *details
+	if u.PromptTokensDetails != nil {
+		promptDetails = &details{
+			ImagePromptTokensDetails: u.PromptTokensDetails,
+			CachedTokens:             u.CacheReadStatus.ReportedCount(u.PromptTokensDetails.CachedTokens),
+		}
+	}
+	return json.Marshal(struct {
+		usageAlias
+		PromptTokensDetails *details `json:"prompt_tokens_details,omitempty"`
+	}{usageAlias: usageAlias(u), PromptTokensDetails: promptDetails})
 }
 
 func (u *ImageGenerationUsage) UnmarshalJSON(data []byte) error {
@@ -62,7 +81,7 @@ func (u *ImageGenerationUsage) UnmarshalJSON(data []byte) error {
 
 type ImagePromptTokensDetails struct {
 	ImageTokens  int64 `json:"image_tokens,omitempty"`
-	CachedTokens int64 `json:"cached_tokens"`
+	CachedTokens int64 `json:"cached_tokens,omitempty"`
 }
 
 type ImageCompletionTokensDetails struct {

@@ -9,13 +9,10 @@ import (
 
 func (u UsageMetadata) MarshalJSON() ([]byte, error) {
 	type alias UsageMetadata
-	if u.CacheReadStatus == llm.CacheReadReported && u.CachedContentTokenCount == 0 {
-		return json.Marshal(struct {
-			alias
-			CachedContentTokenCount int64 `json:"cachedContentTokenCount"`
-		}{alias: alias(u)})
-	}
-	return json.Marshal(alias(u))
+	return json.Marshal(struct {
+		alias
+		CachedContentTokenCount *int64 `json:"cachedContentTokenCount,omitempty"`
+	}{alias: alias(u), CachedContentTokenCount: u.CacheReadStatus.ReportedCount(u.CachedContentTokenCount)})
 }
 
 func (u *UsageMetadata) UnmarshalJSON(data []byte) error {

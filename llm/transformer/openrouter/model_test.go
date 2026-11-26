@@ -27,6 +27,7 @@ func TestImageGenerationUsage_CacheReadReporting(t *testing.T) {
 			require.Equal(t, tt.want, usage.ToLLMUsage().CacheReadReporting())
 			wire, err := json.Marshal(usage)
 			require.NoError(t, err)
+			require.NotContains(t, string(wire), `"cache_read_status"`)
 			var decoded openrouter.ImageGenerationUsage
 			require.NoError(t, json.Unmarshal(wire, &decoded))
 			require.Equal(t, tt.want, decoded.ToLLMUsage().CacheReadReporting())

@@ -353,6 +353,7 @@ func Test_convertToAnthropicUsage(t *testing.T) {
 		{
 			name: "base case",
 			llmUsage: &llm.Usage{
+				CacheReadStatus:  llm.CacheReadReported,
 				PromptTokens:     150,
 				CompletionTokens: 50,
 				PromptTokensDetails: &llm.PromptTokensDetails{
@@ -363,6 +364,7 @@ func Test_convertToAnthropicUsage(t *testing.T) {
 				},
 			},
 			want: &Usage{
+				CacheReadStatus:          llm.CacheReadReported,
 				InputTokens:              100, // 150 - 30 - 20
 				OutputTokens:             50,
 				CacheReadInputTokens:     30,

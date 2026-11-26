@@ -49,6 +49,7 @@ func TestCacheReadStatusChatAggregate(t *testing.T) {
 	body, meta, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
 	require.NoError(t, err)
 	require.Equal(t, llm.CacheReadReported, meta.Usage.CacheReadReporting())
+	require.NotContains(t, string(body), `"cache_read_status"`)
 	var response Response
 	require.NoError(t, json.Unmarshal(body, &response))
 	require.Equal(t, llm.CacheReadReported, response.Usage.ToLLMUsage().CacheReadReporting())

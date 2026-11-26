@@ -1288,6 +1288,7 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 					},
 				},
 				Usage: &llm.Usage{
+					CacheReadStatus:  llm.CacheReadReported,
 					PromptTokens:     100,
 					CompletionTokens: 50,
 					TotalTokens:      150,
