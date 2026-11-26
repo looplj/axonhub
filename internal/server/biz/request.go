@@ -1239,10 +1239,13 @@ func (s *RequestService) UpdateRequestExecutionFinalized(
 ) error {
 	// Decide whether to store the final response body for execution
 	storeResponseBody := true
-	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
+
+	policy, policyErr := s.SystemService.StoragePolicy(ctx)
+	switch {
+	case policyErr != nil:
+		log.Warn(ctx, "Failed to get storage policy, defaulting to store response body", log.Cause(policyErr))
+	case policy != nil:
 		storeResponseBody = policy.StoreResponseBody
-	} else {
-		log.Warn(ctx, "Failed to get storage policy, defaulting to store response body", log.Cause(err))
 	}
 
 	client := s.entFromContext(ctx)
@@ -1288,6 +1291,14 @@ func (s *RequestService) UpdateRequestExecutionFinalized(
 		responseBodyBytes, err := xjson.Marshal(responseBody)
 		if err != nil {
 			return err
+		}
+
+		// Keep the upstream frames that the aggregation dropped (provider, billing,
+		// native finish reason, non-standard events). Skipped when raw chunks are
+		// already stored, so the same payload is never persisted twice.
+		if policy != nil && policy.StoreUpstreamMeta && !policy.StoreChunks &&
+			execution.Format == string(llm.APIFormatOpenAIChatCompletion) {
+			responseBodyBytes = embedUpstreamMetaChunks(responseBodyBytes, chunks)
 		}
 
 		// Check if we should use external storage

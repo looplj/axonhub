@@ -70,6 +70,7 @@ const STORAGE_POLICY_QUERY = `
       livePreview
       storeRequestBody
       storeResponseBody
+      storeUpstreamMeta
       cleanupOptions {
         resourceType
         enabled
@@ -273,6 +274,7 @@ export interface StoragePolicy {
   livePreview: boolean;
   storeRequestBody: boolean;
   storeResponseBody: boolean;
+  storeUpstreamMeta: boolean;
   cleanupOptions: CleanupOption[];
 }
 
@@ -293,6 +295,7 @@ export interface UpdateStoragePolicyInput {
   livePreview?: boolean;
   storeRequestBody?: boolean;
   storeResponseBody?: boolean;
+  storeUpstreamMeta?: boolean;
   cleanupOptions?: CleanupOptionInput[];
 }
 

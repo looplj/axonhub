@@ -74,6 +74,8 @@
   "system.storage.policy.description": "Choose what request and response content is saved to storage, and how long it is kept",
   "system.storage.policy.storeChunks.label": "Store Response Chunks",
   "system.storage.policy.storeChunks.description": "When enabled, raw stream chunks are saved to the default data storage (or the database when none is configured) after the stream ends, so you can replay them frame by frame in request details. A single streamed reply can produce hundreds of events — the highest storage cost. Keep off unless you need to debug streaming behavior.",
+  "system.storage.policy.storeUpstreamMeta.label": "Keep upstream response metadata",
+  "system.storage.policy.storeUpstreamMeta.description": "For streaming OpenAI chat requests, keep the upstream frames that the aggregation drops (provider, usage cost, native finish reason, non-standard events) in the execution response body under _upstream_chunks. Frames that only carry answer text are skipped, so the size overhead is small. Ignored when Store Response Chunks is enabled.",
   "system.storage.policy.livePreview.label": "Live Preview",
   "system.storage.policy.livePreview.description": "Show streaming output in real time on the request detail page while the request is still running. Memory only — nothing is saved, and it disappears when the request finishes or the server restarts.",
   "system.storage.policy.storeRequestBody.label": "Store Request Body",
