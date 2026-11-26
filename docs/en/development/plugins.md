@@ -161,7 +161,7 @@ Fields use camelCase. A field that is not open is rejected at install and is not
 | `ui.pages` | no | Sidebar pages, described below |
 | `ui.actions` | no | Global toolbar actions that open plugin dialogs |
 
-Open permissions: `read_channels`, `read_requests`, `read_dashboard`, `read_api_keys`, `read_projects`, `read_settings`, `write_channels`, `webhook`, `sql`. Outbound URLs go in `network`. `read_plugins` and `write_plugins` are user scopes, not plugin permissions. KV is not a permission.
+Open permissions: `read_channels`, `read_requests`, `read_dashboard`, `read_cache_usage`, `read_api_keys`, `read_projects`, `read_settings`, `write_channels`, `webhook`, `sql`. Outbound URLs go in `network`. `read_plugins` and `write_plugins` are user scopes, not plugin permissions. KV is not a permission.
 
 A `network` entry is either an exact `https` URL or `{ "regex": "^https://api\\.example\\.com/v1/items/[0-9]+$" }`. An exact URL includes a path and no userinfo, query, or fragment, and it matches that path only. A regex is a full match, at most 256 characters, against the URL with query and fragment removed. The request may still carry a query. Redirects are not followed: statuses 301, 302, 303, 307, and 308 reject both `ctx.fetch` and `axonhub.fetch` Promises with `INVALID_STATE`.
 
@@ -363,6 +363,25 @@ export function onTask(ctx) {
 ```
 
 Use `type: "page"` and the page key to display a badge in the sidebar. The top bar displays badges on actions and highlights the overflow menu when a badged action is inside it.
+
+### Per-key cache usage in scheduled tasks
+
+Declare `read_cache_usage` in the manifest and have the Owner grant it to the installation. In `onTask`, `ctx.usage.cacheStats(options)` returns bounded cache metrics for one project at a time. The grant covers any explicitly selected project and the host rechecks it before reading. It does not grant `sql`, `read_requests`, or `read_api_keys`.
+
+```js
+const page = ctx.usage.cacheStats({
+  projectId: 1,
+  allKeys: true,
+  windowSeconds: 3600,
+  lastRequests: 20,
+});
+```
+
+Use `allKeys: true` or pass 1–100 numeric `keyIds` from the project. The result contains `projectId`, `end`, and `items` ordered by key ID. The page size defaults to 50 and is capped at 100. For the next page, reuse `end` and pass `nextAfterKeyId` as `afterKeyId`. Deleted keys and keys from other projects are excluded; a matching key with no samples still has an item.
+
+The host considers completed API requests whose creation timestamp falls in the inclusive interval ending at `end` (default: now). `windowSeconds` defaults to one day and is capped at 90 days. Up to `lastRequests` (default and maximum: 100) are selected per key, newest creation timestamp first, breaking ties by descending request ID. `truncated` indicates that more requests matched the window. `end` pins the time boundary across pages; requests can still complete after an earlier page is read.
+
+Each item contains `keyId`, `count`, `validCount`, `unknownCount`, `invalidCount`, `promptTokens`, `cachedTokens`, and `cacheRate`. The latest matching usage row by ID supplies the tokens for each request. Missing usage and unreported cache tokens count as unknown, including legacy rows without a reporting status. Reported values with invalid token counts count as invalid. Only valid reported values contribute to token totals; `cacheRate` is cached tokens divided by prompt tokens, or `null` if there are no valid samples. A provider-reported zero can contribute a zero rate. Use `includeSamples: true` to also receive ordered `samples` (`requestId`, `createdAt`, and `status`, plus token counts for `reported` samples).
 
 ### Dynamic SQL
 

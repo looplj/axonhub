@@ -151,6 +151,9 @@ func (h *hostCall) build(in callExportInput) (moejs.Value, error) {
 		if err := defineHostFn(h.rt, ctxObj, "graphql", 1, h.graphql); err != nil {
 			return moejs.Undefined(), err
 		}
+		if err := h.attachCacheUsageAPI(ctxObj); err != nil {
+			return moejs.Undefined(), err
+		}
 		ui := realm.NewObject()
 		if err := defineHostFn(h.rt, ui, "setBadge", 2, h.setUIBadge); err != nil {
 			return moejs.Undefined(), err

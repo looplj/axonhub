@@ -161,7 +161,7 @@ go run -C cmd/pack-plugin . ../../plugins/examples/<name>
 | `ui.pages` | 否 | 侧栏页面，见下文 |
 | `ui.actions` | 否 | 全局工具栏操作，点击打开插件弹窗 |
 
-已开放的权限：`read_channels`、`read_requests`、`read_dashboard`、`read_api_keys`、`read_projects`、`read_settings`、`write_channels`、`webhook`、`sql`。出站 URL 写在 `network`。`read_plugins` 和 `write_plugins` 是用户 scope，不是插件权限。KV 不占用权限。
+已开放的权限：`read_channels`、`read_requests`、`read_dashboard`、`read_cache_usage`、`read_api_keys`、`read_projects`、`read_settings`、`write_channels`、`webhook`、`sql`。出站 URL 写在 `network`。`read_plugins` 和 `write_plugins` 是用户 scope，不是插件权限。KV 不占用权限。
 
 一条 `network` 规则要么是精确的 `https` URL，要么是 `{ "regex": "^https://api\\.example\\.com/v1/items/[0-9]+$" }`。精确 URL 必须带 path，不能有 userinfo、query 或 fragment，并且只匹配这条 path。正则对去掉 query 和 fragment 后的 URL 做全匹配，最长 256 个字符。实际请求仍可以带 query。宿主不跟随重定向；301、302、303、307、308 会使 `ctx.fetch` 和 `axonhub.fetch` 以 `INVALID_STATE` 拒绝 Promise。
 
@@ -354,6 +354,25 @@ export function onTask(ctx) {
 ```
 
 使用 `type: "page"` 和页面键可以在侧栏入口展示角标。带角标的顶部动作收进更多菜单时，更多按钮会显示圆点。
+
+### 定时任务中的按 Key 缓存用量
+
+在清单中声明 `read_cache_usage`，由 Owner 授予安装实例。`onTask` 可调用 `ctx.usage.cacheStats(options)`，按项目读取有界缓存指标。该权限覆盖明确指定的任一项目，宿主在读取前复核授权。该权限不会授予 `sql`、`read_requests` 或 `read_api_keys`。
+
+```js
+const page = ctx.usage.cacheStats({
+  projectId: 1,
+  allKeys: true,
+  windowSeconds: 3600,
+  lastRequests: 20,
+});
+```
+
+设 `allKeys: true` 或传入 1–100 个项目内的数字 `keyIds`。结果包含 `projectId`、`end` 和按 Key ID 排序的 `items`。每页默认 50 个 Key，最多 100 个。读取下一页时，复用 `end` 并把 `nextAfterKeyId` 传给 `afterKeyId`。已删除的 Key 和其他项目的 Key 不会返回；没有样本的匹配 Key 仍会出现在结果中。
+
+宿主按请求创建时间采样，选取截至 `end`（默认当前时间）的闭区间内已完成的 API 请求。`windowSeconds` 默认为一天，最长 90 天。每个 Key 最多选 `lastRequests` 条（默认及上限均为 100），按请求创建时间、请求 ID 降序排列。`truncated` 表示窗口内还有更多匹配请求。`end` 固定分页的时间边界，此前创建的请求仍可能在上一页读取后完成。
+
+每个条目包含 `keyId`、`count`、`validCount`、`unknownCount`、`invalidCount`、`promptTokens`、`cachedTokens` 和 `cacheRate`。每条请求采用匹配的最大 ID 用量记录。用量缺失或未报告缓存读取 Token 的记录计为未知，历史上没有报告状态的记录也计为未知。已报告但 Token 数值不合法时计为无效。Token 总数只累计有效的已报告样本；`cacheRate` 为缓存 Token 与提示词 Token 的总量之比，无有效样本时为 `null`。上游明确报告的零可以贡献零命中率。设 `includeSamples: true` 可获得有序 `samples`（`requestId`、`createdAt` 和 `status`，以及 `reported` 样本的 Token 数）。
 
 ### 动态 SQL
 

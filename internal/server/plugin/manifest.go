@@ -61,6 +61,7 @@ var pluginPermissionGates = []permissionGate{
 	{name: "read_channels", open: true},
 	{name: "read_requests", open: true},
 	{name: "read_dashboard", open: true},
+	{name: permReadCacheUsage, open: true},
 	{name: "read_api_keys", open: true},
 	{name: "read_projects", open: true},
 	{name: "read_settings", open: true},
