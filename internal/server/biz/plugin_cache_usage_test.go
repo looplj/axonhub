@@ -170,9 +170,13 @@ func testCacheUsagePaths(t *testing.T, client *ent.Client) {
 
 func TestCacheUsageQueryBounds(t *testing.T) {
 	for _, q := range []CacheUsageQuery{
-		{AllKeys: true}, {ProjectID: 1}, {ProjectID: 1, AllKeys: true, KeyIDs: []int{1}},
-		{ProjectID: 1, KeyIDs: []int{0}}, {ProjectID: 1, AllKeys: true, AfterKeyID: -1},
-		{ProjectID: 1, AllKeys: true, LastRequests: 101}, {ProjectID: 1, AllKeys: true, WindowSeconds: -1},
+		{AllKeys: true},
+		{ProjectID: 1},
+		{ProjectID: 1, AllKeys: true, KeyIDs: []int{1}},
+		{ProjectID: 1, KeyIDs: []int{0}},
+		{ProjectID: 1, AllKeys: true, AfterKeyID: -1},
+		{ProjectID: 1, AllKeys: true, LastRequests: 101},
+		{ProjectID: 1, AllKeys: true, WindowSeconds: -1},
 		{ProjectID: 1, AllKeys: true, Limit: 101},
 	} {
 		_, err := QueryCacheUsage(t.Context(), nil, q)

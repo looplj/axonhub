@@ -41,7 +41,7 @@ type CacheUsageQuery struct {
 	AllKeys        bool      `json:"allKeys,omitempty"`
 	AfterKeyID     int       `json:"afterKeyId,omitempty"`
 	Limit          int       `json:"limit,omitempty"`
-	End            time.Time `json:"end,omitempty"`
+	End            time.Time `json:"end,omitzero"`
 	WindowSeconds  int       `json:"windowSeconds,omitempty"`
 	LastRequests   int       `json:"lastRequests,omitempty"`
 	IncludeSamples bool      `json:"includeSamples,omitempty"`
