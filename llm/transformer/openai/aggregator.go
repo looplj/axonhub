@@ -336,6 +336,13 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				usageEvidence = llm.AccountingEvidenceUnavailable
 			}
 		case chunk.Usage != nil:
+			if usage != nil && usage.CacheReadStatus == llm.CacheReadReported &&
+				chunk.Usage.CacheReadStatus != llm.CacheReadReported && usage.PromptTokens == chunk.Usage.PromptTokens {
+				chunk.Usage.CacheReadStatus = llm.CacheReadReported
+				chunk.Usage.PromptTokensDetails.CachedTokens = usage.PromptTokensDetails.CachedTokens
+				chunk.Usage.CachedTokens = usage.CachedTokens
+				chunk.Usage.PromptCacheHitTokens = usage.PromptCacheHitTokens
+			}
 			usage = chunk.Usage
 			if !isZeroUsage(chunk.Usage) {
 				sawNonZeroUsage = true

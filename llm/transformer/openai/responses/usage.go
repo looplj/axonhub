@@ -5,7 +5,8 @@ import (
 )
 
 type Usage struct {
-	InputTokens       int64 `json:"input_tokens"`
+	CacheReadStatus   llm.CacheReadStatus `json:"cache_read_status"`
+	InputTokens       int64               `json:"input_tokens"`
 	InputTokenDetails struct {
 		// CacheWriteTokens is the number of input tokens written to the prompt cache.
 		CacheWriteTokens int64 `json:"cache_write_tokens"`
@@ -22,6 +23,7 @@ type Usage struct {
 
 func (u *Usage) ToUsage() *llm.Usage {
 	return &llm.Usage{
+		CacheReadStatus:  u.CacheReadStatus,
 		PromptTokens:     u.InputTokens,
 		CompletionTokens: u.OutputTokens,
 		TotalTokens:      u.TotalTokens,
@@ -42,10 +44,11 @@ func ConvertLLMUsageToResponsesUsage(usage *llm.Usage) *Usage {
 	}
 
 	result := &Usage{
-		InputTokens:  usage.PromptTokens,
-		OutputTokens: usage.CompletionTokens,
-		TotalTokens:  usage.TotalTokens,
-		Cost:         usage.Cost,
+		CacheReadStatus: usage.CacheReadStatus,
+		InputTokens:     usage.PromptTokens,
+		OutputTokens:    usage.CompletionTokens,
+		TotalTokens:     usage.TotalTokens,
+		Cost:            usage.Cost,
 	}
 
 	if usage.PromptTokensDetails != nil {

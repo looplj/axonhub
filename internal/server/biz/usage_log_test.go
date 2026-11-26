@@ -2,14 +2,20 @@ package biz
 
 import (
 	"context"
+	"database/sql"
+	"slices"
 	"testing"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/schema"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/migrate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
@@ -72,6 +78,99 @@ func TestUsageLogService_CreateUsageLog_PromptWriteCachedTokens(t *testing.T) {
 
 	require.Equal(t, int64(2), created.PromptCachedTokens)
 	require.Equal(t, int64(3), created.PromptWriteCachedTokens)
+}
+
+func TestUsageLogService_CreateUsageLog_CacheReadReporting(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+
+	p, err := client.Project.Create().SetName("cache-read-project").SetStatus(project.StatusActive).Save(ctx)
+	require.NoError(t, err)
+	req, err := client.Request.Create().SetProjectID(p.ID).SetModelID("test-model").
+		SetStatus(request.StatusCompleted).SetRequestBody(objects.JSONRawMessage(`{}`)).Save(ctx)
+	require.NoError(t, err)
+	svc := NewUsageLogService(client,
+		NewSystemService(SystemServiceParams{CacheConfig: xcache.Config{}, Ent: client}),
+		NewChannelServiceForTest(client))
+
+	for _, tt := range []struct {
+		name   string
+		status llm.CacheReadStatus
+		cached int64
+		want   llm.CacheReadStatus
+	}{
+		{"reported zero", llm.CacheReadReported, 0, llm.CacheReadReported},
+		{"reported positive", llm.CacheReadReported, 2, llm.CacheReadReported},
+		{"missing", "", 0, llm.CacheReadUnknown},
+		{"unknown with historical count", llm.CacheReadUnknown, 2, llm.CacheReadUnknown},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			created, err := svc.CreateUsageLog(ctx, CreateUsageLogParams{
+				RequestID:     req.ID,
+				ProjectID:     p.ID,
+				ActualModelID: "test-model",
+				Usage: &llm.Usage{
+					PromptTokens: 10, CacheReadStatus: tt.status,
+					PromptTokensDetails: &llm.PromptTokensDetails{CachedTokens: tt.cached},
+				},
+				Source: usagelog.SourceAPI,
+				Format: "openai/chat_completions",
+			})
+			require.NoError(t, err)
+			persisted, err := client.UsageLog.Get(ctx, created.ID)
+			require.NoError(t, err)
+			require.Equal(t, string(tt.want), persisted.CacheReadStatus)
+			require.Equal(t, tt.cached, persisted.PromptCachedTokens)
+		})
+	}
+
+	defaulted, err := client.UsageLog.Create().SetProjectID(p.ID).SetRequestID(req.ID).
+		SetModelID("test-model").SetPromptCachedTokens(2).Save(ctx)
+	require.NoError(t, err)
+	require.Equal(t, string(llm.CacheReadUnknown), defaulted.CacheReadStatus)
+}
+
+func TestUsageLogCacheReadReportingMigration(t *testing.T) {
+	db, err := sql.Open("sqlite3", "file:"+t.Name()+"?mode=memory&cache=shared&_fk=1")
+	require.NoError(t, err)
+	db.SetMaxOpenConns(1)
+	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.SQLite, db)))
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+
+	legacy, err := schema.CopyTables(migrate.Tables)
+	require.NoError(t, err)
+	for _, table := range legacy {
+		if table.Name == usagelog.Table {
+			table.Columns = slices.DeleteFunc(table.Columns, func(column *schema.Column) bool {
+				return column.Name == usagelog.FieldCacheReadStatus
+			})
+		}
+	}
+	require.NoError(t, migrate.Create(ctx, client.Schema, legacy))
+	p, err := client.Project.Create().SetName("legacy-cache-read-project").SetStatus(project.StatusActive).Save(ctx)
+	require.NoError(t, err)
+	req, err := client.Request.Create().SetProjectID(p.ID).SetModelID("test-model").
+		SetStatus(request.StatusCompleted).SetRequestBody(objects.JSONRawMessage(`{}`)).Save(ctx)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `INSERT INTO usage_logs
+		(created_at, updated_at, project_id, request_id, model_id, prompt_cached_tokens)
+		VALUES (CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?, 'test-model', 0),
+		       (CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?, 'test-model', 5)`, p.ID, req.ID, p.ID, req.ID)
+	require.NoError(t, err)
+
+	for range 2 {
+		require.NoError(t, client.Schema.Create(ctx))
+		rows, err := client.UsageLog.Query().Order(ent.Asc(usagelog.FieldID)).All(ctx)
+		require.NoError(t, err)
+		require.Len(t, rows, 2)
+		require.Equal(t, int64(0), rows[0].PromptCachedTokens)
+		require.Equal(t, int64(5), rows[1].PromptCachedTokens)
+		for _, row := range rows {
+			require.Equal(t, string(llm.CacheReadUnknown), row.CacheReadStatus)
+		}
+	}
 }
 
 func TestUsageLogService_CreateUsageLog_WithPriceReferenceID(t *testing.T) {

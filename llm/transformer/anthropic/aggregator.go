@@ -151,6 +151,12 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 					// Merge usage information from message_delta with message_start
 					// Keep input tokens from message_start, update output tokens from message_delta
 					usage.OutputTokens = event.Usage.OutputTokens
+					// A later output-only delta must not erase cache reporting from message_start.
+					if event.Usage.CacheReadStatus == llm.CacheReadReported {
+						usage.CacheReadStatus = llm.CacheReadReported
+						usage.CacheReadInputTokens = event.Usage.CacheReadInputTokens
+						usage.CachedTokens = event.Usage.CachedTokens
+					}
 					if event.Usage.InputTokens > 0 {
 						usage.InputTokens = event.Usage.InputTokens
 					}

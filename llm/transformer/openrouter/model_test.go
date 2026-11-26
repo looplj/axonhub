@@ -1,6 +1,7 @@
 package openrouter_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/samber/lo"
@@ -10,6 +11,28 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/transformer/openrouter"
 )
+
+func TestImageGenerationUsage_CacheReadReporting(t *testing.T) {
+	for _, tt := range []struct {
+		details string
+		want    llm.CacheReadStatus
+	}{
+		{`{"cached_tokens":0}`, llm.CacheReadReported},
+		{`{"cached_tokens":null}`, llm.CacheReadUnknown},
+		{`{"image_tokens":3}`, llm.CacheReadUnknown},
+	} {
+		t.Run(tt.details, func(t *testing.T) {
+			var usage openrouter.ImageGenerationUsage
+			require.NoError(t, json.Unmarshal([]byte(`{"prompt_tokens":10,"prompt_tokens_details":`+tt.details+`}`), &usage))
+			require.Equal(t, tt.want, usage.ToLLMUsage().CacheReadReporting())
+			wire, err := json.Marshal(usage)
+			require.NoError(t, err)
+			var decoded openrouter.ImageGenerationUsage
+			require.NoError(t, json.Unmarshal(wire, &decoded))
+			require.Equal(t, tt.want, decoded.ToLLMUsage().CacheReadReporting())
+		})
+	}
+}
 
 func TestResponse_ToOpenAIResponse(t *testing.T) {
 	tests := []struct {
@@ -68,6 +91,7 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 					},
 				},
 				Usage: &llm.Usage{
+					CacheReadStatus:  llm.CacheReadReported,
 					PromptTokens:     7,
 					CompletionTokens: 1290,
 					TotalTokens:      1297,
@@ -105,6 +129,7 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 					},
 				},
 				Usage: &llm.Usage{
+					CacheReadStatus:  llm.CacheReadReported,
 					PromptTokens:     15604,
 					CompletionTokens: 71,
 					TotalTokens:      15675,
@@ -143,6 +168,7 @@ func TestResponse_ToOpenAIResponse(t *testing.T) {
 					},
 				},
 				Usage: &llm.Usage{
+					CacheReadStatus:  llm.CacheReadReported,
 					PromptTokens:     18810,
 					CompletionTokens: 68,
 					TotalTokens:      18878,

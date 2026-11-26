@@ -1,8 +1,10 @@
 package openrouter
 
 import (
+	"encoding/json"
 	"strings"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
@@ -39,6 +41,7 @@ type ImageGenerationData struct {
 }
 
 type ImageGenerationUsage struct {
+	CacheReadStatus         llm.CacheReadStatus           `json:"cache_read_status"`
 	PromptTokens            int64                         `json:"prompt_tokens"`
 	CompletionTokens        int64                         `json:"completion_tokens"`
 	TotalTokens             int64                         `json:"total_tokens"`
@@ -46,9 +49,20 @@ type ImageGenerationUsage struct {
 	CompletionTokensDetails *ImageCompletionTokensDetails `json:"completion_tokens_details,omitempty"`
 }
 
+func (u *ImageGenerationUsage) UnmarshalJSON(data []byte) error {
+	type alias ImageGenerationUsage
+	var decoded alias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*u = ImageGenerationUsage(decoded)
+	u.CacheReadStatus = llm.ParseCacheReadStatus(data, []string{"prompt_tokens_details", "cached_tokens"})
+	return nil
+}
+
 type ImagePromptTokensDetails struct {
 	ImageTokens  int64 `json:"image_tokens,omitempty"`
-	CachedTokens int64 `json:"cached_tokens,omitempty"`
+	CachedTokens int64 `json:"cached_tokens"`
 }
 
 type ImageCompletionTokensDetails struct {

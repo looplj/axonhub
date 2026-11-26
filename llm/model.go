@@ -868,6 +868,10 @@ type ResponseMeta struct {
 
 // Usage Represents the total token usage per request to OpenAI.
 type Usage struct {
+	// CacheReadStatus records whether upstream explicitly reported cache-read tokens.
+	// Empty values from older serialized usages are unknown, never reported zero.
+	CacheReadStatus CacheReadStatus `json:"cache_read_status,omitempty"`
+
 	// Number of tokens in the prompt, including cached tokens.
 	PromptTokens int64 `json:"prompt_tokens"`
 

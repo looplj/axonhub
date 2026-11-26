@@ -5,6 +5,7 @@ import "github.com/looplj/axonhub/llm"
 // Usage represents usage information in Anthropic format.
 // Total input tokens in a request is the summation of input_tokens, cache_creation_input_tokens, and cache_read_input_tokens.
 type Usage struct {
+	CacheReadStatus llm.CacheReadStatus `json:"cache_read_status"`
 	// The number of input tokens which were used to bill.
 	InputTokens int64 `json:"input_tokens"`
 
@@ -46,7 +47,7 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 	}
 
 	// Handle moonshot's cached_tokens field
-	if usage.CachedTokens > 0 && usage.CacheCreationInputTokens == 0 {
+	if usage.CachedTokens != 0 && (usage.CacheCreationInputTokens == 0 || usage.CachedTokens < 0) {
 		usage.CacheReadInputTokens = usage.CachedTokens
 	}
 
@@ -72,13 +73,15 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 	}
 
 	u := llm.Usage{
+		CacheReadStatus:         usage.CacheReadStatus,
 		PromptTokens:            promptTokens,
 		CompletionTokens:        usage.OutputTokens,
 		CompletionTokensDetails: &llm.CompletionTokensDetails{},
 		TotalTokens:             promptTokens + usage.OutputTokens,
 	}
 
-	if usage.CacheReadInputTokens > 0 || usage.CacheCreationInputTokens > 0 ||
+	// 保留负缓存读数，让统一验证层识别异常，而不是将其折叠成可信零值。
+	if usage.CacheReadInputTokens != 0 || usage.CacheCreationInputTokens > 0 ||
 		usage.CacheCreation.Ephemeral5mInputTokens > 0 || usage.CacheCreation.Ephemeral1hInputTokens > 0 {
 		u.PromptTokensDetails = &llm.PromptTokensDetails{
 			CachedTokens:           usage.CacheReadInputTokens,
@@ -93,9 +96,10 @@ func convertToLlmUsage(usage *Usage, platformType PlatformType) *llm.Usage {
 
 func convertToAnthropicUsage(llmUsage *llm.Usage) *Usage {
 	usage := &Usage{
-		InputTokens:  llmUsage.PromptTokens,
-		OutputTokens: llmUsage.CompletionTokens,
-		Cost:         llmUsage.Cost,
+		CacheReadStatus: llmUsage.CacheReadStatus,
+		InputTokens:     llmUsage.PromptTokens,
+		OutputTokens:    llmUsage.CompletionTokens,
+		Cost:            llmUsage.Cost,
 	}
 
 	// Map detailed token information from unified model to Anthropic format

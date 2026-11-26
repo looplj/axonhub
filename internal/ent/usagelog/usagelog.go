@@ -43,6 +43,8 @@ const (
 	FieldPromptAudioTokens = "prompt_audio_tokens"
 	// FieldPromptCachedTokens holds the string denoting the prompt_cached_tokens field in the database.
 	FieldPromptCachedTokens = "prompt_cached_tokens"
+	// FieldCacheReadStatus holds the string denoting the cache_read_status field in the database.
+	FieldCacheReadStatus = "cache_read_status"
 	// FieldPromptWriteCachedTokens holds the string denoting the prompt_write_cached_tokens field in the database.
 	FieldPromptWriteCachedTokens = "prompt_write_cached_tokens"
 	// FieldPromptWriteCachedTokens5m holds the string denoting the prompt_write_cached_tokens_5m field in the database.
@@ -113,6 +115,7 @@ var Columns = []string{
 	FieldTotalTokens,
 	FieldPromptAudioTokens,
 	FieldPromptCachedTokens,
+	FieldCacheReadStatus,
 	FieldPromptWriteCachedTokens,
 	FieldPromptWriteCachedTokens5m,
 	FieldPromptWriteCachedTokens1h,
@@ -163,6 +166,10 @@ var (
 	DefaultPromptAudioTokens int64
 	// DefaultPromptCachedTokens holds the default value on creation for the "prompt_cached_tokens" field.
 	DefaultPromptCachedTokens int64
+	// DefaultCacheReadStatus holds the default value on creation for the "cache_read_status" field.
+	DefaultCacheReadStatus string
+	// CacheReadStatusValidator is a validator for the "cache_read_status" field. It is called by the builders before save.
+	CacheReadStatusValidator func(string) error
 	// DefaultPromptWriteCachedTokens holds the default value on creation for the "prompt_write_cached_tokens" field.
 	DefaultPromptWriteCachedTokens int64
 	// DefaultPromptWriteCachedTokens5m holds the default value on creation for the "prompt_write_cached_tokens_5m" field.
@@ -276,6 +283,11 @@ func ByPromptAudioTokens(opts ...sql.OrderTermOption) OrderOption {
 // ByPromptCachedTokens orders the results by the prompt_cached_tokens field.
 func ByPromptCachedTokens(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPromptCachedTokens, opts...).ToFunc()
+}
+
+// ByCacheReadStatus orders the results by the cache_read_status field.
+func ByCacheReadStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCacheReadStatus, opts...).ToFunc()
 }
 
 // ByPromptWriteCachedTokens orders the results by the prompt_write_cached_tokens field.

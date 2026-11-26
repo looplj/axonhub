@@ -16,6 +16,7 @@
     }
   ],
   "usage": {
+    "cache_read_status": "reported",
     "prompt_tokens": 21,
     "completion_tokens": 43,
     "total_tokens": 64,

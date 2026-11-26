@@ -100,6 +100,9 @@ type ImageData struct {
 }
 
 type ImageUsage struct {
+	// Native image JSON may omit metadata; unified fallback responses set it to
+	// preserve unknown even when cached_tokens contains a synthetic value.
+	CacheReadStatus     CacheReadStatus           `json:"cache_read_status,omitempty"`
 	InputTokens         int64                     `json:"input_tokens"`
 	OutputTokens        int64                     `json:"output_tokens"`
 	TotalTokens         int64                     `json:"total_tokens"`

@@ -26,6 +26,7 @@ type CompletionTokensDetails struct {
 // Usage represents the usage response from OpenAI compatible format.
 // Difference provider may have different format, so we use this to convert to unified format.
 type Usage struct {
+	CacheReadStatus         llm.CacheReadStatus     `json:"cache_read_status"`
 	PromptTokens            int64                   `json:"prompt_tokens"`
 	CompletionTokens        int64                   `json:"completion_tokens"`
 	TotalTokens             int64                   `json:"total_tokens"`
@@ -41,6 +42,9 @@ type Usage struct {
 
 	// CachedTokens is the number of tokens that were cached for Moonshot.
 	CachedTokens int64 `json:"cached_tokens,omitempty"`
+
+	// DeepSeek-compatible endpoints report explicit cache hits at the top level.
+	PromptCacheHitTokens *int64 `json:"prompt_cache_hit_tokens,omitempty"`
 
 	// Cost is the request cost calculated by AxonHub from channel model prices.
 	// Omitted when no matching price is configured.
@@ -63,6 +67,7 @@ func (u *Usage) UnmarshalJSON(data []byte) error {
 	}
 
 	u.Cost = xjson.ParseOptionalFloat64(decoded.Cost)
+	u.CacheReadStatus = llm.ParseCacheReadStatus(data, []string{"prompt_tokens_details", "cached_tokens"}, []string{"cached_tokens"}, []string{"prompt_cache_hit_tokens"})
 
 	return nil
 }
@@ -73,6 +78,7 @@ func (u *Usage) ToLLMUsage() *llm.Usage {
 	}
 
 	usage := &llm.Usage{
+		CacheReadStatus:  u.CacheReadStatus,
 		PromptTokens:     u.PromptTokens,
 		CompletionTokens: u.CompletionTokens,
 		TotalTokens:      u.TotalTokens,
@@ -105,12 +111,19 @@ func (u *Usage) ToLLMUsage() *llm.Usage {
 		}
 	}
 
-	if (usage.PromptTokensDetails == nil || usage.PromptTokensDetails.CachedTokens == 0) && u.CachedTokens > 0 {
+	// 顶层兼容字段的负值也必须交给统一验证层，不能被归零。
+	if (usage.PromptTokensDetails == nil || usage.PromptTokensDetails.CachedTokens == 0) && u.CachedTokens != 0 {
 		if usage.PromptTokensDetails == nil {
 			usage.PromptTokensDetails = &llm.PromptTokensDetails{}
 		}
 
 		usage.PromptTokensDetails.CachedTokens = u.CachedTokens
+	}
+	if u.PromptCacheHitTokens != nil && (usage.PromptTokensDetails == nil || usage.PromptTokensDetails.CachedTokens == 0) {
+		if usage.PromptTokensDetails == nil {
+			usage.PromptTokensDetails = &llm.PromptTokensDetails{}
+		}
+		usage.PromptTokensDetails.CachedTokens = *u.PromptCacheHitTokens
 	}
 
 	return usage
@@ -123,6 +136,7 @@ func UsageFromLLM(u *llm.Usage) *Usage {
 	}
 
 	usage := &Usage{
+		CacheReadStatus:  u.CacheReadStatus,
 		PromptTokens:     u.PromptTokens,
 		CompletionTokens: u.CompletionTokens,
 		TotalTokens:      u.TotalTokens,

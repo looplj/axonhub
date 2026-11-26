@@ -312,7 +312,19 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 				}
 
 				if usage.PromptTokensDetails == nil && state.streamUsage.PromptTokensDetails != nil {
-					usage.PromptTokensDetails = state.streamUsage.PromptTokensDetails
+					details := *state.streamUsage.PromptTokensDetails
+					// 显式新零值覆盖旧读缓存数，同时保留已有的写缓存等详情。
+					if usage.CacheReadStatus == llm.CacheReadReported {
+						details.CachedTokens = streamEvent.Usage.CacheReadInputTokens
+					}
+					usage.PromptTokensDetails = &details
+				}
+				// output-only delta 不代表上游撤销了 message_start 的缓存读数。
+				if usage.CacheReadStatus != llm.CacheReadReported {
+					usage.CacheReadStatus = state.streamUsage.CacheReadStatus
+					if usage.PromptTokensDetails != nil && state.streamUsage.PromptTokensDetails != nil {
+						usage.PromptTokensDetails.CachedTokens = state.streamUsage.PromptTokensDetails.CachedTokens
+					}
 				}
 			}
 			// Recalculate total tokens after merging prompt/completion usage.

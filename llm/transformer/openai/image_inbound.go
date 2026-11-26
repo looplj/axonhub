@@ -161,16 +161,26 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 		oaiResp.Usage = &usage
 	} else if llmResp.Usage != nil {
 		oaiResp.Usage = &ImagesResponseUsage{
-			InputTokens:  llmResp.Usage.PromptTokens,
-			OutputTokens: llmResp.Usage.CompletionTokens,
-			TotalTokens:  llmResp.Usage.TotalTokens,
-			Cost:         llmResp.Usage.Cost,
+			CacheReadStatus: llmResp.Usage.CacheReadReporting(),
+			InputTokens:     llmResp.Usage.PromptTokens,
+			OutputTokens:    llmResp.Usage.CompletionTokens,
+			TotalTokens:     llmResp.Usage.TotalTokens,
+			Cost:            llmResp.Usage.Cost,
 		}
 		if llmResp.Usage.PromptTokensDetails != nil {
 			oaiResp.Usage.InputTokensDetails = &ImagesResponseUsageInputTokensDetails{
 				ImageTokens:  llmResp.Usage.PromptTokensDetails.ImageTokens,
 				TextTokens:   llmResp.Usage.PromptTokensDetails.TextTokens,
 				CachedTokens: lo.EmptyableToPtr(llmResp.Usage.PromptTokensDetails.CachedTokens),
+			}
+		}
+		// reported zero 可能没有统一 details 对象，但仍需保留显式零指针。
+		if llmResp.Usage.CacheReadReporting() == llm.CacheReadReported {
+			if oaiResp.Usage.InputTokensDetails == nil {
+				oaiResp.Usage.InputTokensDetails = &ImagesResponseUsageInputTokensDetails{}
+			}
+			if oaiResp.Usage.InputTokensDetails.CachedTokens == nil {
+				oaiResp.Usage.InputTokensDetails.CachedTokens = lo.ToPtr(int64(0))
 			}
 		}
 

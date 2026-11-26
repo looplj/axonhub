@@ -50,6 +50,7 @@ func TestUsageCacheWriteTokensRoundTrip(t *testing.T) {
 		body, err := json.Marshal(responsesUsage)
 		require.NoError(t, err)
 		require.JSONEq(t, `{
+			"cache_read_status": "unknown",
 			"input_tokens": 100,
 			"input_tokens_details": {
 				"cache_write_tokens": 80,
