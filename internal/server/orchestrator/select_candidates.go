@@ -74,9 +74,23 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 				inbound.state.APIKey,
 				&inbound.state.RoutingPolicy,
 				gate,
+				inbound.state.PromptAffinityCache,
+				inbound.state.RateLimitStrategy,
 			)
 		} else {
 			selector = WithQuotaRoutingSelector(selector, gate)
+		}
+
+		// Snapshot the prompt affinity identity before selection so the
+		// successful terminal state learns the final channel against the same
+		// identity even when later middlewares rewrite the outbound messages.
+		affinityAPIKeyID := 0
+		if inbound.state.APIKey != nil {
+			affinityAPIKeyID = inbound.state.APIKey.ID
+		}
+		if key, source, ok := computePromptAffinityKey(affinityAPIKeyID, llmRequest); ok {
+			inbound.state.promptAffinityKey = key
+			inbound.state.promptAffinitySource = source
 		}
 
 		candidates, err := selector.Select(ctx, llmRequest)

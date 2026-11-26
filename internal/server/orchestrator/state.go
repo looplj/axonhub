@@ -15,14 +15,20 @@ import (
 type PersistenceState struct {
 	APIKey *ent.APIKey
 
-	RequestService      *biz.RequestService
-	UsageLogService     *biz.UsageLogService
-	ChannelService      *biz.ChannelService
-	PromptProvider      PromptProvider
-	PromptProtecter     PromptProtecter
-	CandidateSelector   CandidateSelector
-	LoadBalancers       map[string]*LoadBalancer
-	RoutingPolicy       EffectiveRoutingPolicy
+	RequestService    *biz.RequestService
+	UsageLogService   *biz.UsageLogService
+	ChannelService    *biz.ChannelService
+	PromptProvider    PromptProvider
+	PromptProtecter   PromptProtecter
+	CandidateSelector CandidateSelector
+	LoadBalancers     map[string]*LoadBalancer
+	RoutingPolicy     EffectiveRoutingPolicy
+	// PromptAffinityCache is the process-wide prompt-prefix affinity cache
+	// shared by every request; nil disables prompt affinity routing.
+	PromptAffinityCache *promptAffinityCache
+	// RateLimitStrategy tells prompt affinity whether the learned channel can
+	// currently serve traffic; nil skips the check.
+	RateLimitStrategy *RateLimitAwareStrategy
 	// Settings is the system settings snapshot taken when the request started.
 	Settings *RequestSettings
 
@@ -36,6 +42,13 @@ type PersistenceState struct {
 	RawRequest            *httpclient.Request
 	LlmRequest            *llm.Request
 	ResponsesContinuation *responsesContinuation
+
+	// promptAffinityKey and promptAffinitySource snapshot the affinity identity
+	// computed when candidates were selected, so the successful terminal state
+	// learns the final channel against the same identity even when later
+	// middlewares rewrite the outbound messages.
+	promptAffinityKey    string
+	promptAffinitySource string
 
 	// OriginalRequestStream stores the client's original stream intent before any
 	// candidate-specific forcing to provider-side streaming happens.

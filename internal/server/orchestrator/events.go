@@ -106,6 +106,7 @@ func publishRequestFailed(ctx context.Context, state *PersistenceState, err erro
 }
 
 func publishRequestCompleted(ctx context.Context, state *PersistenceState, usage *llm.Usage, stream bool, metrics *biz.LatencyMetrics) {
+	learnPromptAffinity(ctx, state)
 	publishEvent(ctx, eventBus(state), events.TypeRequestCompleted, events.SeverityInfo, func() (events.Subject, map[string]any) {
 		promptTokens := int64(0)
 		completionTokens := int64(0)

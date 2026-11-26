@@ -97,11 +97,13 @@ func NewChatCompletionOrchestrator(
 		channelLimiterManager:      channelLimiterManager,
 		channelLimiterMetrics:      channelLimiterMetrics,
 		rateLimitTracker:           rateLimitTracker,
+		rateLimitStrategy:          rateLimitStrategy,
 		adaptiveLoadBalancer:       adaptiveLoadBalancer,
 		failoverLoadBalancer:       failoverLoadBalancer,
 		circuitBreakerLoadBalancer: circuitBreakerLoadBalancer,
 		roundRobinLoadBalancer:     roundRobinLoadBalancer,
 		modelCircuitBreaker:        modelCircuitBreaker,
+		promptAffinityCache:        newPromptAffinityCache(promptAffinityCacheCapacity, promptAffinityCacheTTL),
 		quotaProvider:              quotaProvider,
 		Plugins:                    plugins,
 		proxy:                      nil,
@@ -133,6 +135,9 @@ type ChatCompletionOrchestrator struct {
 	failoverLoadBalancer       *LoadBalancer
 	circuitBreakerLoadBalancer *LoadBalancer
 	roundRobinLoadBalancer     *LoadBalancer
+	// promptAffinityCache is the process-wide prompt-prefix affinity cache
+	// shared by every request this orchestrator serves.
+	promptAffinityCache *promptAffinityCache
 	// channelLimiterManager owns per-channel concurrency admission control and
 	// supplies in-flight / queue stats to the rate-limit-aware load-balancer strategy.
 	channelLimiterManager *ChannelLimiterManager
@@ -141,6 +146,9 @@ type ChatCompletionOrchestrator struct {
 	channelLimiterMetrics *ChannelLimiterMetrics
 	// The rate limit tracker for rate limit aware load balancing.
 	rateLimitTracker *ChannelRequestTracker
+	// rateLimitStrategy is shared by every load balancer and by prompt affinity
+	// routing, which must not pin a channel that is currently rate limited.
+	rateLimitStrategy *RateLimitAwareStrategy
 	// The model circuit breaker for circuit-breaker load balancing.
 	modelCircuitBreaker *biz.ModelCircuitBreaker
 	// The provider quota status provider for quota-aware load balancing and selection.
@@ -267,6 +275,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			biz.LoadBalancerStrategyRoundRobin:     processor.roundRobinLoadBalancer,
 		},
 		RoutingPolicy:         deriveRoutingPolicy(retryPolicy, apiKey, nil),
+		PromptAffinityCache:   processor.promptAffinityCache,
+		RateLimitStrategy:     processor.rateLimitStrategy,
 		Settings:              settings,
 		ModelMapper:           processor.ModelMapper,
 		Proxy:                 processor.proxy,

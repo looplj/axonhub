@@ -86,6 +86,22 @@ func (s *RateLimitAwareStrategy) ScoreWithDebug(ctx context.Context, channel *bi
 	}
 }
 
+// IsExhausted reports whether channel currently cannot serve traffic: it is in
+// cooldown, has reached its RPM/TPM limit, or its concurrency capacity and queue
+// are both full. Prompt affinity uses it so a learned channel is never pinned
+// ahead of the limits the load balancer would otherwise enforce. The second
+// return value names the limit that tripped ("cooldown", "rpm_or_tpm" or
+// "concurrency"); an empty value means the channel is available.
+func (s *RateLimitAwareStrategy) IsExhausted(channel *biz.Channel) (bool, string) {
+	if s == nil || channel == nil {
+		return false, ""
+	}
+
+	_, exhaustedBy := s.score(channel, nil)
+
+	return exhaustedBy != "", exhaustedBy
+}
+
 // score is the unified scorer. When details is nil, no diagnostic info is recorded.
 // Returns the final score and, if exhausted, the dimension that exhausted ("cooldown",
 // "rpm_or_tpm", or "concurrency"); empty string means not exhausted.
