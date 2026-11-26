@@ -18,11 +18,25 @@ function storage() {
 
 test('stores only the selection for its project', () => {
   const values = storage();
-  const selected = { modelSource: 'channel', selectedChannel: 'second', model: 'model-b' };
+  const selected = { modelSource: 'channel', selectedChannel: 'second', model: 'model-b', imageModel: 'image-b' };
   writeSelection('project-a', selected);
   assert.deepEqual(readSelection('project-a'), selected);
   assert.deepEqual(readSelection('project-b'), defaultSelection);
   assert.deepEqual(JSON.parse(values.get('axonhub_playground_selection_project-a')), selected);
+});
+
+test('selections persisted before image mode keep their model choice', () => {
+  const values = storage();
+  values.set(
+    'axonhub_playground_selection_project-a',
+    JSON.stringify({ modelSource: 'channel', selectedChannel: 'second', model: 'model-b' })
+  );
+  assert.deepEqual(readSelection('project-a'), {
+    modelSource: 'channel',
+    selectedChannel: 'second',
+    model: 'model-b',
+    imageModel: '',
+  });
 });
 
 test('corrupt and unavailable storage fall back without throwing', () => {
@@ -49,24 +63,34 @@ const channels = [
 ];
 
 test('restores a valid channel and model and falls back when either disappears', () => {
-  const selected = { modelSource: 'channel', selectedChannel: 'second', model: 'second-b' };
-  assert.deepEqual(resolveSelection(selected, channels, [], false), selected);
-  assert.deepEqual(resolveSelection({ ...selected, model: 'deleted' }, channels, [], false), { ...selected, model: 'second-a' });
-  assert.deepEqual(resolveSelection(selected, channels.slice(0, 1), [], false), {
+  const selected = { modelSource: 'channel', selectedChannel: 'second', model: 'second-b', imageModel: 'second-b' };
+  assert.deepEqual(resolveSelection(selected, channels, [], [], false), selected);
+  assert.deepEqual(resolveSelection({ ...selected, model: 'deleted', imageModel: 'deleted' }, channels, [], [], false), {
+    ...selected,
+    model: 'second-a',
+    imageModel: 'second-a',
+  });
+  assert.deepEqual(resolveSelection(selected, channels.slice(0, 1), [], [], false), {
     modelSource: 'channel',
     selectedChannel: 'first',
     model: 'first-a',
+    imageModel: 'first-a',
   });
-  assert.deepEqual(resolveSelection(selected, [], [], false), defaultSelection);
+  assert.deepEqual(resolveSelection(selected, [], [], [], false), defaultSelection);
 });
 
 test('gateway model survives with access and falls back without access', () => {
-  const selected = { modelSource: 'model_gateway', selectedChannel: 'second', model: 'gateway-b' };
-  assert.deepEqual(resolveSelection(selected, channels, ['gateway-a', 'gateway-b'], true), selected);
-  assert.deepEqual(resolveSelection(selected, channels, ['gateway-a'], true), { ...selected, model: 'gateway-a' });
-  assert.deepEqual(resolveSelection(selected, channels, ['gateway-a'], false), {
+  const selected = { modelSource: 'model_gateway', selectedChannel: 'second', model: 'gateway-b', imageModel: 'image-b' };
+  assert.deepEqual(resolveSelection(selected, channels, ['gateway-a', 'gateway-b'], ['image-a', 'image-b'], true), selected);
+  assert.deepEqual(resolveSelection(selected, channels, ['gateway-a'], ['image-a'], true), {
+    ...selected,
+    model: 'gateway-a',
+    imageModel: 'image-a',
+  });
+  assert.deepEqual(resolveSelection(selected, channels, ['gateway-a'], ['image-a'], false), {
     modelSource: 'channel',
     selectedChannel: 'second',
     model: 'second-a',
+    imageModel: 'second-a',
   });
 });

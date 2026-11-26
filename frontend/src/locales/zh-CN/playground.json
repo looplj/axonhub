@@ -1,6 +1,9 @@
 {
   "playground.title": "测试场",
   "playground.description": "用于测试 AI 模型的交互式环境。",
+  "playground.settings.mode": "模式",
+  "playground.mode.chat": "对话",
+  "playground.mode.image": "生图",
   "playground.settings.modelSource": "测试模式",
   "playground.settings.channel": "渠道",
   "playground.settings.selectChannel": "选择渠道",
@@ -23,6 +26,14 @@
   "playground.chat.noMessages": "没有消息可重试",
   "playground.errors.noChannelsAvailable": "没有可用渠道",
   "playground.errors.noModelsAvailable": "没有可用模型",
+  "playground.image.size": "尺寸",
+  "playground.image.sizePlaceholder": "留空使用模型默认值",
+  "playground.image.count": "生成数量",
+  "playground.image.clear": "清除结果",
+  "playground.image.promptPlaceholder": "描述要生成的图片...",
+  "playground.image.startGenerating": "开始生成图片",
+  "playground.image.typePromptBelow": "在下方输入提示词开始",
+  "playground.image.emptyResponse": "模型没有返回图片。",
   "playground.modelsAvailable": "{{count}} 个模型可用，跨 {{channels}} 个渠道",
   "playground.modelPageModelsAvailable": "{{count}} 个模型网关模型可用"
 }
