@@ -56,6 +56,10 @@ func (UsageLog) Fields() []ent.Field {
 		// Prompt tokens details from llm.PromptTokensDetails
 		field.Int64("prompt_audio_tokens").Default(0).Optional().Comment("Number of audio tokens in the prompt"),
 		field.Int64("prompt_cached_tokens").Default(0).Optional().Comment("Number of cached tokens in the prompt"),
+		// Existing rows cannot establish whether the provider reported cache reads.
+		field.String("cache_read_status").MaxLen(16).Default("unknown").
+			Annotations(entgql.Skip()).
+			Comment("Explicit upstream cache-read reporting status: reported or unknown"),
 		field.Int64("prompt_write_cached_tokens").Default(0).Optional().Comment("Number of total write cache tokens, if 5m or 1h ttl variant is present, the field is the sum of 5m and 1h"),
 		field.Int64("prompt_write_cached_tokens_5m").Default(0).Optional().Comment("Number of token write cache with 5m ttl"),
 		field.Int64("prompt_write_cached_tokens_1h").Default(0).Optional().Comment("Number of token write cache with 1h ttl"),

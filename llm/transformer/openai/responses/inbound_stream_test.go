@@ -631,6 +631,7 @@ func TestInboundTransformer_TransformStream_UsesUsageFromFinalUsageOnlyChunk(t *
 			Created: 1700000000,
 			Model:   "deepseek-v4.1-flash",
 			Usage: &llm.Usage{
+				CacheReadStatus:  llm.CacheReadReported,
 				PromptTokens:     338678,
 				CompletionTokens: 5795,
 				TotalTokens:      344473,

@@ -35,6 +35,7 @@ func TestUsageCacheWriteTokensRoundTrip(t *testing.T) {
 		t.Parallel()
 
 		responsesUsage := ConvertLLMUsageToResponsesUsage(&llm.Usage{
+			CacheReadStatus:  llm.CacheReadReported,
 			PromptTokens:     100,
 			CompletionTokens: 20,
 			TotalTokens:      120,

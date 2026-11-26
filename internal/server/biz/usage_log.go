@@ -144,6 +144,7 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 		SetPromptTokens(params.Usage.PromptTokens).
 		SetCompletionTokens(params.Usage.CompletionTokens).
 		SetTotalTokens(params.Usage.TotalTokens).
+		SetCacheReadStatus(string(params.Usage.CacheReadReporting())).
 		SetSource(params.Source).
 		SetFormat(params.Format)
 

@@ -52,7 +52,7 @@ func filterStreamEvent(event *httpclient.StreamEvent) bool {
 type streamState struct {
 	streamID     string
 	streamModel  string
-	streamUsage  *llm.Usage
+	streamUsage  *Usage
 	platformType PlatformType
 	// Tool call tracking
 	toolIndex int
@@ -147,9 +147,9 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 			resp.Model = state.streamModel
 
 			if streamEvent.Message.Usage != nil {
-				state.streamUsage = convertToLlmUsage(streamEvent.Message.Usage, state.platformType)
+				state.streamUsage = streamEvent.Message.Usage
 				resp.ServiceTier = streamEvent.Message.Usage.ServiceTier
-				resp.Usage = state.streamUsage
+				resp.Usage = convertToLlmUsage(state.streamUsage, state.platformType)
 			}
 		}
 
@@ -305,20 +305,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 	case "message_delta":
 		// Update stored usage if available (final usage information)
 		if streamEvent.Usage != nil {
-			usage := convertToLlmUsage(streamEvent.Usage, state.platformType)
-			if state.streamUsage != nil {
-				if usage.PromptTokens == 0 && state.streamUsage.PromptTokens > 0 {
-					usage.PromptTokens = state.streamUsage.PromptTokens
-				}
-
-				if usage.PromptTokensDetails == nil && state.streamUsage.PromptTokensDetails != nil {
-					usage.PromptTokensDetails = state.streamUsage.PromptTokensDetails
-				}
-			}
-			// Recalculate total tokens after merging prompt/completion usage.
-			usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
-
-			state.streamUsage = usage
+			state.streamUsage = mergeStreamUsage(state.streamUsage, streamEvent.Usage, event.Data)
 		}
 
 		if streamEvent.Delta != nil && streamEvent.Delta.StopReason != nil {
@@ -355,7 +342,7 @@ func (s *outboundStream) transformStreamChunk(event *httpclient.StreamEvent) (*l
 		resp.Choices = []llm.Choice{}
 		// Include final merged usage information (OpenAI include_usage style).
 		if state.streamUsage != nil {
-			resp.Usage = state.streamUsage
+			resp.Usage = convertToLlmUsage(state.streamUsage, state.platformType)
 		}
 
 	default:

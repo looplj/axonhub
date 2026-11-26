@@ -336,6 +336,13 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				usageEvidence = llm.AccountingEvidenceUnavailable
 			}
 		case chunk.Usage != nil:
+			if usage != nil && usage.CacheReadStatus == llm.CacheReadReported &&
+				chunk.Usage.CacheReadStatus != llm.CacheReadReported && usage.PromptTokens == chunk.Usage.PromptTokens {
+				chunk.Usage.CacheReadStatus = llm.CacheReadReported
+				chunk.Usage.PromptTokensDetails.CachedTokens = usage.PromptTokensDetails.CachedTokens
+				chunk.Usage.CachedTokens = usage.CachedTokens
+				chunk.Usage.PromptCacheHitTokens = usage.PromptCacheHitTokens
+			}
 			usage = chunk.Usage
 			if !isZeroUsage(chunk.Usage) {
 				sawNonZeroUsage = true
@@ -554,7 +561,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		sort.Strings(citations)
 	}
 
-	data, err := json.Marshal(aggregatedChatResponse{Response: response, Citations: citations})
+	data, err := json.Marshal(aggregatedChatResponse{
+		Response:  response,
+		Usage:     publicAggregatedChatUsage(responseUsage),
+		Citations: citations,
+	})
 	if err != nil {
 		return nil, llm.ResponseMeta{}, err
 	}
@@ -616,5 +627,36 @@ func isZeroUsage(usage *Usage) bool {
 // internal metadata envelope is never serialized to clients.
 type aggregatedChatResponse struct {
 	*llm.Response
-	Citations []string `json:"citations,omitempty"`
+	Usage     *aggregatedChatUsage `json:"usage,omitempty"`
+	Citations []string             `json:"citations,omitempty"`
+}
+
+type aggregatedChatUsage struct {
+	*llm.Usage
+	PromptTokensDetails *aggregatedChatPromptDetails `json:"prompt_tokens_details"`
+}
+
+type aggregatedChatPromptDetails struct {
+	*llm.PromptTokensDetails
+	CachedTokens *int64 `json:"cached_tokens,omitempty"`
+}
+
+func publicAggregatedChatUsage(usage *llm.Usage) *aggregatedChatUsage {
+	if usage == nil {
+		return nil
+	}
+	wireUsage := *usage
+	wireUsage.CacheReadStatus = ""
+	result := &aggregatedChatUsage{Usage: &wireUsage}
+	if usage.PromptTokensDetails != nil || usage.CacheReadReporting() == llm.CacheReadReported {
+		details := usage.PromptTokensDetails
+		if details == nil {
+			details = &llm.PromptTokensDetails{}
+		}
+		result.PromptTokensDetails = &aggregatedChatPromptDetails{
+			PromptTokensDetails: details,
+			CachedTokens:        usage.CacheReadReporting().ReportedCount(details.CachedTokens),
+		}
+	}
+	return result
 }

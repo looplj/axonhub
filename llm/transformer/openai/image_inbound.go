@@ -170,7 +170,16 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 			oaiResp.Usage.InputTokensDetails = &ImagesResponseUsageInputTokensDetails{
 				ImageTokens:  llmResp.Usage.PromptTokensDetails.ImageTokens,
 				TextTokens:   llmResp.Usage.PromptTokensDetails.TextTokens,
-				CachedTokens: lo.EmptyableToPtr(llmResp.Usage.PromptTokensDetails.CachedTokens),
+				CachedTokens: llmResp.Usage.CacheReadReporting().ReportedCount(llmResp.Usage.PromptTokensDetails.CachedTokens),
+			}
+		}
+		// reported zero 可能没有统一 details 对象，但仍需保留显式零指针。
+		if llmResp.Usage.CacheReadReporting() == llm.CacheReadReported {
+			if oaiResp.Usage.InputTokensDetails == nil {
+				oaiResp.Usage.InputTokensDetails = &ImagesResponseUsageInputTokensDetails{}
+			}
+			if oaiResp.Usage.InputTokensDetails.CachedTokens == nil {
+				oaiResp.Usage.InputTokensDetails.CachedTokens = lo.ToPtr(int64(0))
 			}
 		}
 

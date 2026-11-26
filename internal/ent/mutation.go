@@ -31263,6 +31263,7 @@ type UsageLogMutation struct {
 	addprompt_audio_tokens                   *int64
 	prompt_cached_tokens                     *int64
 	addprompt_cached_tokens                  *int64
+	cache_read_status                        *string
 	prompt_write_cached_tokens               *int64
 	addprompt_write_cached_tokens            *int64
 	prompt_write_cached_tokens_5m            *int64
@@ -31999,6 +32000,42 @@ func (m *UsageLogMutation) ResetPromptCachedTokens() {
 	m.prompt_cached_tokens = nil
 	m.addprompt_cached_tokens = nil
 	delete(m.clearedFields, usagelog.FieldPromptCachedTokens)
+}
+
+// SetCacheReadStatus sets the "cache_read_status" field.
+func (m *UsageLogMutation) SetCacheReadStatus(s string) {
+	m.cache_read_status = &s
+}
+
+// CacheReadStatus returns the value of the "cache_read_status" field in the mutation.
+func (m *UsageLogMutation) CacheReadStatus() (r string, exists bool) {
+	v := m.cache_read_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCacheReadStatus returns the old "cache_read_status" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldCacheReadStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCacheReadStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCacheReadStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCacheReadStatus: %w", err)
+	}
+	return oldValue.CacheReadStatus, nil
+}
+
+// ResetCacheReadStatus resets all changes to the "cache_read_status" field.
+func (m *UsageLogMutation) ResetCacheReadStatus() {
+	m.cache_read_status = nil
 }
 
 // SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
@@ -32862,7 +32899,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 24)
+	fields := make([]string, 0, 25)
 	if m.created_at != nil {
 		fields = append(fields, usagelog.FieldCreatedAt)
 	}
@@ -32898,6 +32935,9 @@ func (m *UsageLogMutation) Fields() []string {
 	}
 	if m.prompt_cached_tokens != nil {
 		fields = append(fields, usagelog.FieldPromptCachedTokens)
+	}
+	if m.cache_read_status != nil {
+		fields = append(fields, usagelog.FieldCacheReadStatus)
 	}
 	if m.prompt_write_cached_tokens != nil {
 		fields = append(fields, usagelog.FieldPromptWriteCachedTokens)
@@ -32967,6 +33007,8 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.PromptAudioTokens()
 	case usagelog.FieldPromptCachedTokens:
 		return m.PromptCachedTokens()
+	case usagelog.FieldCacheReadStatus:
+		return m.CacheReadStatus()
 	case usagelog.FieldPromptWriteCachedTokens:
 		return m.PromptWriteCachedTokens()
 	case usagelog.FieldPromptWriteCachedTokens5m:
@@ -33024,6 +33066,8 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldPromptAudioTokens(ctx)
 	case usagelog.FieldPromptCachedTokens:
 		return m.OldPromptCachedTokens(ctx)
+	case usagelog.FieldCacheReadStatus:
+		return m.OldCacheReadStatus(ctx)
 	case usagelog.FieldPromptWriteCachedTokens:
 		return m.OldPromptWriteCachedTokens(ctx)
 	case usagelog.FieldPromptWriteCachedTokens5m:
@@ -33140,6 +33184,13 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPromptCachedTokens(v)
+		return nil
+	case usagelog.FieldCacheReadStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCacheReadStatus(v)
 		return nil
 	case usagelog.FieldPromptWriteCachedTokens:
 		v, ok := value.(int64)
@@ -33567,6 +33618,9 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldPromptCachedTokens:
 		m.ResetPromptCachedTokens()
+		return nil
+	case usagelog.FieldCacheReadStatus:
+		m.ResetCacheReadStatus()
 		return nil
 	case usagelog.FieldPromptWriteCachedTokens:
 		m.ResetPromptWriteCachedTokens()

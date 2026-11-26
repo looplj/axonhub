@@ -1,8 +1,10 @@
 package openrouter
 
 import (
+	"encoding/json"
 	"strings"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
@@ -39,11 +41,42 @@ type ImageGenerationData struct {
 }
 
 type ImageGenerationUsage struct {
+	CacheReadStatus         llm.CacheReadStatus           `json:"-"`
 	PromptTokens            int64                         `json:"prompt_tokens"`
 	CompletionTokens        int64                         `json:"completion_tokens"`
 	TotalTokens             int64                         `json:"total_tokens"`
 	PromptTokensDetails     *ImagePromptTokensDetails     `json:"prompt_tokens_details,omitempty"`
 	CompletionTokensDetails *ImageCompletionTokensDetails `json:"completion_tokens_details,omitempty"`
+}
+
+func (u ImageGenerationUsage) MarshalJSON() ([]byte, error) {
+	type usageAlias ImageGenerationUsage
+	type details struct {
+		*ImagePromptTokensDetails
+		CachedTokens *int64 `json:"cached_tokens,omitempty"`
+	}
+	var promptDetails *details
+	if u.PromptTokensDetails != nil {
+		promptDetails = &details{
+			ImagePromptTokensDetails: u.PromptTokensDetails,
+			CachedTokens:             u.CacheReadStatus.ReportedCount(u.PromptTokensDetails.CachedTokens),
+		}
+	}
+	return json.Marshal(struct {
+		usageAlias
+		PromptTokensDetails *details `json:"prompt_tokens_details,omitempty"`
+	}{usageAlias: usageAlias(u), PromptTokensDetails: promptDetails})
+}
+
+func (u *ImageGenerationUsage) UnmarshalJSON(data []byte) error {
+	type alias ImageGenerationUsage
+	var decoded alias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*u = ImageGenerationUsage(decoded)
+	u.CacheReadStatus = llm.ParseCacheReadStatus(data, []string{"prompt_tokens_details", "cached_tokens"})
+	return nil
 }
 
 type ImagePromptTokensDetails struct {

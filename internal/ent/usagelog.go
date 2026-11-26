@@ -46,6 +46,8 @@ type UsageLog struct {
 	PromptAudioTokens int64 `json:"prompt_audio_tokens,omitempty"`
 	// Number of cached tokens in the prompt
 	PromptCachedTokens int64 `json:"prompt_cached_tokens,omitempty"`
+	// Explicit upstream cache-read reporting status: reported or unknown
+	CacheReadStatus string `json:"cache_read_status,omitempty"`
 	// Number of total write cache tokens, if 5m or 1h ttl variant is present, the field is the sum of 5m and 1h
 	PromptWriteCachedTokens int64 `json:"prompt_write_cached_tokens,omitempty"`
 	// Number of token write cache with 5m ttl
@@ -135,7 +137,7 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case usagelog.FieldID, usagelog.FieldRequestID, usagelog.FieldAPIKeyID, usagelog.FieldProjectID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldPromptWriteCachedTokens, usagelog.FieldPromptWriteCachedTokens5m, usagelog.FieldPromptWriteCachedTokens1h, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
 			values[i] = new(sql.NullInt64)
-		case usagelog.FieldModelID, usagelog.FieldSource, usagelog.FieldFormat, usagelog.FieldCostPriceReferenceID:
+		case usagelog.FieldModelID, usagelog.FieldCacheReadStatus, usagelog.FieldSource, usagelog.FieldFormat, usagelog.FieldCostPriceReferenceID:
 			values[i] = new(sql.NullString)
 		case usagelog.FieldCreatedAt, usagelog.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -231,6 +233,12 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field prompt_cached_tokens", values[i])
 			} else if value.Valid {
 				_m.PromptCachedTokens = value.Int64
+			}
+		case usagelog.FieldCacheReadStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field cache_read_status", values[i])
+			} else if value.Valid {
+				_m.CacheReadStatus = value.String
 			}
 		case usagelog.FieldPromptWriteCachedTokens:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -393,6 +401,9 @@ func (_m *UsageLog) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("prompt_cached_tokens=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PromptCachedTokens))
+	builder.WriteString(", ")
+	builder.WriteString("cache_read_status=")
+	builder.WriteString(_m.CacheReadStatus)
 	builder.WriteString(", ")
 	builder.WriteString("prompt_write_cached_tokens=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PromptWriteCachedTokens))

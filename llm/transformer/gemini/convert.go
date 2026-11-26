@@ -458,13 +458,14 @@ func convertToLLMUsage(geminiUsage *UsageMetadata) *llm.Usage {
 	}
 
 	usage := &llm.Usage{
+		CacheReadStatus:  geminiUsage.CacheReadStatus,
 		PromptTokens:     geminiUsage.PromptTokenCount + geminiUsage.ToolUsePromptTokenCount,
 		CompletionTokens: geminiUsage.CandidatesTokenCount + geminiUsage.ThoughtsTokenCount,
 		TotalTokens:      geminiUsage.TotalTokenCount,
 	}
 
-	// Map cached tokens if present
-	if geminiUsage.CachedContentTokenCount > 0 {
+	// 保留负缓存读数，避免将异常用量误判为可信零命中。
+	if geminiUsage.CachedContentTokenCount != 0 {
 		usage.PromptTokensDetails = &llm.PromptTokensDetails{
 			CachedTokens: geminiUsage.CachedContentTokenCount,
 		}
@@ -522,6 +523,7 @@ func convertToGeminiUsage(chatUsage *llm.Usage) *UsageMetadata {
 	}
 
 	usage := &UsageMetadata{
+		CacheReadStatus:         chatUsage.CacheReadStatus,
 		PromptTokenCount:        chatUsage.PromptTokens,
 		CandidatesTokenCount:    chatUsage.CompletionTokens,
 		TotalTokenCount:         chatUsage.TotalTokens,

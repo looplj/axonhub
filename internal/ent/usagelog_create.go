@@ -178,6 +178,20 @@ func (_c *UsageLogCreate) SetNillablePromptCachedTokens(v *int64) *UsageLogCreat
 	return _c
 }
 
+// SetCacheReadStatus sets the "cache_read_status" field.
+func (_c *UsageLogCreate) SetCacheReadStatus(v string) *UsageLogCreate {
+	_c.mutation.SetCacheReadStatus(v)
+	return _c
+}
+
+// SetNillableCacheReadStatus sets the "cache_read_status" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableCacheReadStatus(v *string) *UsageLogCreate {
+	if v != nil {
+		_c.SetCacheReadStatus(*v)
+	}
+	return _c
+}
+
 // SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
 func (_c *UsageLogCreate) SetPromptWriteCachedTokens(v int64) *UsageLogCreate {
 	_c.mutation.SetPromptWriteCachedTokens(v)
@@ -428,6 +442,10 @@ func (_c *UsageLogCreate) defaults() error {
 		v := usagelog.DefaultPromptCachedTokens
 		_c.mutation.SetPromptCachedTokens(v)
 	}
+	if _, ok := _c.mutation.CacheReadStatus(); !ok {
+		v := usagelog.DefaultCacheReadStatus
+		_c.mutation.SetCacheReadStatus(v)
+	}
 	if _, ok := _c.mutation.PromptWriteCachedTokens(); !ok {
 		v := usagelog.DefaultPromptWriteCachedTokens
 		_c.mutation.SetPromptWriteCachedTokens(v)
@@ -490,6 +508,14 @@ func (_c *UsageLogCreate) check() error {
 	}
 	if _, ok := _c.mutation.TotalTokens(); !ok {
 		return &ValidationError{Name: "total_tokens", err: errors.New(`ent: missing required field "UsageLog.total_tokens"`)}
+	}
+	if _, ok := _c.mutation.CacheReadStatus(); !ok {
+		return &ValidationError{Name: "cache_read_status", err: errors.New(`ent: missing required field "UsageLog.cache_read_status"`)}
+	}
+	if v, ok := _c.mutation.CacheReadStatus(); ok {
+		if err := usagelog.CacheReadStatusValidator(v); err != nil {
+			return &ValidationError{Name: "cache_read_status", err: fmt.Errorf(`ent: validator failed for field "UsageLog.cache_read_status": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Source(); !ok {
 		return &ValidationError{Name: "source", err: errors.New(`ent: missing required field "UsageLog.source"`)}
@@ -570,6 +596,10 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.PromptCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptCachedTokens, field.TypeInt64, value)
 		_node.PromptCachedTokens = value
+	}
+	if value, ok := _c.mutation.CacheReadStatus(); ok {
+		_spec.SetField(usagelog.FieldCacheReadStatus, field.TypeString, value)
+		_node.CacheReadStatus = value
 	}
 	if value, ok := _c.mutation.PromptWriteCachedTokens(); ok {
 		_spec.SetField(usagelog.FieldPromptWriteCachedTokens, field.TypeInt64, value)
@@ -833,6 +863,18 @@ func (u *UsageLogUpsert) AddPromptCachedTokens(v int64) *UsageLogUpsert {
 // ClearPromptCachedTokens clears the value of the "prompt_cached_tokens" field.
 func (u *UsageLogUpsert) ClearPromptCachedTokens() *UsageLogUpsert {
 	u.SetNull(usagelog.FieldPromptCachedTokens)
+	return u
+}
+
+// SetCacheReadStatus sets the "cache_read_status" field.
+func (u *UsageLogUpsert) SetCacheReadStatus(v string) *UsageLogUpsert {
+	u.Set(usagelog.FieldCacheReadStatus, v)
+	return u
+}
+
+// UpdateCacheReadStatus sets the "cache_read_status" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateCacheReadStatus() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldCacheReadStatus)
 	return u
 }
 
@@ -1260,6 +1302,20 @@ func (u *UsageLogUpsertOne) UpdatePromptCachedTokens() *UsageLogUpsertOne {
 func (u *UsageLogUpsertOne) ClearPromptCachedTokens() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearPromptCachedTokens()
+	})
+}
+
+// SetCacheReadStatus sets the "cache_read_status" field.
+func (u *UsageLogUpsertOne) SetCacheReadStatus(v string) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetCacheReadStatus(v)
+	})
+}
+
+// UpdateCacheReadStatus sets the "cache_read_status" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateCacheReadStatus() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateCacheReadStatus()
 	})
 }
 
@@ -1891,6 +1947,20 @@ func (u *UsageLogUpsertBulk) UpdatePromptCachedTokens() *UsageLogUpsertBulk {
 func (u *UsageLogUpsertBulk) ClearPromptCachedTokens() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearPromptCachedTokens()
+	})
+}
+
+// SetCacheReadStatus sets the "cache_read_status" field.
+func (u *UsageLogUpsertBulk) SetCacheReadStatus(v string) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetCacheReadStatus(v)
+	})
+}
+
+// UpdateCacheReadStatus sets the "cache_read_status" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateCacheReadStatus() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateCacheReadStatus()
 	})
 }
 

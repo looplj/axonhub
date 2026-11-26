@@ -382,6 +382,7 @@ func (u *ImageGenerationUsage) ToLLMUsage() *llm.Usage {
 	}
 
 	usage := &llm.Usage{
+		CacheReadStatus:  u.CacheReadStatus,
 		PromptTokens:     u.PromptTokens,
 		CompletionTokens: u.CompletionTokens,
 		TotalTokens:      u.TotalTokens,
