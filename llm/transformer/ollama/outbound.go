@@ -333,12 +333,17 @@ func (t *OutboundTransformer) buildOptions(llmReq *llm.Request) *Options {
 		opts.PresencePenalty = llmReq.PresencePenalty
 	}
 
-	if llmReq.MaxTokens != nil {
+	maxTokens := llmReq.MaxTokens
+	if maxTokens == nil {
+		maxTokens = llmReq.MaxCompletionTokens
+	}
+
+	if maxTokens != nil {
 		if opts == nil {
 			opts = &Options{}
 		}
 
-		numPredict := int(*llmReq.MaxTokens)
+		numPredict := int(*maxTokens)
 		opts.NumPredict = &numPredict
 	}
 
