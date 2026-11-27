@@ -1,7 +1,10 @@
 package openrouter
 
 import (
+	"encoding/json"
 	"strings"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
@@ -59,6 +62,21 @@ type Response struct {
 	openai.Response
 
 	Choices []Choice `json:"choices"`
+}
+
+func (r *Response) UnmarshalJSON(data []byte) error {
+	type responseAlias Response
+	if err := json.Unmarshal(data, (*responseAlias)(r)); err != nil {
+		return err
+	}
+
+	if r.Usage != nil {
+		if tokens := gjson.GetBytes(data, "usage.prompt_tokens_details.cache_write_tokens"); tokens.Exists() {
+			r.Usage.PromptTokensDetails.WriteCachedTokens = tokens.Int()
+		}
+	}
+
+	return nil
 }
 
 func (r *Response) ToOpenAIResponse() *openai.Response {
